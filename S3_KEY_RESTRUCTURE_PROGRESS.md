@@ -88,7 +88,7 @@ objects, same field shapes, same volume.
 | 0.4 | `assetUrl` cache-buster | 🟡 CODE DONE | `verifyAssetUrl.js` 22/22 · **warm-cache browser check outstanding (user)** |
 | 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
 | 0.6 | `ratingPhotos` fix + quarantine | 🟡 CODE DONE | write path fixed · **report below awaits review, no DB write yet** |
-| 0.7 | `flush-caches` incl. prerender purge | 🟡 CODE DONE | needs one run against a real Redis · **prerender premise disproved, see below** |
+| 0.7 | `flush-caches` incl. prerender purge | ✅ DONE | proven on real Redis: 62→6→0 · **found + fixed a live invalidation gap** · risk 6 retired by non-existence |
 | 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ **NEXT — USER** | smoke clean; see the 0.8 checklist below |
 | 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
@@ -536,19 +536,67 @@ Reports cached-key counts by prefix before and after, so a flush that silently d
 **If Redis is unreachable it exits non-zero and refuses to continue** — a rewrite must not proceed when
 the cache cannot be purged, because a correct database behind a stale cache still serves old keys.
 
-### ⚠️ Risk 6's premise does not hold — prerender is not in the request path
+### ✅ PROVEN against real Redis — and it found a live gap
 
-The plan says prerendered HTML escapes Redis invalidation. **Nothing in this repo puts prerender in the
-request path at all:**
+Run 2026-08-11 against `redis-dev` on the production box (tunnel `-L 6380:127.0.0.1:6380`, connecting by
+IP so the `massclick` alias's own forwards don't collide). **`redis-prod` was deliberately not touched** —
+flushing 284 live keys would cause a cache-miss burst on the real site for no reason.
 
-- `prerender-node` (the Express middleware) is in `package.json` but is **imported nowhere**
-- `app.js` never references it
-- `prerenderServer.js` exists but is a standalone service, started by nothing in the repo, and hardcodes
-  `C:\Program Files\Google\Chrome\...` — a Windows path, on a Linux-deployed server
+```
+first run:   62 keys -> 6    (cleared 56)
+```
 
-So either prerendering is not deployed, or it is wired at the nginx layer, outside this repository. The
-backend deploy runs `/home/admin/scripts/backend.sh`, which is not in the repo, so this cannot be
-resolved from here.
+**Six keys survived, and they were not stale writes — nothing invalidated them at all:**
+
+```
+home-categories:desktop    home-categories:mobile    popular-categories:home
+service-cards:home         service-cards:mobile      seo:home
+```
+
+Cause: `invalidateCategoryDisplaySettingsCache` deleted an explicit list of keys that all carried a
+**`:v2` suffix**, matching what `categoryDisplaySettingsController.js` writes. But
+`categoryController.js` writes the same logical caches **without** that suffix, and no pattern covered
+them:
+
+| Live key | Written by | Was cleared by |
+|---|---|---|
+| `home-categories:desktop` / `:mobile` | categoryController.js:159,242 | **nothing** |
+| `popular-categories:home` | categoryController.js:418 | **nothing** |
+| `service-cards:home` / `:mobile` | categoryController.js:542,660 | **nothing** |
+| `seo:home` | — | **nothing** (`seo:*` ≠ `seo-meta:*`) |
+| the `…:v2` variants | categoryDisplaySettingsController.js | ✅ the explicit list |
+
+**Those five v1 endpoints are exactly the ones rewritten in 0.5 to emit category image URLs.** After the
+key rewrite they would have kept serving OLD image URLs until their TTL expired — which is the failure
+mode risk 6 exists to prevent, sitting in Redis rather than in prerendered HTML.
+
+Fixed in `utils/cacheInvalidation.js`: added the uncovered prefixes to `invalidateCategoryCache`, added
+`seo:*` to `invalidateSeoCache`, and **replaced the brittle explicit key list with patterns** so it
+cannot drift again when a new suffix appears. Re-verified:
+
+```
+after the fix:  6 keys -> 0    (cleared 6)
+```
+
+**Lesson for R.4:** invalidator patterns must be checked against the keys controllers actually write,
+not assumed. `flush-caches` printing a non-zero "remaining" count is the signal.
+
+### ✅ Risk 6 retired by non-existence — prerender is not deployed
+
+The plan says prerendered HTML escapes Redis invalidation. **Nothing puts prerender in the request path
+— confirmed on the server itself, 2026-08-11:**
+
+```
+grep -rniE "prerender" /etc/nginx/     -> no matches
+docker ps | grep -i prerender          -> no container
+ps aux  | grep -i prerender            -> no process
+```
+
+And in the repo: `prerender-node` is a dependency but is **imported nowhere**, `app.js` never references
+it, and `prerenderServer.js` is standalone, started by nothing, hardcoding
+`C:\Program Files\Google\Chrome\...` on a Linux server.
+
+**Risk 6 is retired by non-existence.** No purge step is needed at R.4/R.8.
 
 `flush-caches` handles both outcomes: it POSTs to `PRERENDER_PURGE_URL` when that is set (with an
 optional `PRERENDER_PURGE_TOKEN`), and otherwise prints an explicit SKIPPED with the reasoning above
@@ -557,19 +605,19 @@ rather than quietly passing.
 **USER: confirm whether prerendering is enabled on the server.** If it is not, risk 6 is retired by
 non-existence. If it is, set `PRERENDER_PURGE_URL` and the existing code covers it.
 
-### ⏳ OUTSTANDING — one run against a real Redis
+### Reaching Redis from this machine
 
-Redis is not reachable from this machine (only Mongo is tunnelled on 27018), so the flush itself is
-unproven. Run it on the server, or open a second tunnel:
+Redis is not in the `massclick` SSH alias's forwards. Connect **by IP**, not by alias — the alias also
+forwards 9090/3001/27018 and will abort if a session already holds them:
 
 ```bash
-ssh -L 6379:127.0.0.1:6379 <server>          # then:
-node server/scripts/s3KeyMigration.js flush-caches           # expect a non-zero key count
-node server/scripts/s3KeyMigration.js flush-caches --commit  # expect it to drop
+ssh -N -L 6380:127.0.0.1:6380 -p 2244 -i C:\Users\USER\.ssh\massclick root@103.14.121.77
+REDIS_URL=redis://127.0.0.1:6380 node server/scripts/s3KeyMigration.js flush-caches --commit
 ```
 
-**Gate:** the before/after counts move, and a second `--commit` reports ~0 cleared. Cheap to fold into
-the 0.8 deploy.
+`6380` is `redis-dev`; **`6379` is `redis-prod`** — see `D:\dev_abishek\vps\massclick.md`. Only flush
+prod as part of R.8, never casually: it is 284 live keys and dropping them is a cache-miss burst on the
+real site.
 
 ---
 
@@ -584,7 +632,7 @@ is why they were left rather than faked.
 | # | Action | Why here |
 |---|---|---|
 | 1 | Deploy `dev` → dev environment | — |
-| 2 | `flush-caches --commit` on the dev server | closes 0.7's gate; needs a real Redis |
+| 2 | `flush-caches --commit` on dev | ✅ already proven; re-run after deploy so the new code's output is cached |
 | 3 | `checkPublicImageUrls --api=<dev> --compare=imgcheck-2026-08-11-dev.json` | must print **NEWLY broken: 0** |
 | 4 | Warm-cache browser check on a review QR | closes 0.4's gate; needs a real browser |
 | 5 | Deploy to **prod** | — |
@@ -606,7 +654,7 @@ step 9 or the next clone throws them away.
 | 3 | the two DBs may not be clones | ✅ retired — 95.68% overlap, 0 genuine conflicts |
 | 4 | `setByPath` array corruption | ✅ retired — 31/31 gate |
 | 5 | 63 objects unrestorable | ✅ retired — bucket versioning `Enabled` |
-| 6 | prerender HTML not invalidated | **premise disproved** — prerender is not in the request path; confirm on the server |
+| 6 | prerender HTML not invalidated | ✅ **retired by non-existence** — verified on the server; a *real* Redis gap was found and fixed instead |
 | 7 | torn final line in an append-only log | not started — belongs to 2.2 `doctor` |
 | 8 | tunnel drops mid-rewrite | not started — belongs to 2.2 |
 | 9 | signed-URL fields unreachable by the smoke script | ✅ handled — documented exclusions, covered by `verify` + manual download |
@@ -702,8 +750,8 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
-| 8 | **Is prerendering actually enabled on the server?** Nothing in this repo wires `prerender-node` into the request path. If it is not deployed, risk 6 is retired by non-existence; if it is (nginx layer), set `PRERENDER_PURGE_URL` and `flush-caches` already covers it | **USER — needs a look at the server** |
-| 9 | Run `flush-caches --commit` once against a real Redis (unreachable from this machine — only Mongo is tunnelled). Fold into the 0.8 deploy | **USER / at 0.8** |
+| 8 | Is prerendering enabled on the server? | ✅ **ANSWERED 2026-08-11** — no nginx match, no container, no process. Risk 6 retired by non-existence |
+| 9 | Run `flush-caches --commit` against a real Redis | ✅ **DONE 2026-08-11** — dev Redis via tunnel; exposed and fixed an invalidation gap |
 | 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **BLOCKED UNTIL 0.8 IS DEPLOYED** — the key→URL read path must ship first or every review photo 404s. Then prod, then re-clone dev, alongside open question 4 | **USER DECISION** — blocked on 0.8 |
 | 6 | Add GitHub repository **variable** `REACT_APP_ASSET_BASE_URL` = `https://massclickdev.s3.ap-southeast-2.amazonaws.com` (Settings → Secrets and variables → Actions → Variables). Build still succeeds without it; only the `index.html` preconnect degrades | **USER ACTION** — not blocking |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |

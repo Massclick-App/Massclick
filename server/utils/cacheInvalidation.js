@@ -1,5 +1,5 @@
 ﻿import { createLogger } from "./logger.js";
-import { deleteCachePattern, deleteCache } from "./redisClient.js";
+import { deleteCachePattern } from "./redisClient.js";
 
 const logger = createLogger("CACHE_INVALIDATION");
 
@@ -9,7 +9,7 @@ const logger = createLogger("CACHE_INVALIDATION");
  */
 export const invalidateSeoCache = async () => {
   try {
-    const patterns = ['seo-meta:*', 'seo-page-content:*', 'seo-blog:*'];
+    const patterns = ['seo:*', 'seo-meta:*', 'seo-page-content:*', 'seo-blog:*'];
     const results = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))
     );
@@ -27,7 +27,22 @@ export const invalidateSeoCache = async () => {
  */
 export const invalidateCategoryCache = async () => {
   try {
-    const patterns = ['category:*', 'categories:*', 'home-category:*'];
+    // NOTE: these must match the keys the controllers actually WRITE. Verified
+    // against live Redis on 2026-08-11 — the five v1 keys below were previously
+    // uncovered, so a rewrite would have left them serving stale image URLs:
+    //   home-categories:desktop|mobile   categoryController.js:159,242
+    //   popular-categories:home          categoryController.js:418
+    //   service-cards:home|mobile        categoryController.js:542,660
+    const patterns = [
+      'category:*',
+      'categories:*',
+      'home-category:*',
+      'home-categories:*',
+      'home-mobile-category:*',
+      'popular-categories:*',
+      'popular-category-content:*',
+      'service-cards:*',
+    ];
     const results = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))
     );
@@ -124,7 +139,7 @@ export const invalidateCategoryDisplaySettingsCache = async () => {
     const patternResults = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))
     );
-    await Promise.all(directKeys.map(key => deleteCache(key)));
+    await Promise.all(directPatterns.map(pattern => deleteCachePattern(pattern)));
     await logger.info(`Invalidated category display settings cache`);
     return patternResults.every(r => r === true);
   } catch (error) {
