@@ -11,7 +11,7 @@ webpush.setVapidDetails('mailto:admin@massclick.in', VAPID_PUBLIC_KEY, VAPID_PRI
 
 // ─── Shared send logic ────────────────────────────────────────────────────────
 
-export async function executeFCMSend({ title, body, imageUrl = "", clickAction = "", customData = {}, targetType, targetPlatform = "", targetUserId = null }) {
+export async function executeFCMSend({ title, body, imageUrl = "", clickAction = "", allowDismiss = false, customData = {}, targetType, targetPlatform = "", targetUserId = null }) {
   const now = new Date();
   let tokens = [];
 
@@ -48,6 +48,7 @@ export async function executeFCMSend({ title, body, imageUrl = "", clickAction =
   Object.entries(customData).forEach(([k, v]) => {
     if (k && v !== undefined && v !== null) dataPayload[k] = String(v);
   });
+  dataPayload.allowDismiss = allowDismiss ? "true" : "false";
 
   // Split web push subscriptions (JSON strings) from native FCM tokens
   const webTokens = tokens.filter(t => typeof t === 'string' && t.startsWith('{'));
@@ -59,6 +60,7 @@ export async function executeFCMSend({ title, body, imageUrl = "", clickAction =
     android: {
       notification: {
         channelId: "massclick_marketing",
+        sticky: !allowDismiss,
         ...(imageUrl && { imageUrl }),
       },
     },
@@ -78,7 +80,7 @@ export async function executeFCMSend({ title, body, imageUrl = "", clickAction =
 
   // Send to web push subscriptions
   const webPayload = JSON.stringify({
-    notification: { title, body, icon: '/apple-touch-icon.png', data: dataPayload },
+    notification: { title, body, icon: '/apple-touch-icon.png', requireInteraction: !allowDismiss, data: dataPayload },
   });
   for (const tokenStr of webTokens) {
     try {
@@ -137,6 +139,7 @@ export const sendMarketingNotificationAction = async (req, res) => {
     const {
       title, body,
       imageUrl = "", clickAction = "",
+      allowDismiss = false,
       customData = {},
       targetType, targetPlatform = "",
       targetUserId = null, targetUserName = "",
@@ -154,10 +157,10 @@ export const sendMarketingNotificationAction = async (req, res) => {
     if (targetType === "specific_user" && !targetUserId)
       return res.status(BAD_REQUEST.code).json({ success: false, message: "targetUserId is required" });
 
-    const result = await executeFCMSend({ title, body, imageUrl, clickAction, customData, targetType, targetPlatform, targetUserId });
+    const result = await executeFCMSend({ title, body, imageUrl, clickAction, allowDismiss, customData, targetType, targetPlatform, targetUserId });
 
     await fcmCampaignModel.create({
-      title, body, imageUrl, clickAction, customData,
+      title, body, imageUrl, clickAction, allowDismiss: allowDismiss === true, customData,
       targetType, targetPlatform,
       targetUserId: targetUserId || null, targetUserName,
       status: "sent",
@@ -181,6 +184,7 @@ export const scheduleMarketingNotificationAction = async (req, res) => {
     const {
       title, body,
       imageUrl = "", clickAction = "",
+      allowDismiss = false,
       customData = {},
       targetType, targetPlatform = "",
       targetUserId = null, targetUserName = "",
@@ -207,7 +211,7 @@ export const scheduleMarketingNotificationAction = async (req, res) => {
       return res.status(BAD_REQUEST.code).json({ success: false, message: "scheduledAt must be a valid future date" });
 
     const campaign = await fcmCampaignModel.create({
-      title, body, imageUrl, clickAction, customData,
+      title, body, imageUrl, clickAction, allowDismiss: allowDismiss === true, customData,
       targetType, targetPlatform,
       targetUserId: targetUserId || null, targetUserName,
       status: "scheduled",
@@ -240,6 +244,7 @@ export const resendCampaignAction = async (req, res) => {
       body: original.body,
       imageUrl: original.imageUrl || "",
       clickAction: original.clickAction || "",
+      allowDismiss: original.allowDismiss === true,
       customData: customDataObj,
       targetType: original.targetType,
       targetPlatform: original.targetPlatform || "",
@@ -251,6 +256,7 @@ export const resendCampaignAction = async (req, res) => {
       body: original.body,
       imageUrl: original.imageUrl || "",
       clickAction: original.clickAction || "",
+      allowDismiss: original.allowDismiss === true,
       customData: customDataObj,
       targetType: original.targetType,
       targetPlatform: original.targetPlatform || "",

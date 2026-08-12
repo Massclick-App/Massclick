@@ -5,6 +5,7 @@ const fcmCampaignSchema = new mongoose.Schema({
   body: { type: String, required: true },
   imageUrl: { type: String, default: "" },
   clickAction: { type: String, default: "" },
+  allowDismiss: { type: Boolean, default: false },
   customData: { type: Map, of: String, default: {} },
   targetType: {
     type: String,

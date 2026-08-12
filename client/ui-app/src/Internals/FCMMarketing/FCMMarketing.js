@@ -2,7 +2,7 @@ import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchFCMUsers, sendFCMMarketing, scheduleFCMMarketing, resendFCMCampaign, cancelFCMCampaign, fetchFCMCampaigns, uploadFCMImage } from "../../redux/actions/fcmMarketingAction.js";
-import { Box, CircularProgress, Typography, IconButton, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
+import { Box, CircularProgress, Typography, IconButton, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Switch } from "@mui/material";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import SendIcon from "@mui/icons-material/Send";
 import AddIcon from "@mui/icons-material/Add";
@@ -47,6 +47,7 @@ const EMPTY_FORM = {
   body: "",
   imageUrl: "",
   clickAction: "",
+  allowDismiss: false,
   targetType: "all",
   targetPlatform: "android",
   targetUserId: "",
@@ -57,7 +58,8 @@ function NotificationPreview({
   title,
   body,
   imageUrl,
-  clickAction
+  clickAction,
+  allowDismiss
 }) {
   return <div className={cx("fcm-preview-card")}>
       <div className={cx("fcm-preview-header")}>
@@ -74,6 +76,7 @@ function NotificationPreview({
         {clickAction && <p className={cx("fcm-preview-action")}>
             🔗 <span>{clickAction}</span>
           </p>}
+        {allowDismiss && <p className={cx("fcm-preview-dismiss")}>Dismiss action enabled</p>}
       </div>
       {imageUrl && <div className={cx("fcm-preview-image-wrap fcm-preview-image-wrap--bottom")}>
           <img src={imageUrl} alt="notification" className={cx("fcm-preview-image")} onError={e => {
@@ -265,6 +268,7 @@ export default function FCMMarketing() {
       body: form.body.trim(),
       imageUrl: form.imageUrl.trim(),
       clickAction: form.clickAction.trim(),
+      allowDismiss: Boolean(form.allowDismiss),
       customData: customDataObj,
       targetType: form.targetType,
       targetPlatform: form.targetType === "platform" ? form.targetPlatform : "",
@@ -344,6 +348,7 @@ export default function FCMMarketing() {
       body: campaign.body,
       imageUrl: campaign.imageUrl || "",
       clickAction: campaign.clickAction || "",
+      allowDismiss: campaign.allowDismiss === true,
       targetType: campaign.targetType,
       targetPlatform: campaign.targetPlatform || "android",
       targetUserId: campaign.targetUserId || "",
@@ -399,6 +404,11 @@ export default function FCMMarketing() {
       };
       return <span className={cx("fcm-table-target")}>{map[row.targetType] || row.targetType}</span>;
     }
+  }, {
+    id: "allowDismiss",
+    label: "Dismiss",
+    minWidth: 80,
+    renderCell: row => <span className={cx(row.allowDismiss ? "fcm-table-success" : "fcm-table-num")}>{row.allowDismiss ? "On" : "Off"}</span>
   }, {
     id: "totalTargeted",
     label: "Targeted",
@@ -622,6 +632,19 @@ export default function FCMMarketing() {
             {errors.clickAction && <p className={cx("form-error-text")}>{errors.clickAction}</p>}
           </div>
 
+          {/* Dismiss Control */}
+          <div className={cx("fcm-field")}>
+            <div className={cx("fcm-switch-row")}>
+              <div>
+                <label className={cx("fcm-label")}>Dismiss Option</label>
+                <p className={cx("fcm-switch-hint")}>Off keeps the notification persistent. Turn on to show a Dismiss action.</p>
+              </div>
+              <Switch checked={form.allowDismiss} onChange={e => handleChange("allowDismiss", e.target.checked)} color="warning" inputProps={{
+              "aria-label": "Enable dismiss option"
+            }} />
+            </div>
+          </div>
+
           {/* Custom Data */}
           <div className={cx("fcm-field")}>
             <div className={cx("fcm-label-row")}>
@@ -806,9 +829,10 @@ export default function FCMMarketing() {
         <div className={cx("fcm-sidebar")}>
           <div className={cx("fcm-card fcm-preview-section")}>
             <h2 className={cx("fcm-card-title")}>Preview</h2>
-            <NotificationPreview title={form.title} body={form.body} imageUrl={form.imageUrl} clickAction={form.clickAction} />
+            <NotificationPreview title={form.title} body={form.body} imageUrl={form.imageUrl} clickAction={form.clickAction} allowDismiss={form.allowDismiss} />
             <div className={cx("fcm-preview-meta")}>
               <p><span className={cx("fcm-meta-label")}>Target:</span> {TARGET_TYPES.find(t => t.value === form.targetType)?.label}</p>
+              <p><span className={cx("fcm-meta-label")}>Dismiss:</span> {form.allowDismiss ? "Enabled" : "Disabled"}</p>
               {form.targetType === "platform" && <p><span className={cx("fcm-meta-label")}>Platform:</span> {form.targetPlatform || "—"}</p>}
               {form.targetType === "specific_user" && <p><span className={cx("fcm-meta-label")}>User:</span> {form.targetUserName || "—"}</p>}
               {sendMode === "schedule" && scheduledAt && <p>
