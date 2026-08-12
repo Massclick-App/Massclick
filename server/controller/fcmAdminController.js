@@ -4,6 +4,8 @@ import userModel from "../model/msg91Model/usersModels.js";
 import fcmCampaignModel from "../model/fcmCampaignModel/fcmCampaignModel.js";
 import { BAD_REQUEST, INTERNAL_SERVER_ERROR, NOT_FOUND, OK } from "../errorCodes.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../s3Uploder.js";
+import { s3Keys } from "../utils/s3ObjectKeys.js";
+import { ulid } from "../utils/idGen.js";
 
 const VAPID_PUBLIC_KEY = 'BGQ0OCJil87bcnelmazt2Kh5HPivTIEsYuWSN1-9IxGYIjwqbjLVbn_9bnOfiG-Iv7y_ituUYV3v7QrydEyl2UE';
 const VAPID_PRIVATE_KEY = 'Jn4dwbWtoXCCm5ux-4_NUvdlmX8WDBiP5L13FYumzAs';
@@ -326,8 +328,11 @@ export const uploadFCMImageAction = async (req, res) => {
     if (!image || typeof image !== "string" || !image.startsWith("data:image"))
       return res.status(BAD_REQUEST.code).json({ success: false, message: "A valid base64 image data URL is required" });
 
-    const uniquePath = `fcm-images/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const result = await uploadImageToS3(image, uniquePath);
+    // Standalone "upload media" endpoint — no campaign exists yet at upload time (the
+    // campaign schema stores only imageUrl today, no imageKey/campaign id to key off),
+    // same shape as massclickEventHelper.js's decoupled upload. ULID is the documented
+    // case for exactly this.
+    const result = await uploadImageToS3(image, s3Keys.fcmCampaign.image(ulid()));
     const url = getSignedUrlByKey(result.key);
 
     return res.status(OK.code).json({ success: true, url });
