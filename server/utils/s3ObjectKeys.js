@@ -295,6 +295,17 @@ export const s3Keys = Object.freeze({
     image: (id) => s3Path({ entity: "events", entityId: id, purpose: "image" }),
     banner: (id) => s3Path({ entity: "events", entityId: id, purpose: "banner" }),
   },
+  eventAdvertisement: {
+    web: (id) => s3Path({ entity: "event-advertisements", entityId: id, purpose: "banner-web" }),
+    mobile: (id) => s3Path({ entity: "event-advertisements", entityId: id, purpose: "banner-mobile" }),
+    image: (id) => s3Path({ entity: "event-advertisements", entityId: id, purpose: "image" }),
+  },
+  eventCategory: {
+    image: (id) => s3Path({ entity: "event-categories", entityId: id, purpose: "image" }),
+  },
+  eventLocation: {
+    image: (id) => s3Path({ entity: "event-locations", entityId: id, purpose: "image" }),
+  },
   massclickEvent: {
     media: (id) => s3Path({ entity: "massclick-events", entityId: id, purpose: "media" }),
     thumbnail: (id) => s3Path({ entity: "massclick-events", entityId: id, purpose: "thumbnail" }),
