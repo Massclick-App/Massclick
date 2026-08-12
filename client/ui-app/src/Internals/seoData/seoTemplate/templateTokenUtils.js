@@ -98,6 +98,23 @@ const stripConditionalBlocks = (str, tokens) => {
 const substitutePlainTokens = (str, tokens) =>
   str.replace(/\{(\w+)\}/g, (_match, tokenName) => tokens?.[tokenName] ?? "");
 
+const getHrefTokenValue = (tokenName, tokens = {}) => {
+  const urlTokenName = `${tokenName}Url`;
+  if (tokens?.[urlTokenName]) return tokens[urlTokenName];
+  return tokens?.[tokenName] ?? "";
+};
+
+// Match the server renderer: display tokens keep their prose casing, but href
+// values prefer URL-safe companion tokens when available. This makes previewed
+// links behave like live generated SEO content.
+const substituteHrefTokens = (str, tokens = {}) =>
+  str.replace(/(\bhref\s*=\s*)(["'])([\s\S]*?)\2/gi, (_match, prefix, quote, href) => {
+    const renderedHref = href.replace(/\{(\w+)\}/g, (_tokenMatch, tokenName) =>
+      getHrefTokenValue(tokenName, tokens)
+    );
+    return `${prefix}${quote}${renderedHref}${quote}`;
+  });
+
 const cleanupWhitespace = (str) =>
   str
     .replace(/\s{2,}/g, " ")
@@ -109,7 +126,8 @@ export const renderTemplateString = (str, tokens = {}) => {
 
   const normalized = normalizeEncodedTokens(str);
   const withoutBlocks = stripConditionalBlocks(normalized, tokens);
-  const substituted = substitutePlainTokens(withoutBlocks, tokens);
+  const withHrefTokens = substituteHrefTokens(withoutBlocks, tokens);
+  const substituted = substitutePlainTokens(withHrefTokens, tokens);
 
   return cleanupWhitespace(substituted);
 };
@@ -180,6 +198,7 @@ export const renderFaqTemplate = (faqTemplate = [], tokens = {}) =>
 // render paths (with zone data present, and with it absent) before saving.
 export const PREVIEW_TOKENS_WITH_ZONES = {
   category: "Restaurants",
+  categoryUrl: "restaurants",
   location: "Tiruchirappalli",
   locationUrl: "trichy",
   locality: null,
@@ -189,6 +208,7 @@ export const PREVIEW_TOKENS_WITH_ZONES = {
 
 export const PREVIEW_TOKENS_WITHOUT_ZONES = {
   category: "Restaurants",
+  categoryUrl: "restaurants",
   location: "Tiruchirappalli",
   locationUrl: "trichy",
   locality: null,

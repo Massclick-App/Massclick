@@ -97,6 +97,7 @@ const buildTokens = async ({ categorySlug, location }) => {
 
   return {
     category: categoryDoc?.title || categoryDoc?.category || titleCase(categorySlug),
+    categoryUrl: categorySlug,
     locality: null,
     ...locationTokens,
   };

@@ -143,8 +143,38 @@ const AdvertisementBanner = () => (
   </aside>
 );
 
+const normalizeSeoHref = (href = "") => {
+  const value = String(href || "");
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("#")) return value;
+
+  const absoluteMatch = trimmed.match(
+    /^(https?:\/\/(?:www\.)?massclick\.in)(\/[^?#]*)?([?#].*)?$/i,
+  );
+  if (absoluteMatch) {
+    const [, origin, path = "/", suffix = ""] = absoluteMatch;
+    return `${origin.toLowerCase()}${path.toLowerCase()}${suffix}`;
+  }
+
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    const [, path = "/", suffix = ""] =
+      trimmed.match(/^(\/[^?#]*)([?#].*)?$/) || [];
+    return `${path.toLowerCase()}${suffix}`;
+  }
+
+  return value;
+};
+
+const normalizeInternalSeoLinks = (html = "") =>
+  html.replace(
+    /(<a\b[^>]*\bhref\s*=\s*)(["'])([^"']*)\2/gi,
+    (_match, prefix, quote, href) => `${prefix}${quote}${normalizeSeoHref(href)}${quote}`,
+  );
+
 const sanitizeSeoHtml = (html = "") => {
-  return html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
+  return normalizeInternalSeoLinks(
+    html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>"),
+  );
 };
 
 const RESULT_SKELETON_COUNT = {
