@@ -87,7 +87,7 @@ objects, same field shapes, same volume.
 | 0.3 | `setByPath` array fix + extract shared utils | ✅ DONE | `node server/scripts/verifyS3KeyUtils.js` → 31/31 green |
 | 0.4 | `assetUrl` cache-buster | 🟡 CODE DONE | `verifyAssetUrl.js` 22/22 · **warm-cache browser check outstanding (user)** |
 | 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
-| 0.6 | `ratingPhotos` fix + quarantine | 🟡 CODE DONE | write path fixed · **report below awaits review, no DB write yet** |
+| 0.6 | `ratingPhotos` fix + quarantine | ✅ **DONE** | write path fixed · **prod repaired 2026-08-12**, 50 photos uploaded, 11.30 MB → ~0 MB, live API verified |
 | 0.7 | `flush-caches` incl. prerender purge | ✅ DONE | proven on real Redis: 62→6→0 · **found + fixed a live invalidation gap** · risk 6 retired by non-existence |
 | 0.8 | Deploy 0.3–0.7 dev → prod | 🟡 DEV DONE | dev `e24522c6` verified: flush ok, image diff **NEWLY broken 0** · **needs redeploy for `fb515f29`** · prod untouched |
 | 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
@@ -728,6 +728,38 @@ grep -rhoE "keyPrefix:\s*['\"][a-zA-Z0-9_-]+" server/routes/ | sed -E "s/.*['\"]
 
 ---
 
+## 0.6 data repair — EXECUTED on prod 2026-08-12
+
+Ran only after prod was deployed with the both-shape read path, per the ordering rule above.
+
+| | before | after |
+|---|---|---|
+| largest review document | **11.30 MB** — 71% of the 16 MB BSON limit | **~0.00 MB** |
+| second | 8.28 MB | ~0.00 MB |
+| photos | 50, inline base64 | 50, S3 keys |
+| dropped | — | **0** |
+
+**Backup:** `db-backups/snapshots/massClick/2026-08-12_07-14-56__pre-rating-photos-quarantine`
+— checksum MATCH, 64 lines = 64 docs = 64 live at snapshot time.
+
+Verification chain, each step checked rather than assumed:
+
+```
+dry run     50 upload, 0 dropped, counts unchanged
+S3          all 50 objects HEAD 200, none zero-byte
+idempotent  re-ran --commit -> 0 to upload, 50 recognised as keys under the right prefix
+live API    GET /api/business/6a5724fd…/reviews -> 45 URLs, shape=url, first HEAD 200
+```
+
+**Caveat recorded honestly:** the first `--commit` printed a stack-trace fragment mid-run which was
+not captured (output was piped through `tail`). Every downstream check passes, so the outcome is
+sound, but the cause is unknown. If it recurs, capture full stderr rather than tailing.
+
+Rollback if ever needed: `node db-backups/restore.js --from db-backups/snapshots/massClick/2026-08-12_07-14-56__pre-rating-photos-quarantine`
+(dry-run by default). The 50 new S3 objects are additive and covered by bucket versioning.
+
+---
+
 ## Active run
 
 ```
@@ -815,7 +847,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
 | 8 | Is prerendering enabled on the server? | ✅ **ANSWERED 2026-08-11** — no nginx match, no container, no process. Risk 6 retired by non-existence |
 | 9 | Run `flush-caches --commit` against a real Redis | ✅ **DONE 2026-08-11** — dev Redis via tunnel; exposed and fixed an invalidation gap |
-| 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **BLOCKED UNTIL 0.8 IS DEPLOYED** — the key→URL read path must ship first or every review photo 404s. Then prod, then re-clone dev, alongside open question 4 | **USER DECISION** — blocked on 0.8 |
+| 7 | `fixRatingPhotos.js --commit` on prod | ✅ **DONE 2026-08-12** — backup verified, 50 uploaded, 0 dropped, all 50 objects HEAD 200, re-run idempotent, live API returns resolvable URLs |
 | 6 | `REACT_APP_ASSET_BASE_URL` | ✅ **DONE 2026-08-11** — dev in `/var/www/dev-massclick/client/ui-app/.env`, prod as a GitHub repo variable. Both verified correct for where each is actually built. Residual: `frontend.sh prod` would build on the server without it and fall back to the default |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
 
