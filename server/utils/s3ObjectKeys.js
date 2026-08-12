@@ -250,6 +250,7 @@ export const s3Keys = Object.freeze({
     kyc: (id) => s3Path({ entity: "businesses", entityId: id, purpose: "kyc" }),
     reviewQr: (id) => s3Path({ entity: "businesses", entityId: id, purpose: "qr-review" }),
     profileQr: (id) => s3Path({ entity: "businesses", entityId: id, purpose: "qr-profile" }),
+    reviewPhoto: (id) => s3Path({ entity: "businesses", entityId: id, purpose: "review-photo" }),
     verifiedCertificate: (id) =>
       s3Path({ entity: "businesses", entityId: id, purpose: "certificate-verified" }),
     trustCertificate: (id) =>

@@ -1,7 +1,7 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-12 by Claude · **Active runId:** none
-**Current step:** 1.4 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · 1.1+1.2+1.3 done · **1.4 (migrate 51 call sites) is the next action**
+**Current step:** 1.4 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · 1.1+1.2+1.3 done · **1.4 in progress — 11/51 call sites migrated (`businessListHelper.js`), 40 remain across 21 files**
 
 ### Everything Phase 0 + 1.3 built — one place
 
@@ -100,7 +100,7 @@ objects, same field shapes, same volume.
 | 1.1 | `s3ObjectKeys.js` path registry | ✅ DONE | `verifyS3ObjectKeys.js` → 63/63 |
 | 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
 | 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | 🟡 **SHIPPED IN WARN MODE** | `verifyS3PathEnforcement.js` 22/22 · `lintS3Paths.js` finds 51 sites/22 files (correctly FAILING — that's 1.4's list, not a bug) |
-| 1.4 | Migrate 51 call sites across 22 files | ⬜ **NEXT** | lint gate passes 0/0, then flip `S3_PATH_MODE=strict` as the final commit |
+| 1.4 | Migrate 51 call sites across 22 files | 🟡 **IN PROGRESS** — 11/51 done (`businessListHelper.js`) | lint gate passes 0/0, then flip `S3_PATH_MODE=strict` as the final commit |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
@@ -861,13 +861,44 @@ typed." A `sed` pipeline is not safe for this repair either**: on this machine `
 through `/tmp` silently stripped every `\r`, corrupting a first repair attempt — use Node with
 explicit `latin1` reads/writes on files addressed by their real Windows path instead.
 
+### 1.4 — in progress. `businessListHelper.js` done (11/51), 2026-08-12
+
+All 11 sites migrated to `s3Keys.business.*`. Two things worth recording:
+
+- **`createBusinessList`'s 4 upload-before-save sites** (banner, logo, gallery, kyc) now mint
+  `const businessId = new mongoose.Types.ObjectId()` up front and pass it to every upload and to
+  `new businessListModel({ ...reqBody, _id: businessId })` — the ordering rule from the plan.
+- **One call site had no home in the registry**: the embedded `business.reviews[].ratingPhotos`
+  path (read at [businessListHelper.js:1352](server/helper/businessList/businessListHelper.js:1352),
+  written by `updateBusinessList`'s `reviewData` handling) is a **separate mechanism from the
+  `businessreviews` collection** the registry already declared under `entity: "reviews"` — it's an
+  undeclared/Mixed field embedded directly on the business document, not a reference to a
+  `businessReviewModel` document. Added a new field to the `businesses` scope in
+  `s3ScopeRegistry.js` (`purpose: "review-photo"`, versioned, scoped by the owning business — the
+  embedded reviews have no declared `_id` and photos were never addressed per-review in the URL)
+  and a matching `s3Keys.business.reviewPhoto(id)` builder. `verifyS3ObjectKeys.js` still 63/63.
+  **Left unresolved on purpose:** `reviewHelper.js`'s `sanitizeRatingPhotos` (the *separate*
+  `businessreviews`-collection path, already fixed for injection in 0.6) builds the identical
+  `businessList/reviews/<businessId>/photo-...` shape today. When that file's turn in 1.4 comes,
+  decide then whether it should reuse this same `businesses/review-photo` purpose or get its own
+  `reviews` entity purpose keyed by the review document's own `_id` — a real design choice, not
+  mechanical, and out of scope for just migrating `businessListHelper.js`.
+- Two bugs fixed for free by moving to the registry: the profile QR
+  ([businessListHelper.js:141](server/helper/businessList/businessListHelper.js:141) before the
+  edit) stops appending `Date.now()` — it's `s3Keys.business.profileQr()`, stable, so regeneration
+  now overwrites instead of orphaning. Same for the logo in `updateBusinessList` — now
+  `s3Keys.business.logo()`, stable.
+
+**Gates:** `lintS3Paths.js` 51 → **40** (across 21 files, exactly this file's 11 sites gone). All
+four verify gates still green. `git diff --numstat` checked clean (12 hunks, all at edited lines).
+
 ### 1.4 — the call-site inventory (corrected: 51 sites / 22 files — see above)
 
 Regenerate with `node scripts/lintS3Paths.js --json=<path>` for the exact per-line list; this
 table is the by-file rollup for tracking burndown.
 
 ```
-helper/businessList/businessListHelper.js          11      helper/rewards/rewardHelper.js               1
+helper/businessList/businessListHelper.js       ✅ 0/11      helper/rewards/rewardHelper.js               1
 helper/category/categoryHelper.js                   6      helper/reviewHelper/reviewHelper.js          1
 helper/advertistment/advertismentHelper.js          6      helper/massclickFeed/massclickFeedHelper.js  1
 helper/seo/seoOnpageBlogHelper.js                   5      helper/hiring/hiringHelper.js                1
@@ -1113,6 +1144,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-12 | **1.4 started — `businessListHelper.js` done, 11/51 sites migrated.** All to `s3Keys.business.*`. `createBusinessList`'s 4 upload-before-save sites now mint the `_id` first, per the ordering rule. One site (embedded `reviews[].ratingPhotos`) had no registry field — it's a separate mechanism from the `businessreviews` collection already in the registry — so added `purpose: "review-photo"` to the `businesses` scope and a matching builder; left `reviewHelper.js`'s twin of this path for a deliberate decision when that file's turn comes. Two latent orphan-per-regen bugs fixed for free (profile QR, logo) by moving to their now-stable registry keys. `lintS3Paths.js` 51 → 40. All 4 gates re-run clean. |
 | 2026-08-12 | **1.3 done, shipped in `warn` mode.** `resolveUploadPath()` chokepoint in `s3Uploder.js` (token or canonical string passes through; legacy string warns once per call site and keeps working; strict mode throws — controlled by `S3_PATH_MODE`, default `warn`). `deleteEntityAssets(entity, entityId)` cascade delete, refuses the whole page if any listed key fails `belongsToEntity()`. `lintS3Paths.js` static scanner — found **51 legacy call sites across 22 files** (one more than the hand-written inventory: `scripts/fixRatingPhotos.js:128`, mirroring `reviewHelper.js`'s pattern), 0 bucket-literal leaks; it is *correctly* failing right now, that failure IS 1.4's todo list. New gate `verifyS3PathEnforcement.js`, 22/22, all four gates plus the new one re-run clean. **Two process gotchas hit and fixed:** the Edit tool normalised `s3Uploder.js`'s mixed CRLF/LF to uniform CRLF, corrupting `git diff --numstat` with ~40 lines of pure line-ending noise — repaired via a byte-exact Node/`latin1` reconstruction pulling the original bytes back from `git show HEAD:...` (a `sed`-based first attempt silently stripped all `\r` and made it worse); and `/server/scripts` is entirely gitignored, so both new scripts needed `git add -f` or they'd have been silently left uncommitted. |
 | 2026-08-11 | **0.7 code done.** `flush-caches` added to the migration CLI — dry-run by default, discovers invalidators by reflection (verified: all 7), reports cached-key counts before/after, and refuses to run at all if Redis is unreachable. **Risk 6's premise turns out to be wrong:** `prerender-node` is a dependency but is imported nowhere, `app.js` never references it, and `prerenderServer.js` is standalone with a hardcoded Windows Chrome path. Either prerendering is not deployed or it lives in nginx outside this repo. The command handles both — POSTs to `PRERENDER_PURGE_URL` when set, otherwise prints an explicit SKIPPED. Two user items: confirm whether prerender is deployed, and run the flush once against a real Redis (not reachable from this machine). |
 | 2026-08-11 | **0.6 code done; data repair awaiting approval.** Fixed the unvalidated `ratingPhotos` write path — it was the only writer that trusted the request body, and the field renders as an image URL. Measured the stored data and it is **not** the injected keys the plan assumed: 50 prod entries / 20.4 MB of **inline base64**, with one review document at **11.30 MB — 71% of MongoDB's hard 16 MB limit**, i.e. a few photos from being unwritable. Repair therefore uploads-and-replaces instead of quarantining. Built `fixRatingPhotos.js` (dry-run default) and ran it on both DBs: nothing would be lost. Prod `--commit` needs a backup and the user's go-ahead, and should be paired with the `qrText` repair before the re-clone. |
