@@ -2,14 +2,12 @@ import businessListModel from "../../model/businessList/businessListModel.js";
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
 import mongoose from "mongoose";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys, isCanonicalKey, belongsToEntity } from "../../utils/s3ObjectKeys.js";
 
 /** At most this many photos per review. */
 const MAX_RATING_PHOTOS = 10;
 /** Per-photo ceiling, matching the reward-claim evidence cap in rewardSchemas.js. */
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
-
-/** Every review photo for a business lives under this prefix and nowhere else. */
-const reviewPhotoPrefix = (businessId) => `businessList/reviews/${businessId}/`;
 
 /**
  * Turn whatever the request body supplied into a safe list of S3 keys.
@@ -26,25 +24,24 @@ const reviewPhotoPrefix = (businessId) => `businessList/reviews/${businessId}/`;
  *      the largest 11.30 MB — 71% of MongoDB's hard 16 MB per-document limit. A few
  *      more photos on that review and every write to it fails BSONObjectTooLarge.
  *
- * Base64 is uploaded and replaced by its key, matching what businessListHelper.js:1062
- * already does for the embedded-review path. A caller-supplied string is accepted only
- * if it is a bare key already under THIS business's prefix. Everything else is dropped.
+ * Base64 is uploaded and replaced by its key, using s3Keys.business.reviewPhoto —
+ * the SAME purpose businessListHelper.js's embedded-review path uses (step 1.4),
+ * scoped by business rather than by this collection's own review _id, since both
+ * write paths share one folder and this file's own review documents have no id at
+ * upload time here either. A caller-supplied string is accepted only if it is a
+ * canonical key already belonging to THIS business. Everything else is dropped.
  *
- * NOTE FOR PHASE 1: the prefix test is the interim form of this check. Once
- * `isCanonicalKey()` and `entityPrefix()` land in utils/s3ObjectKeys.js (1.1) this
- * becomes isCanonicalKey(value) && value.startsWith(entityPrefix("businesses", businessId)).
+ * This is the Phase 1 form of the check this docstring originally planned for:
+ * isCanonicalKey(value) && belongsToEntity(value, "businesses", businessId).
  */
 const sanitizeRatingPhotos = async ({ businessId, ratingPhotos }) => {
   if (!Array.isArray(ratingPhotos) || ratingPhotos.length === 0) return [];
 
-  const prefix = reviewPhotoPrefix(businessId);
   const accepted = [];
   const rejected = [];
   const candidates = ratingPhotos.slice(0, MAX_RATING_PHOTOS);
 
-  for (let i = 0; i < candidates.length; i += 1) {
-    const entry = candidates[i];
-
+  for (const entry of candidates) {
     if (typeof entry !== "string" || !entry.trim()) {
       rejected.push("non-string");
       continue;
@@ -61,18 +58,14 @@ const sanitizeRatingPhotos = async ({ businessId, ratingPhotos }) => {
       }
       const uploadResult = await uploadImageToS3(
         value,
-        `${prefix}photo-${Date.now()}-${i}`,
+        s3Keys.business.reviewPhoto(businessId),
       );
       accepted.push(uploadResult.key);
       continue;
     }
 
     // A pre-uploaded key is only trusted when it already belongs to this business.
-    if (
-      value.startsWith(prefix) &&
-      !value.includes("..") &&
-      !/^https?:/i.test(value)
-    ) {
+    if (isCanonicalKey(value) && belongsToEntity(value, "businesses", businessId)) {
       accepted.push(value);
       continue;
     }
