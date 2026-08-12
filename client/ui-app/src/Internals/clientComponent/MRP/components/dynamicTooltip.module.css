@@ -1,0 +1,6 @@
+.wrapper { position: relative; display: inline-flex; min-width: 0; }
+.tooltip { position: absolute; z-index: 2200; left: 50%; bottom: calc(100% + 9px); width: max-content; max-width: 220px; padding: 7px 9px; color: #fff; background: #0c1c3e; border-radius: 7px; box-shadow: 0 8px 20px rgba(6,18,45,.24); opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%,5px); transition: .16s ease; font-size: 9px; font-weight: 600; line-height: 1.45; text-align: center; }
+.tooltip::after { content:""; position:absolute; left:50%; top:100%; border:5px solid transparent; border-top-color:#0c1c3e; transform:translateX(-50%); }
+.wrapper:hover .tooltip,.wrapper:focus-within .tooltip { opacity:1; visibility:visible; transform:translate(-50%,0); }
+.wrapper[data-position="bottom"] .tooltip { top:calc(100% + 9px); bottom:auto; }.wrapper[data-position="bottom"] .tooltip::after { top:auto; bottom:100%; border-top-color:transparent; border-bottom-color:#0c1c3e; }
+@media (hover:none) { .tooltip { display:none; } }

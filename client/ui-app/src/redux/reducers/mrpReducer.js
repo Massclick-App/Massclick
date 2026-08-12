@@ -172,7 +172,9 @@ export default function mrpReducer(state = initialState, action) {
       return {
         ...state,
         mniLoading: false,
-        mniLeads: action.payload.data
+        mniLeads: Array.isArray(action.payload)
+          ? action.payload
+          : action.payload?.data || []
       };
 
     case FETCH_MNI_LEADS_FAILURE:

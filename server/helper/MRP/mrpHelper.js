@@ -566,6 +566,8 @@ export const getGlobalLeadReport = async ({ location, group, category }) => {
           senderBusinessName: biz.businessName,
           senderCategory: biz.category,
           senderLocation: biz.location,
+          senderContact: biz.contact || null,
+          senderWhatsapp: biz.whatsappNumber || null,
           group: mni.categoryGroup || group,
           categoryGroupLocation: mni.categoryGroupLocation || normalizedLocation,
           sentLeads: enrichedSentLeads,
