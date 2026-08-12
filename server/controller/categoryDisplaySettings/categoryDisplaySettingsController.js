@@ -5,6 +5,9 @@ import { categoriesData } from "../../utils/sub-categoriesData.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 import { invalidateCategoryDisplaySettingsCache } from "../../utils/cacheInvalidation.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
+import { assetUrl } from "../../utils/assetUrl.js";
+import { ulid } from "../../utils/idGen.js";
 import {
   resolveDistrictBySlug,
   resolveLocationSearchScope,
@@ -219,8 +222,8 @@ export const getV2HomeCategoriesAction = async (req, res) => {
             _id: found._id,
             name: found.category,
             slug: found.slug,
-            icon: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : null,
-            liveImage: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : null,
+            icon: found.categoryImageKey ? assetUrl(found.categoryImageKey, { version: found.updatedAt }) : null,
+            liveImage: found.liveImageKey ? assetUrl(found.liveImageKey, { version: found.updatedAt }) : null,
             hasSubcategories,
             subCategoryCount,
           }
@@ -263,8 +266,8 @@ export const getV2MobileHomeCategoriesAction = async (req, res) => {
             _id: found._id,
             name: found.category,
             slug: found.slug,
-            icon: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : null,
-            liveImage: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : null,
+            icon: found.categoryImageKey ? assetUrl(found.categoryImageKey, { version: found.updatedAt }) : null,
+            liveImage: found.liveImageKey ? assetUrl(found.liveImageKey, { version: found.updatedAt }) : null,
             hasSubcategories,
             subCategoryCount,
           }
@@ -314,8 +317,8 @@ export const getV2PopularCategoriesAction = async (req, res) => {
             _id: found._id,
             name: found.category,
             slug: found.slug,
-            icon: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : null,
-            liveImage: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : null,
+            icon: found.categoryImageKey ? assetUrl(found.categoryImageKey, { version: found.updatedAt }) : null,
+            liveImage: found.liveImageKey ? assetUrl(found.liveImageKey, { version: found.updatedAt }) : null,
             hasSubcategories,
             subCategoryCount,
           }
@@ -364,15 +367,15 @@ export const getV2ServiceCardsAction = async (req, res) => {
                 name: found.category,
                 slug: found.slug,
                 section,
-                categoryImageKey: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : "",
-                liveImageKey: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : "",
+                categoryImageKey: found.categoryImageKey ? assetUrl(found.categoryImageKey, { version: found.updatedAt }) : "",
+                liveImageKey: found.liveImageKey ? assetUrl(found.liveImageKey, { version: found.updatedAt }) : "",
                 categoryImages: {
-                  webHero:         found.categoryImages?.webHero         ? getSignedUrlByKey(found.categoryImages.webHero)         : "",
-                  webCard:         found.categoryImages?.webCard         ? getSignedUrlByKey(found.categoryImages.webCard)         : "",
-                  webThumbnail:    found.categoryImages?.webThumbnail    ? getSignedUrlByKey(found.categoryImages.webThumbnail)    : "",
-                  mobileVertical:  found.categoryImages?.mobileVertical  ? getSignedUrlByKey(found.categoryImages.mobileVertical)  : "",
-                  mobileCard:      found.categoryImages?.mobileCard      ? getSignedUrlByKey(found.categoryImages.mobileCard)      : "",
-                  mobileThumbnail: found.categoryImages?.mobileThumbnail ? getSignedUrlByKey(found.categoryImages.mobileThumbnail) : "",
+                  webHero:         found.categoryImages?.webHero         ? assetUrl(found.categoryImages.webHero, { version: found.updatedAt })         : "",
+                  webCard:         found.categoryImages?.webCard         ? assetUrl(found.categoryImages.webCard, { version: found.updatedAt })         : "",
+                  webThumbnail:    found.categoryImages?.webThumbnail    ? assetUrl(found.categoryImages.webThumbnail, { version: found.updatedAt })    : "",
+                  mobileVertical:  found.categoryImages?.mobileVertical  ? assetUrl(found.categoryImages.mobileVertical, { version: found.updatedAt })  : "",
+                  mobileCard:      found.categoryImages?.mobileCard      ? assetUrl(found.categoryImages.mobileCard, { version: found.updatedAt })      : "",
+                  mobileThumbnail: found.categoryImages?.mobileThumbnail ? assetUrl(found.categoryImages.mobileThumbnail, { version: found.updatedAt }) : "",
                 },
               }
             : {
@@ -422,15 +425,15 @@ export const getV2MobileServiceCardsAction = async (req, res) => {
                 name: found.category,
                 slug: found.slug,
                 section,
-                categoryImageKey: found.categoryImageKey ? getSignedUrlByKey(found.categoryImageKey) : "",
-                liveImageKey: found.liveImageKey ? getSignedUrlByKey(found.liveImageKey) : "",
+                categoryImageKey: found.categoryImageKey ? assetUrl(found.categoryImageKey, { version: found.updatedAt }) : "",
+                liveImageKey: found.liveImageKey ? assetUrl(found.liveImageKey, { version: found.updatedAt }) : "",
                 categoryImages: {
-                  webHero:         found.categoryImages?.webHero         ? getSignedUrlByKey(found.categoryImages.webHero)         : "",
-                  webCard:         found.categoryImages?.webCard         ? getSignedUrlByKey(found.categoryImages.webCard)         : "",
-                  webThumbnail:    found.categoryImages?.webThumbnail    ? getSignedUrlByKey(found.categoryImages.webThumbnail)    : "",
-                  mobileVertical:  found.categoryImages?.mobileVertical  ? getSignedUrlByKey(found.categoryImages.mobileVertical)  : "",
-                  mobileCard:      found.categoryImages?.mobileCard      ? getSignedUrlByKey(found.categoryImages.mobileCard)      : "",
-                  mobileThumbnail: found.categoryImages?.mobileThumbnail ? getSignedUrlByKey(found.categoryImages.mobileThumbnail) : "",
+                  webHero:         found.categoryImages?.webHero         ? assetUrl(found.categoryImages.webHero, { version: found.updatedAt })         : "",
+                  webCard:         found.categoryImages?.webCard         ? assetUrl(found.categoryImages.webCard, { version: found.updatedAt })         : "",
+                  webThumbnail:    found.categoryImages?.webThumbnail    ? assetUrl(found.categoryImages.webThumbnail, { version: found.updatedAt })    : "",
+                  mobileVertical:  found.categoryImages?.mobileVertical  ? assetUrl(found.categoryImages.mobileVertical, { version: found.updatedAt })  : "",
+                  mobileCard:      found.categoryImages?.mobileCard      ? assetUrl(found.categoryImages.mobileCard, { version: found.updatedAt })      : "",
+                  mobileThumbnail: found.categoryImages?.mobileThumbnail ? assetUrl(found.categoryImages.mobileThumbnail, { version: found.updatedAt }) : "",
                 },
               }
             : {
@@ -500,8 +503,8 @@ export const getV2SubCategoriesAction = async (req, res) => {
           _id: item._id,
           name: item.category,
           slug: item.slug,
-          icon: item.categoryImageKey ? getSignedUrlByKey(item.categoryImageKey) : "",
-          liveImage: item.liveImageKey ? getSignedUrlByKey(item.liveImageKey) : null,
+          icon: item.categoryImageKey ? assetUrl(item.categoryImageKey, { version: item.updatedAt }) : "",
+          liveImage: item.liveImageKey ? assetUrl(item.liveImageKey, { version: item.updatedAt }) : null,
         }))
       );
     }
@@ -656,7 +659,7 @@ export const getV2DistrictCategoriesAction = async (req, res) => {
         _id: cat._id,
         name: cat.category,
         slug: cat.slug,
-        icon: cat.categoryImageKey ? getSignedUrlByKey(cat.categoryImageKey) : null,
+        icon: cat.categoryImageKey ? assetUrl(cat.categoryImageKey, { version: cat.updatedAt }) : null,
         count: countByCategory.get(String(cat.category || "").toLowerCase().trim()) || 0,
       }))
       // Only categories with real presence in this district — an empty tile
@@ -827,7 +830,15 @@ export const uploadHomeSectionImageAction = async (req, res) => {
       return res.status(400).json({ success: false, message: "imageData must be a base64 data URL" });
     }
 
-    const uploadPath = `${folder}/${Date.now()}`;
+    // `folder` distinguishes which card array this belongs to (the client sends
+    // "home-sections/popular-search" or "home-sections/top-tourist"); cards/places
+    // have no id of their own, so scope by the one settings document's _id, or a
+    // ULID if it doesn't exist yet (this endpoint runs before any settings save).
+    const settingsDoc = await categoryDisplaySettingsModel.findOne().select("_id").lean();
+    const entityId = settingsDoc?._id || ulid();
+    const uploadPath = String(folder).includes("top-tourist")
+      ? s3Keys.homeSection.topTourist(entityId)
+      : s3Keys.homeSection.popularSearch(entityId);
     const { key: imageKey } = await uploadImageToS3(imageData, uploadPath);
 
     return res.status(200).json({
