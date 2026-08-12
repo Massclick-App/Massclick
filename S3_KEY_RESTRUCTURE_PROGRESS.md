@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-12 by Claude · **Active runId:** none
 **Current step:** 1.5 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · **1.1–1.4 ALL DONE** ·
-**1.5 (deploy Phase 1 dev → prod) is the next action — nothing in Phase 1 has been deployed anywhere yet**
+**1.5 in progress — Phase 1 backend deployed to DEV and verified clean; prod deploy still outstanding**
 
 ### Everything Phase 0 + Phase 1 built — one place
 
@@ -106,7 +106,7 @@ objects, same field shapes, same volume.
 | 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
 | 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | ✅ **DONE, STRICT** | `verifyS3PathEnforcement.js` 23/23 · `lintS3Paths.js` 0/0 |
 | 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
-| 1.5 | Deploy Phase 1 dev → prod | ⬜ **NEXT** | smoke clean; **new uploads now canonical** — nothing deployed yet, code only |
+| 1.5 | Deploy Phase 1 dev → prod | 🟡 **DEV DONE** | dev: `checkPublicImageUrls` NEWLY broken 0, `flush-caches` 54→0 all 7 invalidators ok · **prod deploy still outstanding** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
@@ -1029,6 +1029,31 @@ rejecting a non-ObjectId/ULID `entityId` — this caught nothing live, but is th
 
 **No new gate script was needed** — `lintS3Paths.js` (1.3) and the four existing verify gates were
 sufficient for the whole burndown; re-run after every file, every time.
+
+### 1.5 — dev deployed and verified 2026-08-12
+
+User deployed the backend (all of 1.1–1.4, `S3_PATH_MODE=strict` by default) to dev. Verification:
+
+```
+checkPublicImageUrls --api=https://dev-api.massclick.in/api
+  --compare=imgcheck-2026-08-11-dev-postdeploy.json
+  632/635 assets resolve, 17/17 endpoints 2xx, NEWLY broken: 0
+  (same 3 pre-existing businessDetails[].bannerImage 403s as the 0.8 baseline — unrelated,
+  not caused by this deploy)
+
+flush-caches --commit  (via SSH tunnel to redis-dev, 127.0.0.1:6380)
+  54 keys -> 0, all 7 invalidators ok — full output read, no FAIL line
+```
+
+**No live smoke test of an actual upload was run yet** — `checkPublicImageUrls` only proves
+*existing* references still resolve; it says nothing about whether a NEW upload through any of the
+22 migrated call sites succeeds under `S3_PATH_MODE=strict` in the real dev environment (as opposed
+to the mocked/unit-level gates). **This is the one thing 1.5 hasn't actually proven yet** — do a
+real upload (e.g. edit a business logo or category image on dev) before calling dev fully clean,
+and definitely before deploying to prod.
+
+**Prod deploy not yet done.** Same sequence once dev's upload smoke test passes: deploy backend to
+prod, `checkPublicImageUrls --api=<prod> --compare=<latest prod baseline>`, must be NEWLY broken 0.
 
 ---
 
