@@ -89,7 +89,7 @@ objects, same field shapes, same volume.
 | 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
 | 0.6 | `ratingPhotos` fix + quarantine | 🟡 CODE DONE | write path fixed · **report below awaits review, no DB write yet** |
 | 0.7 | `flush-caches` incl. prerender purge | ✅ DONE | proven on real Redis: 62→6→0 · **found + fixed a live invalidation gap** · risk 6 retired by non-existence |
-| 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ **NEXT — USER** | smoke clean; see the 0.8 checklist below |
+| 0.8 | Deploy 0.3–0.7 dev → prod | 🟡 DEV DONE | dev `e24522c6` verified: flush ok, image diff **NEWLY broken 0** · **needs redeploy for `fb515f29`** · prod untouched |
 | 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
@@ -673,6 +673,58 @@ step 9 or the next clone throws them away.
 **Three bugs were found that were not on the risk register at all**, all of which had already fired:
 the `$set` subdocument wipe (4,442 prod documents), `extractS3Key` mis-parsing repeated prefixes (live
 on prod today), and `ratingPhotos` at 71% of the BSON limit.
+
+---
+
+## 0.8 — dev deployed and verified 2026-08-11
+
+| | commit | state |
+|---|---|---|
+| dev backend + frontend | `e24522c6` | ✅ deployed and verified |
+| prod backend | `e30540a6` | untouched — pre-Phase-0 |
+| prod frontend | `f66f5b95` | untouched |
+
+`origin/prod` is still pre-Phase-0. Nothing has reached production.
+
+**Verification run against dev:**
+
+```
+flush-caches --commit     all 7 invalidators ok, 1 -> 0
+checkPublicImageUrls      17/17 endpoints 2xx, 632 assets resolve
+  vs the pre-deploy baseline:   NEWLY broken: 0   exit 0
+```
+
+### ⚠️ A bug I shipped, and the process lesson
+
+`97129004`'s edit to `invalidateCategoryDisplaySettingsCache` only half-applied: it replaced the line
+*using* `directKeys` but left the `directKeys` block, so the function referenced an undefined
+`directPatterns`, threw, and returned `false` on every call. It was deployed to dev.
+
+**I nearly missed it because I had filtered `flush-caches` output down to the count lines, dropping the
+`FAIL` line — in the very tool built to surface failures.** The counts looked right so it read as
+verified. Fixed in `fb515f29`; `directResults` now counts toward the return value so a silent failure
+cannot report `ok`.
+
+**Rule for R.4/R.8: read the whole `flush-caches` output. Never grep it down to the counts.**
+
+### Cache coverage is now audited, not assumed
+
+Every `cacheMiddleware` `keyPrefix` in `routes/` was checked against invalidator patterns. Two more
+carried image URLs and were uncovered — both now covered:
+
+```
+mobile-v3             GET /api/businesslist/findByMobile   business images
+district-category-v2  GET /api/v2/category/district        category images
+```
+
+Seven remain uncovered on purpose — `admin-analytics-report` and six `wa-*` analytics caches — after
+checking their controllers for image fields and finding none. **20 of 27 covered, exclusions verified.**
+
+Re-run this audit if a new cached endpoint is added:
+
+```bash
+grep -rhoE "keyPrefix:\s*['\"][a-zA-Z0-9_-]+" server/routes/ | sed -E "s/.*['\"]//" | sort -u
+```
 
 ---
 
