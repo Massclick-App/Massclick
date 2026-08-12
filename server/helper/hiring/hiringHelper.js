@@ -3,6 +3,7 @@ import { Buffer } from "node:buffer";
 import jobVacancyModel from "../../model/hiring/jobVacancyModel.js";
 import jobApplicationModel from "../../model/hiring/jobApplicationModel.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const clean = (value) => String(value || "").trim();
 const slugify = (value) => clean(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -111,12 +112,18 @@ export const submitApplication = async (jobId, input = {}) => {
   for (const field of required) if (!clean(input[field])) throw new Error(`${field} is required`);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(input.email))) throw new Error("Enter a valid email address");
   const resume = parseResume(input.resumeData, input.resumeFileName);
+  // Uploads below need an owning entity id, but the document doesn't exist yet.
+  // Mint it first — never upload-then-mint. The registry scopes resumeKey by the
+  // application's own id (entity "job-applications"), not the job's — a job can have
+  // many applications, so job-scoping wouldn't identify one.
+  const applicationId = new mongoose.Types.ObjectId();
   const upload = await uploadImageToS3(
     resume.bytes,
-    `hiring/resumes/${jobId}/${Date.now()}-${slugify(input.fullName)}`,
+    s3Keys.jobApplication.resume(applicationId),
     { skipImageConversion: true, contentType: resume.mimeType, extension: resume.extension },
   );
   return jobApplicationModel.create({
+    _id: applicationId,
     job: jobId,
     fullName: clean(input.fullName),
     email: clean(input.email),
