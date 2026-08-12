@@ -472,14 +472,19 @@ export const viewBusinessList = async (identifier) => {
     business.kycDocuments = business.kycDocumentsKey.map((key) =>
       getSignedUrlByKey(key),
     );
+  // Certificate keys are stable — version off generatedAt (falling back to the
+  // document's updatedAt) so regeneration busts the cache, same as the QR helpers.
+  const certificateVersion = business.certificates?.generatedAt || business.updatedAt;
   if (business.certificates?.verifiedCertificateKey) {
-    business.certificates.verifiedCertificateUrl = getSignedUrlByKey(
+    business.certificates.verifiedCertificateUrl = assetUrl(
       business.certificates.verifiedCertificateKey,
+      { version: certificateVersion },
     );
   }
   if (business.certificates?.trustCertificateKey) {
-    business.certificates.trustCertificateUrl = getSignedUrlByKey(
+    business.certificates.trustCertificateUrl = assetUrl(
       business.certificates.trustCertificateKey,
+      { version: certificateVersion },
     );
   }
 
@@ -977,13 +982,15 @@ export const viewAllBusinessList = async ({
         );
       }
       if (business.certificates?.verifiedCertificateKey) {
-        business.certificates.verifiedCertificateUrl = getSignedUrlByKey(
+        business.certificates.verifiedCertificateUrl = assetUrl(
           business.certificates.verifiedCertificateKey,
+          { version: business.certificates?.generatedAt || business.updatedAt },
         );
       }
       if (business.certificates?.trustCertificateKey) {
-        business.certificates.trustCertificateUrl = getSignedUrlByKey(
+        business.certificates.trustCertificateUrl = assetUrl(
           business.certificates.trustCertificateKey,
+          { version: business.certificates?.generatedAt || business.updatedAt },
         );
       }
       if (business.qrCode?.qrImageKey) {

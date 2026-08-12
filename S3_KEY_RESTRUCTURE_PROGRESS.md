@@ -1,9 +1,10 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-12 by Claude · **Active runId:** none
-**Current step:** 1.4 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · 1.1+1.2+1.3 done · **1.4 in progress — 11/51 call sites migrated (`businessListHelper.js`), 40 remain across 21 files**
+**Current step:** 1.5 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · **1.1–1.4 ALL DONE** ·
+**1.5 in progress — DEV fully verified (gates + live upload smoke test); prod deploy still outstanding**
 
-### Everything Phase 0 + 1.3 built — one place
+### Everything Phase 0 + Phase 1 built — one place
 
 Run every gate from `server/` — dotenv loads `server/.env` from cwd, so running from the
 repo root throws `AWS S3 bucket not configured in env` (verified 2026-08-12):
@@ -12,15 +13,19 @@ repo root throws `AWS S3 bucket not configured in env` (verified 2026-08-12):
 cd server
 node scripts/verifyS3KeyUtils.js                            # 0.3 gate   31/31
 node scripts/verifyAssetUrl.js                               # 0.4 gate   22/22
-node scripts/verifyS3ObjectKeys.js                           # 1.1+1.2    63/63
-node scripts/verifyS3PathEnforcement.js                       # 1.3 a+c    22/22
-node scripts/lintS3Paths.js                                   # 1.3 b      EXPECTED TO FAIL until 1.4 — 51 sites/22 files, 0 bucket leaks
+node scripts/verifyS3ObjectKeys.js                           # 1.1+1.2    66/66
+node scripts/verifyS3PathEnforcement.js                       # 1.3 a+c    23/23
+node scripts/lintS3Paths.js                                   # 1.3 b + 1.4   0/0 — regression gate now, not a burndown
 node scripts/s3KeyMigration.js collections                    # 0.1  registry -> backup list
 node scripts/s3KeyMigration.js scan --uri=… --compare-uri=…   # 0.1  baseline
 node scripts/s3KeyMigration.js flush-caches [--commit]         # 0.7
 node scripts/checkPublicImageUrls.js --api=… [--compare=…]     # 0.5  no-broken-images
 node scripts/fixRatingPhotos.js --uri=… [--commit]              # 0.6  data repair
 ```
+
+**S3_PATH_MODE now defaults to `strict`** (server/s3Uploder.js) — a non-canonical upload
+path throws instead of warning. `S3_PATH_MODE=warn` is still available as an emergency
+override, but the normal path is closed.
 
 New modules: `utils/s3ScopeRegistry.js` · `utils/s3KeyUtils.js` · `utils/assetUrl.js` · `utils/s3ObjectKeys.js` · `utils/idGen.js`
 **Plan:** `C:\Users\USER\.claude\plans\give-me-a-full-serene-whisper.md`
@@ -97,11 +102,11 @@ objects, same field shapes, same volume.
 | 0.6 | `ratingPhotos` fix + quarantine | ✅ **DONE** | write path fixed · **prod repaired 2026-08-12**, 50 photos uploaded, 11.30 MB → ~0 MB, live API verified |
 | 0.7 | `flush-caches` incl. prerender purge | ✅ DONE | proven on real Redis: 62→6→0 · **found + fixed a live invalidation gap** · risk 6 retired by non-existence |
 | 0.8 | Deploy 0.3–0.7 dev → prod | 🟡 DEV DONE | dev `e24522c6` verified: flush ok, image diff **NEWLY broken 0** · **needs redeploy for `fb515f29`** · prod untouched |
-| 1.1 | `s3ObjectKeys.js` path registry | ✅ DONE | `verifyS3ObjectKeys.js` → 63/63 |
+| 1.1 | `s3ObjectKeys.js` path registry | ✅ DONE | `verifyS3ObjectKeys.js` → 66/66 |
 | 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
-| 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | 🟡 **SHIPPED IN WARN MODE** | `verifyS3PathEnforcement.js` 22/22 · `lintS3Paths.js` finds 51 sites/22 files (correctly FAILING — that's 1.4's list, not a bug) |
-| 1.4 | Migrate 51 call sites across 22 files | 🟡 **IN PROGRESS** — 11/51 done (`businessListHelper.js`) | lint gate passes 0/0, then flip `S3_PATH_MODE=strict` as the final commit |
-| 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
+| 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | ✅ **DONE, STRICT** | `verifyS3PathEnforcement.js` 23/23 · `lintS3Paths.js` 0/0 |
+| 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
+| 1.5 | Deploy Phase 1 dev → prod | 🟡 **DEV FULLY VERIFIED** | dev: gates clean + 2 live uploads confirmed canonical in the DB · **prod deploy still outstanding** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
@@ -792,7 +797,7 @@ stable+seq  {entity}/{entityId}/{purpose}/{seq}      only categories/variant, 6 
 Keys carry **no extension** — `uploadImageToS3` appends it at [s3Uploder.js:59](server/s3Uploder.js:59),
 since only it knows whether sharp converted the buffer to webp.
 
-### 1.3 — DONE 2026-08-12, shipped in `warn` mode
+### 1.3 — DONE 2026-08-12, later flipped to `strict` (see 1.4 below)
 
 All three pieces landed in one commit alongside this update.
 
@@ -861,62 +866,209 @@ typed." A `sed` pipeline is not safe for this repair either**: on this machine `
 through `/tmp` silently stripped every `\r`, corrupting a first repair attempt — use Node with
 explicit `latin1` reads/writes on files addressed by their real Windows path instead.
 
-### 1.4 — in progress. `businessListHelper.js` done (11/51), 2026-08-12
+### 1.4 — DONE 2026-08-12. All 51 call sites across 22 files migrated, `S3_PATH_MODE=strict`
 
-All 11 sites migrated to `s3Keys.business.*`. Two things worth recording:
+**Every legacy `uploadImageToS3(` call site now builds its key through the registry.**
+`lintS3Paths.js` → 0 legacy call sites / 0 bucket-literal leaks, and `S3_PATH_MODE` defaults to
+`strict` as of the final commit — a non-canonical path now throws instead of warning.
+`server/scripts` being gitignored means **nothing here was pushed automatically** — see the
+"open user items" section for what's still local-only.
 
-- **`createBusinessList`'s 4 upload-before-save sites** (banner, logo, gallery, kyc) now mint
-  `const businessId = new mongoose.Types.ObjectId()` up front and pass it to every upload and to
-  `new businessListModel({ ...reqBody, _id: businessId })` — the ordering rule from the plan.
-- **One call site had no home in the registry**: the embedded `business.reviews[].ratingPhotos`
-  path (read at [businessListHelper.js:1352](server/helper/businessList/businessListHelper.js:1352),
-  written by `updateBusinessList`'s `reviewData` handling) is a **separate mechanism from the
-  `businessreviews` collection** the registry already declared under `entity: "reviews"` — it's an
-  undeclared/Mixed field embedded directly on the business document, not a reference to a
-  `businessReviewModel` document. Added a new field to the `businesses` scope in
-  `s3ScopeRegistry.js` (`purpose: "review-photo"`, versioned, scoped by the owning business — the
-  embedded reviews have no declared `_id` and photos were never addressed per-review in the URL)
-  and a matching `s3Keys.business.reviewPhoto(id)` builder. `verifyS3ObjectKeys.js` still 63/63.
-  **Left unresolved on purpose:** `reviewHelper.js`'s `sanitizeRatingPhotos` (the *separate*
-  `businessreviews`-collection path, already fixed for injection in 0.6) builds the identical
-  `businessList/reviews/<businessId>/photo-...` shape today. When that file's turn in 1.4 comes,
-  decide then whether it should reuse this same `businesses/review-photo` purpose or get its own
-  `reviews` entity purpose keyed by the review document's own `_id` — a real design choice, not
-  mechanical, and out of scope for just migrating `businessListHelper.js`.
-- Two bugs fixed for free by moving to the registry: the profile QR
-  ([businessListHelper.js:141](server/helper/businessList/businessListHelper.js:141) before the
-  edit) stops appending `Date.now()` — it's `s3Keys.business.profileQr()`, stable, so regeneration
-  now overwrites instead of orphaning. Same for the logo in `updateBusinessList` — now
-  `s3Keys.business.logo()`, stable.
-
-**Gates:** `lintS3Paths.js` 51 → **40** (across 21 files, exactly this file's 11 sites gone). All
-four verify gates still green. `git diff --numstat` checked clean (12 hunks, all at edited lines).
-
-### 1.4 — the call-site inventory (corrected: 51 sites / 22 files — see above)
-
-Regenerate with `node scripts/lintS3Paths.js --json=<path>` for the exact per-line list; this
-table is the by-file rollup for tracking burndown.
+**Commits, in order** (all on `dev`, none pushed — ask before pushing):
 
 ```
-helper/businessList/businessListHelper.js       ✅ 0/11      helper/rewards/rewardHelper.js               1
-helper/category/categoryHelper.js                   6      helper/reviewHelper/reviewHelper.js          1
-helper/advertistment/advertismentHelper.js          6      helper/massclickFeed/massclickFeedHelper.js  1
-helper/seo/seoOnpageBlogHelper.js                   5      helper/hiring/hiringHelper.js                1
-helper/userHelper.js                                2      helper/gsc/trackedKeywordHelper.js           1
-helper/massclickEvent/massclickEventHelper.js       2      helper/event/eventLocationHelper.js          1
-helper/massclickDocuments/massclickDocumentsHelper.js 2    helper/event/eventCategoryHelper.js          1
-helper/event/eventCreationHelper.js                 2      helper/businessList/businessCertificateHelper.js 1
-helper/event/eventAdvertisementHelper.js            2      controller/msg91/msg91Controller.js          1
-controller/fcmAdminController.js                    1      controller/category/categoryImageController.js 1
-controller/categoryDisplaySettings/categoryDisplaySettingsController.js 1
-scripts/fixRatingPhotos.js (found by lintS3Paths.js, not in the original hand count)         1
+03199133  1.3 chokepoint + lint + deleteEntityAssets (warn mode)
+e5712a85  businessListHelper.js            11 sites
+40d83465  BUG FIX: isEntityId rejected real Mongoose ObjectId objects  <- see below
+6582a706  categoryHelper.js                 6 sites
+2b6a75f9  advertismentHelper.js             6 sites
+f1d4c766  seoOnpageBlogHelper.js            5 sites
+22a9324d  userHelper.js                     2 sites
+2ac26622  massclickEventHelper.js           2 sites (ULID pattern)
+52cd4a73  massclickDocumentsHelper.js       2 sites
+598c287c  eventCreationHelper.js            2 sites
+f3ed2f60  eventAdvertisementHelper.js       2 sites + 3 missing registry builders
+b22f4cab  eventLocationHelper.js + eventCategoryHelper.js   2 sites
+585704bc  rewardHelper.js + reviewHelper.js  2 sites (reviewHelper design decision resolved)
+79076573  massclickFeedHelper.js + hiringHelper.js  2 sites
+c3f9ee71  businessCertificateHelper.js  1 site + certificate cache-buster wiring (3 files)
+[ade6ae78 — concurrent commit by the user swept up trackedKeywordHelper.js's already-finished edit]
+8583574e  fixRatingPhotos.js               1 site
+8cc12d0e  msg91Controller.js  1 site + customer-avatar cache-buster wiring (2 files)
+be095175  categoryImageController.js  1 site + category-image cache-buster wiring (2 files)
+01a8a450  categoryDisplaySettingsController.js  1 site + 9 more cache-buster read sites
+21619ac0  FINAL: S3_PATH_MODE default flipped to strict
 ```
 
-**Ordering rule for 1.4, from the plan:** where an upload precedes document creation, always
-*mint `_id` → upload → `create()`*, never upload-then-mint. `s3Path` enforces the shape by
-rejecting a non-ObjectId/ULID `entityId`. Also fixes
-[businessListHelper.js:141](server/helper/businessList/businessListHelper.js:141), which appends
-`Date.now()` to the profile QR and orphans one object per regeneration.
+#### The bug that would have broken every migrated call site — found and fixed mid-1.4
+
+`isEntityId()` in `s3ObjectKeys.js` required `typeof value === "string"`. Every real call site
+passes `document._id` or `new mongoose.Types.ObjectId()` — **objects**, not strings — so `s3Path()`
+threw on every single invocation, including the already-committed `businessListHelper.js` work.
+The gate never caught it because `verifyS3ObjectKeys.js`'s fixtures (`BIZ`, `CAT`) are string
+constants. Found by hand-testing a real ObjectId while starting `categoryHelper.js`. Fixed:
+`isEntityId` now accepts anything whose `String(value)` is a valid ObjectId/ULID — matching what
+the rest of `s3Path()` already did (the template-literal key construction coerces either way).
+Added 3 regression checks (gate 63 → 66). **If a future session sees `s3Path: entityId must be a
+24-char ObjectId or a ULID` on what looks like a valid id, check this fix is still present before
+assuming the caller is wrong.**
+
+#### Registry gaps found along the way
+
+The registry (0.1) and the `s3Keys` named builders (1.1) were built in the same pass but drifted:
+three entities were declared in `s3ScopeRegistry.js` with no matching `s3Keys.*` group —
+`event-advertisements`, `event-categories`, `event-locations` — plus one purpose that didn't exist
+in the registry at all: the embedded `business.reviews[].ratingPhotos` path
+([businessListHelper.js:1352](server/helper/businessList/businessListHelper.js:1352)) is a
+**separate mechanism from the `businessreviews` collection** already declared under
+`entity: "reviews"` — an undeclared/Mixed field on the business document itself, not a reference to
+a `businessReviewModel` document. Added `purpose: "review-photo"` under the `businesses` scope
+(scoped by business, not by a review sub-id, since embedded reviews have no declared `_id`) plus a
+matching `s3Keys.business.reviewPhoto(id)` builder — then reused the *same* purpose in
+`reviewHelper.js`'s `sanitizeRatingPhotos` (the separate `businessreviews`-collection path) once its
+turn came, since that file's own docstring had already documented the business-scoped Phase 1 form
+of its trust-check. All four gaps closed as each file needing them came up; `verifyS3ObjectKeys.js`
+stayed green throughout (66/66 by the end).
+
+#### Decoupled-upload pattern: ULID as entityId, three times
+
+Three upload endpoints have **no real entity id at upload time and no guarantee one will ever
+exist** — a standalone "upload media" endpoint called before the owning form is submitted, with
+document creation elsewhere not pre-minting an id either:
+`massclickEventHelper.js`'s `uploadMassclickEventMedia`, `fcmAdminController.js`'s
+`uploadFCMImageAction` (the campaign schema stores only `imageUrl`, no `imageKey`/campaign id to key
+off), and `categoryImageController.js`'s `uploadCategoryImagesAction` when `categoryId` isn't
+supplied (a create-category form uploading variants before the category exists). All three use
+`ulid()` as the entity id — the documented case for "no document exists at upload time". This means
+these specific objects won't be found by `deleteEntityAssets("massclick-events"/"fcm-campaigns"/
+"categories", realId)` later, since they live under a pseudo-entity prefix, not the real one. Noted
+inline at each site as a known, accepted gap — closing it needs an API contract change (mint the
+real id before the first upload), out of scope for a call-site migration.
+
+#### The recurring finding: stable keys need their READ sites fixed, not just the write site
+
+The registry declares several purposes `stable` (deterministic, regeneration overwrites). Every one
+of them **used to mint a fresh `Date.now()`-suffixed key specifically to dodge the 1-year
+`Cache-Control`** — moving the upload to the registry's stable form without ALSO wiring every render
+site through `assetUrl(key, { version })` would have reintroduced exactly the staleness bug 0.4
+built `assetUrl` to prevent. This bit three purposes, each found while migrating an unrelated
+file's write site, not planned in advance:
+
+| Purpose | Found while migrating | Read sites fixed | Files touched |
+|---|---|---|---|
+| `certificate-verified` / `certificate-trust` | `businessCertificateHelper.js` | `appendCertificateUrls` (3 internal callers) + `businessListHelper.js` ×2 + `businessListController.js` ×2 | 3 |
+| `customers.profileImageKey` (avatar) | `msg91Controller.js` | 4 sites in `msg91Controller.js` + 2 in the unrelated `smsGatewayController.js` (reads the same field, has no upload of its own) | 2 |
+| `categories.categoryImageKey`/`liveImageKey`/`categoryImages.*` | `categoryImageController.js` (which exposed that `categoryHelper.js`'s OWN 6582a706 commit had never wired its reads) | 5 sites in `categoryHelper.js` + 9 more in `categoryDisplaySettingsController.js` (a second, independent copy of the same rendering logic) | 2 |
+
+Version source is always the most specific timestamp available, falling back to the document's
+`updatedAt`, same pattern as the QR helpers: `certificates.generatedAt`, then
+`business.updatedAt`/`category.updatedAt`. Where a query's projection didn't happen to include
+`updatedAt` (`businessSearchCategory`, the district explorer), `assetUrl` degrades gracefully to an
+unversioned URL — byte-identical to the pre-migration behavior, never worse.
+**If a new stable purpose gets added later, grep for every render of its key field before
+considering the write-side migration done** — this pattern hit 3 times unprompted.
+
+#### A live collision with the user's own concurrent work
+
+Mid-session, `git status` showed `HEAD` had moved to a commit ("Add FCM dismiss control", `ade6ae78`)
+neither made nor expected — the user was committing unrelated work in the **same working
+directory** at the same time, and their `git add`/`commit` swept up this session's already-finished,
+still-unstaged edit to `trackedKeywordHelper.js` along with their own changes, then pushed it.
+Verified byte-for-byte that the swept content was exactly the intended change (no corruption), and
+that no other in-progress file was touched. No harm done, but **a fresh session should `git status`
+before assuming its own uncommitted edits are still there**, and commit promptly rather than leaving
+work unstaged for long stretches when the working directory might not be exclusive.
+
+#### CRLF churn hit repeatedly — the fix, generalized
+
+Six more files hit the same Edit-tool line-ending-normalization issue first found in step 1.3
+(`s3Uploder.js`): `userHelper.js`, `reviewHelper.js`, `businessListController.js`,
+`msg91Controller.js`, and `s3Uploder.js` again on the strict-mode-flip commit. **Not every
+originally-mixed-EOL file churns, and not every large `git diff --numstat` after an edit is
+churn** — verified this directly: `businessListHelper.js`, `categoryHelper.js`,
+`advertismentHelper.js` and `seoOnpageBlogHelper.js` all showed the SAME symptom locally
+(working tree flips to uniform CRLF or LF) but their **committed** history (`git diff <parent>
+<commit>`, which bypasses the working-tree/`core.autocrlf` conversion) was already clean — because
+`core.autocrlf=true` here normalizes the working tree back to LF on `git add`/`commit` regardless of
+what got checked out, UNLESS the file was already inconsistent *within its own stored blob* (a real
+mix of literal `\r\n` and bare `\n`, not something autocrlf itself produced) — which is exactly what
+kept happening to a specific handful of older files.
+
+**The check, every time:** after an edit, `git diff --numstat` on the affected file. If
+insertions+deletions is wildly larger than what was actually typed, don't assume — measure:
+
+```bash
+git show HEAD:<path> > .eol_check.js
+node -e "
+  const fs = require('fs');
+  const before = fs.readFileSync('.eol_check.js', 'latin1');
+  const after = fs.readFileSync('<path>', 'latin1');
+  const crlf = (t) => (t.match(/\r\n/g) || []).length;
+  const lfOnly = (t) => (t.match(/(?<!\r)\n/g) || []).length;
+  console.log('before:', crlf(before), lfOnly(before), '  after:', crlf(after), lfOnly(after));
+"
+```
+If `before` was already uniform (all-CRLF or all-LF), the working-tree flip is cosmetic and the
+diff is already accurate — no fix needed. If `before` was genuinely mixed, the diff IS corrupted and
+needs reconstruction: LCS-diff `before` against `after` (ignoring EOL), keep `before`'s exact
+per-line terminator on every line that matched unchanged, use `\n` only on genuinely new/changed
+lines. **A `sed` pipeline is not safe for the reconstruction step** — on this machine piping through
+`/tmp` silently stripped every `\r`. This session's working version of that reconstruction script
+lived at the session's scratchpad path (not committed — it's a Claude-Code editing workaround, not
+a project tool); recreate it fresh if this recurs rather than searching for it.
+
+#### Ordering rule, applied throughout
+
+Every upload-before-document-creation site — `createBusinessList`, `createCategory`,
+`createAdvertisement`, `createPageContentBlogSeo`, `createUsers`, `createEventCreation`,
+`createEventAdvertisement`, `createEventLocation`/`createEventCategory`, `createRewardClaim`,
+`createMassclickDocument`, `createMassclickFeedPost`, `submitApplication` — now mints the `_id`
+first (`new mongoose.Types.ObjectId()` or `new ObjectId()`) and passes it to both the upload(s) and
+the model constructor, per the plan's rule: never upload-then-mint. `s3Path` enforces the shape by
+rejecting a non-ObjectId/ULID `entityId` — this caught nothing live, but is the backstop.
+
+**No new gate script was needed** — `lintS3Paths.js` (1.3) and the four existing verify gates were
+sufficient for the whole burndown; re-run after every file, every time.
+
+### 1.5 — dev deployed and verified 2026-08-12
+
+User deployed the backend (all of 1.1–1.4, `S3_PATH_MODE=strict` by default) to dev. Verification:
+
+```
+checkPublicImageUrls --api=https://dev-api.massclick.in/api
+  --compare=imgcheck-2026-08-11-dev-postdeploy.json
+  632/635 assets resolve, 17/17 endpoints 2xx, NEWLY broken: 0
+  (same 3 pre-existing businessDetails[].bannerImage 403s as the 0.8 baseline — unrelated,
+  not caused by this deploy)
+
+flush-caches --commit  (via SSH tunnel to redis-dev, 127.0.0.1:6380)
+  54 keys -> 0, all 7 invalidators ok — full output read, no FAIL line
+```
+
+### 1.5 — live upload smoke test PASSED, 2026-08-12
+
+Two real uploads through the dev admin UI, under `S3_PATH_MODE=strict`, watched via a live
+`docker logs -f massclick-api-dev` tail (no errors, no `resolveUploadPath` throw) and then verified
+directly against `massClick_dev` (bypassing any endpoint/cache ambiguity):
+
+```
+business "Varnam Fine Art" logo
+  logoImageKey:  businesses/6a1425190888a41e357fcbda/logo.webp
+  logoUploadedAt: 2026-08-12T12:20:30.914Z   <- matches the test, canonical + stable, correct
+
+category "contractor" webCard variant
+  categoryImages.webCard: categories/6902f84794361974752cb566/variant/webCard.webp
+  updatedAt: 2026-08-12T12:20:01.054Z         <- matches the test, canonical stable+seq, correct
+```
+
+Both resolve to the registry's exact expected shape — `s3Keys.business.logo()` and
+`s3Keys.category.variant(id, "webCard")` respectively. **This is the thing 1.5 needed to prove that
+no gate could**: a real upload, through the real admin UI, against the real dev database, under
+strict mode, with no fallback. **Dev is now fully verified — call it done.**
+
+**Prod deploy not yet done.** Same sequence: deploy backend to prod, `checkPublicImageUrls
+--api=<prod> --compare=<latest prod baseline>` (must be NEWLY broken 0), then ideally repeat this
+same live-upload spot-check against prod before considering 1.5 fully closed.
 
 ---
 
@@ -1144,7 +1296,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
-| 2026-08-12 | **1.4 started — `businessListHelper.js` done, 11/51 sites migrated.** All to `s3Keys.business.*`. `createBusinessList`'s 4 upload-before-save sites now mint the `_id` first, per the ordering rule. One site (embedded `reviews[].ratingPhotos`) had no registry field — it's a separate mechanism from the `businessreviews` collection already in the registry — so added `purpose: "review-photo"` to the `businesses` scope and a matching builder; left `reviewHelper.js`'s twin of this path for a deliberate decision when that file's turn comes. Two latent orphan-per-regen bugs fixed for free (profile QR, logo) by moving to their now-stable registry keys. `lintS3Paths.js` 51 → 40. All 4 gates re-run clean. |
+| 2026-08-12 | **1.4 DONE — all 51 call sites across 22 files migrated, `S3_PATH_MODE` flipped to `strict`.** Full detail in the "Phase 1 — where it stands" section above; summary: found and fixed a real bug mid-migration (`isEntityId` rejected real Mongoose ObjectId objects — would have broken every call site, gate never caught it since fixtures were plain strings); found 3 registry/`s3Keys` builder gaps and closed them as each file needing them came up; resolved the `reviewHelper.js` design question flagged when `businessListHelper.js` was migrated (reuse `s3Keys.business.reviewPhoto`, per that file's own docstring); used a ULID entity id for 3 genuinely decoupled upload endpoints (massclick event media, FCM images, category variants uploaded before a category exists); found and fixed the SAME class of cache-staleness gap three separate times (certificates, customer avatars, category images) — moving a purpose to its registry-declared `stable` form without wiring every read site through `assetUrl` would have reintroduced the exact bug 0.4 exists to prevent; survived a live collision with the user's own concurrent commit in the same working directory (verified no corruption); and hit + fixed the Edit-tool CRLF-churn issue on 5 more files, confirming empirically that `core.autocrlf=true` makes most such churn cosmetic (already-uniform files round-trip clean) except where a file's stored blob was already internally inconsistent. All 5 gates (`verifyS3KeyUtils` 31/31, `verifyAssetUrl` 22/22, `verifyS3ObjectKeys` 66/66, `verifyS3PathEnforcement` 23/23, `lintS3Paths.js` 0/0) green at every commit. |
 | 2026-08-12 | **1.3 done, shipped in `warn` mode.** `resolveUploadPath()` chokepoint in `s3Uploder.js` (token or canonical string passes through; legacy string warns once per call site and keeps working; strict mode throws — controlled by `S3_PATH_MODE`, default `warn`). `deleteEntityAssets(entity, entityId)` cascade delete, refuses the whole page if any listed key fails `belongsToEntity()`. `lintS3Paths.js` static scanner — found **51 legacy call sites across 22 files** (one more than the hand-written inventory: `scripts/fixRatingPhotos.js:128`, mirroring `reviewHelper.js`'s pattern), 0 bucket-literal leaks; it is *correctly* failing right now, that failure IS 1.4's todo list. New gate `verifyS3PathEnforcement.js`, 22/22, all four gates plus the new one re-run clean. **Two process gotchas hit and fixed:** the Edit tool normalised `s3Uploder.js`'s mixed CRLF/LF to uniform CRLF, corrupting `git diff --numstat` with ~40 lines of pure line-ending noise — repaired via a byte-exact Node/`latin1` reconstruction pulling the original bytes back from `git show HEAD:...` (a `sed`-based first attempt silently stripped all `\r` and made it worse); and `/server/scripts` is entirely gitignored, so both new scripts needed `git add -f` or they'd have been silently left uncommitted. |
 | 2026-08-11 | **0.7 code done.** `flush-caches` added to the migration CLI — dry-run by default, discovers invalidators by reflection (verified: all 7), reports cached-key counts before/after, and refuses to run at all if Redis is unreachable. **Risk 6's premise turns out to be wrong:** `prerender-node` is a dependency but is imported nowhere, `app.js` never references it, and `prerenderServer.js` is standalone with a hardcoded Windows Chrome path. Either prerendering is not deployed or it lives in nginx outside this repo. The command handles both — POSTs to `PRERENDER_PURGE_URL` when set, otherwise prints an explicit SKIPPED. Two user items: confirm whether prerender is deployed, and run the flush once against a real Redis (not reachable from this machine). |
 | 2026-08-11 | **0.6 code done; data repair awaiting approval.** Fixed the unvalidated `ratingPhotos` write path — it was the only writer that trusted the request body, and the field renders as an image URL. Measured the stored data and it is **not** the injected keys the plan assumed: 50 prod entries / 20.4 MB of **inline base64**, with one review document at **11.30 MB — 71% of MongoDB's hard 16 MB limit**, i.e. a few photos from being unwritable. Repair therefore uploads-and-replaces instead of quarantining. Built `fixRatingPhotos.js` (dry-run default) and ran it on both DBs: nothing would be lost. Prod `--commit` needs a backup and the user's go-ahead, and should be paired with the `qrText` repair before the re-clone. |

@@ -1,7 +1,7 @@
 import { fakesendOtp, sendOtp, sendMobileOtp, verifyOtp, fakeverifyOtp } from "../../helper/msg91/smsGatewayHelper.js";
 import jwt from "jsonwebtoken";
 import User from "../../model/msg91Model/usersModels.js";
-import { getSignedUrlByKey } from "../../s3Uploder.js";
+import { assetUrl } from "../../utils/assetUrl.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
 import { sendWhatsAppMessage, sendLoginWelcomeMessage } from "../../helper/msg91/smsGatewayHelper.js";
@@ -349,7 +349,7 @@ export const verifyOtpAction = async (req, res) => {
 
     const userObj = user.toObject();
     if (userObj.profileImageKey) {
-      userObj.profileImage = getSignedUrlByKey(userObj.profileImageKey);
+      userObj.profileImage = assetUrl(userObj.profileImageKey, { version: userObj.updatedAt });
     }
 
     return res.status(200).json({
@@ -514,7 +514,7 @@ export const fakeverifyOtpAction = async (req, res) => {
 
     const userObj = user.toObject();
     if (userObj.profileImageKey) {
-      userObj.profileImage = getSignedUrlByKey(userObj.profileImageKey);
+      userObj.profileImage = assetUrl(userObj.profileImageKey, { version: userObj.updatedAt });
     }
 
     return res.status(200).json({

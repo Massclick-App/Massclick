@@ -1,8 +1,9 @@
 import { ObjectId } from "mongodb";
 import categoryModel from "../../model/category/categoryModel.js";
-import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { uploadImageToS3 } from "../../s3Uploder.js";
 import { extractS3Key } from "../../utils/s3KeyUtils.js";
 import { s3Keys } from "../../utils/s3ObjectKeys.js";
+import { assetUrl } from "../../utils/assetUrl.js";
 
 // Narrow the shared extractS3Key for a WRITE path: if the result still looks like
 // a URL it failed to parse, and storing it would persist a key that can never
@@ -145,7 +146,7 @@ export const createCategory = async (reqBody = {}) => {
     const result = await categoryDocument.save();
 
     if (result.categoryImageKey) {
-      result.categoryImage = getSignedUrlByKey(result.categoryImageKey);
+      result.categoryImage = assetUrl(result.categoryImageKey, { version: result.updatedAt });
     }
 
     return { message: "Category created", category: result };
@@ -164,12 +165,12 @@ export const viewCategory = async (id) => {
     const category = await categoryModel.findById(id).lean();
     if (!category) throw new Error("Category not found");
 
-    // Convert categoryImages S3 keys to signed URLs
+    // Convert categoryImages S3 keys to signed URLs — stable keys, version off updatedAt
     if (category.categoryImages && typeof category.categoryImages === "object") {
       const convertedImages = {};
       for (const [variant, key] of Object.entries(category.categoryImages)) {
         if (key && typeof key === "string") {
-          convertedImages[variant] = getSignedUrlByKey(key);
+          convertedImages[variant] = assetUrl(key, { version: category.updatedAt });
         } else {
           convertedImages[variant] = key;
         }
@@ -179,10 +180,10 @@ export const viewCategory = async (id) => {
 
     // Legacy support: convert keys to signed URLs
     if (category.categoryImageKey) {
-      category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
+      category.categoryImage = assetUrl(category.categoryImageKey, { version: category.updatedAt });
     }
     if (category.liveImageKey) {
-      category.liveImage = getSignedUrlByKey(category.liveImageKey);
+      category.liveImage = assetUrl(category.liveImageKey, { version: category.updatedAt });
     }
 
     // Remove internal key fields (frontend doesn't use them)
@@ -231,12 +232,12 @@ export const viewAllCategory = async ({
       .lean();
 
     const list = categories.map((c) => {
-      // Convert categoryImages S3 keys to signed URLs
+      // Convert categoryImages S3 keys to signed URLs — stable keys, version off updatedAt
       if (c.categoryImages && typeof c.categoryImages === "object") {
         const convertedImages = {};
         for (const [variant, key] of Object.entries(c.categoryImages)) {
           if (key && typeof key === "string") {
-            convertedImages[variant] = getSignedUrlByKey(key);
+            convertedImages[variant] = assetUrl(key, { version: c.updatedAt });
           } else {
             convertedImages[variant] = key;
           }
@@ -245,10 +246,10 @@ export const viewAllCategory = async ({
       }
 
       if (c.categoryImageKey) {
-        c.categoryImage = getSignedUrlByKey(c.categoryImageKey);
+        c.categoryImage = assetUrl(c.categoryImageKey, { version: c.updatedAt });
       }
       if (c.liveImageKey) {
-        c.liveImage = getSignedUrlByKey(c.liveImageKey);
+        c.liveImage = assetUrl(c.liveImageKey, { version: c.updatedAt });
       }
       return c;
     });
@@ -333,12 +334,12 @@ export const updateCategory = async (id, data) => {
     const category = await categoryModel.findByIdAndUpdate(id, data, { new: true });
     if (!category) throw new Error("Category not found");
 
-    // Convert categoryImages S3 keys to signed URLs
+    // Convert categoryImages S3 keys to signed URLs — stable keys, version off updatedAt
     if (category.categoryImages && typeof category.categoryImages === "object") {
       const convertedImages = {};
       for (const [variant, key] of Object.entries(category.categoryImages)) {
         if (key && typeof key === "string") {
-          convertedImages[variant] = getSignedUrlByKey(key);
+          convertedImages[variant] = assetUrl(key, { version: category.updatedAt });
         } else {
           convertedImages[variant] = key;
         }
@@ -348,10 +349,10 @@ export const updateCategory = async (id, data) => {
 
     // Legacy support: convert keys to signed URLs
     if (category.categoryImageKey) {
-      category.categoryImage = getSignedUrlByKey(category.categoryImageKey);
+      category.categoryImage = assetUrl(category.categoryImageKey, { version: category.updatedAt });
     }
     if (category.liveImageKey) {
-      category.liveImage = getSignedUrlByKey(category.liveImageKey);
+      category.liveImage = assetUrl(category.liveImageKey, { version: category.updatedAt });
     }
 
     // Remove internal key fields (frontend doesn't use them)
@@ -424,10 +425,10 @@ export const businessSearchCategory = async (query, limit) => {
 
     return results.map((cat) => {
       if (cat.categoryImageKey) {
-        cat.categoryImage = getSignedUrlByKey(cat.categoryImageKey);
+        cat.categoryImage = assetUrl(cat.categoryImageKey, { version: cat.updatedAt });
       }
       if (cat.liveImageKey) {
-        cat.liveImage = getSignedUrlByKey(cat.liveImageKey);
+        cat.liveImage = assetUrl(cat.liveImageKey, { version: cat.updatedAt });
       }
       return cat;
     });

@@ -2,7 +2,9 @@ import { generateOtp, verifyOtp } from "../../helper/msg91/msgHelper.js";
 import User from "../../model/msg91Model/usersModels.js";
 import jwt from "jsonwebtoken";
 // 1. IMPORT S3 UTILITIES
-import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { uploadImageToS3 } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
+import { assetUrl } from "../../utils/assetUrl.js";
 import {
   assertSelfOnlyMobileAccess,
   resolveEffectiveSubjectId,
@@ -77,7 +79,7 @@ export const verifyOtpAndLogin = async (req, res) => {
 
         const userObject = user.toObject();
         if (userObject.profileImageKey) {
-            userObject.profileImage = getSignedUrlByKey(userObject.profileImageKey);
+            userObject.profileImage = assetUrl(userObject.profileImageKey, { version: userObject.updatedAt });
         }
 
         res.json({ success: true, message: "Login successful", user: userObject, token });
@@ -133,7 +135,7 @@ export const updateOtpUser = async (req, res) => {
     if (updateData.profileImage?.startsWith?.("data:image")) {
       const uploadResult = await uploadImageToS3(
         updateData.profileImage,
-        `user/profiles/${user._id}/profile-${Date.now()}`
+        s3Keys.customer.avatar(user._id),
       );
       user.profileImageKey = uploadResult.key;
     } else if (
@@ -214,7 +216,7 @@ export const updateOtpUser = async (req, res) => {
 
     const userObject = user.toObject();
     if (userObject.profileImageKey) {
-      userObject.profileImage = getSignedUrlByKey(userObject.profileImageKey);
+      userObject.profileImage = assetUrl(userObject.profileImageKey, { version: userObject.updatedAt });
     }
 
     return res.json({
@@ -243,7 +245,7 @@ export const viewOtpUser = async (req, res) => {
             });
         }
         if (user.profileImageKey) {
-            user.profileImage = getSignedUrlByKey(user.profileImageKey);
+            user.profileImage = assetUrl(user.profileImageKey, { version: user.updatedAt });
         }
 
         res.json({ success: true, user });
@@ -259,7 +261,7 @@ export const viewAllOtpUsers = async (req, res) => {
 
         const usersWithImages = users.map(user => {
             if (user.profileImageKey) {
-                user.profileImage = getSignedUrlByKey(user.profileImageKey);
+                user.profileImage = assetUrl(user.profileImageKey, { version: user.updatedAt });
             }
             return user;
         });

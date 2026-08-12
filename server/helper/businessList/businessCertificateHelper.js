@@ -6,11 +6,12 @@ import QRCode from "qrcode";
 import {
   deleteObjectByKey,
   getImageDataUrlByKey,
-  getSignedUrlByKey,
   uploadImageToS3,
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { buildBusinessDetailsUrl, getBusinessId } from "./businessPublicUrlHelper.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
+import { assetUrl } from "../../utils/assetUrl.js";
 
 // The certificate is a fixed artwork plate (border, seal, laurel, verification
 // chips, headings, bottom band — everything that never changes) with only the
@@ -102,13 +103,6 @@ const PLATES = {
   trust: readAssetDataUrl("plate-trust.jpg", "trust certificate plate"),
 };
 
-const slugifyCertificateValue = (value = "") =>
-  String(value)
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "business";
-
 const formatCertificateDate = (value = new Date()) => {
   const date = new Date(value);
   const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
@@ -130,16 +124,22 @@ const buildCertificateVerifyUrl = (business = {}) => {
 
 const appendCertificateUrls = (business = {}) => {
   const result = business?.toObject?.() || business;
+  // Certificate keys are now stable (see uploadCertificateImage) — version off
+  // generatedAt, falling back to the document's updatedAt, same pattern as the
+  // review/profile QR cache-buster in businessListHelper.js.
+  const version = result.certificates?.generatedAt || result.updatedAt;
 
   if (result.certificates?.verifiedCertificateKey) {
-    result.certificates.verifiedCertificateUrl = getSignedUrlByKey(
+    result.certificates.verifiedCertificateUrl = assetUrl(
       result.certificates.verifiedCertificateKey,
+      { version },
     );
   }
 
   if (result.certificates?.trustCertificateKey) {
-    result.certificates.trustCertificateUrl = getSignedUrlByKey(
+    result.certificates.trustCertificateUrl = assetUrl(
       result.certificates.trustCertificateKey,
+      { version },
     );
   }
 
@@ -516,17 +516,20 @@ export const renderCertificatePng = async (svg) =>
 
 const uploadCertificateImage = async (business = {}, type = "verified") => {
   const businessId = getBusinessId(business);
-  const businessSlug = slugifyCertificateValue(
-    business.businessName || business.name || businessId,
-  );
   const svg = await buildCertificateSvg(business, type);
   const png = await renderCertificatePng(svg);
-  // Timestamped key: uploads set a 1-year Cache-Control and certificate URLs
-  // are stable public URLs, so overwriting the same key leaves browsers
-  // serving the stale cached file. A fresh key per regeneration busts that.
+  // STABLE key — the registry declares certificate-verified/certificate-trust
+  // stable, so regeneration overwrites the same object instead of orphaning the
+  // previous one (this used to mint a fresh Date.now() key specifically to dodge
+  // the 1-year Cache-Control on a reused key; now that assetUrl(key, {version})
+  // exists, every read site below versions off certificates.generatedAt instead).
+  const uploadPath =
+    type === "trust"
+      ? s3Keys.business.trustCertificate(businessId)
+      : s3Keys.business.verifiedCertificate(businessId);
   const uploadResult = await uploadImageToS3(
     png,
-    `businessList/certificates/${businessId}/${type}-${businessSlug}-${Date.now()}`,
+    uploadPath,
     {
       skipImageConversion: true,
       contentType: "image/png",

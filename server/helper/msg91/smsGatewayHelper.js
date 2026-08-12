@@ -15,6 +15,18 @@ const logger = createLogger('SMS');
 const MSG91_WHATSAPP_BULK_URL = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
 const MSG91_WHATSAPP_NUMBER = process.env.MSG91_WHATSAPP_SENDER_ID;
 const MSG91_WHATSAPP_NAMESPACE = process.env.MSG91_TEMPLATE_NAMESPACE;
+const SEARCH_REQUEST_COMPLETED_TEMPLATE_NAME =
+  process.env.MSG91_SEARCH_REQUEST_COMPLETED_TEMPLATE_NAME ||
+  "search_request_completed_v1";
+const SEARCH_REQUEST_COMPLETED_TEMPLATE_LANGUAGE =
+  process.env.MSG91_SEARCH_REQUEST_COMPLETED_TEMPLATE_LANGUAGE || "en";
+const SEARCH_REQUEST_COMPLETED_TEMPLATE_NAMESPACE =
+  process.env.MSG91_SEARCH_REQUEST_COMPLETED_TEMPLATE_NAMESPACE || null;
+const SEARCH_REQUEST_COMPLETED_CONTACT =
+  process.env.MSG91_SEARCH_REQUEST_COMPLETED_CONTACT ||
+  process.env.MASSCLICK_SUPPORT_CONTACT ||
+  process.env.SUPPORT_EMAIL ||
+  "support@massclick.in";
 const CUSTOMER_BUSINESS_LIST_TEMPLATE_MAX_CHARS = 2000;
 // Keep these aligned with the approved MSG91 template copy for exact pre-send length checks.
 const CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS = {
@@ -903,6 +915,61 @@ export const sendCustomerBusinessList = async (
     customerMobile: cleanMobile,
     businessId: biz._id,
     businessName: biz.businessName,
+  });
+
+  return response.data;
+};
+
+export const sendSearchRequestCompletedMessage = async (request = {}, context = {}) => {
+  const recipientMobile = await getValidMobileOrSkip(request.contactNumber, {
+    ...context,
+    templateName: SEARCH_REQUEST_COMPLETED_TEMPLATE_NAME,
+    sourceType: context.sourceType || "search_request_completed",
+    sourceId: context.sourceId || request._id?.toString?.(),
+    category: request.category || "",
+    location: request.location || "",
+    customerName: request.fullName || "Customer",
+    customerMobile: request.contactNumber || "",
+  });
+
+  const payload = {
+    integrated_number: MSG91_WHATSAPP_NUMBER,
+    content_type: "template",
+    payload: {
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: SEARCH_REQUEST_COMPLETED_TEMPLATE_NAME,
+        language: {
+          code: SEARCH_REQUEST_COMPLETED_TEMPLATE_LANGUAGE,
+          policy: "deterministic",
+        },
+        namespace: SEARCH_REQUEST_COMPLETED_TEMPLATE_NAMESPACE,
+        to_and_components: [
+          {
+            to: [recipientMobile],
+            components: {
+              body_1: { type: "text", value: request.fullName || "Customer" },
+              body_2: { type: "text", value: request.category || "your request" },
+              body_3: { type: "text", value: request.location || "your area" },
+              body_4: { type: "text", value: SEARCH_REQUEST_COMPLETED_CONTACT },
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  const response = await postWhatsAppTemplate(payload, {
+    ...context,
+    templateName: SEARCH_REQUEST_COMPLETED_TEMPLATE_NAME,
+    sourceType: context.sourceType || "search_request_completed",
+    sourceId: context.sourceId || request._id?.toString?.(),
+    recipientMobile,
+    category: request.category || "",
+    location: request.location || "",
+    customerName: request.fullName || "Customer",
+    customerMobile: request.contactNumber || "",
   });
 
   return response.data;

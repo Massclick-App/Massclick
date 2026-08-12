@@ -2,6 +2,7 @@ import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusine
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { getObjectBufferByKey, getSignedUrlByKey } from "../../s3Uploder.js";
+import { assetUrl } from "../../utils/assetUrl.js";
 import categoryModel from "../../model/category/categoryModel.js";
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import userModel from "../../model/userModel.js";
@@ -1439,11 +1440,12 @@ export const mainSearchController = async (req, res) => {
       if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
       if (b.businessImagesKey?.length > 0) b.businessImages = b.businessImagesKey.map((k) => getSignedUrlByKey(k));
       if (b.kycDocumentsKey?.length > 0) b.kycDocuments = b.kycDocumentsKey.map((k) => getSignedUrlByKey(k));
+      const certificateVersion = b.certificates?.generatedAt || b.updatedAt;
       if (b.certificates?.verifiedCertificateKey) {
-        b.certificates.verifiedCertificateUrl = getSignedUrlByKey(b.certificates.verifiedCertificateKey);
+        b.certificates.verifiedCertificateUrl = assetUrl(b.certificates.verifiedCertificateKey, { version: certificateVersion });
       }
       if (b.certificates?.trustCertificateKey) {
-        b.certificates.trustCertificateUrl = getSignedUrlByKey(b.certificates.trustCertificateKey);
+        b.certificates.trustCertificateUrl = assetUrl(b.certificates.trustCertificateKey, { version: certificateVersion });
       }
     });
 
@@ -1567,11 +1569,12 @@ export const nearbyBusinessesController = async (req, res) => {
     results.forEach((b) => {
       if (b.bannerImageKey) b.bannerImage = getSignedUrlByKey(b.bannerImageKey);
       if (b.logoImageKey) b.logoImage = getSignedUrlByKey(b.logoImageKey);
+      const certificateVersion = b.certificates?.generatedAt || b.updatedAt;
       if (b.certificates?.verifiedCertificateKey) {
-        b.certificates.verifiedCertificateUrl = getSignedUrlByKey(b.certificates.verifiedCertificateKey);
+        b.certificates.verifiedCertificateUrl = assetUrl(b.certificates.verifiedCertificateKey, { version: certificateVersion });
       }
       if (b.certificates?.trustCertificateKey) {
-        b.certificates.trustCertificateUrl = getSignedUrlByKey(b.certificates.trustCertificateKey);
+        b.certificates.trustCertificateUrl = assetUrl(b.certificates.trustCertificateKey, { version: certificateVersion });
       }
     });
 

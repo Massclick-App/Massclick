@@ -3,7 +3,9 @@ import { BAD_REQUEST } from "../../errorCodes.js";
 import { invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { ObjectId } from "mongodb";
 import categoryModel from "../../model/category/categoryModel.js";
-import { getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
+import { assetUrl } from "../../utils/assetUrl.js";
+import { ulid } from "../../utils/idGen.js";
 
 export const uploadCategoryImagesAction = async (req, res) => {
   try {
@@ -17,24 +19,32 @@ export const uploadCategoryImagesAction = async (req, res) => {
       return res.status(BAD_REQUEST.code).send({ message: "Invalid image format. Must be base64." });
     }
 
+    const hasCategory = categoryId && ObjectId.isValid(categoryId);
+    // s3Keys.category.variant() validates `variant` against the registry's 6 named
+    // variants and throws on anything else — this endpoint had no such check before.
+    // No category may exist yet (a create-category form uploads variants before the
+    // category itself), so fall back to a ULID, same pattern as every other
+    // decoupled-upload endpoint in 1.4.
     const uploadResult = await uploadImageToS3(
       imageData,
-      `category/images/${variant}-${Date.now()}`
+      s3Keys.category.variant(hasCategory ? categoryId : ulid(), variant),
     );
 
     const imageKey = uploadResult.key;
+    let version = new Date();
 
     // Auto-update category if categoryId is provided
-    if (categoryId && ObjectId.isValid(categoryId)) {
+    if (hasCategory) {
       // Use dot notation to update only this variant, not replace entire categoryImages
       const updateData = {};
       updateData[`categoryImages.${variant}`] = imageKey;
 
-      await categoryModel.findByIdAndUpdate(
+      const updated = await categoryModel.findByIdAndUpdate(
         categoryId,
         { $set: updateData },
         { new: true }
       );
+      if (updated?.updatedAt) version = updated.updatedAt;
     }
 
     // Invalidate category caches
@@ -44,7 +54,7 @@ export const uploadCategoryImagesAction = async (req, res) => {
       success: true,
       imageKey,
       variant,
-      imageUrl: getSignedUrlByKey(imageKey)
+      imageUrl: assetUrl(imageKey, { version }),
     });
   } catch (error) {
     console.error("Image upload error:", error);

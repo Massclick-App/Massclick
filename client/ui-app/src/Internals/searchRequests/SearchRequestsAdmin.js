@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Button, Chip } from "@mui/material";
-import { CheckCircle2, Clock3, Mail, MapPin, Phone, RefreshCw, Search, UserRound } from "lucide-react";
+import { CheckCircle2, Clock3, Copy, Mail, MapPin, Phone, RefreshCw, Search, UserRound } from "lucide-react";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import { useDispatch } from "react-redux";
 import { getSearchRequests, markSearchRequestRead } from "../../redux/actions/searchRequestAction.js";
@@ -14,6 +14,17 @@ const readOptions = [
   { value: "unread", label: "Unread" },
   { value: "read", label: "Read" },
 ];
+const requestDoneTemplateName = "search_request_completed_v1";
+const requestDoneTemplate = [
+  "Hello {{1}},",
+  "",
+  "Your request for \"{{2}}\" services in {{3}} has been completed by Massclick.",
+  "",
+  "For more details or further assistance, please contact us at {{4}}.",
+  "",
+  "Thank you,",
+  "Massclick",
+].join("\n");
 
 export default function SearchRequestsAdmin() {
   const dispatch = useDispatch();
@@ -22,7 +33,19 @@ export default function SearchRequestsAdmin() {
   const [loading, setLoading] = useState(false);
   const [readingId, setReadingId] = useState("");
   const [message, setMessage] = useState("");
+  const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const copyRequestDoneTemplate = useCallback(async () => {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard API unavailable");
+      await navigator.clipboard.writeText(requestDoneTemplate);
+      setCopiedTemplate(true);
+      window.setTimeout(() => setCopiedTemplate(false), 1800);
+    } catch {
+      setMessage("Template could not be copied. Please select and copy it manually.");
+    }
+  }, []);
 
   const load = useCallback(async (page, limit, filters = {}) => {
     setLoading(true);
@@ -53,7 +76,7 @@ export default function SearchRequestsAdmin() {
     try {
       const updated = await dispatch(markSearchRequestRead(request._id));
       setRequests((current) => current.map((item) => item._id === updated._id ? updated : item));
-      setMessage(`${request.fullName}'s request was marked as read.`);
+      setMessage(`${request.fullName}'s request was marked as read and the customer message was sent.`);
       window.dispatchEvent(new Event("search-requests:changed"));
     } catch (error) {
       setMessage(error.response?.data?.message || "The request could not be marked as read.");
@@ -84,7 +107,7 @@ export default function SearchRequestsAdmin() {
         <span className={cx("completed")}><CheckCircle2 size={16} /> Read</span>
       ) : (
         <Button size="small" variant="contained" startIcon={<CheckCircle2 size={15} />} disabled={readingId === request._id} onClick={() => markRead(request)}>
-          {readingId === request._id ? "Saving…" : "Mark as read"}
+          {readingId === request._id ? "Sending..." : "Mark as read"}
         </Button>
       ),
     },
@@ -96,6 +119,17 @@ export default function SearchRequestsAdmin() {
       <Button startIcon={<RefreshCw size={17} />} onClick={() => setRefreshKey((value) => value + 1)}>Refresh</Button>
     </header>
     {message && <div className={cx("message")} role="status">{message}</div>}
+    <section className={cx("template-panel")} aria-label="MSG91 request completed template">
+      <div className={cx("template-meta")}>
+        <span className={cx("template-eyebrow")}>MSG91 TEMPLATE</span>
+        <h2 className={cx("template-title")}>Request completed</h2>
+        <p className={cx("template-name")}>Name: {requestDoneTemplateName}</p>
+      </div>
+      <textarea className={cx("template-copy")} value={requestDoneTemplate} readOnly aria-label="Request completed MSG91 template" />
+      <Button className={cx("template-action")} variant="outlined" startIcon={<Copy size={16} />} onClick={copyRequestDoneTemplate}>
+        {copiedTemplate ? "Copied" : "Copy template"}
+      </Button>
+    </section>
     <section className={cx("table")}>
       <CustomizedTable
         title="Customer search request history"
