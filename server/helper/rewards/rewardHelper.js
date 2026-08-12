@@ -4,6 +4,7 @@ import categoryModel from "../../model/category/categoryModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import otpUserModel from "../../model/msg91Model/usersModels.js";
 import { deleteObjectByKey, getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 export const REWARD_CATALOG = Object.freeze([
   { code: "MC100", name: "₹100 MassClick coupon", points: 200, valueInr: 100 },
@@ -21,7 +22,7 @@ const extensionFor = (file = {}) => {
   if (/^(jpg|jpeg|png|webp|pdf)$/.test(fromName)) return fromName === "jpeg" ? "jpg" : fromName;
   return { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.fileType] || "bin";
 };
-const uploadClaimEvidence = async (customerKey, files = []) => {
+const uploadClaimEvidence = async (claimId, files = []) => {
   if (!Array.isArray(files) || files.length === 0) return [];
   if (files.length > CLAIM_EVIDENCE_MAX_FILES) throw new Error(`Upload a maximum of ${CLAIM_EVIDENCE_MAX_FILES} evidence files`);
   const uploaded = [];
@@ -33,7 +34,7 @@ const uploadClaimEvidence = async (customerKey, files = []) => {
       if (!size || size > CLAIM_EVIDENCE_MAX_SIZE) throw new Error("Each evidence file must be 5 MB or smaller");
       const result = await uploadImageToS3(
         file.fileData,
-        `reward-claims/${cleanKey(customerKey)}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        s3Keys.rewardClaim.evidence(claimId),
         { skipImageConversion: file.fileType === "application/pdf", contentType: file.fileType, extension: extensionFor(file) }
       );
       uploaded.push({ key: result.key, fileName: String(file.fileName || `Evidence ${index + 1}`).slice(0, 180), fileType: file.fileType, fileSize: size });
@@ -227,9 +228,13 @@ export const createRewardClaim = async (customerKey, data) => {
   const duplicateWindowEnd = new Date(transactionAt.getTime() + 60 * 60 * 1000);
   const duplicate = await RewardClaim.findOne({ customerKey: key, categoryId: data.categoryId, businessName: String(data.businessName || "").trim(), transactionAmount: Number(data.transactionAmount), transactionAt: { $gte: duplicateWindowStart, $lte: duplicateWindowEnd }, status: { $ne: "rejected" } }).lean();
   if (duplicate) throw new Error(`A similar claim already exists (${duplicate.claimNumber})`);
-  const evidenceFiles = await uploadClaimEvidence(key, data.evidenceFiles);
+  // Uploads below need an owning entity id, but the document doesn't exist yet.
+  // Mint it first — never upload-then-mint.
+  const claimId = new mongoose.Types.ObjectId();
+  const evidenceFiles = await uploadClaimEvidence(claimId, data.evidenceFiles);
   try {
     return await RewardClaim.create({
+    _id: claimId,
     claimNumber: claimNumber(), customerKey: key, customerName: data.customerName,
     categoryId: data.categoryId, categoryKey: rule.categoryKey, categoryName: rule.categoryName,
     locationId: mongoose.Types.ObjectId.isValid(data.locationId) ? data.locationId : null,

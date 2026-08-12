@@ -594,6 +594,13 @@
   text-decoration: underline;
 }
 
+.fcm-preview-dismiss {
+  margin: 6px 0 0;
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 .fcm-preview-image-wrap--bottom {
   border-top: 1px solid #2d2d2d;
 }
@@ -904,6 +911,28 @@
 }
 
 /* ── Status badges ── */
+.fcm-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--fcm-border);
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.fcm-switch-row .fcm-label {
+  margin-bottom: 2px;
+}
+
+.fcm-switch-hint {
+  margin: 0;
+  color: var(--fcm-text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .fcm-status-badge {
   display: inline-flex;
   align-items: center;

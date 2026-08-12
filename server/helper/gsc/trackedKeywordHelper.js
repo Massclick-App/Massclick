@@ -1,5 +1,6 @@
 import trackedKeywordModel from "../../model/seoModel/trackedKeywordModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 import {
   checkKeywordRank,
   getQuotaRemainingToday,
@@ -97,8 +98,7 @@ export const manualCheckTrackedKeyword = async (id, { rank, page, url, screensho
 
   let screenshotKey = "";
   if (screenshot) {
-    const uploadPath = `seo/keyword-tracking/${doc._id}/${Date.now()}`;
-    const uploaded = await uploadImageToS3(screenshot, uploadPath);
+    const uploaded = await uploadImageToS3(screenshot, s3Keys.trackedKeyword.screenshot(doc._id));
     screenshotKey = uploaded.key;
   }
 

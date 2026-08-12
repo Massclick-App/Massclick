@@ -120,6 +120,13 @@ export const SCOPES = {
       { path: "businessProfileQrCode.qrImageKey", kind: "single", valueShape: "key", purpose: "qr-profile", stability: "stable" },
       { path: "certificates.verifiedCertificateKey", kind: "single", valueShape: "key", purpose: "certificate-verified", stability: "stable" },
       { path: "certificates.trustCertificateKey", kind: "single", valueShape: "key", purpose: "certificate-trust", stability: "stable" },
+      // Not in businessListSchema.js (undeclared/Mixed field) — a SEPARATE embedded-review
+      // mechanism from the `businessreviews` collection below, added during step 1.4. Read
+      // at businessListHelper.js:1352 (rendered through getSignedUrlByKey), written by
+      // updateBusinessList's reviewData handling. Scoped by the owning BUSINESS, not by a
+      // review sub-id — reviews[] has no declared _id and photos aren't addressed
+      // per-review in the URL scheme, matching the pre-1.4 folder layout.
+      { path: "reviews", kind: "arrayOfObjects", itemPath: "ratingPhotos", valueShape: "key", purpose: "review-photo", stability: "versioned" },
     ],
     invalidate: [invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache],
   },

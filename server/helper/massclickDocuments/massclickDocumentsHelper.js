@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import massclickDocumentsModel from "../../model/massclickDocuments/massclickDocumentsModel.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const ALLOWED_DOCUMENT_TYPES = new Set([
   "application/pdf",
@@ -107,11 +108,11 @@ const validateDocumentPayload = (data = {}, requireFile = true) => {
   }
 };
 
-const uploadDocument = async (data = {}) => {
+const uploadDocument = async (data = {}, documentId) => {
   const extension = getExtensionFromFileName(data.fileName);
   const uploadResult = await uploadImageToS3(
     data.documentFile,
-    `massclick-documents/${data.section.trim().toLowerCase().replace(/\s+/g, "-")}/document-${Date.now()}`,
+    s3Keys.massclickDocument.document(documentId),
     {
       skipImageConversion: true,
       contentType: data.fileType,
@@ -122,7 +123,7 @@ const uploadDocument = async (data = {}) => {
   return uploadResult.key;
 };
 
-const uploadMediaFiles = async (data = {}) => {
+const uploadMediaFiles = async (data = {}, documentId) => {
   const files = Array.isArray(data.mediaFiles) ? data.mediaFiles : [];
 
   return Promise.all(
@@ -134,7 +135,7 @@ const uploadMediaFiles = async (data = {}) => {
         const isVideo = (file.fileType || "").startsWith("video/");
         const uploadResult = await uploadImageToS3(
           file.mediaFile,
-          `massclick-documents/${data.section.trim().toLowerCase().replace(/\s+/g, "-")}/media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          s3Keys.massclickDocument.media(documentId),
           {
             skipImageConversion: true,
             contentType: file.fileType,
@@ -170,9 +171,14 @@ const buildResourceFields = (data = {}) => ({
 export const createMassclickDocument = async (data = {}, user = {}) => {
   validateDocumentPayload(data, true);
 
-  const documentKey = data.documentFile ? await uploadDocument(data) : "";
-  const mediaItems = await uploadMediaFiles(data);
+  // Uploads below need an owning entity id, but the document doesn't exist yet.
+  // Mint it first — never upload-then-mint.
+  const documentId = new ObjectId();
+
+  const documentKey = data.documentFile ? await uploadDocument(data, documentId) : "";
+  const mediaItems = await uploadMediaFiles(data, documentId);
   const document = new massclickDocumentsModel({
+    _id: documentId,
     title: data.title,
     section: data.section,
     description: data.description || "",
@@ -263,13 +269,13 @@ export const updateMassclickDocument = async (id, data = {}) => {
   };
 
   if (data.documentFile) {
-    updateData.documentKey = await uploadDocument(data);
+    updateData.documentKey = await uploadDocument(data, id);
     updateData.fileName = data.fileName;
     updateData.fileType = data.fileType;
     updateData.fileSize = data.fileSize || getBase64Size(data.documentFile);
   }
 
-  const newMediaItems = await uploadMediaFiles(data);
+  const newMediaItems = await uploadMediaFiles(data, id);
   updateData.mediaItems = [
     ...(Array.isArray(data.existingMediaItems) ? data.existingMediaItems : existingDocument.mediaItems || []),
     ...newMediaItems,

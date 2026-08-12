@@ -45,6 +45,24 @@ const stripConditionalBlocks = (str, tokens) => {
 const substitutePlainTokens = (str, tokens) =>
   str.replace(/\{(\w+)\}/g, (_match, tokenName) => tokens?.[tokenName] ?? "");
 
+const getHrefTokenValue = (tokenName, tokens = {}) => {
+  const urlTokenName = `${tokenName}Url`;
+  if (tokens?.[urlTokenName]) return tokens[urlTokenName];
+  return tokens?.[tokenName] ?? "";
+};
+
+// Template prose should use display tokens such as {location} ("Trichy"),
+// while URLs need slug tokens such as {locationUrl} ("trichy"). Older saved
+// templates sometimes used display tokens inside links, so href substitution
+// prefers the matching *Url token whenever one exists.
+const substituteHrefTokens = (str, tokens = {}) =>
+  str.replace(/(\bhref\s*=\s*)(["'])([\s\S]*?)\2/gi, (_match, prefix, quote, href) => {
+    const renderedHref = href.replace(/\{(\w+)\}/g, (_tokenMatch, tokenName) =>
+      getHrefTokenValue(tokenName, tokens)
+    );
+    return `${prefix}${quote}${renderedHref}${quote}`;
+  });
+
 const cleanupWhitespace = (str) =>
   str
     .replace(/\s{2,}/g, " ")
@@ -56,7 +74,8 @@ export const renderTemplateString = (str, tokens = {}) => {
 
   const normalized = normalizeEncodedTokens(str);
   const withoutBlocks = stripConditionalBlocks(normalized, tokens);
-  const substituted = substitutePlainTokens(withoutBlocks, tokens);
+  const withHrefTokens = substituteHrefTokens(withoutBlocks, tokens);
+  const substituted = substitutePlainTokens(withHrefTokens, tokens);
 
   return cleanupWhitespace(substituted);
 };

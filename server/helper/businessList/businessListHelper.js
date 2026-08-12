@@ -3,6 +3,7 @@ import businessListModel from "../../model/businessList/businessListModel.js";
 import SearchLogModel from "../../model/businessList/searchLogModel.js";
 import mongoose from "mongoose";
 import { uploadImageToS3, getSignedUrlByKey, getImageDataUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 import { assetUrl } from "../../utils/assetUrl.js";
 import { sortBusinessesForDefaultSearch } from "../../utils/businessSearchSort.js";
 import {
@@ -114,7 +115,7 @@ const generateReviewQrCode = async (businessDocument) => {
   const qrImageData = await createQrDataUrl(qrText);
   const qrUploadResult = await uploadImageToS3(
     qrImageData,
-    `businessList/qr/review-${businessDocument._id}`,
+    s3Keys.business.reviewQr(businessDocument._id),
     { skipImageConversion: true },
   );
 
@@ -139,7 +140,9 @@ const generateBusinessDetailsQrCode = async (businessDocument) => {
 
   const qrUploadResult = await uploadImageToS3(
     qrImageData,
-    `businessList/qr/business-profile-${businessDocument._id}-${Date.now()}`,
+    // s3Keys.business.profileQr is STABLE (no seq) — regeneration now overwrites the
+    // same key instead of orphaning one object per edit, fixing the plan's noted bug.
+    s3Keys.business.profileQr(businessDocument._id),
     { skipImageConversion: true },
   );
 
@@ -250,10 +253,15 @@ export const createBusinessList = async (reqBody = {}) => {
       reqBody.name = reqBody.businessName;
     }
 
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint — so a failed upload leaves nothing
+    // behind and a failed create() leaves an object the orphan follow-up catches.
+    const businessId = new mongoose.Types.ObjectId();
+
     if (reqBody.bannerImage) {
       const uploadResult = await uploadImageToS3(
         reqBody.bannerImage,
-        `businessList/banners/banner-${Date.now()}`,
+        s3Keys.business.banner(businessId),
       );
 
       reqBody.bannerImageKey = uploadResult.key;
@@ -263,7 +271,7 @@ export const createBusinessList = async (reqBody = {}) => {
     if (reqBody.logoImage) {
       const uploadResult = await uploadImageToS3(
         reqBody.logoImage,
-        `businessList/logos/logo-${Date.now()}`,
+        s3Keys.business.logo(businessId),
       );
 
       reqBody.logoImageKey = uploadResult.key;
@@ -276,10 +284,10 @@ export const createBusinessList = async (reqBody = {}) => {
       reqBody.businessImages.length > 0
     ) {
       const businessImageKeys = await Promise.all(
-        reqBody.businessImages.map(async (img, i) => {
+        reqBody.businessImages.map(async (img) => {
           const uploadResult = await uploadImageToS3(
             img,
-            `businessList/gallery/image-${Date.now()}-${i}`,
+            s3Keys.business.gallery(businessId),
           );
           return uploadResult.key;
         }),
@@ -294,10 +302,10 @@ export const createBusinessList = async (reqBody = {}) => {
       reqBody.kycDocuments.length > 0
     ) {
       const kycDocumentsKey = await Promise.all(
-        reqBody.kycDocuments.map(async (doc, i) => {
+        reqBody.kycDocuments.map(async (doc) => {
           const uploadResult = await uploadImageToS3(
             doc,
-            `businessList/kyc/document-${Date.now()}-${i}`,
+            s3Keys.business.kyc(businessId),
           );
           return uploadResult.key;
         }),
@@ -315,7 +323,7 @@ export const createBusinessList = async (reqBody = {}) => {
       }
     }
 
-    const businessListDocument = new businessListModel(reqBody);
+    const businessListDocument = new businessListModel({ ...reqBody, _id: businessId });
     const savedBusiness = await businessListDocument.save();
 
     await generateReviewQrCode(savedBusiness);
@@ -1065,11 +1073,11 @@ export const updateBusinessList = async (id, data) => {
       reviewData.ratingPhotos.length > 0
     ) {
       const photoUploadPromises = reviewData.ratingPhotos.map(
-        async (img, i) => {
+        async (img) => {
           if (typeof img === "string" && img.startsWith("data:image")) {
             const uploadResult = await uploadImageToS3(
               img,
-              `businessList/reviews/${business._id}/photo-${Date.now()}-${i}`,
+              s3Keys.business.reviewPhoto(business._id),
             );
             return uploadResult.key;
           }
@@ -1112,7 +1120,7 @@ export const updateBusinessList = async (id, data) => {
   ) {
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
-      `businessList/banners/banner-${Date.now()}`,
+      s3Keys.business.banner(business._id),
     );
     business.bannerImageKey = uploadResult.key;
   } else if (data.bannerImage === null || data.bannerImage === "") {
@@ -1134,10 +1142,10 @@ export const updateBusinessList = async (id, data) => {
     );
 
     const newKeys = await Promise.all(
-      newImages.map(async (img, i) => {
+      newImages.map(async (img) => {
         const uploadResult = await uploadImageToS3(
           img,
-          `businessList/gallery/image-${Date.now()}-${i}`,
+          s3Keys.business.gallery(business._id),
         );
         return uploadResult.key;
       }),
@@ -1171,10 +1179,10 @@ export const updateBusinessList = async (id, data) => {
     );
 
     const newKycKeys = await Promise.all(
-      newKycDocs.map(async (doc, i) => {
+      newKycDocs.map(async (doc) => {
         const uploadResult = await uploadImageToS3(
           doc,
-          `businessList/kyc/document-${Date.now()}-${i}`,
+          s3Keys.business.kyc(business._id),
         );
         return uploadResult.key;
       }),
@@ -1196,7 +1204,8 @@ export const updateBusinessList = async (id, data) => {
   ) {
     const uploadResult = await uploadImageToS3(
       data.logoImage,
-      `businessList/logos/logo-${Date.now()}`,
+      // STABLE — regeneration now overwrites the same key instead of orphaning.
+      s3Keys.business.logo(business._id),
     );
     business.logoImageKey = uploadResult.key;
     business.logoUploadedAt = new Date();

@@ -29,6 +29,7 @@ async function processScheduledCampaigns() {
           body: campaign.body,
           imageUrl: campaign.imageUrl || "",
           clickAction: campaign.clickAction || "",
+          allowDismiss: campaign.allowDismiss === true,
           customData,
           targetType: campaign.targetType,
           targetPlatform: campaign.targetPlatform || "",

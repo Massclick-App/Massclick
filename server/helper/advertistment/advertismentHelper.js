@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import sharp from "sharp";
 import advertismentModel from "../../model/advertistment/advertismentModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const TOP_BANNER_RULES = {
   targetWidth: 1720,
@@ -118,13 +119,17 @@ export const createAdvertisement = async (reqBody = {}) => {
     if (reqBody.position === "TOP_BANNER" && !reqBody.bannerImage)
       throw new Error("Banner image is required for this position");
 
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint.
+    const advertisementId = new ObjectId();
+
     if (reqBody.bannerImage) {
       if (reqBody.position === "TOP_BANNER") {
         reqBody.bannerImage = await cropTopBannerImage(reqBody.bannerImage);
       }
       const uploadResult = await uploadImageToS3(
         reqBody.bannerImage,
-        `advertisements/banners/ad-${Date.now()}`,
+        s3Keys.advertisement.web(advertisementId),
         reqBody.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
       );
       reqBody.bannerImageKey = uploadResult.key;
@@ -133,7 +138,7 @@ export const createAdvertisement = async (reqBody = {}) => {
       reqBody.mobileBannerImage = await cropMobileTopBannerImage(reqBody.mobileBannerImage);
       const mobileUploadResult = await uploadImageToS3(
         reqBody.mobileBannerImage,
-        `advertisements/banners/mobile-ad-${Date.now()}`,
+        s3Keys.advertisement.mobile(advertisementId),
         { skipImageConversion: true }
       );
       reqBody.mobileBannerImageKey = mobileUploadResult.key;
@@ -142,7 +147,7 @@ export const createAdvertisement = async (reqBody = {}) => {
       reqBody.appBannerImage = await cropAppTopBannerImage(reqBody.appBannerImage);
       const appUploadResult = await uploadImageToS3(
         reqBody.appBannerImage,
-        `advertisements/banners/app-ad-${Date.now()}`,
+        s3Keys.advertisement.app(advertisementId),
         { skipImageConversion: true }
       );
       reqBody.appBannerImageKey = appUploadResult.key;
@@ -151,7 +156,7 @@ export const createAdvertisement = async (reqBody = {}) => {
     delete reqBody.mobileBannerImage;
     delete reqBody.appBannerImage;
 
-    const ad = new advertismentModel(reqBody);
+    const ad = new advertismentModel({ ...reqBody, _id: advertisementId });
     const result = await ad.save();
 
     return { message: "Advertisement created", advertisement: addAdvertisementImageUrls(result) };
@@ -253,7 +258,7 @@ export const updateAdvertisement = async (id, data) => {
     }
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
-      `advertisements/banners/ad-${Date.now()}`,
+      s3Keys.advertisement.web(id),
       data.position === "TOP_BANNER" ? { skipImageConversion: true } : {}
     );
     data.bannerImageKey = uploadResult.key;
@@ -267,7 +272,7 @@ export const updateAdvertisement = async (id, data) => {
     data.mobileBannerImage = await cropMobileTopBannerImage(data.mobileBannerImage);
     const mobileUploadResult = await uploadImageToS3(
       data.mobileBannerImage,
-      `advertisements/banners/mobile-ad-${Date.now()}`,
+      s3Keys.advertisement.mobile(id),
       { skipImageConversion: true }
     );
     data.mobileBannerImageKey = mobileUploadResult.key;
@@ -281,7 +286,7 @@ export const updateAdvertisement = async (id, data) => {
     data.appBannerImage = await cropAppTopBannerImage(data.appBannerImage);
     const appUploadResult = await uploadImageToS3(
       data.appBannerImage,
-      `advertisements/banners/app-ad-${Date.now()}`,
+      s3Keys.advertisement.app(id),
       { skipImageConversion: true }
     );
     data.appBannerImageKey = appUploadResult.key;

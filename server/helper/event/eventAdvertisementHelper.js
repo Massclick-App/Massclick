@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import eventAdvertisementModel from "../../model/event/eventAdvertisementModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const formatEventAdvertisementImages = (advertisement) => {
   if (!advertisement) return advertisement;
@@ -21,11 +22,11 @@ const formatEventAdvertisementImages = (advertisement) => {
   return result;
 };
 
-const handleEventAdvertisementImageUploads = async (data = {}) => {
+const handleEventAdvertisementImageUploads = async (data = {}, advertisementId) => {
   if (typeof data.bannerImage === "string" && data.bannerImage.startsWith("data:")) {
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
-      `event/advertisements/banners/banner-${Date.now()}`
+      s3Keys.eventAdvertisement.web(advertisementId),
     );
     data.bannerImageKey = uploadResult.key;
   } else if (data.bannerImage === null) {
@@ -35,7 +36,7 @@ const handleEventAdvertisementImageUploads = async (data = {}) => {
   if (typeof data.mobileBannerImage === "string" && data.mobileBannerImage.startsWith("data:")) {
     const uploadResult = await uploadImageToS3(
       data.mobileBannerImage,
-      `event/advertisements/banners/mobile-banner-${Date.now()}`
+      s3Keys.eventAdvertisement.mobile(advertisementId),
     );
     data.mobileBannerImageKey = uploadResult.key;
   } else if (data.mobileBannerImage === null) {
@@ -51,9 +52,14 @@ export const createEventAdvertisement = async (reqBody = {}) => {
     const title = reqBody.title?.trim();
     if (!title) throw new Error("Title is required");
 
-    await handleEventAdvertisementImageUploads(reqBody);
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint.
+    const advertisementId = new ObjectId();
+
+    await handleEventAdvertisementImageUploads(reqBody, advertisementId);
 
     const eventAdvertisement = new eventAdvertisementModel({
+      _id: advertisementId,
       title: reqBody.title,
       description: reqBody.description || "",
       bannerImageKey: reqBody.bannerImageKey || "",
@@ -147,7 +153,7 @@ export const updateEventAdvertisement = async (advertisementId, updateData) => {
 
     updateData.displayPosition = "HOME_POPUP";
 
-    await handleEventAdvertisementImageUploads(updateData);
+    await handleEventAdvertisementImageUploads(updateData, advertisementId);
 
     Object.assign(advertisement, {
       ...updateData,

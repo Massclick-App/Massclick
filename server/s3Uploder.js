@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import AWS from "aws-sdk";
-import sharp from "sharp";  
+import sharp from "sharp";
+import { isS3PathToken, isCanonicalKey, entityPrefix, belongsToEntity } from "./utils/s3ObjectKeys.js";
 
 const assetsBucket = process.env.AWS_S3_BUCKET_MASSCLICK;
 if (!assetsBucket) throw new Error("AWS S3 bucket not configured in env");
@@ -14,6 +15,64 @@ AWS.config.update({
 });
 
 const s3 = new AWS.S3();
+
+/**
+ * Step 1.3a of the S3 key restructure — the chokepoint every upload passes through.
+ * See S3_KEY_RESTRUCTURE_PROGRESS.md.
+ *
+ * Accepts a branded `s3Path()` token, or a plain string ONLY if `isCanonicalKey()`
+ * passes. A stray template literal is not a token and does not parse as canonical, so it
+ * cannot slip through silently — it either warns (default) or throws (strict).
+ *
+ * S3_PATH_MODE defaults to "warn": 50 call sites across 21 files still pass legacy
+ * literals (the 1.4 burndown — see lintS3Paths.js), and a chokepoint that throws today
+ * would break every image upload in the app the moment this deploys. Flip to "strict"
+ * only once lintS3Paths.js reports zero legacy call sites, as the FINAL commit of 1.4.
+ * Until that flip, "bypass impossible" is not yet true — this only makes bypass VISIBLE.
+ */
+const S3_PATH_MODE = String(process.env.S3_PATH_MODE || "warn").toLowerCase();
+if (S3_PATH_MODE !== "warn" && S3_PATH_MODE !== "strict") {
+  throw new Error(`S3_PATH_MODE must be "warn" or "strict", got ${JSON.stringify(process.env.S3_PATH_MODE)}`);
+}
+
+/** One warning per distinct (path, call site) pair — legacy call sites run on every request. */
+const warnedLegacyPaths = new Set();
+
+const callerLocation = () => {
+  const frames = (new Error().stack || "").split("\n").slice(1);
+  const frame = frames.find((line) => !line.includes("s3Uploder.js"));
+  return frame ? frame.trim().replace(/^at\s+/, "") : "unknown call site";
+};
+
+export const resolveUploadPath = (uploadPath) => {
+  if (isS3PathToken(uploadPath)) return uploadPath.key;
+
+  if (typeof uploadPath !== "string" || !uploadPath) {
+    throw new Error(
+      `resolveUploadPath: expected an s3Path()/s3Keys token or a non-empty string, got ${JSON.stringify(uploadPath)}`,
+    );
+  }
+
+  if (isCanonicalKey(uploadPath)) return uploadPath;
+
+  if (S3_PATH_MODE === "strict") {
+    throw new Error(
+      `resolveUploadPath: "${uploadPath}" is not a canonical S3 key (S3_PATH_MODE=strict). ` +
+        `Build it with s3Path()/s3Keys from utils/s3ObjectKeys.js.`,
+    );
+  }
+
+  const site = callerLocation();
+  const dedupeKey = `${uploadPath}::${site}`;
+  if (!warnedLegacyPaths.has(dedupeKey)) {
+    warnedLegacyPaths.add(dedupeKey);
+    console.warn(
+      `[S3_PATH_MODE=warn] legacy S3 path "${uploadPath}" is not canonical — ${site}. ` +
+        `See S3_KEY_RESTRUCTURE_PROGRESS.md step 1.4.`,
+    );
+  }
+  return uploadPath;
+};
 
 export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
   const { skipImageConversion = false, contentType: forcedContentType = "", extension: forcedExtension = "" } = options;
@@ -56,7 +115,7 @@ export const uploadImageToS3 = async (fileData, uploadPath, options = {}) => {
     }
   }
 
-  const s3Key = `${uploadPath}.${extension}`;
+  const s3Key = `${resolveUploadPath(uploadPath)}.${extension}`;
 
   await s3.upload({
     Bucket: assetsBucket,
@@ -141,4 +200,64 @@ export const deleteObjectByKey = async (key) => {
   }).promise();
 
   return true;
+};
+
+/**
+ * Step 1.3c of the S3 key restructure — cascade delete via the entity prefix.
+ * See S3_KEY_RESTRUCTURE_PROGRESS.md.
+ *
+ * `entityPrefix()` throws for a malformed entity/entityId before anything below runs,
+ * so a bad call fails closed. Every key S3 returns for that prefix is then re-checked
+ * with `belongsToEntity()` — a real parse against the registry, not a bare string
+ * prefix test — and the WHOLE page is refused (nothing deleted) if even one key fails
+ * to parse as owned by this entity. That refusal is deliberate: 34,000+ legacy objects
+ * carry no owning entity id today, so nothing outside this new canonical scheme can ever
+ * collide with a real prefix, but a refusal is always safer here than a partial delete.
+ *
+ * Nothing in the codebase calls this yet — 1.4 wires it up as entities gain real
+ * cascade-delete support. Deleting an object is NOT reversible by `reverse` the way a
+ * key rewrite is; only S3 versioning (0.2, Enabled) makes it undoable, via `undelete`.
+ */
+export const deleteEntityAssets = async (entity, entityId) => {
+  const prefix = entityPrefix(entity, entityId);
+
+  let continuationToken;
+  let deletedCount = 0;
+  const deletedKeys = [];
+
+  do {
+    const page = await s3
+      .listObjectsV2({
+        Bucket: assetsBucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+      .promise();
+
+    const keys = (page.Contents || []).map((obj) => obj.Key);
+
+    const rogue = keys.filter((key) => !belongsToEntity(key, entity, entityId));
+    if (rogue.length) {
+      throw new Error(
+        `deleteEntityAssets: refusing to delete — S3 listed ${rogue.length} key(s) under prefix ` +
+          `"${prefix}" that do not parse as canonical keys owned by ${entity}/${entityId}: ` +
+          `${rogue.slice(0, 5).join(", ")}${rogue.length > 5 ? ", ..." : ""}`,
+      );
+    }
+
+    if (keys.length) {
+      await s3
+        .deleteObjects({
+          Bucket: assetsBucket,
+          Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true },
+        })
+        .promise();
+      deletedKeys.push(...keys);
+      deletedCount += keys.length;
+    }
+
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return { entity, entityId: String(entityId), prefix, deletedCount, deletedKeys };
 };

@@ -13,13 +13,16 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const { title, body, image } = payload.notification || {};
-  const data = payload.data || {};
+  const notification = payload.notification || {};
+  const { title, body, image } = notification;
+  const data = payload.data || notification.data || {};
+  const allowDismiss = data.allowDismiss === 'true';
 
   self.registration.showNotification(title || 'MassClick', {
     body: body || '',
     icon: '/apple-touch-icon.png',
     image: image || data.imageUrl || undefined,
+    requireInteraction: notification.requireInteraction === true || !allowDismiss,
     data: { clickAction: data.clickAction || '/' },
   });
 });

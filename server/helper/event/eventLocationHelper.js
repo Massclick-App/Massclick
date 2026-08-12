@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import eventLocationModel from "../../model/event/eventLocationModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const formatEventLocationImage = (location) => {
   if (!location) return location;
@@ -17,11 +18,11 @@ const formatEventLocationImage = (location) => {
   return result;
 };
 
-const handleEventLocationImageUpload = async (data = {}) => {
+const handleEventLocationImageUpload = async (data = {}, locationId) => {
   if (typeof data.locationImage === "string" && data.locationImage.startsWith("data:")) {
     const uploadResult = await uploadImageToS3(
       data.locationImage,
-      `event/locations/location-${Date.now()}`
+      s3Keys.eventLocation.image(locationId),
     );
     data.locationImageKey = uploadResult.key;
   } else if (data.locationImage === null || data.locationImage === "") {
@@ -55,9 +56,14 @@ export const createEventLocation = async (reqBody = {}) => {
       throw new Error("Event location with this name already exists");
     }
 
-    await handleEventLocationImageUpload(reqBody);
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint.
+    const locationId = new ObjectId();
+
+    await handleEventLocationImageUpload(reqBody, locationId);
 
     const eventLocation = new eventLocationModel({
+      _id: locationId,
       locationName: reqBody.locationName,
       address: reqBody.address || "",
       city: reqBody.city || "",
@@ -164,7 +170,7 @@ export const updateEventLocation = async (locationId, updateData) => {
       }
     }
 
-    await handleEventLocationImageUpload(updateData);
+    await handleEventLocationImageUpload(updateData, locationId);
 
     const payload = {
       ...updateData,

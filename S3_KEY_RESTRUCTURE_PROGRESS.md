@@ -1,21 +1,28 @@
 # S3 Key Restructure — Progress
 
-**Last updated:** 2026-08-11 by Claude · **Active runId:** none
-**Current step:** 0.8 (deploy) · **Status:** 0.1–0.7 code complete; **0.8 is the next action and it is the user's**
+**Last updated:** 2026-08-12 by Claude · **Active runId:** none
+**Current step:** 1.4 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · 1.1+1.2+1.3 done · **1.4 in progress — 11/51 call sites migrated (`businessListHelper.js`), 40 remain across 21 files**
 
-### Everything Phase 0 built — one place
+### Everything Phase 0 + 1.3 built — one place
+
+Run every gate from `server/` — dotenv loads `server/.env` from cwd, so running from the
+repo root throws `AWS S3 bucket not configured in env` (verified 2026-08-12):
 
 ```bash
-node server/scripts/verifyS3KeyUtils.js                     # 0.3 gate   31/31
-node server/scripts/verifyAssetUrl.js                       # 0.4 gate   22/22
-node server/scripts/s3KeyMigration.js collections           # 0.1  registry -> backup list
-node server/scripts/s3KeyMigration.js scan --uri=… --compare-uri=…   # 0.1  baseline
-node server/scripts/s3KeyMigration.js flush-caches [--commit]        # 0.7
-node server/scripts/checkPublicImageUrls.js --api=… [--compare=…]    # 0.5  no-broken-images
-node server/scripts/fixRatingPhotos.js --uri=… [--commit]            # 0.6  data repair
+cd server
+node scripts/verifyS3KeyUtils.js                            # 0.3 gate   31/31
+node scripts/verifyAssetUrl.js                               # 0.4 gate   22/22
+node scripts/verifyS3ObjectKeys.js                           # 1.1+1.2    63/63
+node scripts/verifyS3PathEnforcement.js                       # 1.3 a+c    22/22
+node scripts/lintS3Paths.js                                   # 1.3 b      EXPECTED TO FAIL until 1.4 — 51 sites/22 files, 0 bucket leaks
+node scripts/s3KeyMigration.js collections                    # 0.1  registry -> backup list
+node scripts/s3KeyMigration.js scan --uri=… --compare-uri=…   # 0.1  baseline
+node scripts/s3KeyMigration.js flush-caches [--commit]         # 0.7
+node scripts/checkPublicImageUrls.js --api=… [--compare=…]     # 0.5  no-broken-images
+node scripts/fixRatingPhotos.js --uri=… [--commit]              # 0.6  data repair
 ```
 
-New modules: `utils/s3ScopeRegistry.js` · `utils/s3KeyUtils.js` · `utils/assetUrl.js`
+New modules: `utils/s3ScopeRegistry.js` · `utils/s3KeyUtils.js` · `utils/assetUrl.js` · `utils/s3ObjectKeys.js` · `utils/idGen.js`
 **Plan:** `C:\Users\USER\.claude\plans\give-me-a-full-serene-whisper.md`
 
 ---
@@ -87,10 +94,13 @@ objects, same field shapes, same volume.
 | 0.3 | `setByPath` array fix + extract shared utils | ✅ DONE | `node server/scripts/verifyS3KeyUtils.js` → 31/31 green |
 | 0.4 | `assetUrl` cache-buster | 🟡 CODE DONE | `verifyAssetUrl.js` 22/22 · **warm-cache browser check outstanding (user)** |
 | 0.5 | Base-URL extraction (15 literals) | ✅ DONE | 15 → 0 · `checkPublicImageUrls.js` dev diff clean (exit 0) |
-| 0.6 | `ratingPhotos` fix + quarantine | 🟡 CODE DONE | write path fixed · **report below awaits review, no DB write yet** |
-| 0.7 | `flush-caches` incl. prerender purge | 🟡 CODE DONE | needs one run against a real Redis · **prerender premise disproved, see below** |
-| 0.8 | Deploy 0.3–0.7 dev → prod | ⬜ **NEXT — USER** | smoke clean; see the 0.8 checklist below |
-| 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
+| 0.6 | `ratingPhotos` fix + quarantine | ✅ **DONE** | write path fixed · **prod repaired 2026-08-12**, 50 photos uploaded, 11.30 MB → ~0 MB, live API verified |
+| 0.7 | `flush-caches` incl. prerender purge | ✅ DONE | proven on real Redis: 62→6→0 · **found + fixed a live invalidation gap** · risk 6 retired by non-existence |
+| 0.8 | Deploy 0.3–0.7 dev → prod | 🟡 DEV DONE | dev `e24522c6` verified: flush ok, image diff **NEWLY broken 0** · **needs redeploy for `fb515f29`** · prod untouched |
+| 1.1 | `s3ObjectKeys.js` path registry | ✅ DONE | `verifyS3ObjectKeys.js` → 63/63 |
+| 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
+| 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | 🟡 **SHIPPED IN WARN MODE** | `verifyS3PathEnforcement.js` 22/22 · `lintS3Paths.js` finds 51 sites/22 files (correctly FAILING — that's 1.4's list, not a bug) |
+| 1.4 | Migrate 51 call sites across 22 files | 🟡 **IN PROGRESS** — 11/51 done (`businessListHelper.js`) | lint gate passes 0/0, then flip `S3_PATH_MODE=strict` as the final commit |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
@@ -412,16 +422,27 @@ remains; `--compare` against a baseline is the real check, and it was validated 
 Those are covered by `verify`'s HeadObject pass plus one manual download each — that is how risk 9 is
 retired. The exclusion is documented in the script so nobody re-adds them and gets a red run.
 
-### ⏳ USER ACTION — set the GitHub repository variable
+### ✅ `REACT_APP_ASSET_BASE_URL` — done, and where each environment reads it from
 
-`REACT_APP_ASSET_BASE_URL` must be added as a repository **variable** (Settings → Secrets and variables
-→ Actions → Variables), value `https://massclickdev.s3.ap-southeast-2.amazonaws.com`. A **variable, not
-a secret**: it is a public hostname that ships in the bundle anyway, and masking it only makes build
-logs harder to read.
+This is a **build-time** variable (CRA inlines it), so where it must live depends on where the build
+runs. Verified on the server 2026-08-11:
 
-If it is left unset the build still succeeds — `imageUrlHelper.js` defaults to the same literal — but
-the `index.html` preconnect degrades to a no-op, losing the LCP head-start that the comment there says
-is worth hundreds of milliseconds.
+| Env | Built where | Reads the var from | State |
+|---|---|---|---|
+| **dev** | on the server — `/home/admin/scripts/frontend.sh dev` runs `npm run build` in `/var/www/dev-massclick/client/ui-app` | that checkout's `.env` | ✅ present |
+| **prod** | in **GitHub Actions** on push to `prod`; only the compiled `build/` is rsynced to the server | `vars.REACT_APP_ASSET_BASE_URL` | ✅ set by user |
+
+Prod is never built on the server by the CI path, so the prod checkout's `.env` is irrelevant to it —
+the repository variable is the correct and only place.
+
+**Residual gap, harmless today:** `frontend.sh prod` also exists and *would* build on the server, in
+`/var/www/massclickQA`, whose `.env` has no `REACT_APP_ASSET_BASE_URL`. A prod deploy done that way
+falls back to the hardcoded default in `imageUrlHelper.js`. That default is `massclickdev` — the bucket
+actually in use — so nothing breaks now. **It only bites if the bucket ever changes**, which is exactly
+what 0.5 exists to protect against. Closing it is a one-line addition to that checkout's `.env`.
+
+Note the same applies to `public/index.html`'s preconnect: unlike the JS it cannot carry a fallback, so
+an unset var degrades it to a no-op — images still load, the LCP head-start is lost.
 
 ---
 
@@ -536,19 +557,67 @@ Reports cached-key counts by prefix before and after, so a flush that silently d
 **If Redis is unreachable it exits non-zero and refuses to continue** — a rewrite must not proceed when
 the cache cannot be purged, because a correct database behind a stale cache still serves old keys.
 
-### ⚠️ Risk 6's premise does not hold — prerender is not in the request path
+### ✅ PROVEN against real Redis — and it found a live gap
 
-The plan says prerendered HTML escapes Redis invalidation. **Nothing in this repo puts prerender in the
-request path at all:**
+Run 2026-08-11 against `redis-dev` on the production box (tunnel `-L 6380:127.0.0.1:6380`, connecting by
+IP so the `massclick` alias's own forwards don't collide). **`redis-prod` was deliberately not touched** —
+flushing 284 live keys would cause a cache-miss burst on the real site for no reason.
 
-- `prerender-node` (the Express middleware) is in `package.json` but is **imported nowhere**
-- `app.js` never references it
-- `prerenderServer.js` exists but is a standalone service, started by nothing in the repo, and hardcodes
-  `C:\Program Files\Google\Chrome\...` — a Windows path, on a Linux-deployed server
+```
+first run:   62 keys -> 6    (cleared 56)
+```
 
-So either prerendering is not deployed, or it is wired at the nginx layer, outside this repository. The
-backend deploy runs `/home/admin/scripts/backend.sh`, which is not in the repo, so this cannot be
-resolved from here.
+**Six keys survived, and they were not stale writes — nothing invalidated them at all:**
+
+```
+home-categories:desktop    home-categories:mobile    popular-categories:home
+service-cards:home         service-cards:mobile      seo:home
+```
+
+Cause: `invalidateCategoryDisplaySettingsCache` deleted an explicit list of keys that all carried a
+**`:v2` suffix**, matching what `categoryDisplaySettingsController.js` writes. But
+`categoryController.js` writes the same logical caches **without** that suffix, and no pattern covered
+them:
+
+| Live key | Written by | Was cleared by |
+|---|---|---|
+| `home-categories:desktop` / `:mobile` | categoryController.js:159,242 | **nothing** |
+| `popular-categories:home` | categoryController.js:418 | **nothing** |
+| `service-cards:home` / `:mobile` | categoryController.js:542,660 | **nothing** |
+| `seo:home` | — | **nothing** (`seo:*` ≠ `seo-meta:*`) |
+| the `…:v2` variants | categoryDisplaySettingsController.js | ✅ the explicit list |
+
+**Those five v1 endpoints are exactly the ones rewritten in 0.5 to emit category image URLs.** After the
+key rewrite they would have kept serving OLD image URLs until their TTL expired — which is the failure
+mode risk 6 exists to prevent, sitting in Redis rather than in prerendered HTML.
+
+Fixed in `utils/cacheInvalidation.js`: added the uncovered prefixes to `invalidateCategoryCache`, added
+`seo:*` to `invalidateSeoCache`, and **replaced the brittle explicit key list with patterns** so it
+cannot drift again when a new suffix appears. Re-verified:
+
+```
+after the fix:  6 keys -> 0    (cleared 6)
+```
+
+**Lesson for R.4:** invalidator patterns must be checked against the keys controllers actually write,
+not assumed. `flush-caches` printing a non-zero "remaining" count is the signal.
+
+### ✅ Risk 6 retired by non-existence — prerender is not deployed
+
+The plan says prerendered HTML escapes Redis invalidation. **Nothing puts prerender in the request path
+— confirmed on the server itself, 2026-08-11:**
+
+```
+grep -rniE "prerender" /etc/nginx/     -> no matches
+docker ps | grep -i prerender          -> no container
+ps aux  | grep -i prerender            -> no process
+```
+
+And in the repo: `prerender-node` is a dependency but is **imported nowhere**, `app.js` never references
+it, and `prerenderServer.js` is standalone, started by nothing, hardcoding
+`C:\Program Files\Google\Chrome\...` on a Linux server.
+
+**Risk 6 is retired by non-existence.** No purge step is needed at R.4/R.8.
 
 `flush-caches` handles both outcomes: it POSTs to `PRERENDER_PURGE_URL` when that is set (with an
 optional `PRERENDER_PURGE_TOKEN`), and otherwise prints an explicit SKIPPED with the reasoning above
@@ -557,19 +626,19 @@ rather than quietly passing.
 **USER: confirm whether prerendering is enabled on the server.** If it is not, risk 6 is retired by
 non-existence. If it is, set `PRERENDER_PURGE_URL` and the existing code covers it.
 
-### ⏳ OUTSTANDING — one run against a real Redis
+### Reaching Redis from this machine
 
-Redis is not reachable from this machine (only Mongo is tunnelled on 27018), so the flush itself is
-unproven. Run it on the server, or open a second tunnel:
+Redis is not in the `massclick` SSH alias's forwards. Connect **by IP**, not by alias — the alias also
+forwards 9090/3001/27018 and will abort if a session already holds them:
 
 ```bash
-ssh -L 6379:127.0.0.1:6379 <server>          # then:
-node server/scripts/s3KeyMigration.js flush-caches           # expect a non-zero key count
-node server/scripts/s3KeyMigration.js flush-caches --commit  # expect it to drop
+ssh -N -L 6380:127.0.0.1:6380 -p 2244 -i C:\Users\USER\.ssh\massclick root@103.14.121.77
+REDIS_URL=redis://127.0.0.1:6380 node server/scripts/s3KeyMigration.js flush-caches --commit
 ```
 
-**Gate:** the before/after counts move, and a second `--commit` reports ~0 cleared. Cheap to fold into
-the 0.8 deploy.
+`6380` is `redis-dev`; **`6379` is `redis-prod`** — see `D:\dev_abishek\vps\massclick.md`. Only flush
+prod as part of R.8, never casually: it is 284 live keys and dropping them is a cache-miss burst on the
+real site.
 
 ---
 
@@ -584,7 +653,7 @@ is why they were left rather than faked.
 | # | Action | Why here |
 |---|---|---|
 | 1 | Deploy `dev` → dev environment | — |
-| 2 | `flush-caches --commit` on the dev server | closes 0.7's gate; needs a real Redis |
+| 2 | `flush-caches --commit` on dev | ✅ already proven; re-run after deploy so the new code's output is cached |
 | 3 | `checkPublicImageUrls --api=<dev> --compare=imgcheck-2026-08-11-dev.json` | must print **NEWLY broken: 0** |
 | 4 | Warm-cache browser check on a review QR | closes 0.4's gate; needs a real browser |
 | 5 | Deploy to **prod** | — |
@@ -606,7 +675,7 @@ step 9 or the next clone throws them away.
 | 3 | the two DBs may not be clones | ✅ retired — 95.68% overlap, 0 genuine conflicts |
 | 4 | `setByPath` array corruption | ✅ retired — 31/31 gate |
 | 5 | 63 objects unrestorable | ✅ retired — bucket versioning `Enabled` |
-| 6 | prerender HTML not invalidated | **premise disproved** — prerender is not in the request path; confirm on the server |
+| 6 | prerender HTML not invalidated | ✅ **retired by non-existence** — verified on the server; a *real* Redis gap was found and fixed instead |
 | 7 | torn final line in an append-only log | not started — belongs to 2.2 `doctor` |
 | 8 | tunnel drops mid-rewrite | not started — belongs to 2.2 |
 | 9 | signed-URL fields unreachable by the smoke script | ✅ handled — documented exclusions, covered by `verify` + manual download |
@@ -614,6 +683,240 @@ step 9 or the next clone throws them away.
 **Three bugs were found that were not on the risk register at all**, all of which had already fired:
 the `$set` subdocument wipe (4,442 prod documents), `extractS3Key` mis-parsing repeated prefixes (live
 on prod today), and `ratingPhotos` at 71% of the BSON limit.
+
+---
+
+## 0.8 — dev deployed and verified 2026-08-11
+
+| | commit | state |
+|---|---|---|
+| dev backend + frontend | `e24522c6` | ✅ deployed and verified |
+| prod backend | `e30540a6` | untouched — pre-Phase-0 |
+| prod frontend | `f66f5b95` | untouched |
+
+`origin/prod` is still pre-Phase-0. Nothing has reached production.
+
+**Verification run against dev:**
+
+```
+flush-caches --commit     all 7 invalidators ok, 1 -> 0
+checkPublicImageUrls      17/17 endpoints 2xx, 632 assets resolve
+  vs the pre-deploy baseline:   NEWLY broken: 0   exit 0
+```
+
+### ⚠️ A bug I shipped, and the process lesson
+
+`97129004`'s edit to `invalidateCategoryDisplaySettingsCache` only half-applied: it replaced the line
+*using* `directKeys` but left the `directKeys` block, so the function referenced an undefined
+`directPatterns`, threw, and returned `false` on every call. It was deployed to dev.
+
+**I nearly missed it because I had filtered `flush-caches` output down to the count lines, dropping the
+`FAIL` line — in the very tool built to surface failures.** The counts looked right so it read as
+verified. Fixed in `fb515f29`; `directResults` now counts toward the return value so a silent failure
+cannot report `ok`.
+
+**Rule for R.4/R.8: read the whole `flush-caches` output. Never grep it down to the counts.**
+
+### Cache coverage is now audited, not assumed
+
+Every `cacheMiddleware` `keyPrefix` in `routes/` was checked against invalidator patterns. Two more
+carried image URLs and were uncovered — both now covered:
+
+```
+mobile-v3             GET /api/businesslist/findByMobile   business images
+district-category-v2  GET /api/v2/category/district        category images
+```
+
+Seven remain uncovered on purpose — `admin-analytics-report` and six `wa-*` analytics caches — after
+checking their controllers for image fields and finding none. **20 of 27 covered, exclusions verified.**
+
+Re-run this audit if a new cached endpoint is added:
+
+```bash
+grep -rhoE "keyPrefix:\s*['\"][a-zA-Z0-9_-]+" server/routes/ | sed -E "s/.*['\"]//" | sort -u
+```
+
+---
+
+## 0.6 data repair — EXECUTED on prod 2026-08-12
+
+Ran only after prod was deployed with the both-shape read path, per the ordering rule above.
+
+| | before | after |
+|---|---|---|
+| largest review document | **11.30 MB** — 71% of the 16 MB BSON limit | **~0.00 MB** |
+| second | 8.28 MB | ~0.00 MB |
+| photos | 50, inline base64 | 50, S3 keys |
+| dropped | — | **0** |
+
+**Backup:** `db-backups/snapshots/massClick/2026-08-12_07-14-56__pre-rating-photos-quarantine`
+— checksum MATCH, 64 lines = 64 docs = 64 live at snapshot time.
+
+Verification chain, each step checked rather than assumed:
+
+```
+dry run     50 upload, 0 dropped, counts unchanged
+S3          all 50 objects HEAD 200, none zero-byte
+idempotent  re-ran --commit -> 0 to upload, 50 recognised as keys under the right prefix
+live API    GET /api/business/6a5724fd…/reviews -> 45 URLs, shape=url, first HEAD 200
+```
+
+**Caveat recorded honestly:** the first `--commit` printed a stack-trace fragment mid-run which was
+not captured (output was piped through `tail`). Every downstream check passes, so the outcome is
+sound, but the cause is unknown. If it recurs, capture full stderr rather than tailing.
+
+Rollback if ever needed: `node db-backups/restore.js --from db-backups/snapshots/massClick/2026-08-12_07-14-56__pre-rating-photos-quarantine`
+(dry-run by default). The 50 new S3 objects are additive and covered by bucket versioning.
+
+---
+
+## Phase 1 — where it stands
+
+**1.1 + 1.2 are done and committed (`cd038ae6`), gate 63/63.**
+
+- `utils/idGen.js` — 26-char ULID on `node:crypto`, monotonic in-process, backwards-clock safe.
+- `utils/s3ObjectKeys.js` — `s3Path` / `parseS3Key` / `isCanonicalKey` / `entityPrefix` /
+  `belongsToEntity` / `s3Keys.*` builders. Its catalogue of 44 valid `(entity, purpose,
+  stability)` triples is **derived from `s3ScopeRegistry.js` at import time**, so there is no
+  second list to drift. `s3Path` returns a **branded token carrying a Symbol** — a template
+  literal cannot fabricate one, which is what makes 1.3's chokepoint a real gate.
+
+Key shapes:
+
+```
+versioned   {entity}/{entityId}/{purpose}/{ulid}     every upload a new object
+stable      {entity}/{entityId}/{purpose}            regeneration OVERWRITES
+stable+seq  {entity}/{entityId}/{purpose}/{seq}      only categories/variant, 6 named variants
+```
+
+Keys carry **no extension** — `uploadImageToS3` appends it at [s3Uploder.js:59](server/s3Uploder.js:59),
+since only it knows whether sharp converted the buffer to webp.
+
+### 1.3 — DONE 2026-08-12, shipped in `warn` mode
+
+All three pieces landed in one commit alongside this update.
+
+1. **`resolveUploadPath()` in `server/s3Uploder.js`** — accepts a branded `s3Path()` token
+   (returns `.key`), or a plain string only if `isCanonicalKey()` passes. `const s3Key = ...`
+   at what was line 59 now routes through it. `S3_PATH_MODE` env var, default `warn`: a legacy
+   string still uploads (return unchanged) but logs one warning per distinct `(path, call site)`
+   pair via `console.warn`, naming the offending path and the caller's stack frame. `strict`
+   throws instead. An unrecognised `S3_PATH_MODE` value throws at import time.
+2. **`server/scripts/lintS3Paths.js`** — static, read-only scan of `server/` and
+   `client/ui-app/src`. Fails on any `uploadImageToS3(` call whose 2nd argument is a template
+   literal or a string concatenation, including a one-hop back-reference when the argument is a
+   bare identifier assigned one line earlier (`trackedKeywordHelper.js`, `fcmAdminController.js`,
+   `categoryDisplaySettingsController.js` all build the path into a variable first — a plain
+   per-call-site check alone would have missed these 3). Also fails on the literal
+   `massclickdev.s3` outside two documented exceptions: the 0.5 fallback default in
+   `imageUrlHelper.js`, and a synthetic base URL used only as fixture input inside
+   `verifyS3KeyUtils.js`'s own tests. **Run it — it is *expected* to exit 1 right now: 51 legacy
+   call sites across 22 files, 0 bucket-literal leaks.** That list is 1.4's todo, not a defect in
+   this script.
+3. **`deleteEntityAssets(entity, entityId)`** in `server/s3Uploder.js` — cascade delete via
+   `entityPrefix()`, which throws for a malformed entity/entityId *before* any AWS call, so a bad
+   call fails closed with no network involved. Every key S3 lists under that prefix is then
+   re-checked with `belongsToEntity()` (a real registry parse, not a bare string-prefix test),
+   and the **whole page is refused — nothing deleted — if even one key fails to parse** as owned
+   by that entity. Nothing calls this yet; 1.4/2.x wires it up. Not reversible the way a key
+   rewrite is — only S3 versioning (0.2, Enabled) makes a delete undoable, via `undelete`.
+
+**New gate:** `server/scripts/verifyS3PathEnforcement.js` — 22/22 green. Proves warn-mode
+does-not-throw + logs once (deduped by call site, not just by path — verified by exercising the
+*same* logging call twice via a loop, since two textually different call expressions on one line
+are, correctly, two different call sites), strict-mode throws, and `deleteEntityAssets`'s guard
+rejects before any network call. Reads nothing, writes nothing, no S3, no database.
+
+**DECISION (already taken, held): enforcement ships in `warn` mode first.** A chokepoint that
+throws today breaks every image upload the moment it deploys, and dev/prod deploy on the user's
+own schedule. `S3_PATH_MODE` defaults to `warn`; **flip to `strict` only as the final commit of
+1.4**, once `lintS3Paths.js` reports 0/0. **Until that flip the plan's "bypass impossible"
+requirement is NOT met** — 1.3 does not retire anything by itself; it makes bypass *visible*.
+
+**Two things worth knowing for a fresh session:**
+
+- **`lintS3Paths.js` found one real call site the hand-written inventory below had missed**:
+  `server/scripts/fixRatingPhotos.js:128` (the 0.6 repair script, mirroring
+  `reviewHelper.js:62`'s `${prefix}photo-${Date.now()}-${i}` shape exactly). The doc's original
+  "51 across 21 files" prose was actually 50 across 21 in the hand count — the static scanner is
+  now the source of truth at **51 across 22 files**, and the table below is corrected to match.
+- **`/server/scripts` is entirely gitignored** (`.gitignore:87`). The existing gate scripts
+  (`verifyS3KeyUtils.js`, `verifyAssetUrl.js`, etc.) are tracked only because a past session ran
+  `git add -f` on each one individually. **A new script in that directory needs the same
+  `git add -f`, or it silently never gets committed** — `git status` shows nothing wrong, there is
+  no untracked-file warning, it just isn't there. Hit this for both new 1.3 scripts.
+
+⚠️ **A real CRLF-churn incident, distinct from the earlier heredoc one:** editing
+`server/s3Uploder.js` with the Edit tool (correctly, no heredoc) still normalised the whole file
+to uniform CRLF, flipping the ~38 lines that were originally bare LF (the tail: `getImageDataUrlByKey`,
+`getObjectBufferByKey`, `deleteObjectByKey`) even though their content never changed. First
+`git diff --numstat` read `159 insertions(+) 40 deletions(-)` against ~110 real new lines — the
+tell. Fixed by reconstructing the file in Node (`latin1` round-trip to stay byte-exact, since the
+file is UTF-8 and em-dashes are multi-byte): current head (genuinely new content) + the ORIGINAL
+bytes for the untouched tail (sliced straight from `git show HEAD:...`, not re-typed) + the new
+`deleteEntityAssets` block. Final diff: 121 insertions / 2 deletions — exactly the real change.
+**Lesson: after ANY edit to a mixed-EOL file, check `git diff --numstat` before moving on — not
+just "is it a big number" but "does insertions-minus-deletions roughly equal what I actually
+typed." A `sed` pipeline is not safe for this repair either**: on this machine `sed` piping
+through `/tmp` silently stripped every `\r`, corrupting a first repair attempt — use Node with
+explicit `latin1` reads/writes on files addressed by their real Windows path instead.
+
+### 1.4 — in progress. `businessListHelper.js` done (11/51), 2026-08-12
+
+All 11 sites migrated to `s3Keys.business.*`. Two things worth recording:
+
+- **`createBusinessList`'s 4 upload-before-save sites** (banner, logo, gallery, kyc) now mint
+  `const businessId = new mongoose.Types.ObjectId()` up front and pass it to every upload and to
+  `new businessListModel({ ...reqBody, _id: businessId })` — the ordering rule from the plan.
+- **One call site had no home in the registry**: the embedded `business.reviews[].ratingPhotos`
+  path (read at [businessListHelper.js:1352](server/helper/businessList/businessListHelper.js:1352),
+  written by `updateBusinessList`'s `reviewData` handling) is a **separate mechanism from the
+  `businessreviews` collection** the registry already declared under `entity: "reviews"` — it's an
+  undeclared/Mixed field embedded directly on the business document, not a reference to a
+  `businessReviewModel` document. Added a new field to the `businesses` scope in
+  `s3ScopeRegistry.js` (`purpose: "review-photo"`, versioned, scoped by the owning business — the
+  embedded reviews have no declared `_id` and photos were never addressed per-review in the URL)
+  and a matching `s3Keys.business.reviewPhoto(id)` builder. `verifyS3ObjectKeys.js` still 63/63.
+  **Left unresolved on purpose:** `reviewHelper.js`'s `sanitizeRatingPhotos` (the *separate*
+  `businessreviews`-collection path, already fixed for injection in 0.6) builds the identical
+  `businessList/reviews/<businessId>/photo-...` shape today. When that file's turn in 1.4 comes,
+  decide then whether it should reuse this same `businesses/review-photo` purpose or get its own
+  `reviews` entity purpose keyed by the review document's own `_id` — a real design choice, not
+  mechanical, and out of scope for just migrating `businessListHelper.js`.
+- Two bugs fixed for free by moving to the registry: the profile QR
+  ([businessListHelper.js:141](server/helper/businessList/businessListHelper.js:141) before the
+  edit) stops appending `Date.now()` — it's `s3Keys.business.profileQr()`, stable, so regeneration
+  now overwrites instead of orphaning. Same for the logo in `updateBusinessList` — now
+  `s3Keys.business.logo()`, stable.
+
+**Gates:** `lintS3Paths.js` 51 → **40** (across 21 files, exactly this file's 11 sites gone). All
+four verify gates still green. `git diff --numstat` checked clean (12 hunks, all at edited lines).
+
+### 1.4 — the call-site inventory (corrected: 51 sites / 22 files — see above)
+
+Regenerate with `node scripts/lintS3Paths.js --json=<path>` for the exact per-line list; this
+table is the by-file rollup for tracking burndown.
+
+```
+helper/businessList/businessListHelper.js       ✅ 0/11      helper/rewards/rewardHelper.js               1
+helper/category/categoryHelper.js                   6      helper/reviewHelper/reviewHelper.js          1
+helper/advertistment/advertismentHelper.js          6      helper/massclickFeed/massclickFeedHelper.js  1
+helper/seo/seoOnpageBlogHelper.js                   5      helper/hiring/hiringHelper.js                1
+helper/userHelper.js                                2      helper/gsc/trackedKeywordHelper.js           1
+helper/massclickEvent/massclickEventHelper.js       2      helper/event/eventLocationHelper.js          1
+helper/massclickDocuments/massclickDocumentsHelper.js 2    helper/event/eventCategoryHelper.js          1
+helper/event/eventCreationHelper.js                 2      helper/businessList/businessCertificateHelper.js 1
+helper/event/eventAdvertisementHelper.js            2      controller/msg91/msg91Controller.js          1
+controller/fcmAdminController.js                    1      controller/category/categoryImageController.js 1
+controller/categoryDisplaySettings/categoryDisplaySettingsController.js 1
+scripts/fixRatingPhotos.js (found by lintS3Paths.js, not in the original hand count)         1
+```
+
+**Ordering rule for 1.4, from the plan:** where an upload precedes document creation, always
+*mint `_id` → upload → `create()`*, never upload-then-mint. `s3Path` enforces the shape by
+rejecting a non-ObjectId/ULID `entityId`. Also fixes
+[businessListHelper.js:141](server/helper/businessList/businessListHelper.js:141), which appends
+`Date.now()` to the profile QR and orphans one object per regeneration.
 
 ---
 
@@ -702,10 +1005,10 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 2 | SSH tunnel to `127.0.0.1:27018` | ✅ **UP** — verified 2026-08-11, both DBs reachable, full scan completed over it |
 | 3 | 0.1 baseline needs user review before 0.2+ proceeds | **AWAITING USER** |
 | 4 | Repair the 4,442 (prod) / 4,443 (dev) businesses whose `qrCode.qrText` + `createdAt` were wiped by bug 3? Self-heals on view; a bulk repair is a DB write needing a `--collections businesslists` backup first. **If done at all, do prod FIRST then re-clone** — repairing dev before a re-clone is wasted | **USER DECISION** — not blocking |
-| 8 | **Is prerendering actually enabled on the server?** Nothing in this repo wires `prerender-node` into the request path. If it is not deployed, risk 6 is retired by non-existence; if it is (nginx layer), set `PRERENDER_PURGE_URL` and `flush-caches` already covers it | **USER — needs a look at the server** |
-| 9 | Run `flush-caches --commit` once against a real Redis (unreachable from this machine — only Mongo is tunnelled). Fold into the 0.8 deploy | **USER / at 0.8** |
-| 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **BLOCKED UNTIL 0.8 IS DEPLOYED** — the key→URL read path must ship first or every review photo 404s. Then prod, then re-clone dev, alongside open question 4 | **USER DECISION** — blocked on 0.8 |
-| 6 | Add GitHub repository **variable** `REACT_APP_ASSET_BASE_URL` = `https://massclickdev.s3.ap-southeast-2.amazonaws.com` (Settings → Secrets and variables → Actions → Variables). Build still succeeds without it; only the `index.html` preconnect degrades | **USER ACTION** — not blocking |
+| 8 | Is prerendering enabled on the server? | ✅ **ANSWERED 2026-08-11** — no nginx match, no container, no process. Risk 6 retired by non-existence |
+| 9 | Run `flush-caches --commit` against a real Redis | ✅ **DONE 2026-08-11** — dev Redis via tunnel; exposed and fixed an invalidation gap |
+| 7 | `fixRatingPhotos.js --commit` on prod | ✅ **DONE 2026-08-12** — backup verified, 50 uploaded, 0 dropped, all 50 objects HEAD 200, re-run idempotent, live API returns resolvable URLs |
+| 6 | `REACT_APP_ASSET_BASE_URL` | ✅ **DONE 2026-08-11** — dev in `/var/www/dev-massclick/client/ui-app/.env`, prod as a GitHub repo variable. Both verified correct for where each is actually built. Residual: `frontend.sh prod` would build on the server without it and fall back to the default |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
 
 ---
@@ -841,6 +1144,8 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-12 | **1.4 started — `businessListHelper.js` done, 11/51 sites migrated.** All to `s3Keys.business.*`. `createBusinessList`'s 4 upload-before-save sites now mint the `_id` first, per the ordering rule. One site (embedded `reviews[].ratingPhotos`) had no registry field — it's a separate mechanism from the `businessreviews` collection already in the registry — so added `purpose: "review-photo"` to the `businesses` scope and a matching builder; left `reviewHelper.js`'s twin of this path for a deliberate decision when that file's turn comes. Two latent orphan-per-regen bugs fixed for free (profile QR, logo) by moving to their now-stable registry keys. `lintS3Paths.js` 51 → 40. All 4 gates re-run clean. |
+| 2026-08-12 | **1.3 done, shipped in `warn` mode.** `resolveUploadPath()` chokepoint in `s3Uploder.js` (token or canonical string passes through; legacy string warns once per call site and keeps working; strict mode throws — controlled by `S3_PATH_MODE`, default `warn`). `deleteEntityAssets(entity, entityId)` cascade delete, refuses the whole page if any listed key fails `belongsToEntity()`. `lintS3Paths.js` static scanner — found **51 legacy call sites across 22 files** (one more than the hand-written inventory: `scripts/fixRatingPhotos.js:128`, mirroring `reviewHelper.js`'s pattern), 0 bucket-literal leaks; it is *correctly* failing right now, that failure IS 1.4's todo list. New gate `verifyS3PathEnforcement.js`, 22/22, all four gates plus the new one re-run clean. **Two process gotchas hit and fixed:** the Edit tool normalised `s3Uploder.js`'s mixed CRLF/LF to uniform CRLF, corrupting `git diff --numstat` with ~40 lines of pure line-ending noise — repaired via a byte-exact Node/`latin1` reconstruction pulling the original bytes back from `git show HEAD:...` (a `sed`-based first attempt silently stripped all `\r` and made it worse); and `/server/scripts` is entirely gitignored, so both new scripts needed `git add -f` or they'd have been silently left uncommitted. |
 | 2026-08-11 | **0.7 code done.** `flush-caches` added to the migration CLI — dry-run by default, discovers invalidators by reflection (verified: all 7), reports cached-key counts before/after, and refuses to run at all if Redis is unreachable. **Risk 6's premise turns out to be wrong:** `prerender-node` is a dependency but is imported nowhere, `app.js` never references it, and `prerenderServer.js` is standalone with a hardcoded Windows Chrome path. Either prerendering is not deployed or it lives in nginx outside this repo. The command handles both — POSTs to `PRERENDER_PURGE_URL` when set, otherwise prints an explicit SKIPPED. Two user items: confirm whether prerender is deployed, and run the flush once against a real Redis (not reachable from this machine). |
 | 2026-08-11 | **0.6 code done; data repair awaiting approval.** Fixed the unvalidated `ratingPhotos` write path — it was the only writer that trusted the request body, and the field renders as an image URL. Measured the stored data and it is **not** the injected keys the plan assumed: 50 prod entries / 20.4 MB of **inline base64**, with one review document at **11.30 MB — 71% of MongoDB's hard 16 MB limit**, i.e. a few photos from being unwritable. Repair therefore uploads-and-replaces instead of quarantining. Built `fixRatingPhotos.js` (dry-run default) and ran it on both DBs: nothing would be lost. Prod `--commit` needs a backup and the user's go-ahead, and should be paired with the `qrText` repair before the re-clone. |
 | 2026-08-11 | **0.5 done.** 15 hardcoded bucket URLs → 0 (2 of the 9 server ones were dead code). Client now reads `REACT_APP_ASSET_BASE_URL` with the literal as a default so an unset var cannot break a build. Found and fixed the **client-side twin of 0.3's repeated-prefix bug** — and `checkPublicImageUrls.js` caught **prod serving a doubled URL to real users** on `/seopagecontentblog/viewall`. Built that checker (also the R.5/R.9 diff tool) and captured dev + prod baselines: 632/635 and 657/662 assets resolve, every failure a pre-existing `businessDetails[].bannerImage` verified against the 0.1 missing list. `--compare` validated end-to-end: newly broken 0, exit 0. **User action: add the `REACT_APP_ASSET_BASE_URL` repo variable.** |

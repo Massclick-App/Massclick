@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import categoryModel from "../../model/category/categoryModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
 import { extractS3Key } from "../../utils/s3KeyUtils.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 // Narrow the shared extractS3Key for a WRITE path: if the result still looks like
 // a URL it failed to parse, and storing it would persist a key that can never
@@ -74,7 +75,7 @@ export const createCategory = async (reqBody = {}) => {
       if (reqBody.categoryImage) {
         const uploadResult = await uploadImageToS3(
           reqBody.categoryImage,
-          `category/images/category-${Date.now()}`
+          s3Keys.category.legacyImage(existing._id),
         );
         updates.categoryImageKey = uploadResult.key;
       }
@@ -82,7 +83,7 @@ export const createCategory = async (reqBody = {}) => {
       if (reqBody.liveImage) {
         const uploadResult = await uploadImageToS3(
           reqBody.liveImage,
-          `category/live-images/category-${Date.now()}`
+          s3Keys.category.legacyLive(existing._id),
         );
         updates.liveImageKey = uploadResult.key;
       }
@@ -115,11 +116,15 @@ export const createCategory = async (reqBody = {}) => {
       reqBody.categoryImages = categoryImages;
     }
 
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint.
+    const categoryId = new ObjectId();
+
     // Legacy support: handle old categoryImage and liveImage fields
     if (reqBody.categoryImage) {
       const uploadResult = await uploadImageToS3(
         reqBody.categoryImage,
-        `category/images/category-${Date.now()}`
+        s3Keys.category.legacyImage(categoryId),
       );
       delete reqBody.categoryImage;
       reqBody.categoryImageKey = uploadResult.key;
@@ -128,7 +133,7 @@ export const createCategory = async (reqBody = {}) => {
     if (reqBody.liveImage) {
       const uploadResult = await uploadImageToS3(
         reqBody.liveImage,
-        `category/live-images/category-${Date.now()}`
+        s3Keys.category.legacyLive(categoryId),
       );
       delete reqBody.liveImage;
       reqBody.liveImageKey = uploadResult.key;
@@ -136,7 +141,7 @@ export const createCategory = async (reqBody = {}) => {
 
     reqBody.category = categoryName;
 
-    const categoryDocument = new categoryModel(reqBody);
+    const categoryDocument = new categoryModel({ ...reqBody, _id: categoryId });
     const result = await categoryDocument.save();
 
     if (result.categoryImageKey) {
@@ -302,7 +307,7 @@ export const updateCategory = async (id, data) => {
     ) {
       const uploadResult = await uploadImageToS3(
         data.categoryImage,
-        `category/images/category-${Date.now()}`
+        s3Keys.category.legacyImage(id),
       );
       data.categoryImageKey = uploadResult.key;
     } else if (data.categoryImage === null || data.categoryImage === "") {
@@ -317,7 +322,7 @@ export const updateCategory = async (id, data) => {
     ) {
       const uploadResult = await uploadImageToS3(
         data.liveImage,
-        `category/live-images/category-${Date.now()}`
+        s3Keys.category.legacyLive(id),
       );
       data.liveImageKey = uploadResult.key;
     } else if (data.liveImage === null || data.liveImage === "") {

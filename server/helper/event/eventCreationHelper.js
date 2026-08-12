@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import eventCreationModel from "../../model/event/eventCreationModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const formatEventCreationImages = (event) => {
   if (!event) return event;
@@ -21,11 +22,11 @@ const formatEventCreationImages = (event) => {
   return result;
 };
 
-const handleEventCreationImageUploads = async (data = {}) => {
+const handleEventCreationImageUploads = async (data = {}, eventId) => {
   if (typeof data.eventImage === "string" && data.eventImage.startsWith("data:")) {
     const uploadResult = await uploadImageToS3(
       data.eventImage,
-      `event/creations/images/image-${Date.now()}`
+      s3Keys.event.image(eventId),
     );
     data.eventImageKey = uploadResult.key;
   } else if (data.eventImage === null || data.eventImage === "") {
@@ -35,7 +36,7 @@ const handleEventCreationImageUploads = async (data = {}) => {
   if (typeof data.bannerImage === "string" && data.bannerImage.startsWith("data:")) {
     const uploadResult = await uploadImageToS3(
       data.bannerImage,
-      `event/creations/banners/banner-${Date.now()}`
+      s3Keys.event.banner(eventId),
     );
     data.bannerImageKey = uploadResult.key;
   } else if (data.bannerImage === null || data.bannerImage === "") {
@@ -62,9 +63,14 @@ export const createEventCreation = async (reqBody = {}) => {
       throw new Error("Invalid event location ID");
     }
 
-    await handleEventCreationImageUploads(reqBody);
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint.
+    const eventId = new ObjectId();
+
+    await handleEventCreationImageUploads(reqBody, eventId);
 
     const eventCreation = new eventCreationModel({
+      _id: eventId,
       eventName: reqBody.eventName,
       eventCategory: reqBody.eventCategory,
       eventLocation: reqBody.eventLocation,
@@ -208,7 +214,7 @@ export const updateEventCreation = async (eventId, updateData) => {
       throw new Error("Invalid event location ID");
     }
 
-    await handleEventCreationImageUploads(updateData);
+    await handleEventCreationImageUploads(updateData, eventId);
 
     const updatedEvent = await eventCreationModel.findByIdAndUpdate(
       eventId,

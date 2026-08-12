@@ -3,6 +3,7 @@ import businessListModel from "../../model/businessList/businessListModel.js";
 import massclickFeedPostModel from "../../model/massclickFeed/massclickFeedPostModel.js";
 import otpUserModel from "../../model/msg91Model/usersModels.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -111,13 +112,13 @@ const validatePostPayload = (data = {}) => {
   }
 };
 
-const uploadFeedImages = async (files = [], ownerId = "") =>
+const uploadFeedImages = async (files = [], postId) =>
   Promise.all(
     files.map(async (file) => {
       const extension = getExtensionFromFileName(file.fileName);
       const uploadResult = await uploadImageToS3(
         file.mediaFile,
-        `massclick-feed/${ownerId}/post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        s3Keys.feedPost.media(postId),
         {
           contentType: file.fileType,
           extension,
@@ -141,9 +142,14 @@ export const createMassclickFeedPost = async (data = {}, actor = {}) => {
   const result = await getCustomerBusiness(actor, data.businessId);
   const customer = result.customer || {};
   const business = result.business || null;
-  const mediaItems = await uploadFeedImages(data.mediaFiles || [], actorId);
+
+  // Uploads below need an owning entity id, but the document doesn't exist yet.
+  // Mint it first — never upload-then-mint.
+  const postId = new ObjectId();
+  const mediaItems = await uploadFeedImages(data.mediaFiles || [], postId);
 
   const post = new massclickFeedPostModel({
+    _id: postId,
     businessId: business?._id || null,
     ownerUserId: actorId,
     ownerActorType: actor.actorType || "customer",

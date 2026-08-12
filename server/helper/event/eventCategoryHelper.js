@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import eventCategoryModel from "../../model/event/eventCategoryModel.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 const formatEventCategoryImage = (category) => {
   if (!category) return category;
@@ -17,11 +18,11 @@ const formatEventCategoryImage = (category) => {
   return result;
 };
 
-const handleEventCategoryImageUpload = async (data = {}) => {
+const handleEventCategoryImageUpload = async (data = {}, categoryId) => {
   if (typeof data.categoryImage === "string" && data.categoryImage.startsWith("data:")) {
     const uploadResult = await uploadImageToS3(
       data.categoryImage,
-      `event/categories/category-${Date.now()}`
+      s3Keys.eventCategory.image(categoryId),
     );
     data.categoryImageKey = uploadResult.key;
   } else if (data.categoryImage === null || data.categoryImage === "") {
@@ -44,9 +45,14 @@ export const createEventCategory = async (reqBody = {}) => {
       throw new Error("Event category with this name already exists");
     }
 
-    await handleEventCategoryImageUpload(reqBody);
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint.
+    const categoryId = new ObjectId();
+
+    await handleEventCategoryImageUpload(reqBody, categoryId);
 
     const eventCategory = new eventCategoryModel({
+      _id: categoryId,
       categoryName: reqBody.categoryName,
       description: reqBody.description || "",
       categoryImageKey: reqBody.categoryImageKey || "",
@@ -145,7 +151,7 @@ export const updateEventCategory = async (categoryId, updateData) => {
       }
     }
 
-    await handleEventCategoryImageUpload(updateData);
+    await handleEventCategoryImageUpload(updateData, categoryId);
 
     const updatedCategory = await eventCategoryModel.findByIdAndUpdate(
       categoryId,
