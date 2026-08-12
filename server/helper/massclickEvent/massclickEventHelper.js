@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb";
-import { randomUUID } from "crypto";
 import massclickEventModel from "../../model/massclickEvent/massclickEventModel.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
+import { ulid } from "../../utils/idGen.js";
 
 const serialize = (item) => {
   const event = typeof item?.toObject === "function" ? item.toObject() : item;
@@ -32,9 +33,18 @@ export const uploadMassclickEventMedia = async ({ fileData, fileBuffer, mediaTyp
   if (!fileSize) throw new Error("The selected file is empty");
   if (fileSize > limits[mediaType]) throw new Error(`${mediaType} file is too large`);
 
+  // This is a standalone "upload media" endpoint, decoupled from event creation — the
+  // client uploads interactively while filling the form, then submits the event
+  // separately (saveMassclickEvent below also has no pre-minted id: it lets
+  // massclickEventModel.create() generate one). No real event id exists yet and may
+  // never exist if the form is abandoned, so this uses a ULID as the entity id rather
+  // than mounting a real event id — the documented case for "no document exists at
+  // upload time". Media and its thumbnail share one ULID so they land together.
+  const uploadId = ulid();
+
   const uploaded = await uploadImageToS3(
     isBinary ? fileBuffer : fileData,
-    `massclick-events/${mediaType}s/${Date.now()}-${randomUUID()}`,
+    s3Keys.massclickEvent.media(uploadId),
     {
       skipImageConversion: mediaType === "video",
       ...(isBinary ? { contentType: mimeType, extension: mimeType.split("/")[1] } : {}),
@@ -42,7 +52,7 @@ export const uploadMassclickEventMedia = async ({ fileData, fileBuffer, mediaTyp
   );
   let thumbnailKey = "";
   if (thumbnailData?.startsWith("data:image/")) {
-    const thumbnail = await uploadImageToS3(thumbnailData, `massclick-events/thumbnails/${Date.now()}-${randomUUID()}`);
+    const thumbnail = await uploadImageToS3(thumbnailData, s3Keys.massclickEvent.thumbnail(uploadId));
     thumbnailKey = thumbnail.key;
   }
   return serialize({ media: { mediaType, mediaKey: uploaded.key, thumbnailKey } }).media;
