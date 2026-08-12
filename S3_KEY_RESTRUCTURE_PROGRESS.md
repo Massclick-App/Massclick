@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-12 by Claude · **Active runId:** none
 **Current step:** 1.5 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · **1.1–1.4 ALL DONE** ·
-**1.5 in progress — Phase 1 backend deployed to DEV and verified clean; prod deploy still outstanding**
+**1.5 in progress — DEV fully verified (gates + live upload smoke test); prod deploy still outstanding**
 
 ### Everything Phase 0 + Phase 1 built — one place
 
@@ -106,7 +106,7 @@ objects, same field shapes, same volume.
 | 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
 | 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | ✅ **DONE, STRICT** | `verifyS3PathEnforcement.js` 23/23 · `lintS3Paths.js` 0/0 |
 | 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
-| 1.5 | Deploy Phase 1 dev → prod | 🟡 **DEV DONE** | dev: `checkPublicImageUrls` NEWLY broken 0, `flush-caches` 54→0 all 7 invalidators ok · **prod deploy still outstanding** |
+| 1.5 | Deploy Phase 1 dev → prod | 🟡 **DEV FULLY VERIFIED** | dev: gates clean + 2 live uploads confirmed canonical in the DB · **prod deploy still outstanding** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
@@ -1045,15 +1045,30 @@ flush-caches --commit  (via SSH tunnel to redis-dev, 127.0.0.1:6380)
   54 keys -> 0, all 7 invalidators ok — full output read, no FAIL line
 ```
 
-**No live smoke test of an actual upload was run yet** — `checkPublicImageUrls` only proves
-*existing* references still resolve; it says nothing about whether a NEW upload through any of the
-22 migrated call sites succeeds under `S3_PATH_MODE=strict` in the real dev environment (as opposed
-to the mocked/unit-level gates). **This is the one thing 1.5 hasn't actually proven yet** — do a
-real upload (e.g. edit a business logo or category image on dev) before calling dev fully clean,
-and definitely before deploying to prod.
+### 1.5 — live upload smoke test PASSED, 2026-08-12
 
-**Prod deploy not yet done.** Same sequence once dev's upload smoke test passes: deploy backend to
-prod, `checkPublicImageUrls --api=<prod> --compare=<latest prod baseline>`, must be NEWLY broken 0.
+Two real uploads through the dev admin UI, under `S3_PATH_MODE=strict`, watched via a live
+`docker logs -f massclick-api-dev` tail (no errors, no `resolveUploadPath` throw) and then verified
+directly against `massClick_dev` (bypassing any endpoint/cache ambiguity):
+
+```
+business "Varnam Fine Art" logo
+  logoImageKey:  businesses/6a1425190888a41e357fcbda/logo.webp
+  logoUploadedAt: 2026-08-12T12:20:30.914Z   <- matches the test, canonical + stable, correct
+
+category "contractor" webCard variant
+  categoryImages.webCard: categories/6902f84794361974752cb566/variant/webCard.webp
+  updatedAt: 2026-08-12T12:20:01.054Z         <- matches the test, canonical stable+seq, correct
+```
+
+Both resolve to the registry's exact expected shape — `s3Keys.business.logo()` and
+`s3Keys.category.variant(id, "webCard")` respectively. **This is the thing 1.5 needed to prove that
+no gate could**: a real upload, through the real admin UI, against the real dev database, under
+strict mode, with no fallback. **Dev is now fully verified — call it done.**
+
+**Prod deploy not yet done.** Same sequence: deploy backend to prod, `checkPublicImageUrls
+--api=<prod> --compare=<latest prod baseline>` (must be NEWLY broken 0), then ideally repeat this
+same live-upload spot-check against prod before considering 1.5 fully closed.
 
 ---
 
