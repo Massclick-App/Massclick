@@ -412,16 +412,27 @@ remains; `--compare` against a baseline is the real check, and it was validated 
 Those are covered by `verify`'s HeadObject pass plus one manual download each — that is how risk 9 is
 retired. The exclusion is documented in the script so nobody re-adds them and gets a red run.
 
-### ⏳ USER ACTION — set the GitHub repository variable
+### ✅ `REACT_APP_ASSET_BASE_URL` — done, and where each environment reads it from
 
-`REACT_APP_ASSET_BASE_URL` must be added as a repository **variable** (Settings → Secrets and variables
-→ Actions → Variables), value `https://massclickdev.s3.ap-southeast-2.amazonaws.com`. A **variable, not
-a secret**: it is a public hostname that ships in the bundle anyway, and masking it only makes build
-logs harder to read.
+This is a **build-time** variable (CRA inlines it), so where it must live depends on where the build
+runs. Verified on the server 2026-08-11:
 
-If it is left unset the build still succeeds — `imageUrlHelper.js` defaults to the same literal — but
-the `index.html` preconnect degrades to a no-op, losing the LCP head-start that the comment there says
-is worth hundreds of milliseconds.
+| Env | Built where | Reads the var from | State |
+|---|---|---|---|
+| **dev** | on the server — `/home/admin/scripts/frontend.sh dev` runs `npm run build` in `/var/www/dev-massclick/client/ui-app` | that checkout's `.env` | ✅ present |
+| **prod** | in **GitHub Actions** on push to `prod`; only the compiled `build/` is rsynced to the server | `vars.REACT_APP_ASSET_BASE_URL` | ✅ set by user |
+
+Prod is never built on the server by the CI path, so the prod checkout's `.env` is irrelevant to it —
+the repository variable is the correct and only place.
+
+**Residual gap, harmless today:** `frontend.sh prod` also exists and *would* build on the server, in
+`/var/www/massclickQA`, whose `.env` has no `REACT_APP_ASSET_BASE_URL`. A prod deploy done that way
+falls back to the hardcoded default in `imageUrlHelper.js`. That default is `massclickdev` — the bucket
+actually in use — so nothing breaks now. **It only bites if the bucket ever changes**, which is exactly
+what 0.5 exists to protect against. Closing it is a one-line addition to that checkout's `.env`.
+
+Note the same applies to `public/index.html`'s preconnect: unlike the JS it cannot carry a fallback, so
+an unset var degrades it to a no-op — images still load, the LCP head-start is lost.
 
 ---
 
@@ -753,7 +764,7 @@ Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is s
 | 8 | Is prerendering enabled on the server? | ✅ **ANSWERED 2026-08-11** — no nginx match, no container, no process. Risk 6 retired by non-existence |
 | 9 | Run `flush-caches --commit` against a real Redis | ✅ **DONE 2026-08-11** — dev Redis via tunnel; exposed and fixed an invalidation gap |
 | 7 | **Run `fixRatingPhotos.js --commit` on prod?** 50 inline-base64 photos / 20.4 MB, one doc at **71% of the 16 MB BSON limit**. Dry-run shows nothing lost. Needs a `businessreviews` backup first. **BLOCKED UNTIL 0.8 IS DEPLOYED** — the key→URL read path must ship first or every review photo 404s. Then prod, then re-clone dev, alongside open question 4 | **USER DECISION** — blocked on 0.8 |
-| 6 | Add GitHub repository **variable** `REACT_APP_ASSET_BASE_URL` = `https://massclickdev.s3.ap-southeast-2.amazonaws.com` (Settings → Secrets and variables → Actions → Variables). Build still succeeds without it; only the `index.html` preconnect degrades | **USER ACTION** — not blocking |
+| 6 | `REACT_APP_ASSET_BASE_URL` | ✅ **DONE 2026-08-11** — dev in `/var/www/dev-massclick/client/ui-app/.env`, prod as a GitHub repo variable. Both verified correct for where each is actually built. Residual: `frontend.sh prod` would build on the server without it and fall back to the default |
 | 5 | **Prod is under active data entry.** User is waiting for it to settle, then re-cloning prod → dev (stated 2026-08-11). Fine before `plan`, **destructive between `plan` and R.9** — see "Do NOT do" rule 5. Re-run `scan` on dev afterwards to refresh the baseline. Blocks nothing: 0.4–0.7 are code only and touch no database | **WAITING ON PROD — tell Claude when the clone happens** |
 
 ---
