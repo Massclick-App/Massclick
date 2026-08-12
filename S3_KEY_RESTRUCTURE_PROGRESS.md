@@ -1,13 +1,14 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-11 by Claude · **Active runId:** none
-**Current step:** 0.8 (deploy) · **Status:** 0.1–0.7 code complete; **0.8 is the next action and it is the user's**
+**Current step:** 1.3 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · 1.1+1.2 done · **1.3 is the next action**
 
 ### Everything Phase 0 built — one place
 
 ```bash
 node server/scripts/verifyS3KeyUtils.js                     # 0.3 gate   31/31
 node server/scripts/verifyAssetUrl.js                       # 0.4 gate   22/22
+node server/scripts/verifyS3ObjectKeys.js                   # 1.1+1.2    63/63
 node server/scripts/s3KeyMigration.js collections           # 0.1  registry -> backup list
 node server/scripts/s3KeyMigration.js scan --uri=… --compare-uri=…   # 0.1  baseline
 node server/scripts/s3KeyMigration.js flush-caches [--commit]        # 0.7
@@ -15,7 +16,7 @@ node server/scripts/checkPublicImageUrls.js --api=… [--compare=…]    # 0.5  
 node server/scripts/fixRatingPhotos.js --uri=… [--commit]            # 0.6  data repair
 ```
 
-New modules: `utils/s3ScopeRegistry.js` · `utils/s3KeyUtils.js` · `utils/assetUrl.js`
+New modules: `utils/s3ScopeRegistry.js` · `utils/s3KeyUtils.js` · `utils/assetUrl.js` · `utils/s3ObjectKeys.js` · `utils/idGen.js`
 **Plan:** `C:\Users\USER\.claude\plans\give-me-a-full-serene-whisper.md`
 
 ---
@@ -90,7 +91,10 @@ objects, same field shapes, same volume.
 | 0.6 | `ratingPhotos` fix + quarantine | ✅ **DONE** | write path fixed · **prod repaired 2026-08-12**, 50 photos uploaded, 11.30 MB → ~0 MB, live API verified |
 | 0.7 | `flush-caches` incl. prerender purge | ✅ DONE | proven on real Redis: 62→6→0 · **found + fixed a live invalidation gap** · risk 6 retired by non-existence |
 | 0.8 | Deploy 0.3–0.7 dev → prod | 🟡 DEV DONE | dev `e24522c6` verified: flush ok, image diff **NEWLY broken 0** · **needs redeploy for `fb515f29`** · prod untouched |
-| 1.1–1.4 | Registry, idGen, enforcement, ~50 call sites | ⬜ | lint gate passes |
+| 1.1 | `s3ObjectKeys.js` path registry | ✅ DONE | `verifyS3ObjectKeys.js` → 63/63 |
+| 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
+| 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | ⬜ **NEXT** | lint reports 0 legacy call sites |
+| 1.4 | Migrate 51 call sites across 21 files | ⬜ | lint gate passes, then flip mode to strict |
 | 1.5 | Deploy Phase 1 dev → prod | ⬜ | smoke clean; **new uploads now canonical** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
@@ -757,6 +761,75 @@ sound, but the cause is unknown. If it recurs, capture full stderr rather than t
 
 Rollback if ever needed: `node db-backups/restore.js --from db-backups/snapshots/massClick/2026-08-12_07-14-56__pre-rating-photos-quarantine`
 (dry-run by default). The 50 new S3 objects are additive and covered by bucket versioning.
+
+---
+
+## Phase 1 — where it stands
+
+**1.1 + 1.2 are done and committed (`cd038ae6`), gate 63/63.**
+
+- `utils/idGen.js` — 26-char ULID on `node:crypto`, monotonic in-process, backwards-clock safe.
+- `utils/s3ObjectKeys.js` — `s3Path` / `parseS3Key` / `isCanonicalKey` / `entityPrefix` /
+  `belongsToEntity` / `s3Keys.*` builders. Its catalogue of 44 valid `(entity, purpose,
+  stability)` triples is **derived from `s3ScopeRegistry.js` at import time**, so there is no
+  second list to drift. `s3Path` returns a **branded token carrying a Symbol** — a template
+  literal cannot fabricate one, which is what makes 1.3's chokepoint a real gate.
+
+Key shapes:
+
+```
+versioned   {entity}/{entityId}/{purpose}/{ulid}     every upload a new object
+stable      {entity}/{entityId}/{purpose}            regeneration OVERWRITES
+stable+seq  {entity}/{entityId}/{purpose}/{seq}      only categories/variant, 6 named variants
+```
+
+Keys carry **no extension** — `uploadImageToS3` appends it at [s3Uploder.js:59](server/s3Uploder.js:59),
+since only it knows whether sharp converted the buffer to webp.
+
+### 1.3 — NEXT. Three pieces, and one decision already taken
+
+1. **`resolveUploadPath()` in `s3Uploder.js`** — accepts a branded token, or a plain string only
+   if `isCanonicalKey()` passes. Route `const s3Key = ...` at line 59 through it.
+2. **`server/scripts/lintS3Paths.js`** — fails on any `uploadImageToS3(` whose 2nd argument is a
+   template literal or concatenation, and on `massclickdev.s3` outside `.env`. It should also
+   **enumerate the remaining legacy call sites**, since that list is 1.4's burndown.
+3. **`deleteEntityAssets(entity, entityId)`** — cascade delete via `entityPrefix()`. Must refuse
+   to delete anything that is not under the canonical prefix.
+
+**DECISION — enforcement ships in `warn` mode first.** There are **51 call sites across 21 files**
+still passing legacy template literals. A chokepoint that throws today breaks every image upload
+in the app the moment it is deployed, and dev/prod are being deployed on the user's own schedule.
+So: `S3_PATH_MODE` env var, default `warn` (log every offender with its call site, keep working),
+**flipped to `strict` as the final commit of 1.4** once the lint script reports zero legacy sites.
+**Until that flip the plan's "bypass impossible" requirement is NOT met** — do not mark 1.3 as
+fully retiring anything.
+
+⚠️ A first attempt at 1.3 was reverted: a Python heredoc mangled an escape and left
+`s3Uploder.js` syntactically broken. It is restored from git and imports cleanly. **Edit that file
+with the Edit tool, not a heredoc** — it has mixed CRLF/LF endings (106 CRLF / 38 LF) and is
+imported by everything.
+
+### 1.4 — the call-site inventory
+
+```
+helper/businessList/businessListHelper.js          11      helper/rewards/rewardHelper.js               1
+helper/category/categoryHelper.js                   6      helper/reviewHelper/reviewHelper.js          1
+helper/advertistment/advertismentHelper.js          6      helper/massclickFeed/massclickFeedHelper.js  1
+helper/seo/seoOnpageBlogHelper.js                   5      helper/hiring/hiringHelper.js                1
+helper/userHelper.js                                2      helper/gsc/trackedKeywordHelper.js           1
+helper/massclickEvent/massclickEventHelper.js       2      helper/event/eventLocationHelper.js          1
+helper/massclickDocuments/massclickDocumentsHelper.js 2    helper/event/eventCategoryHelper.js          1
+helper/event/eventCreationHelper.js                 2      helper/businessList/businessCertificateHelper.js 1
+helper/event/eventAdvertisementHelper.js            2      controller/msg91/msg91Controller.js          1
+controller/fcmAdminController.js                    1      controller/category/categoryImageController.js 1
+controller/categoryDisplaySettings/categoryDisplaySettingsController.js 1
+```
+
+**Ordering rule for 1.4, from the plan:** where an upload precedes document creation, always
+*mint `_id` → upload → `create()`*, never upload-then-mint. `s3Path` enforces the shape by
+rejecting a non-ObjectId/ULID `entityId`. Also fixes
+[businessListHelper.js:141](server/helper/businessList/businessListHelper.js:141), which appends
+`Date.now()` to the profile QR and orphans one object per regeneration.
 
 ---
 
