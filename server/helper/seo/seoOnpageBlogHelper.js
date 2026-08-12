@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import seoPageContentBlogModel from "../../model/seoModel/seoPageContentBlogModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import authorMasterModel from "../../model/seoModel/authorMasterModel.js";
@@ -5,6 +6,7 @@ import {
   uploadImageToS3,
   getSignedUrlByKey,
 } from "../../s3Uploder.js";
+import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
 /* =====================================
    NORMALIZE
@@ -114,7 +116,7 @@ const mapSignedUrls = (doc = {}) => {
   return doc;
 };
 
-const uploadBase64Images = async (images = []) => {
+const uploadBase64Images = async (images = [], blogId) => {
   const keys = [];
 
   for (const item of images) {
@@ -125,7 +127,7 @@ const uploadBase64Images = async (images = []) => {
       // Upload new base64 images
       const result = await uploadImageToS3(
         item,
-        `seo/page-${Date.now()}`
+        s3Keys.seoBlog.page(blogId),
       );
 
       keys.push(result.key);
@@ -210,8 +212,13 @@ export const createPageContentBlogSeo = async (
   data.bestFor = normalizeStringList(data.bestFor);
   data.features = normalizeStringList(data.features);
 
+  // Uploads below need an owning entity id, but the document doesn't exist yet.
+  // Mint it first — never upload-then-mint.
+  const blogId = new ObjectId();
+
   data.pageImageKey = await uploadBase64Images(
-    data.pageImages || []
+    data.pageImages || [],
+    blogId,
   );
 
   if (
@@ -220,7 +227,7 @@ export const createPageContentBlogSeo = async (
   ) {
     const result = await uploadImageToS3(
       data.profileImage,
-      `seo/profile-${Date.now()}`
+      s3Keys.seoBlog.profile(blogId),
     );
 
     data.profileImageKey = result.key;
@@ -232,7 +239,7 @@ export const createPageContentBlogSeo = async (
   ) {
     const result = await uploadImageToS3(
       data.ogImage,
-      `seo/og-image-${Date.now()}`
+      s3Keys.seoBlog.og(blogId),
     );
 
     data.ogImageKey = result.key;
@@ -253,7 +260,7 @@ export const createPageContentBlogSeo = async (
   delete data.selectedBusiness;
 
   const created =
-    await seoPageContentBlogModel.create(data);
+    await seoPageContentBlogModel.create({ ...data, _id: blogId });
 
   return mapSignedUrls(created.toObject());
 };
@@ -415,7 +422,8 @@ export const updateSeoPageContentBlog =
     if (Array.isArray(data.pageImages) && data.pageImages.length > 0) {
       data.pageImageKey =
         await uploadBase64Images(
-          data.pageImages
+          data.pageImages,
+          id,
         );
     } else if (!data.pageImages) {
       // If pageImages is not provided, don't update pageImageKey
@@ -433,7 +441,7 @@ export const updateSeoPageContentBlog =
     ) {
       const result = await uploadImageToS3(
         data.profileImage,
-        `seo/profile-${Date.now()}`
+        s3Keys.seoBlog.profile(id),
       );
 
       data.profileImageKey = result.key;
@@ -445,7 +453,7 @@ export const updateSeoPageContentBlog =
     ) {
       const result = await uploadImageToS3(
         data.ogImage,
-        `seo/og-image-${Date.now()}`
+        s3Keys.seoBlog.og(id),
       );
 
       data.ogImageKey = result.key;
