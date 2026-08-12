@@ -74,8 +74,18 @@ const ENTITY_RE = /^[a-z][a-z0-9-]{0,39}$/;
 const PURPOSE_RE = /^[a-z][a-z0-9-]{0,39}$/;
 const SEQ_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 
-const isEntityId = (value) =>
-  typeof value === "string" && (OBJECT_ID_RE.test(value) || isUlid(value));
+/**
+ * Every real call site passes `document._id` or `new mongoose.Types.ObjectId()` —
+ * both objects, not strings — so this must accept anything whose string form is a
+ * valid id, not just a literal string. `key = \`${entity}/${entityId}/...\`` below
+ * already coerces via the template literal either way; this just stops the *gate*
+ * from being stricter than the construction it's guarding.
+ */
+const isEntityId = (value) => {
+  if (value === null || value === undefined) return false;
+  const str = typeof value === "string" ? value : String(value);
+  return OBJECT_ID_RE.test(str) || isUlid(str);
+};
 
 /**
  * Build a canonical key.

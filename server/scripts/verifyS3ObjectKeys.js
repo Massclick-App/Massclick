@@ -10,6 +10,7 @@
  * Usage:
  *   node scripts/verifyS3ObjectKeys.js       # exits 0 on pass, 1 on any failure
  */
+import { ObjectId } from "mongodb";
 import { ulid, isUlid, ulidTime, ULID_RE, encodeUlidTime, MAX_ULID_TIME } from "../utils/idGen.js";
 import {
   s3Path,
@@ -128,6 +129,18 @@ throws("stable singleton rejects a seq", () => s3Path({ entity: "businesses", en
 throws("variant purpose requires a seq", () => s3Path({ entity: "categories", entityId: CAT, purpose: "variant" }));
 throws("variant purpose rejects an unknown variant", () => s3Path({ entity: "categories", entityId: CAT, purpose: "variant", seq: "notAVariant" }));
 check("a ULID is an acceptable entityId (no document yet)", typeof s3Path({ entity: "fcm-campaigns", entityId: ulid(), purpose: "image" }).key, "string");
+
+// Every real call site passes `document._id` or `new mongoose.Types.ObjectId()` — an
+// OBJECT, not a string. A gate that only accepted string ids would pass this whole
+// suite while throwing on every real invocation in the app — caught the hard way while
+// migrating businessListHelper.js in 1.4.
+check(
+  "a real (object, not string) ObjectId works, matching document._id in the wild",
+  s3Path({ entity: "businesses", entityId: new ObjectId(BIZ), purpose: "logo" }).key,
+  `businesses/${BIZ}/logo`,
+);
+check("...and the returned token's entityId is still a string", typeof s3Path({ entity: "businesses", entityId: new ObjectId(BIZ), purpose: "logo" }).entityId, "string");
+throws("an object that doesn't stringify to a valid id is still rejected", () => s3Path({ entity: "businesses", entityId: { toString: () => "not-an-id" }, purpose: "logo" }));
 
 console.log("\n=== parseS3Key / isCanonicalKey ===\n");
 
