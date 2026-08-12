@@ -4,10 +4,13 @@
  *
  * Proves the two runtime mechanisms without ever touching S3 or a database:
  *
- *   - `resolveUploadPath()` in `warn` mode (the shipped default) and in `strict` mode,
- *     including that a legacy string still uploads today but is logged, and that strict
- *     mode throws instead. `S3_PATH_MODE` is read once at module load, so each mode is
- *     exercised by importing s3Uploder.js fresh with a cache-busting query string.
+ *   - `resolveUploadPath()` in `warn` mode and in `strict` mode (the shipped default
+ *     since 1.4's final commit — every legacy call site is migrated, so bypass is
+ *     actually impossible now, not merely visible), including that a legacy string
+ *     still uploads in warn mode but is logged, and that strict mode throws instead, AND
+ *     that omitting S3_PATH_MODE entirely now resolves to strict, not warn. `S3_PATH_MODE`
+ *     is read once at module load, so each mode is exercised by importing s3Uploder.js
+ *     fresh with a cache-busting query string.
  *   - `deleteEntityAssets()`'s refusal guard: `entityPrefix()` throws for a malformed
  *     entity/entityId BEFORE any AWS call, so the rejection here is proof the guard
  *     fires with no network involved — nothing further in the function ever runs.
@@ -89,10 +92,10 @@ console.log("\n=== resolveUploadPath — invalid S3_PATH_MODE ===\n");
   check("rejects an unrecognised S3_PATH_MODE value", threw, true);
 }
 
-console.log("\n=== resolveUploadPath — warn mode (the shipped default) ===\n");
+console.log("\n=== resolveUploadPath — warn mode (explicit opt-in) ===\n");
 
 {
-  const { resolveUploadPath } = await loadUploader(undefined);
+  const { resolveUploadPath } = await loadUploader("warn");
 
   const token = s3Keys.business.logo(BIZ);
   check("branded token resolves to its key", resolveUploadPath(token), token.key);
@@ -139,6 +142,17 @@ console.log("\n=== resolveUploadPath — warn mode (the shipped default) ===\n")
 console.log("\n=== resolveUploadPath — strict mode ===\n");
 
 {
+  // No S3_PATH_MODE at all — proves the shipped DEFAULT is strict, not just that
+  // strict works when asked for explicitly.
+  const { resolveUploadPath: resolveDefault } = await loadUploader(undefined);
+  let defaultThrew = false;
+  try {
+    resolveDefault(LEGACY);
+  } catch {
+    defaultThrew = true;
+  }
+  check("omitting S3_PATH_MODE now defaults to strict", defaultThrew, true);
+
   const { resolveUploadPath } = await loadUploader("strict");
 
   const token = s3Keys.business.logo(BIZ);
@@ -185,5 +199,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`1.3 MECHANISM GATE PASSED — all ${passed} checks green`);
-console.log("(1.3b — lintS3Paths.js — is a separate script; run it too, it is expected to FAIL until 1.4)\n");
+console.log("(1.3b — lintS3Paths.js — is a separate script; run it too. Both are 0/0 as of 1.4's completion.)\n");
 process.exit(0);

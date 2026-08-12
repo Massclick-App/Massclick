@@ -20,10 +20,10 @@
  * correctly; it is not a general-purpose JS analyser and can be fooled by sufficiently
  * unusual formatting.
  *
- * Exit code is 0 only when BOTH lists are empty. Today it is expected to FAIL — the
- * enumerated list below IS 1.4's todo list, not a bug in this script. Flipping
- * S3_PATH_MODE to "strict" (server/s3Uploder.js) is gated on this script reporting zero
- * legacy call sites — see step 1.4.
+ * Exit code is 0 only when BOTH lists are empty. Step 1.4 finished migrating all 51
+ * original call sites and flipped S3_PATH_MODE to "strict" (server/s3Uploder.js) once
+ * this script first reported zero — a FAIL from here on means a new call site regressed
+ * to a legacy literal and must be fixed before it, not this script.
  *
  * Usage:
  *   node scripts/lintS3Paths.js               # human-readable report, exit 0/1

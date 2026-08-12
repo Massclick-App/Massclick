@@ -22,15 +22,18 @@ const s3 = new AWS.S3();
  *
  * Accepts a branded `s3Path()` token, or a plain string ONLY if `isCanonicalKey()`
  * passes. A stray template literal is not a token and does not parse as canonical, so it
- * cannot slip through silently — it either warns (default) or throws (strict).
+ * cannot slip through silently — it either warns or throws (strict, the default).
  *
- * S3_PATH_MODE defaults to "warn": 50 call sites across 21 files still pass legacy
- * literals (the 1.4 burndown — see lintS3Paths.js), and a chokepoint that throws today
- * would break every image upload in the app the moment this deploys. Flip to "strict"
- * only once lintS3Paths.js reports zero legacy call sites, as the FINAL commit of 1.4.
- * Until that flip, "bypass impossible" is not yet true — this only makes bypass VISIBLE.
+ * S3_PATH_MODE now defaults to "strict" — the FINAL commit of step 1.4, flipped once
+ * lintS3Paths.js reported zero legacy call sites across all 51 sites in 22 files. Bypass
+ * is now actually impossible, not merely visible: an uncaught path resolves to nothing
+ * a fresh call site can accidentally reintroduce. `S3_PATH_MODE=warn` remains available
+ * as an emergency override (log and keep working) if something outside the lint's scan
+ * surfaces after this deploys — server/ and client/ui-app/src only, so a call site added
+ * elsewhere (a script directory it doesn't walk, a future workspace) would not be caught
+ * by the static gate and would only be caught here, at runtime.
  */
-const S3_PATH_MODE = String(process.env.S3_PATH_MODE || "warn").toLowerCase();
+const S3_PATH_MODE = String(process.env.S3_PATH_MODE || "strict").toLowerCase();
 if (S3_PATH_MODE !== "warn" && S3_PATH_MODE !== "strict") {
   throw new Error(`S3_PATH_MODE must be "warn" or "strict", got ${JSON.stringify(process.env.S3_PATH_MODE)}`);
 }
