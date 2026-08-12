@@ -6,7 +6,7 @@ on:
       - prod
     paths:
       - 'server/**'
-      - '.github/workflows/backend-deploy.yml'
+      - '.github/workflows/ci-backend-deploy.yml'
 
 jobs:
   build-and-deploy:
