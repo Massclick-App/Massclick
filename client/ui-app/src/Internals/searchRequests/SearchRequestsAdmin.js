@@ -76,7 +76,7 @@ export default function SearchRequestsAdmin() {
     try {
       const updated = await dispatch(markSearchRequestRead(request._id));
       setRequests((current) => current.map((item) => item._id === updated._id ? updated : item));
-      setMessage(`${request.fullName}'s request was marked as read.`);
+      setMessage(`${request.fullName}'s request was marked as read and the customer message was sent.`);
       window.dispatchEvent(new Event("search-requests:changed"));
     } catch (error) {
       setMessage(error.response?.data?.message || "The request could not be marked as read.");
@@ -107,7 +107,7 @@ export default function SearchRequestsAdmin() {
         <span className={cx("completed")}><CheckCircle2 size={16} /> Read</span>
       ) : (
         <Button size="small" variant="contained" startIcon={<CheckCircle2 size={15} />} disabled={readingId === request._id} onClick={() => markRead(request)}>
-          {readingId === request._id ? "Saving…" : "Mark as read"}
+          {readingId === request._id ? "Sending..." : "Mark as read"}
         </Button>
       ),
     },

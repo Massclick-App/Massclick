@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import searchRequestModel from "../../model/searchRequest/searchRequestModel.js";
+import { sendSearchRequestCompletedMessage } from "../msg91/smsGatewayHelper.js";
 
 const clean = (value) => String(value || "").trim();
 
@@ -39,6 +40,14 @@ export const listSearchRequests = async ({ status, read, search, sortBy = "creat
 
 export const markSearchRequestRead = async (id) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid search request ID");
+  const currentItem = await searchRequestModel.findById(id).lean();
+  if (!currentItem) throw new Error("Search request not found");
+  if (currentItem.isRead) return currentItem;
+
+  await sendSearchRequestCompletedMessage(currentItem, {
+    sourceId: currentItem._id?.toString?.(),
+  });
+
   const item = await searchRequestModel.findByIdAndUpdate(id, { isRead: true }, { new: true, runValidators: true }).lean();
   if (!item) throw new Error("Search request not found");
   return item;
