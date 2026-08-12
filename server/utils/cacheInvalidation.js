@@ -65,6 +65,7 @@ export const invalidateSearchCache = async () => {
       'suggestions:*',
       'trends:*',
       'trending-categories:*',
+      'mobile-v3:*',           // GET /api/businesslist/findByMobile — carries business images
       'cache:*',
     ];
     const results = await Promise.all(
@@ -124,24 +125,28 @@ export const invalidateCategoryDisplaySettingsCache = async () => {
       'home-category-v2:*',        // GET /api/v2/category/home
       'home-mobile-category-v2:*', // GET /api/v2/category/home-mobile + mobile-service-cards
       'category-v2:*',             // GET /api/v2/category/sub/:parentSlug
+      'district-category-v2:*',    // GET /api/v2/category/district — carries category images
     ];
-    // Controller-level explicit cache keys
-    const directKeys = [
-      'home-categories:desktop:v2',
-      'home-categories:mobile:v2',
-      'popular-categories:home:v2',
-      'service-cards:home:v2',
-      'service-cards:mobile:v2',
-      'popular-searches:home:v2',
-      'top-tourist:home:v2',
-      'popular-category-content:home:v2',
+    // Controller-level cache keys, as PATTERNS rather than an explicit list.
+    // The explicit list is what drifted: it named only the ':v2' variants, so the
+    // v1 keys written by categoryController.js were never cleared. Patterns cover
+    // both and cannot drift again when a new suffix appears.
+    const directPatterns = [
+      'home-categories:*',
+      'popular-categories:*',
+      'service-cards:*',
+      'popular-searches:*',
+      'top-tourist:*',
+      'popular-category-content:*',
     ];
     const patternResults = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))
     );
-    await Promise.all(directPatterns.map(pattern => deleteCachePattern(pattern)));
+    const directResults = await Promise.all(
+      directPatterns.map(pattern => deleteCachePattern(pattern))
+    );
     await logger.info(`Invalidated category display settings cache`);
-    return patternResults.every(r => r === true);
+    return [...patternResults, ...directResults].every(r => r === true);
   } catch (error) {
     await logger.error("Error invalidating category display settings cache", error);
     return false;
