@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import userModel from "../model/userModel.js"
 import { uploadImageToS3, getSignedUrlByKey } from "../s3Uploder.js";
+import { s3Keys } from "../utils/s3ObjectKeys.js";
 import bcrypt from "bcrypt";
 
 const updateManagerSalesBy = async (officerId, newManagerId, oldManagerId) => {
@@ -25,10 +26,14 @@ export const createUsers = async function (reqBody = {}) {
       reqBody.password = await bcrypt.hash(reqBody.password, saltRounds);
     }
 
+    // Uploads below need an owning entity id, but the document doesn't exist yet.
+    // Mint it first — never upload-then-mint.
+    const userId = new ObjectId();
+
     if (reqBody.userProfile) {
       const uploadResult = await uploadImageToS3(
         reqBody.userProfile,
-        `admin/users/profile-${Date.now()}`
+        s3Keys.admin.avatar(userId),
       );
       delete reqBody.userProfile;
       reqBody.userProfileKey = uploadResult.key;
@@ -40,7 +45,7 @@ export const createUsers = async function (reqBody = {}) {
       reqBody.managedBy = null;
     }
 
-    const usersDocument = new userModel(reqBody);
+    const usersDocument = new userModel({ ...reqBody, _id: userId });
     const result = await usersDocument.save();
 
     if (result.role === 'SalesOfficer' && result.managedBy) {
@@ -151,7 +156,7 @@ export const updateUser = async (id, data) => {
   if (data.userProfile && typeof data.userProfile === "string" && data.userProfile.startsWith("data:image")) {
     const uploadResult = await uploadImageToS3(
       data.userProfile,
-      `admin/users/profile-${Date.now()}`
+      s3Keys.admin.avatar(id),
     );
     data.userProfileKey = uploadResult.key;
   } else if (data.userProfile === null || data.userProfile === "") {
