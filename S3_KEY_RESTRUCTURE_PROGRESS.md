@@ -10,6 +10,8 @@ wasn't synced to the true final value). **Still open before Rehearsal 1:** the h
 pause/cancel (`isStopRequested` stopping a live loop) haven't been exercised — the test run was too fast
 to hit either — and the card has never been viewed in a browser. Still missing entirely:
 `sweep`/`undelete`/`restore-from-local` — low priority, only needed at S.3, deliberately deferred.
+**2026-08-13: `categories` collection reclonded prod → dev via the new `prodDevSync.js` tool — the
+category-rehearsal blocker is resolved**, see "2026-08-13 — `categories` recloned" below.
 
 ### Everything Phase 0 + Phase 1 built — one place
 
@@ -230,6 +232,95 @@ Per user request, the SystemSettings card stopped being monitor-only. Plan appro
   standing preference, the dev server was not started and the UI was not exercised in a browser this
   session — verification here was gate scripts + Babel parse checks only.
 - `reverse`/`rollback-copies`/`doctor`/`resume` remain CLI-only — a deliberate later phase, not built.
+
+### 2026-08-13 — `categories` recloned prod → dev, category-rehearsal blocker resolved (Claude)
+
+Built `server/scripts/prodDevSync.js` (`diff` read-only, `reclone` wipes+reinserts named dev collections
+from prod — see the file's own header comment for full behavior). Run locally against the user's own SSH
+tunnel (`ssh massclick`, `127.0.0.1:27018`), not on the VPS itself, per the user's instruction not to run
+this on the server.
+
+- `diff --collections=categories --check-content`: id sets identical (545=545, 0 missing either side) but
+  **2 documents differed at the byte level** — confirming dev was still not a clean clone.
+  `6a0c2eaf1cd0e0343e0ca37a` ("neet coaching") is the **exact same `_id`** that broke the 2026-08-13
+  category rehearsal (see above): `categoryImageKey` and `categoryImages.mobileVertical` pointed at
+  different S3 objects (different upload timestamps) on each side, which is exactly the collision
+  `plan`'s dedup hardening now catches. The other, `6902f84794361974752cb566` ("contractor"), had a
+  dev-only `categoryImages.webCard` key prod didn't have at all.
+- `categories` has `missing-in-prod=0` (no dev-only category docs), so `reclone --collections=categories
+  --commit` was safe with no `--acknowledge-dev-only-loss` needed. Snapshot auto-written to
+  `db-backups/2026-08-13T11-36-29-582Z_pre-reclone-categories/dev_categories.json` before the wipe (the
+  script's own mandatory pre-write snapshot). Wiped 545, inserted 545/545, dev now matches prod exactly.
+- Re-ran `diff --collections=categories --check-content` post-reclone: **differs=0.** `categories` is now
+  a byte-exact clone.
+- Full unscoped `diff` (no `--check-content`, all 20+ collections) also captured for reference — the usual
+  drift is concentrated in high-churn logging/analytics collections (`web_analytics_events` +1288 dev-only,
+  `auth_audit_events` +2092 dev-only, `msg91_whatsapp_audits` +193 dev-only) plus small counts in
+  `businesslists` (8), `businessreviews` (3), `msgusers` (2), `oauthusers` (28) — none overlap with the S3
+  migration's field set, so none of this blocks retrying the `category` scope.
+- **Found, not yet fixed:** `EXCLUDED_COLLECTIONS` in `prodDevSync.js` checks singular no-underscore names
+  (`"s3keymigrationjob"`) but the real Mongoose collection names have underscores
+  (`s3_key_migration_jobs`, `s3_cache_header_migration_jobs`, `business_webp_migration_jobs`), so the
+  exclusion never matches — those job-tracking collections show up as diff noise instead of being skipped.
+  Harmless (nothing destructive), cosmetic only.
+- `prodDevSync.js` itself is still staged, not committed (`git add -f`, since `server/scripts/` is
+  gitignored).
+
+**Update — later the same session: full-database reclone, not just `categories`.** User asked for a
+complete `--check-content` diff across every collection (`gmaps_leads` excluded — 321,919 docs, id-set
+already confirmed identical, not worth the scan time), found via id-set-only pass first, then two more
+runs to get through the rest after the SSH tunnel dropped twice mid-scan (`ECONNREFUSED`/`ECONNRESET` —
+user's own `ssh massclick` session was reconnecting on its own, unrelated to this tooling). Full results
+in `_migrations/prod-dev-sync/full-check-content-no-gmaps2.log` + `full-check-content-remainder.log`.
+
+17 collections had byte-level conflicts. Split into two batches by whether `reclone` would destroy
+dev-only documents:
+
+- **12 with zero dev-only docs — recloned immediately, no data at risk:** `advertisments`,
+  `seopagecontents`, `seopagecontentblogs`, `seotemplates`, `masterlocations`, `users`, `seodatas`,
+  `categorydisplaysettings`, `eventcreations`, `massclick_feed_posts`, `massclick_quotation_counter`,
+  `systemsettings`.
+- **5 with dev-only docs — flagged first, user explicitly approved losing them, then recloned:**
+  `businesslists` (8 dev-only, and **9,626 of ~9,831 shared docs differed** — by far the largest gap,
+  consistent with prod being under continuous live traffic per the 0.1 baseline's "~50 new objects/hour"
+  finding), `msg91_whatsapp_audits` (193 dev-only), `msg91_recipient_healths` (17 dev-only),
+  `businessreviews` (3 dev-only), `msgusers` (2 dev-only).
+
+Post-reclone `--check-content` re-verification on all 17 (+ `categories`): every one at `differs=0` except
+three collections with 1-2 new diffs from prod's live traffic *during* the verification pass itself
+(`businesslists` 1, `seopagecontents` 1, `seotemplates` 2) — not a bug, just the same moving-target
+behaviour the 0.1 baseline already documented.
+
+**`masterlocations` needed a real fix, not just a clone.** Before recloning, only 5 of 8,209 docs differed
+(`missing-in-prod=0`, so nothing dev-only existed to lose at the id level) — but content mattered here.
+Pulled the pre-reclone snapshot and diffed each of the 5 by hand:
+
+- **2 were prod-ahead** (a Tirunelveli district doc deactivated in prod 2026-08-10, a Thanjavur Central
+  keyword edit) — reclone correctly brought dev current. Left as-is.
+- **3 were dev-ahead and got wrongly reverted:** `6a50c1a06b22d8c7e238405f` (Srirangam South ward),
+  `6a50c1a06b22d8c7e2384134` (Srirangam zone), `6a50c1a06b22d8c7e2384146` (Tiruchirappalli district) all
+  carry the *same* `updatedAt` (`2026-08-10T07:32:56.896Z`) and the same missing value after reclone: a
+  pincode `620002` added to the Trichy ward→zone→district hierarchy, with `childCount` bumped at the
+  ward/zone levels to match, never mirrored to prod. `reclone` silently overwrote all three with prod's
+  stale July 10 versions.
+- **Fixed:** restored exactly those 3 `_id`s from the pre-reclone snapshot
+  (`db-backups/2026-08-13T11-55-16-684Z_pre-reclone-masterlocations/dev_masterlocations.json`) via a
+  one-off `replaceOne` per doc — verified `pincodes`/`childCount`/`updatedAt` match the pre-reclone values
+  exactly. Nothing else in `masterlocations` was touched.
+
+**Lesson for any future reclone, S3 migration or otherwise:** `missing-in-prod=0` only proves no *entire
+document* is dev-only — it says nothing about whether a shared `_id`'s dev-side content is newer than
+prod's. `reclone` has no concept of "newer wins"; it always makes dev = prod. Before recloning any
+collection where dev-only edits are plausible (an active initiative, recent admin changes), check which
+side is actually ahead on the differing docs first — same manual diff done here — rather than assuming
+`differs > 0` + `missing-in-prod = 0` is automatically safe.
+
+**Found, still not fixed:** the `EXCLUDED_COLLECTIONS` bug above (job-tracking collections not actually
+excluded) — noted, cosmetic, low priority.
+
+`prodDevSync.js` itself is still staged, not committed (`git add -f`, since `server/scripts/` is
+gitignored). A `plan --scope=category` has not been re-run against the now-clean data to confirm
+`conflicts.jsonl` comes back empty.
 
 **End of Track A = "ready to run".** Nothing further happens until the user triggers it.
 
