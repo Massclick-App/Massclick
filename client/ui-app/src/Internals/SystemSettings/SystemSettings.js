@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchSystemSettings, updateSystemSettings } from "../../redux/actions/systemSettingsAction.js";
 import { fetchRedisStatus, invalidateCache, clearAllCaches, fetchRedisKeys, deleteRedisKeys, fetchRedisInfo, flushRedisDb, deleteRedisPattern } from "../../redux/actions/cacheActions.js";
 import S3CacheHeaderMigrationCard from "./S3CacheHeaderMigrationCard.js";
+import S3KeyMigrationCard from "./S3KeyMigrationCard.js";
 import axiosInstance from "../../services/axiosInstance.js";
 import styles from "./SystemSettings.module.css";
 
@@ -1350,6 +1351,7 @@ export default function SystemSettings() {
       case "media":
         return <div className={cx("panel-stack")}>
             <S3CacheHeaderMigrationCard />
+            <S3KeyMigrationCard />
           </div>;
       default:
         return null;

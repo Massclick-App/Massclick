@@ -14,6 +14,13 @@ import {
   getS3CacheHeaderMigrationJobAction,
   getSupportedS3CacheScopesAction,
 } from "../controller/systemSettings/s3CacheHeaderMigrationController.js";
+import {
+  getLatestS3KeyMigrationJobAction,
+  getS3KeyMigrationJobAction,
+  getS3KeyMigrationRunsAction,
+  pauseS3KeyMigrationJobAction,
+  cancelS3KeyMigrationJobAction,
+} from "../controller/systemSettings/s3KeyMigrationController.js";
 // Temporarily hidden. Uncomment to restore WebP migration admin routes.
 // import {
 //   cancelBusinessWebpMigrationAction,
@@ -71,6 +78,34 @@ router.get(
   "/api/admin/system-settings/s3-cache-header-migration/:jobId",
   requireAdminAuth(),
   getS3CacheHeaderMigrationJobAction,
+);
+
+// S3 Key Restructure (2.2/2.3) monitoring routes — no /start, see plan: the CLI is
+// the only way to begin a run, this only ever reads the job doc it writes.
+router.get(
+  "/api/admin/system-settings/s3-key-migration/latest",
+  requireAdminAuth(),
+  getLatestS3KeyMigrationJobAction,
+);
+router.get(
+  "/api/admin/system-settings/s3-key-migration/runs",
+  requireAdminAuth(),
+  getS3KeyMigrationRunsAction,
+);
+router.post(
+  "/api/admin/system-settings/s3-key-migration/pause",
+  requireAdminAuth(),
+  pauseS3KeyMigrationJobAction,
+);
+router.post(
+  "/api/admin/system-settings/s3-key-migration/cancel",
+  requireAdminAuth(),
+  cancelS3KeyMigrationJobAction,
+);
+router.get(
+  "/api/admin/system-settings/s3-key-migration/:jobId",
+  requireAdminAuth(),
+  getS3KeyMigrationJobAction,
 );
 
 // router.post(

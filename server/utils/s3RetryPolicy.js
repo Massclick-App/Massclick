@@ -41,14 +41,22 @@ export const withRetry = async (fn, retryCount = 3) => {
  * library — deliberately minimal, no new dependency, matches the plan's "8-16
  * concurrent CopyObject" sizing. Each result is {item, ok, value, error}; nothing
  * throws out of runPool itself, so one failure never aborts the rest of the batch.
+ *
+ * `shouldStop()`, if given, is checked before each new item is picked up — returning
+ * true stops the pool from starting further work (in-flight items still finish; this
+ * is what makes pause/cancel from the monitoring card actually stop a running `copy`,
+ * not just relabel a job doc nobody is watching). Stopped-before-start items are left
+ * out of `results` entirely, and the caller can tell how many ran via `results.length`
+ * after filtering `undefined` holes — see cmdCopy's usage.
  */
-export const runPool = async (items, limit, worker, onProgress) => {
+export const runPool = async (items, limit, worker, onProgress, shouldStop) => {
   const results = new Array(items.length);
   let nextIndex = 0;
   let completed = 0;
 
   const runOne = async () => {
     while (nextIndex < items.length) {
+      if (shouldStop && (await shouldStop())) return;
       const i = nextIndex;
       nextIndex += 1;
       try {

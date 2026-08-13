@@ -107,6 +107,12 @@ s3KeyMigrationJobSchema.index(
   },
 );
 
+// Exported so the CLI (which opens its own per-invocation connection via
+// mongoose.createConnection(), not the app's shared default connection the Express
+// server uses) can bind the SAME schema to that connection via `connection.model(...)`
+// instead of duplicating the schema — see utils/s3MigrationJobTracking.js.
+export { s3KeyMigrationJobSchema };
+
 const s3KeyMigrationJobModel =
   mongoose.models[S3KEYMIGRATIONJOB] ||
   mongoose.model(S3KEYMIGRATIONJOB, s3KeyMigrationJobSchema);

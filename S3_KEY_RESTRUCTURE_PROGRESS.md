@@ -1,14 +1,15 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-13 by Claude · **Active runId:** none
-**Current step:** 2.2 (code complete, one real test outstanding) · **Status:** Phase 0 + Phase 1 all DONE,
-deployed to dev+prod · **2.1 already done (built ahead of schedule in 0.1). All of 2.2's CLI verbs now
-exist: `plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`status`/`doctor`/`resume`/`reverse`/`rollback-copies`.
+**Current step:** 2.3 done (code complete) · **Status:** Phase 0 + Phase 1 all DONE, deployed to dev+prod ·
+**2.1 already done (built ahead of schedule in 0.1). All of 2.2's CLI verbs exist:
+`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`status`/`doctor`/`resume`/`reverse`/`rollback-copies`. 2.3
+(monitoring card + 5 admin endpoints + job-doc lease/heartbeat wired into copy/rewrite) is also built.
 `plan`/`copy`/`verify-s3`/`rollback-copies` are proven against real data. `rewrite`/`reverse`'s real
-DB-write cycle was attempted, blocked by the Claude Code permission classifier, and the user chose to
-defer it — so that cycle is NOT yet proven for real. Do not start Rehearsal 1 until it is.** Still
-missing: `sweep`/`undelete`/`restore-from-local` (low priority, needed only at S.3) and the 2.3 monitoring
-card + 5 admin endpoints (needed before Rehearsal 1).
+DB-write cycle, AND everything in 2.3 that needs a real Mongo write (job claim/heartbeat/pause-cancel),
+are code-complete but UNTESTED against real data — blocked by the Claude Code permission classifier, user
+chose to defer. Do not start Rehearsal 1 until this is closed.** Still missing:
+`sweep`/`undelete`/`restore-from-local` — low priority, only needed at S.3, deliberately deferred.
 
 ### Everything Phase 0 + Phase 1 built — one place
 
@@ -115,7 +116,7 @@ objects, same field shapes, same volume.
 | 1.5 | Deploy Phase 1 dev → prod | ✅ **DONE** | dev: gates clean + 2 live uploads confirmed canonical · **prod (2026-08-13): checkPublicImageUrls NEWLY broken 0, flush-caches 8830→248 all 7 invalidators ok, live logo upload confirmed canonical + zero errors** |
 | 2.1 | Scope registry to all ~20 collections | ✅ **DONE** — already complete from 0.1, one real gap found+fixed 2026-08-13 | `verifyS3ObjectKeys.js` 66/66 |
 | 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | 🟡 **ALL CLI verbs built** (`sweep`/`undelete`/`restore-from-local` excepted, low priority) — `plan`/`copy`/`verify-s3`/`rollback-copies` proven for real; `rewrite`/`reverse`'s real DB-write cycle blocked by permission classifier, user deferred it | `copy --commit` + `verify-s3` + `rollback-copies --commit` all proven on real S3 data; `rewrite --commit` attempt blocked, dev doc confirmed byte-identical afterward |
-| 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
+| 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | 🟡 **code complete** — untested against real Mongo | code review + `@babel/core` parse checks + import checks; no live job doc ever created |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
 | 4 | **Rehearsal: `category/`** full cycle | ⬜ | smoke + UI clean |
 
@@ -1356,10 +1357,102 @@ to happen** — either the user runs `rewrite --commit`/`reverse --commit` thems
 permission for Claude to do it. Do not skip straight to Rehearsal 1 on the strength of code review alone;
 the plan's own reasoning for demanding a rehearsed `reverse` before a real `rewrite` applies exactly here.
 
-**Still NOT built:** `sweep`, `undelete`, `restore-from-local`, the monitoring card, and the 5 admin
-endpoints. `sweep`/`undelete`/`restore-from-local` are only needed at S.3, 30+ days after a Track B run
-that hasn't started — low priority. The monitoring card + endpoints are needed before Rehearsal 1 per the
-plan ("Build this in Track A, before the rehearsals") but are a separate, mostly-frontend chunk of work.
+**Still NOT built:** `sweep`, `undelete`, `restore-from-local`. Only needed at S.3, 30+ days after a Track B
+run that hasn't started — low priority, deliberately deferred.
+
+---
+
+## 2.3 — monitoring card + 5 admin endpoints — DONE, code complete, untested against real Mongo
+
+Asked the user how to handle this given `copy`/`rewrite` didn't write to the Mongo job doc at all yet —
+build the full plan-matching version (lease/heartbeat wired into the CLI itself) vs. a lighter card reading
+`state.json` directly. **User chose the full version**, so this required wiring real lease/heartbeat/
+pause-cancel bookkeeping into `copy`/`rewrite`'s already-working, already-tested loops — a bigger lift than
+2.3 looked like on paper.
+
+### Job-doc bookkeeping wired into the CLI
+
+**New `utils/s3MigrationJobTracking.js`** — `createJobTracker(connection)`, a FACTORY rather than a
+singleton, because the CLI opens its own per-invocation `mongoose.createConnection()` (see
+`s3MigrationScan.js`'s `connect()`), not the app's shared default connection the Express server uses — so
+the job model must be bound per-connection via `connection.model(...)`, reusing the same schema
+`s3KeyMigrationJobModel.js` now also exports (`s3KeyMigrationJobSchema`, alongside its default-connection-
+bound model for the controller's use).
+
+Deliberately structured differently from `s3CacheHeaderMigrationHelper.js`: that job runs *inside* the
+always-on Express server process (`/start` triggers an in-process async worker). This plan says explicitly
+**"No /start"** — the CLI is the only way to begin a run, so there is no in-process worker here. The CLI
+process itself is the worker; it claims the job doc, heartbeats while it runs, and releases it on exit.
+
+- `claimJob` — upserts the ONE job doc per `runId` (not one per phase), using the `{jobType, activeSlot}`
+  unique-partial index for real mutual exclusion: only one run may hold `activeSlot:"active"` system-wide,
+  across ALL runIds, matching this migration's own assumption that only one commit-writing operation is
+  ever in flight. Throws a clear "another run is active" error on conflict — always fatal, correctly.
+- `updateOwnedJob`/`updateProgress` — steal-safe writes (filter on `_id`+`status:"running"`+`workerId`).
+- `isStopRequested` — a light, unowned read the CLI's OWN loop polls to notice a pause/cancel from the UI.
+- `startHeartbeat` — `setInterval`, `.unref()`ed, same `LEASE_DURATION_MS/3` cadence as the cache-header job.
+- `finishJob` / `failJob` / `releaseSlot` — three distinct end states, not one. `releaseSlot` is the
+  subtle one: called by the CLI **after** it has actually stopped iterating on a pause/cancel, and
+  deliberately does NOT touch `status` (the admin endpoint already set that) — its only job is dropping
+  `activeSlot`/`workerId`. The admin `pause`/`cancel` actions themselves never touch `activeSlot` either,
+  for the same reason: releasing the exclusive slot the instant "Pause" is clicked would let a brand-new
+  run claim it while the OLD CLI process might still be mid-batch, finishing an in-flight S3/DB write.
+
+**`runPool` (`s3RetryPolicy.js`) gained an optional `shouldStop()` callback** — checked before each new
+item is picked up; in-flight items still finish, no new ones start. This is what makes Pause/Cancel from
+the card actually stop a running `copy`, not just relabel a job doc nobody's watching. `rewrite`'s
+sequential loop gets the same behaviour via a direct `isStopRequested` check every 5 iterations.
+
+Both `copy` and `rewrite` now accept `--state-uri=<db>` — optional; job tracking is skipped entirely (with
+a printed note) if it's omitted, so both commands still work standalone without Mongo. Progress is pushed
+to the job doc every 5 completions (throttled, not per-item, to avoid hammering Mongo).
+
+**A real bug caught before it shipped:** the first version called `tracker.finishJob`/`releaseSlot` for
+`rewrite` AFTER the `finally` block that closes the job-doc connection — every post-loop job-doc write
+would have silently failed against a closed connection. Caught by re-reading the function's control flow
+end-to-end, not by a test (there was no way to test this without the real Mongo write the user had already
+asked to hold off on) — moved the finish/release calls to before the `finally`, inside the `try`, where
+`copy`'s equivalent logic already correctly had them.
+
+### Backend — 5 endpoints, no `/start`
+
+**New `controller/systemSettings/s3KeyMigrationController.js`** — `GET /latest` (the active job, i.e.
+whichever doc currently holds `activeSlot:"active"`, plus the most recently touched doc as a fallback so
+the card isn't blank between runs), `GET /:jobId`, `GET /runs` (recent history), `POST /pause`, `POST
+/cancel`. Reuses `clampInteger`/`errorStatus`/`resolveActiveJobId` conventions from the cache-header
+controller, adapted since this job model keys by `runId` rather than a single global slot. Routes added to
+`systemSettingsRoutes.js` under `/api/admin/system-settings/s3-key-migration/*`, `requireAdminAuth()` on
+all five, `/latest` and `/runs` registered before `/:jobId` (route-ordering gotcha the cache-header routes
+already demonstrate the fix for).
+
+### Frontend — `S3KeyMigrationCard.js`
+
+Modelled on `S3CacheHeaderMigrationCard.js` per the plan, sharing `BusinessImageMigrationCard.module.css`
+(confirmed every classname used actually exists in that file before writing the component, rather than
+guessing). No scope-selector, no batch-size/retry inputs, **no Start button at all** — matches "Read-only,
+plus stop. Never start." Shows: `runId`, phase, target database (**"stated loudly" per the plan** — shown
+even when it's "S3 only, no database" during the `copy` phase, never left blank), counts/progress bar,
+started/finished/cursor/last-heartbeat, last error, and a recent-runs history list. **Liveness is derived
+from heartbeat age, not from `status`** — a hard-killed CLI process freezes `status:"running"` forever, so
+trusting status alone would show a dead run as healthy; the card explicitly renders "⚠️ Worker not
+responding — run doctor then resume" when the heartbeat is stale, per the plan's "The one thing this card
+must get right." Wired into `SystemSettings.js` next to the cache-header card, exactly where the plan said
+it would go (line 6 import, line 1352 render — the file hadn't moved since the plan was written).
+
+### Verification — code review + parse checks only, no real Mongo write
+
+Syntax-checked all new/changed server files (`node --check` and dynamic `import()` to catch runtime
+import-time errors — all 4 new server modules load cleanly with no missing exports or bad paths).
+Parse-checked the JSX with `@babel/core` directly (`parseSync` with `@babel/preset-react`, no build, no
+dev server, respecting the standing "ask before npm build/start" preference) — `S3KeyMigrationCard.js` and
+the edited `SystemSettings.js` both parse clean. All 4 core gates stayed green throughout.
+
+**What was NOT tested: anything that requires a real Mongo write** — `claimJob`'s upsert-and-unique-index
+behaviour, the heartbeat timer, `isStopRequested` actually stopping a running loop, the pause/cancel
+endpoints, the card actually rendering live data. This is the SAME category of gap already flagged for
+`rewrite`/`reverse` (a real DB write), just against a brand-new, empty bookkeeping collection instead of
+business data — bundled with that same open item rather than attempting another live write unprompted
+after the user had already asked to hold off once this session.
 
 ---
 
@@ -1587,6 +1680,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-13 | **2.3 built: monitoring card, 5 admin endpoints, and job-doc lease/heartbeat wired into `copy`/`rewrite`.** Asked the user how to handle the gap between the plan's card design (polls a Mongo job doc with heartbeat liveness) and the CLI (which didn't write to that job doc at all) — offered a lighter state.json-reading alternative; **user chose the full plan-matching version**, so this meant wiring real lease/claim/heartbeat/pause-cancel bookkeeping into already-working, already-tested `copy`/`rewrite` loops, not just adding a read-only view. Built `utils/s3MigrationJobTracking.js` as a connection-bound factory (the CLI's per-invocation `mongoose.createConnection()` needs `connection.model(...)`, not the app's shared default connection the new controller uses) with `claimJob`/`updateProgress`/`isStopRequested`/`finishJob`/`failJob`/`releaseSlot`. Gave `runPool` a `shouldStop()` callback so Pause/Cancel from the card can actually stop a running `copy` mid-flight, not just relabel a job doc nobody's watching. Caught and fixed a real bug before it shipped: `rewrite`'s finish/release calls were originally placed AFTER the `finally` block that closes the job-doc connection, so they'd have silently failed against a closed connection — found by re-reading the control flow, since there was no way to test it live. Built the 5-endpoint controller (no `/start`, matching the plan) and the React card (liveness from heartbeat age, never from `status` alone — a hard-killed CLI freezes `status:"running"` forever). Also fixed an unrelated pre-existing gap while at it: the hardcoded bucket URL in `client/.../MRP/mrp.js` that 0.5 should have caught (`lintS3Paths.js` back to 0/0). Verified everything that doesn't need a real Mongo write: `node --check` + dynamic `import()` on every new/changed server file, `@babel/core` parse checks on the JSX (no build run, per the standing preference), all 4 core gates green throughout. **Deliberately did NOT attempt another real Mongo write this session** — the job-doc claim/heartbeat/pause-cancel machinery is bundled with the already-deferred `rewrite`/`reverse` real-write gap rather than testing it live unprompted. Full detail in "2.3 — monitoring card" above. |
 | 2026-08-13 | **All of 2.2's CLI verbs built in one continued session: `copy`, `verify-s3`, `rewrite`, `verify`, `status`, `doctor`, `resume`, `reverse`, `rollback-copies`.** `copy`/`verify-s3` proven end-to-end on real S3 data with user approval: 8/8 objects copied, verify-s3 independently confirmed, idempotent re-run correctly no-op'd, test objects deleted after. Built `utils/s3RetryPolicy.js` (withRetry/NON_RETRYABLE_AWS_CODES copied verbatim from the cache-header migration per the plan's own instruction, plus a small concurrency pool). Attempted the full real rehearsal-style cycle (`plan`→`copy`→`rewrite`→`verify`→`reverse`→`rollback-copies`) on dev only, after the user approved it with an important caution: dev and prod share the same S3 bucket/container, so revert correctly and be very careful with prod. The `rewrite --commit` step itself was blocked by the Claude Code auto-mode permission classifier — a platform-level gate independent of the user's in-chat approval, not routed around per instructions. Asked the user how to proceed; **they chose to skip the real test for now.** Cleaned up fully: `rollback-copies --commit` deleted the 8 test S3 objects (itself a real, successful test of that command), and an independent before/after DB read confirmed the dev document was never touched. **Net result: `rewrite`/`verify`/`reverse` are code-complete, syntax-checked and dry-run tested, but their real DB-write path has never executed — this must happen (user-run or permission-granted) before Rehearsal 1 can start**, per the plan's own "reverse must be rehearsed before rewrite runs for real" rule. All 3 core gates stayed green throughout. Full detail in "Phase 2 — where it stands" above. |
 | 2026-08-13 | **Phase 2 started (user said "GO CONTINUE"). 2.1 found already done from 0.1; `plan` (part of 2.2) built and verified live.** Discovered and fixed a real registry bug hit while building `plan`'s key-minting logic: `businessReviews.ratingPhotos` was declared under the wrong entity/purpose, which would have made migrated legacy objects permanently diverge from what `reviewHelper.js` actually writes going forward — added `entity`/`entityIdField` per-field overrides to `s3ScopeRegistry.js` to fix it, and deleted the now-provably-dead `s3Keys.review.photo` builder it had produced. Extracted `scan`'s DB-walking logic into `utils/s3MigrationScan.js` so `plan` reuses the identical classification rather than a second copy — found and fixed an unrelated pre-existing bug in the process (`scan`'s clone-check block was nested inside the fan-out loop, crashing on `scan --uri=only` with any fan-out present). Built `utils/s3MigrationManifest.js` (checksummed plan outputs, torn-line-tolerant append-only logs, atomic `state.json`) and `model/maintenance/s3KeyMigrationJobModel.js` (not wired to any command yet — waits for the 2.3 monitoring card). `plan` verified against real dev+prod data in two scopes: `advertisements` (8+41=49, matching the plan's own Rehearsal 1 size exactly) and `category` (911+402=1313 vs the plan's stated 1,312 — 1 off, explained by normal data drift). All 4 core gates stayed green throughout (31/22/66/23); a pre-existing, unrelated hardcoded-bucket-URL leak in `client/.../MRP/mrp.js` was found by the regression gate and flagged as a separate task rather than fixed inline. **Still not built:** `copy`, `verify-s3`, `rewrite`, `verify`, `sweep`, `status`, `doctor`, `resume`, `reverse`, the monitoring card, the 5 admin endpoints — nothing in Track B or the rehearsals is reachable yet. Full detail in "Phase 2 — where it stands" above. |
 | 2026-08-13 | **1.5 DONE — prod deployed and verified, Phase 1 fully complete on both environments.** Confirmed on the server (read-only `git log`) that `origin/prod` had fast-forwarded to `df5a666b`, matching `dev` HEAD exactly, before running anything. `checkPublicImageUrls` against prod: NEWLY broken 0, same 6 pre-existing failures as baseline. `flush-caches --commit` against `redis-prod` via a one-off SSH tunnel (host port 6379, not 6380 like dev — confirmed against the VPS docs before connecting): 8830→248 keys, all 7 invalidators `ok`. Live smoke test: tailed both prod API replicas' logs while the user uploaded a real business logo through the prod admin UI; grepped both replicas for `error`/`resolveUploadPath`/`throw` — none, and no per-upload log line exists in this codebase's logging so verification was done directly against `massClick.businesslists` instead, which showed the new logo landing on exactly `businesses/<id>/logo.webp` at the same timestamp as the test. Full write-up in the "1.5 — prod deployed and verified" section above. |

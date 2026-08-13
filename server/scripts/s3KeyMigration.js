@@ -72,6 +72,7 @@ import {
   listRuns,
 } from "../utils/s3MigrationManifest.js";
 import { withRetry, runPool, copySourceFor } from "../utils/s3RetryPolicy.js";
+import { createJobTracker } from "../utils/s3MigrationJobTracking.js";
 import {
   initRedis,
   getRedisClient,
@@ -101,6 +102,9 @@ const COMMIT = has("commit");
 const RUN_ID = flag("run");
 const SCOPE_FLAG = flag("scope") || "all";
 const CONCURRENCY = Number(flag("concurrency")) || 8;
+/** Where the monitoring-card job doc is written. Job tracking is skipped entirely
+ * (with a warning) if this isn't given — copy/rewrite still work standalone. */
+const STATE_URI = flag("state-uri");
 
 const BUCKET = process.env.AWS_S3_BUCKET_MASSCLICK;
 
@@ -756,8 +760,8 @@ const cmdPlan = async () => {
  * Logs to copied.jsonl AFTER each confirmed copy, never before, so a hard kill loses
  * at most the in-flight batch.
  */
-const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRENCY } = {}) => {
-  requireRun(runId);
+const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRENCY, stateUri = STATE_URI } = {}) => {
+  const meta = requireRun(runId);
   const { rows } = readJsonl(runFile(runId, "manifest.jsonl"));
   const copiedFile = runFile(runId, "copied.jsonl");
   const { tornLastLine } = readJsonl(copiedFile);
@@ -786,38 +790,87 @@ const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRE
     return;
   }
 
+  // --- job-doc tracking for the monitoring card, if a --state-uri was given ---
+  let tracker = null;
+  let jobConnection = null;
+  let jobId = null;
+  let heartbeatTimer = null;
+  if (stateUri) {
+    jobConnection = await connect(stateUri, "state-db");
+    tracker = createJobTracker(jobConnection);
+    const job = await tracker.claimJob({
+      runId,
+      phase: "copy",
+      scopeKey: meta.params?.scope || "all",
+      total: rows.length,
+    });
+    jobId = job._id;
+    heartbeatTimer = tracker.startHeartbeat(jobId);
+  } else {
+    console.log("(no --state-uri given — this run will not be visible on the monitoring card)\n");
+  }
+
   const s3 = s3Client();
   let failed = 0;
   let lastProgressLine = "";
-  await runPool(
-    pending,
-    concurrency,
-    async (row) => {
-      await withRetry(() =>
-        s3
-          .copyObject({
-            Bucket: BUCKET,
-            CopySource: copySourceFor(BUCKET, row.oldKey),
-            Key: row.newKey,
-            MetadataDirective: "COPY",
-          })
-          .promise(),
-      );
-      appendJsonl(copiedFile, { rowId: row.rowId, oldKey: row.oldKey, newKey: row.newKey, size: row.size, copiedAt: new Date().toISOString() });
-    },
-    (completed, total, result) => {
-      if (!result.ok) {
-        failed += 1;
-        console.log(`\n  FAIL  ${result.item.oldKey} -> ${result.item.newKey}\n        ${result.error.message}`);
+  let stopReason = null;
+  let stopCache = false;
+  let stopCheckCounter = 0;
+
+  const shouldStop = tracker
+    ? async () => {
+        stopCheckCounter += 1;
+        if (stopCheckCounter % 5 !== 1) return stopCache;
+        stopCache = await tracker.isStopRequested(jobId);
+        return stopCache;
       }
-      const line = `  ${completed}/${total}  failed=${failed}`;
-      if (line !== lastProgressLine) {
-        process.stdout.write(`\r${line}${" ".repeat(Math.max(0, lastProgressLine.length - line.length))}`);
-        lastProgressLine = line;
-      }
-    },
-  );
+    : undefined;
+
+  try {
+    await runPool(
+      pending,
+      concurrency,
+      async (row) => {
+        await withRetry(() =>
+          s3
+            .copyObject({
+              Bucket: BUCKET,
+              CopySource: copySourceFor(BUCKET, row.oldKey),
+              Key: row.newKey,
+              MetadataDirective: "COPY",
+            })
+            .promise(),
+        );
+        appendJsonl(copiedFile, { rowId: row.rowId, oldKey: row.oldKey, newKey: row.newKey, size: row.size, copiedAt: new Date().toISOString() });
+      },
+      (completed, total, result) => {
+        if (!result.ok) {
+          failed += 1;
+          console.log(`\n  FAIL  ${result.item.oldKey} -> ${result.item.newKey}\n        ${result.error.message}`);
+        }
+        const line = `  ${completed}/${total}  failed=${failed}`;
+        if (line !== lastProgressLine) {
+          process.stdout.write(`\r${line}${" ".repeat(Math.max(0, lastProgressLine.length - line.length))}`);
+          lastProgressLine = line;
+        }
+        if (tracker && completed % 5 === 0) {
+          tracker.updateProgress(jobId, { counts: { total: pending.length, done: completed, skipped: 0, failed } }).catch(() => {});
+        }
+      },
+      shouldStop,
+    );
+  } catch (error) {
+    if (tracker) await tracker.failJob(jobId, error);
+    throw error;
+  } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+  }
   process.stdout.write("\n");
+
+  if (tracker && stopCache) {
+    stopReason = "paused/cancelled from the monitoring card mid-run";
+    console.log(`\nStopped early — ${stopReason}. Already-copied rows are safe; re-run \`copy --run=${runId} --commit\` to continue.\n`);
+  }
 
   const doneNow = loadDoneRowIds(copiedFile);
   writeState(runId, {
@@ -826,11 +879,20 @@ const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRE
     counts: { total: rows.length, done: doneNow.size, skipped: 0, failed },
   });
 
+  if (tracker) {
+    // Whether stopped or finished, the job doc must stop being "ours" — finishJob for
+    // a clean completion, releaseSlot (status already set by the admin action) for a
+    // voluntary stop. Never leave activeSlot held past this point.
+    if (stopCache) await tracker.releaseSlot(jobId);
+    else await tracker.finishJob(jobId, { failed });
+  }
+  if (jobConnection) await jobConnection.close();
+
   console.log(`\ncopied this run: ${pending.length - failed}   failed: ${failed}   total done: ${doneNow.size}/${rows.length}`);
   if (failed) {
     console.log(`\nFAILED — re-run \`copy --run=${runId} --commit\` to retry just the failures (already-done rows are skipped).\n`);
     process.exitCode = 1;
-  } else if (doneNow.size === rows.length) {
+  } else if (doneNow.size === rows.length && !stopCache) {
     console.log(`\n=== copy complete for run ${runId} — every manifest row has a newKey object. Old keys untouched. ===\n`);
   }
 };
@@ -925,8 +987,8 @@ const ownerKeyOf = (rowId, owner) => `${rowId}:${owner.collection}:${owner.docId
  * matchedCount is 0 and nothing happens — never a blind overwrite by array index alone.
  * Logs to applied-<db>.jsonl only after a confirmed match+write.
  */
-const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT } = {}) => {
-  requireRun(runId);
+const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT, stateUri = STATE_URI } = {}) => {
+  const meta = requireRun(runId);
   if (!uri) die("rewrite requires --uri=... — exactly ONE database. Never both in one invocation (Do-Not-Do rule 3).");
   const dbLabel = dbNameOf(uri);
   const { rows } = readJsonl(runFile(runId, "manifest.jsonl"));
@@ -978,12 +1040,42 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT } = {}) =
   }
 
   const connection = await connect(uri, dbLabel);
+
+  let tracker = null;
+  let jobConnection = null;
+  let jobId = null;
+  let heartbeatTimer = null;
+  if (stateUri) {
+    jobConnection = dbNameOf(stateUri) === dbLabel ? connection : await connect(stateUri, "state-db");
+    tracker = createJobTracker(jobConnection);
+    const job = await tracker.claimJob({
+      runId,
+      phase: "rewrite",
+      targetDb: dbLabel,
+      scopeKey: meta.params?.scope || "all",
+      total: pending.length,
+    });
+    jobId = job._id;
+    heartbeatTimer = tracker.startHeartbeat(jobId);
+  } else {
+    console.log("(no --state-uri given — this run will not be visible on the monitoring card)\n");
+  }
+
   let applied = 0;
   let stale = 0;
+  let stopped = false;
   const staleExamples = [];
 
   try {
+    let i = 0;
     for (const { row, owner, ownerKey } of pending) {
+      i += 1;
+      if (tracker && i % 5 === 1 && (await tracker.isStopRequested(jobId))) {
+        stopped = true;
+        console.log(`\nStopped early at ${i}/${pending.length} — paused/cancelled from the monitoring card. Already-applied owners are safe; re-run \`rewrite --run=${runId} --uri=... --commit\` to continue.`);
+        break;
+      }
+
       const mongoLocator = mongoLocatorOf(owner.locator);
       let docId;
       try {
@@ -1003,6 +1095,7 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT } = {}) =
       } catch (error) {
         if (/ECONNREFUSED|ETIMEDOUT|ServerSelection|topology was destroyed/i.test(error.message)) {
           writeState(runId, { phase: "rewrite", cursor: ownerKey, counts: { total: rows.length, done: applied, skipped: stale, failed: 0 } });
+          if (tracker) await tracker.failJob(jobId, error);
           die(
             `\nTunnel down mid-rewrite (${error.message}).\n` +
               `Applied ${applied} before this — all logged and safe. Reconnect the SSH tunnel and re-run\n` +
@@ -1030,9 +1123,24 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT } = {}) =
           staleExamples.push(`  STALE  ${owner.collection} ${owner.docId} ${mongoLocator}  (no longer holds ${row.oldKey} — already changed by something else)`);
         }
       }
+
+      if (tracker && i % 5 === 0) {
+        await tracker.updateProgress(jobId, { counts: { total: pending.length, done: applied, skipped: stale, failed: 0 }, cursor: ownerKey }).catch(() => {});
+      }
     }
+
+    // Must run BEFORE the connections close in `finally` below.
+    if (tracker) {
+      if (stopped) await tracker.releaseSlot(jobId);
+      else await tracker.finishJob(jobId, { failed: 0 });
+    }
+  } catch (error) {
+    if (tracker) await tracker.failJob(jobId, error);
+    throw error;
   } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     await connection.close();
+    if (jobConnection && jobConnection !== connection) await jobConnection.close();
   }
 
   for (const s of staleExamples) console.log(s);
