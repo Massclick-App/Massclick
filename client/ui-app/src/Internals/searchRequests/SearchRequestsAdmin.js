@@ -76,10 +76,10 @@ export default function SearchRequestsAdmin() {
     try {
       const updated = await dispatch(markSearchRequestRead(request._id));
       setRequests((current) => current.map((item) => item._id === updated._id ? updated : item));
-      setMessage(`${request.fullName}'s request was marked as read and the customer message was sent.`);
+      setMessage(`Completed message sent to ${request.fullName}.`);
       window.dispatchEvent(new Event("search-requests:changed"));
     } catch (error) {
-      setMessage(error.response?.data?.message || "The request could not be marked as read.");
+      setMessage(error.response?.data?.message || "The completed message could not be sent.");
     } finally {
       setReadingId("");
     }
@@ -99,15 +99,15 @@ export default function SearchRequestsAdmin() {
     { id: "details", label: "Requirement", renderCell: (value) => <p className={cx("requirement")}>{value || "—"}</p> },
     { id: "source", label: "Source", renderCell: (value) => <span className={cx("source")}>{String(value || "—").replaceAll("-", " ")}</span> },
     { id: "createdAt", label: "Submitted", renderCell: (value) => <span className={cx("date")}><Clock3 size={14} /> {formatDateTime(value)}</span> },
-    { id: "isRead", label: "Read status", renderCell: (value) => <Chip size="small" label={value ? "Read" : "Unread"} className={cx(value ? "read" : "unread")} /> },
+    { id: "isRead", label: "Message status", renderCell: (value) => <Chip size="small" label={value ? "Sent" : "Pending"} className={cx(value ? "read" : "unread")} /> },
     {
       id: "action",
       label: "Action",
       renderCell: (_, request) => request.isRead ? (
-        <span className={cx("completed")}><CheckCircle2 size={16} /> Read</span>
+        <span className={cx("completed")}><CheckCircle2 size={16} /> Message sent</span>
       ) : (
         <Button size="small" variant="contained" startIcon={<CheckCircle2 size={15} />} disabled={readingId === request._id} onClick={() => markRead(request)}>
-          {readingId === request._id ? "Sending..." : "Mark as read"}
+          {readingId === request._id ? "Sending..." : "Send completed message"}
         </Button>
       ),
     },
@@ -115,7 +115,7 @@ export default function SearchRequestsAdmin() {
 
   return <main className={cx("page")}>
     <header>
-      <div><span><Search size={16} /> CUSTOMER SEARCH OPERATIONS</span><h1>Search requests</h1><p>View every no-results request and mark it as read after it has been reviewed.</p></div>
+      <div><span><Search size={16} /> CUSTOMER SEARCH OPERATIONS</span><h1>Search requests</h1><p>Send the completed WhatsApp message after a customer request has been handled.</p></div>
       <Button startIcon={<RefreshCw size={17} />} onClick={() => setRefreshKey((value) => value + 1)}>Refresh</Button>
     </header>
     {message && <div className={cx("message")} role="status">{message}</div>}
