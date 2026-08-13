@@ -48,6 +48,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
+import AWS from "aws-sdk";
+
 import { SCOPES, registryCollections } from "../utils/s3ScopeRegistry.js";
 import { connect, scanDatabase, compareIds, listBucket } from "../utils/s3MigrationScan.js";
 import { s3Path } from "../utils/s3ObjectKeys.js";
@@ -57,9 +59,15 @@ import {
   ensureRunDir,
   runFile,
   writeMeta,
+  readMeta,
   writeState,
+  readState,
   appendJsonl,
+  readJsonl,
+  loadDoneRowIds,
+  verifyManifestChecksums,
 } from "../utils/s3MigrationManifest.js";
+import { withRetry, runPool, copySourceFor } from "../utils/s3RetryPolicy.js";
 import {
   initRedis,
   getRedisClient,
@@ -88,8 +96,33 @@ const SKIP_S3 = has("no-s3");
 const COMMIT = has("commit");
 const RUN_ID = flag("run");
 const SCOPE_FLAG = flag("scope") || "all";
+const CONCURRENCY = Number(flag("concurrency")) || 8;
 
 const BUCKET = process.env.AWS_S3_BUCKET_MASSCLICK;
+
+const s3Client = () => {
+  AWS.config.update({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION,
+  });
+  return new AWS.S3();
+};
+
+const requireRun = () => {
+  if (!RUN_ID) die("this subcommand requires --run=<runId> (from a prior `plan`).");
+  const meta = readMeta(RUN_ID);
+  if (!meta) die(`no meta.json for run "${RUN_ID}" — was \`plan\` ever run for it? Check _migrations/s3-key-restructure/.`);
+  const problems = verifyManifestChecksums(RUN_ID);
+  if (problems.length) {
+    die(
+      `Manifest checksum mismatch for run ${RUN_ID} — refusing to proceed:\n` +
+        problems.map((p) => `  - ${p}`).join("\n") +
+        `\n\nA plan output file was edited after \`plan\` ran. Re-run \`plan\` to build a fresh, trustworthy manifest.`,
+    );
+  }
+  return meta;
+};
 
 const dbNameOf = (uri) => (uri.split("/").pop() || "").split("?")[0] || "(unknown)";
 
@@ -705,6 +738,164 @@ const cmdPlan = async () => {
   console.log(`\n=== plan complete for run ${runId} — nothing was written to S3 or to any database ===\n`);
 };
 
+// ---------------------------------------------------------------- copy
+
+/**
+ * `copy` — step 2.2. Server-side CopyObject from every manifest row's oldKey to its
+ * newKey, within the same bucket (no bytes transit this machine — per the plan's
+ * parallelism notes). Dry-run by default; `--commit` writes to S3. Never touches any
+ * database and never deletes anything — old keys stay exactly where they are.
+ *
+ * Resumable: skips any rowId already confirmed in copied.jsonl. Idempotent even
+ * without that skip — CopyObject onto the same newKey from the same oldKey produces
+ * identical bytes, so a duplicated in-flight row from an unclean exit is harmless.
+ * Logs to copied.jsonl AFTER each confirmed copy, never before, so a hard kill loses
+ * at most the in-flight batch.
+ */
+const cmdCopy = async () => {
+  requireRun();
+  const { rows } = readJsonl(runFile(RUN_ID, "manifest.jsonl"));
+  const copiedFile = runFile(RUN_ID, "copied.jsonl");
+  const { tornLastLine } = readJsonl(copiedFile);
+  if (tornLastLine) {
+    die(`${copiedFile} has a torn final line (an unclean exit mid-write). Run \`doctor --run=${RUN_ID}\` first — it truncates this safely. copy refuses to guess.`);
+  }
+  const done = loadDoneRowIds(copiedFile);
+  const pending = rows.filter((r) => !done.has(r.rowId));
+  const pendingBytes = pending.reduce((a, r) => a + (r.size || 0), 0);
+
+  console.log(`\n=== s3KeyMigration copy — run ${RUN_ID} ===`);
+  console.log(`mode:        ${COMMIT ? "COMMIT (writes to S3)" : "DRY RUN (nothing written)"}`);
+  console.log(`concurrency: ${CONCURRENCY}`);
+  console.log(`manifest rows:     ${rows.length}`);
+  console.log(`already copied:    ${done.size}`);
+  console.log(`pending:           ${pending.length}  (${(pendingBytes / 1048576).toFixed(1)} MB)\n`);
+
+  if (!pending.length) {
+    console.log(COMMIT ? "Nothing pending — copy is already complete for this run.\n" : "Nothing pending.\n");
+    return;
+  }
+  if (!COMMIT) {
+    console.log("DRY RUN — re-run with --commit to actually copy. First 10 pending:");
+    for (const r of pending.slice(0, 10)) console.log(`  ${r.oldKey}  ->  ${r.newKey}`);
+    console.log();
+    return;
+  }
+
+  const s3 = s3Client();
+  let failed = 0;
+  let lastProgressLine = "";
+  await runPool(
+    pending,
+    CONCURRENCY,
+    async (row) => {
+      await withRetry(() =>
+        s3
+          .copyObject({
+            Bucket: BUCKET,
+            CopySource: copySourceFor(BUCKET, row.oldKey),
+            Key: row.newKey,
+            MetadataDirective: "COPY",
+          })
+          .promise(),
+      );
+      appendJsonl(copiedFile, { rowId: row.rowId, oldKey: row.oldKey, newKey: row.newKey, size: row.size, copiedAt: new Date().toISOString() });
+    },
+    (completed, total, result) => {
+      if (!result.ok) {
+        failed += 1;
+        console.log(`\n  FAIL  ${result.item.oldKey} -> ${result.item.newKey}\n        ${result.error.message}`);
+      }
+      const line = `  ${completed}/${total}  failed=${failed}`;
+      if (line !== lastProgressLine) {
+        process.stdout.write(`\r${line}${" ".repeat(Math.max(0, lastProgressLine.length - line.length))}`);
+        lastProgressLine = line;
+      }
+    },
+  );
+  process.stdout.write("\n");
+
+  const doneNow = loadDoneRowIds(copiedFile);
+  writeState(RUN_ID, {
+    phase: "copy",
+    cursor: null,
+    counts: { total: rows.length, done: doneNow.size, skipped: 0, failed },
+  });
+
+  console.log(`\ncopied this run: ${pending.length - failed}   failed: ${failed}   total done: ${doneNow.size}/${rows.length}`);
+  if (failed) {
+    console.log(`\nFAILED — re-run \`copy --run=${RUN_ID} --commit\` to retry just the failures (already-done rows are skipped).\n`);
+    process.exitCode = 1;
+  } else if (doneNow.size === rows.length) {
+    console.log(`\n=== copy complete for run ${RUN_ID} — every manifest row has a newKey object. Old keys untouched. ===\n`);
+  }
+};
+
+// ---------------------------------------------------------------- verify-s3
+
+/**
+ * `verify-s3` — step 2.2. Read-only. Confirms, for every manifest row: the newKey
+ * exists (HeadObject) with the expected size, AND the oldKey is STILL present (copy
+ * never moves). This is the gate `copy` claims to have passed, checked independently
+ * rather than trusted.
+ */
+const cmdVerifyS3 = async () => {
+  requireRun();
+  const { rows } = readJsonl(runFile(RUN_ID, "manifest.jsonl"));
+  console.log(`\n=== s3KeyMigration verify-s3 — run ${RUN_ID} — READ-ONLY ===`);
+  console.log(`manifest rows: ${rows.length}\n`);
+
+  if (!rows.length) {
+    console.log("Nothing to verify — empty manifest.\n");
+    return;
+  }
+
+  const s3 = s3Client();
+  const head = async (key) => {
+    try {
+      const result = await withRetry(() => s3.headObject({ Bucket: BUCKET, Key: key }).promise());
+      return { exists: true, size: result.ContentLength };
+    } catch (error) {
+      if (error.code === "NotFound" || error.statusCode === 404) return { exists: false };
+      throw error;
+    }
+  };
+
+  let newMissing = 0;
+  let oldMissing = 0;
+  let sizeMismatch = 0;
+  const problems = [];
+
+  await runPool(rows, CONCURRENCY, async (row) => {
+    const [newHead, oldHead] = await Promise.all([head(row.newKey), head(row.oldKey)]);
+    if (!newHead.exists) {
+      newMissing += 1;
+      problems.push(`  NEW MISSING   ${row.newKey}  (rowId ${row.rowId}, copy never landed or was deleted)`);
+    } else if (row.size !== undefined && newHead.size !== row.size) {
+      sizeMismatch += 1;
+      problems.push(`  SIZE MISMATCH ${row.newKey}  expected ${row.size}, got ${newHead.size}`);
+    }
+    if (!oldHead.exists) {
+      oldMissing += 1;
+      problems.push(`  OLD MISSING   ${row.oldKey}  (should still exist — copy never moves)`);
+    }
+  });
+
+  for (const p of problems.slice(0, 50)) console.log(p);
+  if (problems.length > 50) console.log(`  ... and ${problems.length - 50} more`);
+
+  console.log(`\nnewKey present:        ${rows.length - newMissing}/${rows.length}`);
+  console.log(`newKey size matches:   ${rows.length - newMissing - sizeMismatch}/${rows.length - newMissing}`);
+  console.log(`oldKey still present:  ${rows.length - oldMissing}/${rows.length}`);
+
+  if (newMissing || oldMissing || sizeMismatch) {
+    console.log(`\nFAIL\n`);
+    process.exitCode = 1;
+  } else {
+    console.log(`\nPASS — every newKey exists at the right size, every oldKey is still untouched.\n`);
+  }
+};
+
 // ---------------------------------------------------------------- main
 
 const main = async () => {
@@ -721,12 +912,20 @@ const main = async () => {
     case "plan":
       await cmdPlan();
       break;
+    case "copy":
+      await cmdCopy();
+      break;
+    case "verify-s3":
+      await cmdVerifyS3();
+      break;
     default:
       die(
         `Unknown subcommand "${SUBCOMMAND || "(none)"}".\n` +
-          `Available so far: scan, plan, collections, flush-caches\n\n` +
+          `Available so far: scan, plan, copy, verify-s3, collections, flush-caches\n\n` +
           `  node scripts/s3KeyMigration.js scan --uri=... [--compare-uri=...] [--out=...] [--no-s3]\n` +
-          `  node scripts/s3KeyMigration.js plan --uri=... --compare-uri=... [--scope=<scopeKey>]`,
+          `  node scripts/s3KeyMigration.js plan --uri=... --compare-uri=... [--scope=<scopeKey>]\n` +
+          `  node scripts/s3KeyMigration.js copy --run=<runId> [--commit] [--concurrency=8]\n` +
+          `  node scripts/s3KeyMigration.js verify-s3 --run=<runId>`,
       );
   }
   process.exit(0);

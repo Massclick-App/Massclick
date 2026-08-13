@@ -111,7 +111,7 @@ objects, same field shapes, same volume.
 | 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
 | 1.5 | Deploy Phase 1 dev → prod | ✅ **DONE** | dev: gates clean + 2 live uploads confirmed canonical · **prod (2026-08-13): checkPublicImageUrls NEWLY broken 0, flush-caches 8830→248 all 7 invalidators ok, live logo upload confirmed canonical + zero errors** |
 | 2.1 | Scope registry to all ~20 collections | ✅ **DONE** — already complete from 0.1, one real gap found+fixed 2026-08-13 | `verifyS3ObjectKeys.js` 66/66 |
-| 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | 🟡 **`plan` DONE, verified live** — copy/verify-s3/rewrite/verify/status/doctor/resume/reverse NOT built yet | `plan` run against real dev+prod, `advertisements` scope 8+41=49 and `category` scope 911+402=1313, both matching the plan's own rehearsal sizing |
+| 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | 🟡 **`plan`/`copy`/`verify-s3` DONE** — rewrite/verify/status/doctor/resume/reverse NOT built yet | `plan` verified live; `verify-s3` verified live (0/8 newKeys present pre-copy, 8/8 oldKeys intact); `copy --commit` not yet exercised for real |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
 | 4 | **Rehearsal: `category/`** full cycle | ⬜ | smoke + UI clean |
@@ -1158,7 +1158,7 @@ before removing it from `utils/s3ObjectKeys.js`. `s3ObjectKeys.js`'s catalogue-b
 picked up automatically. **Gate:** `verifyS3ObjectKeys.js` stayed 66/66 through the whole change (the
 removed builder had no fixture depending on it).
 
-### 2.2 — `s3KeyMigration.js` migration verbs — `plan` DONE, rest not started
+### 2.2 — `s3KeyMigration.js` migration verbs — `plan`/`copy`/`verify-s3` DONE, rest not started
 
 **New file `utils/s3MigrationScan.js`** — extracted `classify`/`readField`/`connect`/`scanDatabase`/
 `compareIds`/`listBucket` out of `scan`'s inline implementation so `plan` can reuse the exact same
@@ -1238,11 +1238,44 @@ stable+seq shape `s3Keys.category.variant(id, "webCard")` produces, matching the
 deleted after verification — no real Rehearsal has started; that's step 3/4, after `copy`/`rewrite`
 exist.
 
-**Still NOT built:** `copy`, `verify-s3`, `rewrite`, `verify`, `sweep`, `status`, `doctor`, `resume`,
-`reverse`, `rollback-copies`, `undelete`, `restore-from-local`, the monitoring card, and the 5 admin
-endpoints. None of Track B is reachable — and no rehearsal (item 3/4) can start — until at minimum
-`copy`/`rewrite`/`verify`/`reverse` exist, since the plan requires `reverse` be written and rehearsed
-**before `rewrite` is ever run for real**.
+**`copy` and `verify-s3` — DONE, code verified, NOT yet exercised with a real `--commit`.**
+
+**New file `utils/s3RetryPolicy.js`** — `withRetry`/`NON_RETRYABLE_AWS_CODES` copied byte-for-byte from
+`s3CacheHeaderMigrationHelper.js` per the plan's explicit instruction ("reuse ... verbatim"); that file
+doesn't export them (module-private consts), so this is a copy, not an import — if the cache-header
+job's retry policy ever changes, this one does not follow automatically. Also a small dependency-free
+concurrency pool (`runPool`, default 8, matching the plan's "8-16 concurrent") and `copySourceFor()`
+(the aws-sdk v2 `CopySource` encoding gotcha — encode everything except the `/` separators).
+
+`copy --run=<runId> [--commit] [--concurrency=N]`: server-side `CopyObject` per manifest row, old key
+untouched. Dry-run by default. Resumable — skips any `rowId` already in `copied.jsonl`; refuses to run
+at all if that file's last line is torn (an unclean prior exit), pointing at `doctor` instead of
+guessing. Logs to `copied.jsonl` only after a confirmed copy.
+
+`verify-s3 --run=<runId>`: read-only. For every manifest row, `HeadObject`s both the newKey (must exist,
+size must match) and the oldKey (must STILL exist — copy never moves). This is the gate `copy` claims
+to have passed, checked independently.
+
+**Verified against real S3** (dry-run/read-only only — see below for what wasn't tested): built a fresh
+`advertisements`-scope plan, ran `copy` in dry-run (correctly listed all 8 oldKey→newKey pairs, wrote
+nothing), then ran `verify-s3` for real against the live bucket — correctly reported **0/8 newKeys
+present** (nothing copied yet) and **8/8 oldKeys still present**, with the right `NEW MISSING` messages
+and a non-zero exit code. This proves `verify-s3`'s read path and HeadObject logic work correctly
+against real data; the test run directory was deleted afterward, no lasting state.
+
+**Deliberately NOT yet tested: an actual `copy --commit`.** That is the first real WRITE this build
+would make to the shared bucket (`massclickdev`, shared by dev AND prod) — additive-only and reversible
+(bucket versioning is Enabled, nothing gets deleted, `rollback-copies` — not built yet — would remove
+just the new objects), but still the first time this session's code would create real state outside
+this machine. Held back for an explicit check-in with the user rather than just doing it, given how
+consistently this project's own docs treat any bucket write as the sensitive boundary. Small and fully
+reversible either way, so this is a low-stakes ask, not a blocker.
+
+**Still NOT built:** `rewrite`, `verify`, `sweep`, `status`, `doctor`, `resume`, `reverse`,
+`rollback-copies`, `undelete`, `restore-from-local`, the monitoring card, and the 5 admin endpoints.
+None of Track B is reachable — and no rehearsal (item 3/4) can start — until at minimum
+`rewrite`/`verify`/`reverse` also exist, since the plan requires **reverse be written and rehearsed
+before `rewrite` is ever run for real**.
 
 ---
 
