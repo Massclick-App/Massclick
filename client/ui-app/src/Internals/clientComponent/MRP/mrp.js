@@ -10,10 +10,11 @@ import DynamicInfoModal from "./components/DynamicInfoModal";
 import DynamicTooltip from "./components/DynamicTooltip";
 import GroupCreationContent from "./components/GroupCreationContent";
 import VerifiedNetworkContent from "./components/VerifiedNetworkContent";
+import { ASSET_BASE_URL } from "../../../utils/imageUrlHelper";
 
 const cx = createScopedClassNames(styles);
 
-const S3_URL = "https://massclickdev.s3.ap-southeast-2.amazonaws.com";
+const S3_URL = ASSET_BASE_URL;
 const valueOf = (value, fallback = 0) => Number(value) || fallback;
 const dateOf = (item) => new Date(item?.sentDate || item?.date || item?.createdAt || 0);
 const relativeTime = (value) => {
