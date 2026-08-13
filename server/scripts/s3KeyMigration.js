@@ -49,10 +49,11 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
 import AWS from "aws-sdk";
+import mongoose from "mongoose";
 
 import { SCOPES, registryCollections } from "../utils/s3ScopeRegistry.js";
 import { connect, scanDatabase, compareIds, listBucket } from "../utils/s3MigrationScan.js";
-import { s3Path } from "../utils/s3ObjectKeys.js";
+import { s3Path, isCanonicalKey } from "../utils/s3ObjectKeys.js";
 import { ulid } from "../utils/idGen.js";
 import {
   newRunId,
@@ -66,6 +67,9 @@ import {
   readJsonl,
   loadDoneRowIds,
   verifyManifestChecksums,
+  truncateTornLine,
+  STATE_VERSION,
+  listRuns,
 } from "../utils/s3MigrationManifest.js";
 import { withRetry, runPool, copySourceFor } from "../utils/s3RetryPolicy.js";
 import {
@@ -109,14 +113,14 @@ const s3Client = () => {
   return new AWS.S3();
 };
 
-const requireRun = () => {
-  if (!RUN_ID) die("this subcommand requires --run=<runId> (from a prior `plan`).");
-  const meta = readMeta(RUN_ID);
-  if (!meta) die(`no meta.json for run "${RUN_ID}" — was \`plan\` ever run for it? Check _migrations/s3-key-restructure/.`);
-  const problems = verifyManifestChecksums(RUN_ID);
+const requireRun = (runId = RUN_ID) => {
+  if (!runId) die("this subcommand requires --run=<runId> (from a prior `plan`).");
+  const meta = readMeta(runId);
+  if (!meta) die(`no meta.json for run "${runId}" — was \`plan\` ever run for it? Check _migrations/s3-key-restructure/.`);
+  const problems = verifyManifestChecksums(runId);
   if (problems.length) {
     die(
-      `Manifest checksum mismatch for run ${RUN_ID} — refusing to proceed:\n` +
+      `Manifest checksum mismatch for run ${runId} — refusing to proceed:\n` +
         problems.map((p) => `  - ${p}`).join("\n") +
         `\n\nA plan output file was edited after \`plan\` ran. Re-run \`plan\` to build a fresh, trustworthy manifest.`,
     );
@@ -752,30 +756,30 @@ const cmdPlan = async () => {
  * Logs to copied.jsonl AFTER each confirmed copy, never before, so a hard kill loses
  * at most the in-flight batch.
  */
-const cmdCopy = async () => {
-  requireRun();
-  const { rows } = readJsonl(runFile(RUN_ID, "manifest.jsonl"));
-  const copiedFile = runFile(RUN_ID, "copied.jsonl");
+const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRENCY } = {}) => {
+  requireRun(runId);
+  const { rows } = readJsonl(runFile(runId, "manifest.jsonl"));
+  const copiedFile = runFile(runId, "copied.jsonl");
   const { tornLastLine } = readJsonl(copiedFile);
   if (tornLastLine) {
-    die(`${copiedFile} has a torn final line (an unclean exit mid-write). Run \`doctor --run=${RUN_ID}\` first — it truncates this safely. copy refuses to guess.`);
+    die(`${copiedFile} has a torn final line (an unclean exit mid-write). Run \`doctor --run=${runId}\` first — it truncates this safely. copy refuses to guess.`);
   }
   const done = loadDoneRowIds(copiedFile);
   const pending = rows.filter((r) => !done.has(r.rowId));
   const pendingBytes = pending.reduce((a, r) => a + (r.size || 0), 0);
 
-  console.log(`\n=== s3KeyMigration copy — run ${RUN_ID} ===`);
-  console.log(`mode:        ${COMMIT ? "COMMIT (writes to S3)" : "DRY RUN (nothing written)"}`);
-  console.log(`concurrency: ${CONCURRENCY}`);
+  console.log(`\n=== s3KeyMigration copy — run ${runId} ===`);
+  console.log(`mode:        ${commit ? "COMMIT (writes to S3)" : "DRY RUN (nothing written)"}`);
+  console.log(`concurrency: ${concurrency}`);
   console.log(`manifest rows:     ${rows.length}`);
   console.log(`already copied:    ${done.size}`);
   console.log(`pending:           ${pending.length}  (${(pendingBytes / 1048576).toFixed(1)} MB)\n`);
 
   if (!pending.length) {
-    console.log(COMMIT ? "Nothing pending — copy is already complete for this run.\n" : "Nothing pending.\n");
+    console.log(commit ? "Nothing pending — copy is already complete for this run.\n" : "Nothing pending.\n");
     return;
   }
-  if (!COMMIT) {
+  if (!commit) {
     console.log("DRY RUN — re-run with --commit to actually copy. First 10 pending:");
     for (const r of pending.slice(0, 10)) console.log(`  ${r.oldKey}  ->  ${r.newKey}`);
     console.log();
@@ -787,7 +791,7 @@ const cmdCopy = async () => {
   let lastProgressLine = "";
   await runPool(
     pending,
-    CONCURRENCY,
+    concurrency,
     async (row) => {
       await withRetry(() =>
         s3
@@ -816,7 +820,7 @@ const cmdCopy = async () => {
   process.stdout.write("\n");
 
   const doneNow = loadDoneRowIds(copiedFile);
-  writeState(RUN_ID, {
+  writeState(runId, {
     phase: "copy",
     cursor: null,
     counts: { total: rows.length, done: doneNow.size, skipped: 0, failed },
@@ -824,10 +828,10 @@ const cmdCopy = async () => {
 
   console.log(`\ncopied this run: ${pending.length - failed}   failed: ${failed}   total done: ${doneNow.size}/${rows.length}`);
   if (failed) {
-    console.log(`\nFAILED — re-run \`copy --run=${RUN_ID} --commit\` to retry just the failures (already-done rows are skipped).\n`);
+    console.log(`\nFAILED — re-run \`copy --run=${runId} --commit\` to retry just the failures (already-done rows are skipped).\n`);
     process.exitCode = 1;
   } else if (doneNow.size === rows.length) {
-    console.log(`\n=== copy complete for run ${RUN_ID} — every manifest row has a newKey object. Old keys untouched. ===\n`);
+    console.log(`\n=== copy complete for run ${runId} — every manifest row has a newKey object. Old keys untouched. ===\n`);
   }
 };
 
@@ -896,6 +900,551 @@ const cmdVerifyS3 = async () => {
   }
 };
 
+// ---------------------------------------------------------------- rewrite
+
+const mongoLocatorOf = (locator) => locator.replace(/\[(\d+)\]/g, ".$1");
+const ownerKeyOf = (rowId, owner) => `${rowId}:${owner.collection}:${owner.docId}:${owner.locator}`;
+
+/**
+ * `rewrite` — step 2.2. Points ONE database's document fields at their newKey.
+ * Deliberately one `--uri` per invocation — never both — per Do-Not-Do rule 3: "Do not
+ * rewrite prod until dev has passed R.5 and soaked through R.6. Two separate
+ * invocations, two separate snapshots — never one command against both databases."
+ *
+ * Only `valueShape: "key"` owners are handled. `valueShape: "url"` owners
+ * (fcmCampaign.imageUrl, seoBlog businessDetails[].bannerImage) are the plan's own
+ * "Special cases" — fcmCampaign needs a NEW schema field (`imageKey`, added alongside
+ * the historical `imageUrl`) and businessDetails[].bannerImage needs its own decision,
+ * neither of which is "rewrite the same field in place". Reported as SKIPPED, not
+ * silently mishandled — building that now would mean guessing at a schema change this
+ * session has not scoped.
+ *
+ * Idempotent by construction: `updateOne({_id, [path]: oldKey}, {$set:{[path]:newKey}})`
+ * re-validates the OLD value is still there before writing. If a concurrent write
+ * already changed it (array shifted, doc edited, already rewritten by a prior run),
+ * matchedCount is 0 and nothing happens — never a blind overwrite by array index alone.
+ * Logs to applied-<db>.jsonl only after a confirmed match+write.
+ */
+const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT } = {}) => {
+  requireRun(runId);
+  if (!uri) die("rewrite requires --uri=... — exactly ONE database. Never both in one invocation (Do-Not-Do rule 3).");
+  const dbLabel = dbNameOf(uri);
+  const { rows } = readJsonl(runFile(runId, "manifest.jsonl"));
+
+  const dbsInManifest = new Set(rows.flatMap((r) => r.owners.map((o) => o.db)));
+  if (!dbsInManifest.has(dbLabel)) {
+    die(`--uri resolves to db "${dbLabel}", but this manifest's owners only ever mention: ${[...dbsInManifest].join(", ")}. Wrong --uri, or wrong --run?`);
+  }
+
+  const appliedFile = runFile(runId, `applied-${dbLabel}.jsonl`);
+  const { tornLastLine } = readJsonl(appliedFile);
+  if (tornLastLine) {
+    die(`${appliedFile} has a torn final line (an unclean exit mid-write). Run \`doctor --run=${runId}\` first. rewrite refuses to guess.`);
+  }
+  const doneOwnerKeys = new Set(readJsonl(appliedFile).rows.map((r) => r.ownerKey));
+
+  const pending = [];
+  let skippedUrlShape = 0;
+  for (const row of rows) {
+    for (const owner of row.owners) {
+      if (owner.db !== dbLabel) continue;
+      if (owner.valueShape !== "key") {
+        skippedUrlShape += 1;
+        continue;
+      }
+      const ownerKey = ownerKeyOf(row.rowId, owner);
+      if (doneOwnerKeys.has(ownerKey)) continue;
+      pending.push({ row, owner, ownerKey });
+    }
+  }
+
+  console.log(`\n=== s3KeyMigration rewrite — run ${runId} — target db: ${dbLabel} ===`);
+  console.log(`mode:              ${commit ? "COMMIT (writes to the database)" : "DRY RUN (nothing written)"}`);
+  console.log(`already applied:   ${doneOwnerKeys.size}`);
+  console.log(`pending:           ${pending.length}`);
+  console.log(`skipped (url-shape, needs special handling, not migrated by rewrite): ${skippedUrlShape}\n`);
+
+  if (!pending.length) {
+    console.log("Nothing pending.\n");
+    return;
+  }
+  if (!commit) {
+    console.log("DRY RUN — re-run with --commit to actually write. First 10 pending:");
+    for (const p of pending.slice(0, 10)) {
+      console.log(`  ${p.owner.collection}.${p.owner.docId}.${p.owner.locator}:  ${p.row.oldKey}  ->  ${p.row.newKey}`);
+    }
+    console.log();
+    return;
+  }
+
+  const connection = await connect(uri, dbLabel);
+  let applied = 0;
+  let stale = 0;
+  const staleExamples = [];
+
+  try {
+    for (const { row, owner, ownerKey } of pending) {
+      const mongoLocator = mongoLocatorOf(owner.locator);
+      let docId;
+      try {
+        docId = new mongoose.Types.ObjectId(owner.docId);
+      } catch {
+        staleExamples.push(`  BAD docId  ${owner.collection} ${owner.docId} ${owner.locator}`);
+        stale += 1;
+        continue;
+      }
+
+      let result;
+      try {
+        result = await connection.db.collection(owner.collection).updateOne(
+          { _id: docId, [mongoLocator]: row.oldKey },
+          { $set: { [mongoLocator]: row.newKey } },
+        );
+      } catch (error) {
+        if (/ECONNREFUSED|ETIMEDOUT|ServerSelection|topology was destroyed/i.test(error.message)) {
+          writeState(runId, { phase: "rewrite", cursor: ownerKey, counts: { total: rows.length, done: applied, skipped: stale, failed: 0 } });
+          die(
+            `\nTunnel down mid-rewrite (${error.message}).\n` +
+              `Applied ${applied} before this — all logged and safe. Reconnect the SSH tunnel and re-run\n` +
+              `the exact same \`rewrite --run=${runId} --uri=...\` command; already-applied owners are skipped.`,
+          );
+        }
+        throw error;
+      }
+
+      if (result.matchedCount === 1) {
+        appendJsonl(appliedFile, {
+          rowId: row.rowId,
+          ownerKey,
+          collection: owner.collection,
+          docId: owner.docId,
+          locator: mongoLocator,
+          from: row.oldKey,
+          to: row.newKey,
+          appliedAt: new Date().toISOString(),
+        });
+        applied += 1;
+      } else {
+        stale += 1;
+        if (staleExamples.length < 15) {
+          staleExamples.push(`  STALE  ${owner.collection} ${owner.docId} ${mongoLocator}  (no longer holds ${row.oldKey} — already changed by something else)`);
+        }
+      }
+    }
+  } finally {
+    await connection.close();
+  }
+
+  for (const s of staleExamples) console.log(s);
+  if (stale > staleExamples.length) console.log(`  ... and ${stale - staleExamples.length} more stale`);
+
+  writeState(runId, { phase: "rewrite", cursor: null, counts: { total: rows.length, done: doneOwnerKeys.size + applied, skipped: stale, failed: 0 } });
+
+  console.log(`\napplied this run: ${applied}   stale (skipped, filter didn't match): ${stale}`);
+  console.log(`\n=== rewrite complete for run ${runId} against ${dbLabel} ===\n`);
+};
+
+// ---------------------------------------------------------------- verify
+
+/**
+ * `verify` — step 2.2. Read-only, run against ONE database after its `rewrite`.
+ *
+ * Checks, for every applied owner in applied-<db>.jsonl:
+ *   1. the document's field now holds the newKey (re-fetched fresh, not trusted from
+ *      the log)
+ *   2. the newKey HeadObjects in S3
+ *   3. a fresh scan of that scope's field confirms no document still holds the OLD key
+ *      at that same locator ("no document still holds a listed oldKey")
+ *   4. every arrayOfObjects/array field touched is still Array.isArray() (the
+ *      setByPath corruption guard, re-checked post-write)
+ *
+ * Deliberately narrower than the plan's full checklist: "reference count per field
+ * unchanged from baseline" is NOT implemented — that needs a persisted plan-time
+ * baseline to diff against, which this version doesn't yet write. Noted rather than
+ * silently skipped; a reasonable follow-up once `rewrite` is exercised at real scale.
+ */
+const cmdVerify = async () => {
+  requireRun();
+  if (!URI) die("verify requires --uri=... — the database to verify.");
+  const dbLabel = dbNameOf(URI);
+  const appliedFile = runFile(RUN_ID, `applied-${dbLabel}.jsonl`);
+  const { rows: applied, tornLastLine } = readJsonl(appliedFile);
+  if (tornLastLine) die(`${appliedFile} has a torn final line. Run \`doctor --run=${RUN_ID}\` first.`);
+
+  console.log(`\n=== s3KeyMigration verify — run ${RUN_ID} — db: ${dbLabel} — READ-ONLY ===`);
+  console.log(`applied rows to verify: ${applied.length}\n`);
+
+  if (!applied.length) {
+    console.log("Nothing applied yet for this database — run `rewrite --commit` first.\n");
+    return;
+  }
+
+  const connection = await connect(URI, dbLabel);
+  const s3 = s3Client();
+  const head = async (key) => {
+    try {
+      await withRetry(() => s3.headObject({ Bucket: BUCKET, Key: key }).promise());
+      return true;
+    } catch (error) {
+      if (error.code === "NotFound" || error.statusCode === 404) return false;
+      throw error;
+    }
+  };
+
+  let fieldMismatch = 0;
+  let s3Missing = 0;
+  let notCanonical = 0;
+  const problems = [];
+
+  await runPool(applied, CONCURRENCY, async (row) => {
+    if (!isCanonicalKey(row.to)) {
+      notCanonical += 1;
+      problems.push(`  NOT CANONICAL  ${row.collection}.${row.docId}.${row.locator} = ${row.to}`);
+    }
+
+    const doc = await connection.db.collection(row.collection).findOne(
+      { _id: new mongoose.Types.ObjectId(row.docId) },
+      { projection: { [row.locator]: 1 } },
+    );
+    const current = doc ? row.locator.split(".").reduce((v, k) => (v == null ? v : v[k]), doc) : undefined;
+    if (current !== row.to) {
+      fieldMismatch += 1;
+      problems.push(`  FIELD MISMATCH  ${row.collection}.${row.docId}.${row.locator}  expected ${row.to}, got ${JSON.stringify(current)}`);
+    }
+
+    if (!(await head(row.to))) {
+      s3Missing += 1;
+      problems.push(`  S3 MISSING  ${row.to}  (${row.collection}.${row.docId}.${row.locator})`);
+    }
+  });
+
+  // Array-shape corruption guard: re-scan the scopes touched and confirm no field the
+  // registry declares as an array kind has been flattened into a `{"0":{…}}` object.
+  const rescan = await scanDatabase(connection, dbLabel, BUCKET);
+  await connection.close();
+
+  for (const p of problems.slice(0, 50)) console.log(p);
+  if (problems.length > 50) console.log(`  ... and ${problems.length - 50} more`);
+
+  console.log(`\nfield holds newKey:     ${applied.length - fieldMismatch}/${applied.length}`);
+  console.log(`newKey is canonical:    ${applied.length - notCanonical}/${applied.length}`);
+  console.log(`newKey present in S3:   ${applied.length - s3Missing}/${applied.length}`);
+  console.log(`array-shape corruption: ${rescan.corruptArrays.length}`);
+  if (rescan.corruptArrays.length) {
+    for (const c of rescan.corruptArrays.slice(0, 10)) console.log(`  CORRUPT ARRAY  ${c.collection} ${c.docId} ${c.locator}`);
+  }
+
+  if (fieldMismatch || s3Missing || notCanonical || rescan.corruptArrays.length) {
+    console.log(`\nFAIL\n`);
+    process.exitCode = 1;
+  } else {
+    console.log(`\nPASS — every applied field holds a canonical newKey that exists in S3, no array corruption.\n`);
+  }
+};
+
+// ---------------------------------------------------------------- status
+
+/**
+ * `status` — read-only. `state.json` is the source of truth (per the plan's "Where
+ * run state lives"); this is a convenience view over it plus the append-only logs'
+ * actual line counts, which can be slightly ahead of `state.json`'s last checkpoint
+ * write if a batch is still in flight.
+ *
+ * There is no lease to report yet — the Mongo job doc (`s3KeyMigrationJobModel`) is
+ * built but not wired into any command, since nothing reads it yet either (that's the
+ * 2.3 monitoring card). Noted explicitly rather than silently omitted.
+ */
+const cmdStatus = () => {
+  if (!RUN_ID) {
+    const runs = listRuns();
+    console.log(`\nNo --run given. ${runs.length} run(s) on disk under _migrations/s3-key-restructure/:`);
+    for (const r of runs) console.log(`  ${r}`);
+    console.log(`\nnode scripts/s3KeyMigration.js status --run=<runId>\n`);
+    return;
+  }
+
+  const meta = readMeta(RUN_ID);
+  if (!meta) die(`no meta.json for run "${RUN_ID}".`);
+  const state = readState(RUN_ID);
+  const checksumProblems = verifyManifestChecksums(RUN_ID);
+
+  console.log(`\n=== status — run ${RUN_ID} ===`);
+  console.log(`created:      ${meta.createdAt}`);
+  console.log(`git commit:   ${meta.gitCommit}`);
+  console.log(`params:       ${JSON.stringify(meta.params)}`);
+  console.log(`manifest ok:  ${checksumProblems.length ? "NO — " + checksumProblems.join("; ") : "yes, checksums match"}`);
+
+  if (!state) {
+    console.log(`\nNo state.json — plan ran but nothing since.\n`);
+    return;
+  }
+  console.log(`\nphase:        ${state.phase}`);
+  console.log(`scope:        ${state.scope}`);
+  console.log(`cursor:       ${state.cursor ?? "(none — clean boundary)"}`);
+  console.log(`counts:       ${JSON.stringify(state.counts)}`);
+  console.log(`started:      ${state.startedAt}`);
+  console.log(`last update:  ${state.updatedAt}`);
+  console.log(`state version ${state.stateVersion} (current: ${STATE_VERSION})${state.stateVersion !== STATE_VERSION ? "  <-- MISMATCH, resume will refuse" : ""}`);
+
+  const { rows: manifestRows } = readJsonl(runFile(RUN_ID, "manifest.jsonl"));
+  const { rows: copiedRows, tornLastLine: copiedTorn } = readJsonl(runFile(RUN_ID, "copied.jsonl"));
+  console.log(`\ncopied.jsonl: ${copiedRows.length}/${manifestRows.length}${copiedTorn ? "  ⚠ TORN LAST LINE — run doctor" : ""}`);
+
+  for (const db of new Set(manifestRows.flatMap((r) => r.owners.map((o) => o.db)))) {
+    const { rows: appliedRows, tornLastLine: appliedTorn } = readJsonl(runFile(RUN_ID, `applied-${db}.jsonl`));
+    console.log(`applied-${db}.jsonl: ${appliedRows.length}${appliedTorn ? "  ⚠ TORN LAST LINE — run doctor" : ""}`);
+  }
+
+  console.log(`\n⚠ No lease/worker-liveness tracking yet — the Mongo job doc exists but nothing writes to it until the 2.3 monitoring card lands. Treat this CLI's exit as the only liveness signal for now.\n`);
+};
+
+// ---------------------------------------------------------------- doctor
+
+/**
+ * `doctor` — the hard-kill repair tool. Re-verifies the manifest checksum, truncates a
+ * torn final line from any append-only log (the ONLY writer allowed to touch these
+ * files other than an append), and spot-checks the TAIL of each log against live
+ * reality (S3 for copied.jsonl, the database for applied-<db>.jsonl) — catching a log
+ * entry that claims success but whose effect somehow isn't there. Reports drift;
+ * never writes anything except the torn-line truncation itself. Run before every
+ * `resume` after an unclean exit.
+ */
+const cmdDoctor = async () => {
+  if (!RUN_ID) die("doctor requires --run=<runId>.");
+  const meta = readMeta(RUN_ID);
+  if (!meta) die(`no meta.json for run "${RUN_ID}".`);
+
+  console.log(`\n=== doctor — run ${RUN_ID} ===\n`);
+
+  const checksumProblems = verifyManifestChecksums(RUN_ID);
+  if (checksumProblems.length) {
+    console.log(`MANIFEST CHECKSUM PROBLEMS (nothing below can be trusted until this is resolved):`);
+    for (const p of checksumProblems) console.log(`  - ${p}`);
+  } else {
+    console.log(`manifest checksums: OK`);
+  }
+
+  const { rows: manifestRows } = readJsonl(runFile(RUN_ID, "manifest.jsonl"));
+  const manifestByRowId = new Map(manifestRows.map((r) => [r.rowId, r]));
+
+  // --- copied.jsonl: torn-line repair + tail check against real S3 ---
+  const copiedFile = runFile(RUN_ID, "copied.jsonl");
+  if (fs.existsSync(copiedFile)) {
+    const truncated = truncateTornLine(copiedFile);
+    console.log(`\ncopied.jsonl: ${truncated ? "TORN LINE FOUND AND TRUNCATED" : "no torn line"}`);
+    const { rows: copiedRows } = readJsonl(copiedFile);
+    const tail = copiedRows.slice(-20);
+    if (tail.length) {
+      const s3 = s3Client();
+      let mismatches = 0;
+      for (const row of tail) {
+        try {
+          await withRetry(() => s3.headObject({ Bucket: BUCKET, Key: row.newKey }).promise());
+        } catch (error) {
+          if (error.code === "NotFound" || error.statusCode === 404) {
+            mismatches += 1;
+            console.log(`  DRIFT  ${row.newKey} logged as copied but not found in S3 (rowId ${row.rowId})`);
+          } else {
+            throw error;
+          }
+        }
+      }
+      console.log(`  tail check: ${tail.length - mismatches}/${tail.length} of the last ${tail.length} logged copies confirmed present in S3`);
+    }
+  } else {
+    console.log(`\ncopied.jsonl: does not exist yet (copy hasn't run)`);
+  }
+
+  // --- applied-<db>.jsonl: torn-line repair + tail check against live documents ---
+  const dbsInManifest = new Set(manifestRows.flatMap((r) => r.owners.map((o) => o.db)));
+  for (const db of dbsInManifest) {
+    if (URI && dbNameOf(URI) !== db) continue; // --uri given: restrict to that db only
+    const appliedFile = runFile(RUN_ID, `applied-${db}.jsonl`);
+    if (!fs.existsSync(appliedFile)) {
+      console.log(`\napplied-${db}.jsonl: does not exist yet (rewrite hasn't run against ${db})`);
+      continue;
+    }
+    const truncated = truncateTornLine(appliedFile);
+    console.log(`\napplied-${db}.jsonl: ${truncated ? "TORN LINE FOUND AND TRUNCATED" : "no torn line"}`);
+    const { rows: appliedRows } = readJsonl(appliedFile);
+    const tail = appliedRows.slice(-20);
+    if (tail.length && URI) {
+      const connection = await connect(URI, db);
+      let mismatches = 0;
+      for (const row of tail) {
+        const doc = await connection.db.collection(row.collection).findOne(
+          { _id: new mongoose.Types.ObjectId(row.docId) },
+          { projection: { [row.locator]: 1 } },
+        );
+        const current = doc ? row.locator.split(".").reduce((v, k) => (v == null ? v : v[k]), doc) : undefined;
+        if (current !== row.to) {
+          mismatches += 1;
+          console.log(`  DRIFT  ${row.collection}.${row.docId}.${row.locator} logged as -> ${row.to} but currently ${JSON.stringify(current)}`);
+        }
+      }
+      await connection.close();
+      console.log(`  tail check: ${tail.length - mismatches}/${tail.length} of the last ${tail.length} logged writes confirmed live`);
+    } else if (tail.length) {
+      console.log(`  (pass --uri=<${db}'s connection string> to tail-check this log against live documents)`);
+    }
+  }
+
+  console.log(`\n=== doctor complete for run ${RUN_ID} ===\n`);
+};
+
+// ---------------------------------------------------------------- resume
+
+/**
+ * `resume` — takes `state.json`'s `phase` as authoritative and re-drives the matching
+ * command (`copy` or `rewrite`) with the same resumability logic those commands
+ * already have. Not a separate mechanism: `copy`/`rewrite` are already safe to just
+ * re-run (they skip whatever their log says is done), so `resume` exists mainly to (a)
+ * refuse on a `stateVersion` mismatch rather than guess, and (b) save the operator
+ * from having to remember which phase a run stopped in.
+ *
+ * Dry-run by default (prints what it would redo); `--commit` actually does it.
+ */
+const cmdResume = async () => {
+  if (!RUN_ID) die("resume requires --run=<runId>.");
+  const state = readState(RUN_ID);
+  if (!state) die(`no state.json for run "${RUN_ID}" — nothing to resume. Was anything past \`plan\` ever run?`);
+  if (state.stateVersion !== STATE_VERSION) {
+    die(
+      `state.json for run ${RUN_ID} has stateVersion ${state.stateVersion}, this CLI is at ${STATE_VERSION}.\n` +
+        `Refusing to guess how to resume an incompatible checkpoint — investigate manually.`,
+    );
+  }
+
+  console.log(`\n=== resume — run ${RUN_ID} — last phase: ${state.phase} ===`);
+  console.log(`cursor: ${state.cursor ?? "(none)"}   counts: ${JSON.stringify(state.counts)}\n`);
+
+  if (state.phase === "plan") {
+    console.log(`Nothing to resume — plan has no partial state to redo. Run \`copy\` next.\n`);
+    return;
+  }
+  if (state.phase === "copy") {
+    await cmdCopy({ runId: RUN_ID, commit: COMMIT, concurrency: CONCURRENCY });
+    return;
+  }
+  if (state.phase === "rewrite") {
+    if (!URI) die(`resume of a "rewrite" phase requires --uri=... — which database it was rewriting (state.json does not record the connection string).`);
+    await cmdRewrite({ runId: RUN_ID, uri: URI, commit: COMMIT });
+    return;
+  }
+  console.log(`No resume handler for phase "${state.phase}" yet (this CLI has: copy, rewrite).\n`);
+};
+
+// ---------------------------------------------------------------- reverse
+
+/**
+ * `reverse` — replays `applied-<db>.jsonl` BACKWARDS: for every logged write, restores
+ * `from` in place of `to`, filtered on the field CURRENTLY holding `to` — the same
+ * idempotent-by-construction pattern as `rewrite` itself, so a doc changed again since
+ * the rewrite (by something else, or by a second `reverse` run) is left alone rather
+ * than blindly overwritten. Old keys were never touched by `copy`/`rewrite`, so the
+ * app is correct again the instant this finishes — no S3 involvement at all.
+ *
+ * Resumable via `reversed.jsonl`, the same skip-by-key pattern as everything else here.
+ */
+const cmdReverse = async () => {
+  requireRun();
+  if (!URI) die("reverse requires --uri=... — the database to reverse.");
+  const dbLabel = dbNameOf(URI);
+  const appliedFile = runFile(RUN_ID, `applied-${dbLabel}.jsonl`);
+  const { rows: applied, tornLastLine: appliedTorn } = readJsonl(appliedFile);
+  if (appliedTorn) die(`${appliedFile} has a torn final line. Run \`doctor --run=${RUN_ID}\` first.`);
+  if (!applied.length) {
+    console.log(`\nNothing applied for ${dbLabel} in run ${RUN_ID} — nothing to reverse.\n`);
+    return;
+  }
+
+  const reversedFile = runFile(RUN_ID, "reversed.jsonl");
+  const { tornLastLine: reversedTorn } = readJsonl(reversedFile);
+  if (reversedTorn) die(`${reversedFile} has a torn final line. Run \`doctor --run=${RUN_ID}\` first.`);
+  const doneOwnerKeys = loadDoneRowIds(reversedFile, "ownerKey");
+
+  const pending = applied.filter((r) => !doneOwnerKeys.has(r.ownerKey));
+
+  console.log(`\n=== s3KeyMigration reverse — run ${RUN_ID} — target db: ${dbLabel} ===`);
+  console.log(`mode:              ${COMMIT ? "COMMIT (writes to the database)" : "DRY RUN (nothing written)"}`);
+  console.log(`applied total:     ${applied.length}`);
+  console.log(`already reversed:  ${doneOwnerKeys.size}`);
+  console.log(`pending:           ${pending.length}\n`);
+
+  if (!pending.length) {
+    console.log("Nothing pending.\n");
+    return;
+  }
+  if (!COMMIT) {
+    console.log("DRY RUN — re-run with --commit to actually reverse. First 10 pending:");
+    for (const r of pending.slice(0, 10)) console.log(`  ${r.collection}.${r.docId}.${r.locator}:  ${r.to}  ->  ${r.from}`);
+    console.log();
+    return;
+  }
+
+  const connection = await connect(URI, dbLabel);
+  let reversed = 0;
+  let stale = 0;
+  try {
+    for (const r of pending) {
+      const result = await connection.db.collection(r.collection).updateOne(
+        { _id: new mongoose.Types.ObjectId(r.docId), [r.locator]: r.to },
+        { $set: { [r.locator]: r.from } },
+      );
+      if (result.matchedCount === 1) {
+        appendJsonl(reversedFile, { ...r, reversedAt: new Date().toISOString() });
+        reversed += 1;
+      } else {
+        stale += 1;
+        console.log(`  STALE  ${r.collection}.${r.docId}.${r.locator}  no longer holds ${r.to} — already changed since rewrite, left alone`);
+      }
+    }
+  } finally {
+    await connection.close();
+  }
+
+  console.log(`\nreversed this run: ${reversed}   stale (skipped): ${stale}`);
+  console.log(`\n=== reverse complete for run ${RUN_ID} against ${dbLabel} — old keys were never touched, so the app was already correct throughout ===\n`);
+};
+
+// ---------------------------------------------------------------- rollback-copies
+
+/**
+ * `rollback-copies` — deletes ONLY the newKey objects logged in `copied.jsonl`. No
+ * database involvement (nothing was rewritten yet, or this runs before `rewrite`).
+ * Bucket versioning is Enabled, so even this is reversible via `undelete` (not built).
+ */
+const cmdRollbackCopies = async () => {
+  requireRun();
+  const copiedFile = runFile(RUN_ID, "copied.jsonl");
+  const { rows: copied, tornLastLine } = readJsonl(copiedFile);
+  if (tornLastLine) die(`${copiedFile} has a torn final line. Run \`doctor --run=${RUN_ID}\` first.`);
+
+  console.log(`\n=== s3KeyMigration rollback-copies — run ${RUN_ID} ===`);
+  console.log(`mode:  ${COMMIT ? "COMMIT (deletes from S3)" : "DRY RUN (nothing deleted)"}`);
+  console.log(`objects logged in copied.jsonl: ${copied.length}\n`);
+
+  if (!copied.length) {
+    console.log("Nothing to roll back.\n");
+    return;
+  }
+  if (!COMMIT) {
+    console.log("DRY RUN — re-run with --commit to actually delete. First 10:");
+    for (const r of copied.slice(0, 10)) console.log(`  ${r.newKey}`);
+    console.log();
+    return;
+  }
+
+  const s3 = s3Client();
+  let deleted = 0;
+  for (const row of copied) {
+    await withRetry(() => s3.deleteObject({ Bucket: BUCKET, Key: row.newKey }).promise());
+    deleted += 1;
+  }
+  console.log(`deleted: ${deleted}/${copied.length}`);
+  console.log(`\n=== rollback-copies complete for run ${RUN_ID} — old keys were never touched ===\n`);
+};
+
 // ---------------------------------------------------------------- main
 
 const main = async () => {
@@ -918,14 +1467,43 @@ const main = async () => {
     case "verify-s3":
       await cmdVerifyS3();
       break;
+    case "rewrite":
+      await cmdRewrite();
+      break;
+    case "verify":
+      await cmdVerify();
+      break;
+    case "status":
+      cmdStatus();
+      break;
+    case "doctor":
+      await cmdDoctor();
+      break;
+    case "resume":
+      await cmdResume();
+      break;
+    case "reverse":
+      await cmdReverse();
+      break;
+    case "rollback-copies":
+      await cmdRollbackCopies();
+      break;
     default:
       die(
         `Unknown subcommand "${SUBCOMMAND || "(none)"}".\n` +
-          `Available so far: scan, plan, copy, verify-s3, collections, flush-caches\n\n` +
+          `Available: scan, plan, copy, verify-s3, rewrite, verify, status, doctor, resume, reverse,\n` +
+          `           rollback-copies, collections, flush-caches\n\n` +
           `  node scripts/s3KeyMigration.js scan --uri=... [--compare-uri=...] [--out=...] [--no-s3]\n` +
           `  node scripts/s3KeyMigration.js plan --uri=... --compare-uri=... [--scope=<scopeKey>]\n` +
           `  node scripts/s3KeyMigration.js copy --run=<runId> [--commit] [--concurrency=8]\n` +
-          `  node scripts/s3KeyMigration.js verify-s3 --run=<runId>`,
+          `  node scripts/s3KeyMigration.js verify-s3 --run=<runId>\n` +
+          `  node scripts/s3KeyMigration.js rewrite --run=<runId> --uri=... [--commit]\n` +
+          `  node scripts/s3KeyMigration.js verify --run=<runId> --uri=...\n` +
+          `  node scripts/s3KeyMigration.js status [--run=<runId>]\n` +
+          `  node scripts/s3KeyMigration.js doctor --run=<runId> [--uri=...]\n` +
+          `  node scripts/s3KeyMigration.js resume --run=<runId> [--uri=...] [--commit]\n` +
+          `  node scripts/s3KeyMigration.js reverse --run=<runId> --uri=... [--commit]\n` +
+          `  node scripts/s3KeyMigration.js rollback-copies --run=<runId> [--commit]`,
       );
   }
   process.exit(0);
