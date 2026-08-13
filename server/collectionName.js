@@ -60,7 +60,8 @@ export const Collections = {
     REWARDTRANSACTIONS: 'reward_transactions',
     REWARDRULES: 'reward_rules',
     REWARDREDEMPTIONS: 'reward_redemptions',
-    REWARDCLAIMS: 'reward_claims'
+    REWARDCLAIMS: 'reward_claims',
+    S3KEYMIGRATIONJOB: 's3_key_migration_jobs'
 };
 
 export const {
@@ -125,6 +126,7 @@ export const {
     REWARDTRANSACTIONS,
     REWARDRULES,
     REWARDREDEMPTIONS,
-    REWARDCLAIMS
+    REWARDCLAIMS,
+    S3KEYMIGRATIONJOB
 } = Collections;
 export const MASSCLICKEVENTS = "massclickevents";

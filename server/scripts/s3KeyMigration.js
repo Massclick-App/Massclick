@@ -47,11 +47,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import mongoose from "mongoose";
-import AWS from "aws-sdk";
 
-import { SCOPES, registryCollections, validateRegistry } from "../utils/s3ScopeRegistry.js";
-import { extractS3Key, getByPath } from "../utils/s3KeyUtils.js";
+import { SCOPES, registryCollections } from "../utils/s3ScopeRegistry.js";
+import { connect, scanDatabase, compareIds, listBucket } from "../utils/s3MigrationScan.js";
+import { s3Path } from "../utils/s3ObjectKeys.js";
+import { ulid } from "../utils/idGen.js";
+import {
+  newRunId,
+  ensureRunDir,
+  runFile,
+  writeMeta,
+  writeState,
+  appendJsonl,
+} from "../utils/s3MigrationManifest.js";
 import {
   initRedis,
   getRedisClient,
@@ -78,6 +86,8 @@ const OUT = flag("out");
 const SKIP_S3 = has("no-s3");
 /** Nothing in this CLI writes anything without this. `scan` ignores it entirely. */
 const COMMIT = has("commit");
+const RUN_ID = flag("run");
+const SCOPE_FLAG = flag("scope") || "all";
 
 const BUCKET = process.env.AWS_S3_BUCKET_MASSCLICK;
 
@@ -88,248 +98,8 @@ const die = (message) => {
   process.exit(1);
 };
 
-// ------------------------------------------------- key/value classification
-
-const OBJECT_EXT =
-  /\.(jpe?g|png|webp|gif|svg|avif|bmp|tiff?|pdf|mp4|mov|webm|mkv|docx?|xlsx?|pptx?|csv|zip|txt|heic|html?)$/i;
-
-/**
- * What is actually stored in this field on this document?
- *   key            a bare object key — the overwhelming majority
- *   url-ours       an absolute URL that resolves into our bucket (fcmCampaign.imageUrl,
- *                  seoBlog businessDetails[].bannerImage)
- *   url-external   an absolute URL somewhere else — never touched by the migration
- *   empty          "" / null / absent — not a reference
- *   junk           a string that is neither: a bare word, a data: URI, a path with
- *                  no extension. Needs eyes before the manifest is built.
- */
-const classify = (raw) => {
-  if (raw === null || raw === undefined) return { shape: "empty", key: "" };
-  if (typeof raw !== "string") return { shape: "junk", key: String(raw).slice(0, 200) };
-  const value = raw.trim();
-  if (!value) return { shape: "empty", key: "" };
-
-  if (/^data:/i.test(value)) return { shape: "junk", key: value.slice(0, 60) };
-
-  if (/^https?:\/\//i.test(value)) {
-    const ours =
-      (BUCKET && value.includes(BUCKET)) || /massclickdev|massclickprod/i.test(value);
-    const key = extractS3Key(value);
-    if (ours && key) return { shape: "url-ours", key };
-    return { shape: "url-external", key: "" };
-  }
-
-  const bare = value.replace(/^\/+/, "").split("?")[0];
-  if (!OBJECT_EXT.test(bare)) return { shape: "junk", key: bare };
-  return { shape: "key", key: bare };
-};
-
-/**
- * Every stored reference on one document for one registry field, as
- * {locator, raw} — `locator` is precise enough to rewrite the exact slot later.
- */
-const readField = (doc, field) => {
-  const out = [];
-  const value = getByPath(doc, field.path);
-
-  switch (field.kind) {
-    case "single":
-      out.push({ locator: field.path, raw: value });
-      break;
-
-    case "array":
-      if (Array.isArray(value)) {
-        value.forEach((item, i) => out.push({ locator: `${field.path}[${i}]`, raw: item }));
-      } else if (value !== null && value !== undefined && value !== "") {
-        // A scalar where the schema says array — real corruption, surfaced as junk.
-        out.push({ locator: `${field.path}<NOT-ARRAY>`, raw: value });
-      }
-      break;
-
-    case "object":
-      if (value && typeof value === "object" && !Array.isArray(value)) {
-        for (const key of field.keys) out.push({ locator: `${field.path}.${key}`, raw: value[key] });
-      }
-      break;
-
-    case "arrayOfObjects":
-      if (Array.isArray(value)) {
-        value.forEach((item, i) => {
-          if (item && typeof item === "object") {
-            out.push({ locator: `${field.path}[${i}].${field.itemPath}`, raw: item[field.itemPath] });
-          }
-        });
-      } else if (value !== null && value !== undefined && value !== "") {
-        // This is exactly the `{"0":{…}}` corruption the setByPath bug produces.
-        out.push({ locator: `${field.path}<NOT-ARRAY>.${field.itemPath}`, raw: null, corrupt: true });
-      }
-      break;
-
-    default:
-      break;
-  }
-
-  return out;
-};
-
-// ---------------------------------------------------------------- mongo
-
-const connect = async (uri, label) => {
-  const connection = mongoose.createConnection(uri, { serverSelectionTimeoutMS: 8000 });
-  try {
-    await connection.asPromise();
-  } catch (error) {
-    if (/ECONNREFUSED|ETIMEDOUT|ServerSelection/i.test(error.message)) {
-      die(
-        `Cannot reach ${label} at ${uri.replace(/\/\/[^@]*@/, "//<redacted>@")}\n` +
-          `  ${error.message}\n\n` +
-          `The SSH tunnel to 127.0.0.1:27018 is almost certainly down. Reconnect it and re-run.`,
-      );
-    }
-    throw error;
-  }
-  return connection;
-};
-
-/** Walk one database through the registry. Read-only: find() and nothing else. */
-const scanDatabase = async (connection, dbLabel) => {
-  const problems = await validateRegistry(connection.db);
-  if (problems.length) {
-    console.error(`\nRegistry does not match ${dbLabel}:`);
-    for (const p of problems) console.error(`  - ${p}`);
-    die("Refusing to scan against a registry that disagrees with the database.");
-  }
-
-  const perField = [];
-  const shapeTotals = {};
-  const keyOwners = new Map(); // key -> [{scopeKey, collection, docId, locator}]
-  const junkSamples = [];
-  const externalSamples = [];
-  const corruptArrays = [];
-
-  for (const scope of Object.values(SCOPES)) {
-    const collection = connection.db.collection(scope.collection);
-    const docCount = await collection.countDocuments({});
-    const matching = await collection.countDocuments(scope.buildQuery());
-
-    const perFieldCounts = new Map();
-    for (const field of scope.fields) {
-      const id = `${field.path}${field.itemPath ? `.${field.itemPath}` : ""}`;
-      perFieldCounts.set(id, { field, id, shapes: {}, refs: 0, distinct: new Set() });
-    }
-
-    const cursor = collection.find(scope.buildQuery(), { projection: scope.projection });
-    for await (const doc of cursor) {
-      for (const field of scope.fields) {
-        const id = `${field.path}${field.itemPath ? `.${field.itemPath}` : ""}`;
-        const bucketRow = perFieldCounts.get(id);
-
-        for (const { locator, raw, corrupt } of readField(doc, field)) {
-          if (corrupt) {
-            corruptArrays.push({ collection: scope.collection, docId: String(doc._id), locator });
-            continue;
-          }
-          const { shape, key } = classify(raw);
-          if (shape === "empty") continue;
-
-          bucketRow.shapes[shape] = (bucketRow.shapes[shape] || 0) + 1;
-          shapeTotals[shape] = (shapeTotals[shape] || 0) + 1;
-          bucketRow.refs += 1;
-
-          if (shape === "junk" && junkSamples.length < 40) {
-            junkSamples.push({ collection: scope.collection, docId: String(doc._id), locator, value: key });
-          }
-          if (shape === "url-external" && externalSamples.length < 40) {
-            externalSamples.push({ collection: scope.collection, docId: String(doc._id), locator, value: String(raw).slice(0, 160) });
-          }
-
-          if (shape === "key" || shape === "url-ours") {
-            bucketRow.distinct.add(key);
-            if (!keyOwners.has(key)) keyOwners.set(key, []);
-            keyOwners.get(key).push({
-              scopeKey: scope.scopeKey,
-              collection: scope.collection,
-              docId: String(doc._id),
-              locator,
-              valueShape: shape === "url-ours" ? "url" : "key",
-            });
-          }
-        }
-      }
-    }
-
-    for (const row of perFieldCounts.values()) {
-      perField.push({
-        scopeKey: scope.scopeKey,
-        collection: scope.collection,
-        docCount,
-        matchingDocs: matching,
-        field: row.id,
-        kind: row.field.kind,
-        declaredShape: row.field.valueShape,
-        stability: row.field.stability,
-        refs: row.refs,
-        distinctKeys: row.distinct.size,
-        shapes: row.shapes,
-      });
-    }
-  }
-
-  return { perField, shapeTotals, keyOwners, junkSamples, externalSamples, corruptArrays };
-};
-
-/** _id overlap per collection — the "are these two databases clones?" question. */
-const compareIds = async (a, b, labelA, labelB) => {
-  const rows = [];
-  for (const name of registryCollections()) {
-    const idsA = new Set(
-      (await a.db.collection(name).find({}, { projection: { _id: 1 } }).toArray()).map((d) => String(d._id)),
-    );
-    const idsB = new Set(
-      (await b.db.collection(name).find({}, { projection: { _id: 1 } }).toArray()).map((d) => String(d._id)),
-    );
-    let shared = 0;
-    for (const id of idsA) if (idsB.has(id)) shared += 1;
-    const union = idsA.size + idsB.size - shared;
-    rows.push({
-      collection: name,
-      [labelA]: idsA.size,
-      [labelB]: idsB.size,
-      shared,
-      onlyA: idsA.size - shared,
-      onlyB: idsB.size - shared,
-      overlapPct: union ? Number(((shared / union) * 100).toFixed(2)) : 100,
-    });
-  }
-  return rows;
-};
-
-// ---------------------------------------------------------------- s3
-
-const listBucket = async () => {
-  if (!BUCKET) die("AWS_S3_BUCKET_MASSCLICK is not set in server/.env.");
-  AWS.config.update({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION,
-  });
-  const s3 = new AWS.S3();
-
-  const keys = new Map(); // key -> size
-  let token;
-  let pages = 0;
-  do {
-    const page = await s3
-      .listObjectsV2({ Bucket: BUCKET, MaxKeys: 1000, ContinuationToken: token })
-      .promise();
-    for (const obj of page.Contents || []) keys.set(obj.Key, obj.Size);
-    token = page.IsTruncated ? page.NextContinuationToken : undefined;
-    pages += 1;
-    process.stdout.write(`\r  listing bucket ${BUCKET}: ${keys.size} objects (${pages} pages)`);
-  } while (token);
-  process.stdout.write("\n");
-  return keys;
-};
+// classify / readField / connect / scanDatabase / compareIds / listBucket now live in
+// utils/s3MigrationScan.js, shared with `plan` — see that file's header for why.
 
 // ---------------------------------------------------------------- reporting
 
@@ -511,7 +281,7 @@ const cmdScan = async () => {
 
   const primary = await connect(URI, label);
   console.log(`  scanning ${label}...`);
-  const scan = await scanDatabase(primary, label);
+  const scan = await scanDatabase(primary, label, BUCKET);
 
   let compareScan = null;
   let compare = null;
@@ -519,12 +289,12 @@ const cmdScan = async () => {
   if (COMPARE_URI) {
     secondary = await connect(COMPARE_URI, compareLabel);
     console.log(`  scanning ${compareLabel}...`);
-    compareScan = await scanDatabase(secondary, compareLabel);
+    compareScan = await scanDatabase(secondary, compareLabel, BUCKET);
     console.log(`  comparing _ids...`);
     compare = await compareIds(primary, secondary, label, compareLabel);
   }
 
-  const bucketKeys = SKIP_S3 ? null : await listBucket();
+  const bucketKeys = SKIP_S3 ? null : await listBucket(BUCKET);
 
   // --- present / missing / orphan ---
   const referenced = new Set(scan.keyOwners.keys());
@@ -546,10 +316,10 @@ const cmdScan = async () => {
   const orphans = [];
   let orphanBytes = 0;
   if (bucketKeys) {
-    for (const [key, size] of bucketKeys) {
+    for (const [key, meta] of bucketKeys) {
       if (!referencedEither.has(key)) {
         orphans.push(key);
-        orphanBytes += size || 0;
+        orphanBytes += meta?.size || 0;
       }
     }
   }
@@ -623,7 +393,15 @@ const cmdScan = async () => {
   console.log(`\n    intra-DB fan-out in ${label} (one key, several documents): ${fanOut.length}`);
   for (const f of fanOut.slice(0, 10)) {
     console.log(`      ${pad(f.key, 62)} ${f.docs.length} docs`);
+  }
 
+  // Pre-existing bug fixed in passing: this block used to be nested inside the
+  // fanOut loop above, so it printed once per fan-out row (up to 10x) when a
+  // compare-uri was given, and crashed with "compare is not iterable" when it
+  // wasn't (compare is null) and any fan-out existed at all — hit for real while
+  // testing the s3MigrationScan.js extraction. `compare` is only ever set when
+  // COMPARE_URI is provided, so this must run at most once and only then.
+  if (compare) {
     console.log(`\n──────── clone check — _id overlap per collection ────────`);
     console.log(
       `\n  ${pad("collection", 26)}${num(label, 12)}${num(compareLabel, 12)}${num("shared", 10)}${num("overlap%", 10)}`,
@@ -750,6 +528,183 @@ const cmdScan = async () => {
   if (secondary) await secondary.close();
 };
 
+// ---------------------------------------------------------------- plan
+
+/**
+ * `plan` — step 2.2. Builds a manifest for a NEW run. Writes ONLY to local disk
+ * (manifest.jsonl, conflicts.jsonl, orphans.jsonl, missing.jsonl, external.jsonl,
+ * meta.json, state.json) — no S3 write, no database write, matching the plan's own
+ * "Neither writes to S3 or to any database. If either fails, the run simply doesn't
+ * start."
+ *
+ * Always mints a FRESH runId (Do-Not-Do rule 4: "Do not re-run plan on an existing
+ * runId. ULIDs are generated once and persisted; re-planning invalidates every logged
+ * copy."). `--run=` is not accepted here — it is how every OTHER subcommand targets a
+ * run `plan` already produced.
+ *
+ * Resolution rule (the plan's "Key referenced by BOTH databases" table), implemented
+ * generically rather than case-by-case: every owner of an oldKey is reduced to its
+ * (entity, entityId, purpose, seq) identity, owners are grouped by that identity, and
+ * each DISTINCT group mints its own newKey and gets its own manifest row. One group
+ * total = shared identity (the overwhelming majority, since dev is a clone of prod).
+ * More than one group = a cross-DB split or an intra-DB fan-out — mechanically
+ * identical to build, but also logged to conflicts.jsonl for human review before
+ * `copy`, per the plan ("a large count is a stop signal").
+ */
+const cmdPlan = async () => {
+  if (!URI) die("plan requires --uri=... (primary, e.g. dev — no default).");
+  if (!COMPARE_URI) die("plan requires --compare-uri=... (the other database) — the manifest must account for both databases' owners, not just one.");
+  if (SCOPE_FLAG !== "all" && !SCOPES[SCOPE_FLAG]) {
+    die(`plan: unknown --scope=${SCOPE_FLAG}. Valid: all, ${Object.keys(SCOPES).join(", ")}`);
+  }
+
+  const label = dbNameOf(URI);
+  const compareLabel = dbNameOf(COMPARE_URI);
+  const runId = newRunId();
+  ensureRunDir(runId);
+
+  console.log(`\n=== s3KeyMigration plan — writes ONLY to local disk, nothing to S3 or any database ===`);
+  console.log(`runId:     ${runId}`);
+  console.log(`primary:   ${label}`);
+  console.log(`compare:   ${compareLabel}`);
+  console.log(`scope:     ${SCOPE_FLAG}`);
+  console.log(`bucket:    ${BUCKET}`);
+  console.log(`started:   ${new Date().toISOString()}\n`);
+
+  const primary = await connect(URI, label);
+  console.log(`  scanning ${label}...`);
+  const scanA = await scanDatabase(primary, label, BUCKET);
+  const secondary = await connect(COMPARE_URI, compareLabel);
+  console.log(`  scanning ${compareLabel}...`);
+  const scanB = await scanDatabase(secondary, compareLabel, BUCKET);
+  const bucketKeys = await listBucket(BUCKET);
+  await primary.close();
+  await secondary.close();
+
+  const scopeObj = SCOPE_FLAG === "all" ? null : SCOPES[SCOPE_FLAG];
+  const inScope = (owners) => !scopeObj || owners.some((o) => o.scopeKey === SCOPE_FLAG);
+
+  const allOldKeys = new Set([...scanA.keyOwners.keys(), ...scanB.keyOwners.keys()]);
+  const referencedEither = allOldKeys;
+
+  const manifestFile = runFile(runId, "manifest.jsonl");
+  const conflictsFile = runFile(runId, "conflicts.jsonl");
+  const orphansFile = runFile(runId, "orphans.jsonl");
+  const missingFile = runFile(runId, "missing.jsonl");
+  const externalFile = runFile(runId, "external.jsonl");
+
+  const counts = { rows: 0, missing: 0, orphans: 0, external: 0, conflicts: 0 };
+  const mapKindCounts = {};
+  let totalBytes = 0;
+
+  for (const oldKey of allOldKeys) {
+    const ownersA = (scanA.keyOwners.get(oldKey) || []).map((o) => ({ ...o, db: label }));
+    const ownersB = (scanB.keyOwners.get(oldKey) || []).map((o) => ({ ...o, db: compareLabel }));
+    const allOwners = [...ownersA, ...ownersB];
+    if (!inScope(allOwners)) continue;
+
+    const bucketMeta = bucketKeys.get(oldKey);
+    if (!bucketMeta) {
+      appendJsonl(missingFile, { oldKey, owners: allOwners });
+      counts.missing += 1;
+      continue;
+    }
+
+    // Group by (entity, entityId, purpose, seq) — see function docstring.
+    const groups = new Map();
+    for (const owner of allOwners) {
+      if (owner.entityId === null || owner.entityId === undefined) {
+        appendJsonl(conflictsFile, { oldKey, kind: "missing-entity-id", owner });
+        counts.conflicts += 1;
+        continue;
+      }
+      const groupKey = `${owner.entity}/${owner.entityId}/${owner.purpose}${owner.seq ? `/${owner.seq}` : ""}`;
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, { entity: owner.entity, entityId: owner.entityId, purpose: owner.purpose, seq: owner.seq, owners: [] });
+      }
+      groups.get(groupKey).owners.push(owner);
+    }
+    if (groups.size === 0) continue;
+
+    const dbsInvolved = new Set(allOwners.map((o) => o.db));
+    const mapKind = groups.size === 1 ? "shared" : dbsInvolved.size > 1 ? "split" : "fanout";
+    mapKindCounts[mapKind] = (mapKindCounts[mapKind] || 0) + groups.size;
+
+    if (groups.size > 1) {
+      appendJsonl(conflictsFile, {
+        oldKey,
+        kind: mapKind,
+        groups: [...groups.entries()].map(([groupKey, g]) => ({ groupKey, owners: g.owners })),
+      });
+      counts.conflicts += 1;
+    }
+
+    for (const group of groups.values()) {
+      let token;
+      try {
+        token = s3Path({ entity: group.entity, entityId: group.entityId, purpose: group.purpose, seq: group.seq || undefined });
+      } catch (error) {
+        appendJsonl(conflictsFile, { oldKey, kind: "key-mint-failed", group, error: error.message });
+        counts.conflicts += 1;
+        continue;
+      }
+      appendJsonl(manifestFile, {
+        rowId: ulid(),
+        oldKey,
+        newKey: token.key,
+        size: bucketMeta.size,
+        etag: bucketMeta.etag,
+        mapKind,
+        owners: group.owners,
+      });
+      counts.rows += 1;
+      totalBytes += bucketMeta.size || 0;
+    }
+  }
+
+  // Orphans: bucket objects with zero owners in EITHER db. Scope-filtered by
+  // folderPrefix when a scope was given, since an orphan has no owner to derive a
+  // scopeKey from.
+  for (const [key, meta] of bucketKeys) {
+    if (referencedEither.has(key)) continue;
+    if (scopeObj && !key.startsWith(`${scopeObj.folderPrefix}/`)) continue;
+    appendJsonl(orphansFile, { key, size: meta.size, etag: meta.etag });
+    counts.orphans += 1;
+  }
+
+  // External: URL fields pointing outside our bucket — never touched, recorded for
+  // the "review the count before copying" check.
+  for (const [db, s] of [[label, scanA], [compareLabel, scanB]]) {
+    for (const e of s.externalSamples) {
+      if (scopeObj) {
+        const scope = Object.values(SCOPES).find((sc) => sc.collection === e.collection);
+        if (!scope || scope.scopeKey !== SCOPE_FLAG) continue;
+      }
+      appendJsonl(externalFile, { db, ...e });
+      counts.external += 1;
+    }
+  }
+
+  const meta = writeMeta(runId, { primaryDb: label, compareDb: compareLabel, scope: SCOPE_FLAG, bucket: BUCKET });
+  writeState(runId, {
+    phase: "plan",
+    scope: SCOPE_FLAG,
+    cursor: null,
+    counts: { total: counts.rows, done: 0, skipped: 0, failed: 0 },
+  });
+
+  console.log(`  manifest rows (newKeys to create):  ${counts.rows}`);
+  for (const [kind, n] of Object.entries(mapKindCounts)) console.log(`    ${pad(kind, 10)}${num(n, 8)}`);
+  console.log(`  total bytes to copy:                ${(totalBytes / 1048576).toFixed(1)} MB`);
+  console.log(`  missing (pre-existing, not copied):  ${counts.missing}`);
+  console.log(`  orphans (untouched):                 ${counts.orphans}`);
+  console.log(`  external (untouched):                ${counts.external}`);
+  console.log(`  conflicts.jsonl entries:              ${counts.conflicts}   ${counts.conflicts ? "<-- REVIEW before copy" : "(expect near-empty)"}`);
+  console.log(`\n  run directory: ${runFile(runId, "")}`);
+  console.log(`  meta.json checksums cover: ${Object.keys(meta.checksums).join(", ") || "(no plan-output files were written — nothing in scope?)"}`);
+  console.log(`\n=== plan complete for run ${runId} — nothing was written to S3 or to any database ===\n`);
+};
+
 // ---------------------------------------------------------------- main
 
 const main = async () => {
@@ -763,11 +718,15 @@ const main = async () => {
     case "flush-caches":
       await cmdFlushCaches();
       break;
+    case "plan":
+      await cmdPlan();
+      break;
     default:
       die(
         `Unknown subcommand "${SUBCOMMAND || "(none)"}".\n` +
-          `Available so far: scan, collections, flush-caches\n\n` +
-          `  node scripts/s3KeyMigration.js scan --uri=... [--compare-uri=...] [--out=...] [--no-s3]`,
+          `Available so far: scan, plan, collections, flush-caches\n\n` +
+          `  node scripts/s3KeyMigration.js scan --uri=... [--compare-uri=...] [--out=...] [--no-s3]\n` +
+          `  node scripts/s3KeyMigration.js plan --uri=... --compare-uri=... [--scope=<scopeKey>]`,
       );
   }
   process.exit(0);

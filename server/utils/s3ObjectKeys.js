@@ -54,10 +54,14 @@ export const S3_PATH_TOKEN = Symbol("s3PathToken");
 const CATALOGUE = new Map();
 for (const scope of Object.values(SCOPES)) {
   for (const field of scope.fields) {
-    const id = `${scope.entity}/${field.purpose}`;
+    // A field's `entity` override (see s3ScopeRegistry.js) beats the scope's own —
+    // needed when a field's real owner is a different entity than the collection
+    // it physically lives in (e.g. businessReviews.ratingPhotos, owned by business).
+    const entity = field.entity || scope.entity;
+    const id = `${entity}/${field.purpose}`;
     if (!CATALOGUE.has(id)) {
       CATALOGUE.set(id, {
-        entity: scope.entity,
+        entity,
         purpose: field.purpose,
         stability: field.stability,
         variants: Array.isArray(field.keys) ? [...field.keys] : null,
@@ -279,9 +283,6 @@ export const s3Keys = Object.freeze({
     web: (id) => s3Path({ entity: "advertisements", entityId: id, purpose: "banner-web" }),
     mobile: (id) => s3Path({ entity: "advertisements", entityId: id, purpose: "banner-mobile" }),
     app: (id) => s3Path({ entity: "advertisements", entityId: id, purpose: "banner-app" }),
-  },
-  review: {
-    photo: (id) => s3Path({ entity: "reviews", entityId: id, purpose: "photo" }),
   },
   admin: { avatar: (id) => s3Path({ entity: "admins", entityId: id, purpose: "avatar" }) },
   customer: { avatar: (id) => s3Path({ entity: "customers", entityId: id, purpose: "avatar" }) },

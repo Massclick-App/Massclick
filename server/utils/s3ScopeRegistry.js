@@ -25,12 +25,22 @@
  * between now and the run is not silently skipped.
  *
  * Per-field metadata beyond what the WebP helper carries:
- *   valueShape  "key" | "url" | "mixed"  — what is actually stored. Drives the
- *               fcmCampaign.imageUrl and businessDetails[].bannerImage special cases
- *               through the generic machinery instead of bespoke code.
- *   purpose     the {purpose} segment of the target scheme.
- *   stability   "stable"    — deterministic key, regeneration overwrites
- *               "versioned" — ULID key, every upload is a new object
+ *   valueShape     "key" | "url" | "mixed"  — what is actually stored. Drives the
+ *                  fcmCampaign.imageUrl and businessDetails[].bannerImage special
+ *                  cases through the generic machinery instead of bespoke code.
+ *   purpose        the {purpose} segment of the target scheme.
+ *   stability      "stable"    — deterministic key, regeneration overwrites
+ *                  "versioned" — ULID key, every upload is a new object
+ *   entity         optional per-field override of the scope's own `entity`. Needed
+ *                  when a field's real owner is a DIFFERENT entity than the
+ *                  collection it lives in — e.g. businessReviews.ratingPhotos is
+ *                  physically stored on a review document but the actual write
+ *                  path (reviewHelper.js) scopes the key by the owning BUSINESS.
+ *                  Falls back to the scope's `entity` when absent.
+ *   entityIdField  optional field name on the document to read the entityId from,
+ *                  for the same reason. Falls back to the document's own `_id`.
+ *                  Getting this wrong means `plan` mints a key shape that no
+ *                  future write ever produces — a silent, permanent mismatch.
  */
 
 import businessListModel from "../model/businessList/businessListModel.js";
@@ -408,9 +418,21 @@ export const SCOPES = {
       $or: [{ ratingPhotos: elemStringy }, { userProfileImage: stringy }],
     }),
     fields: [
-      // Unvalidated write path today — see plan 0.6. Scan reports it; it is not
-      // safe to build a manifest over this field until 0.6 has landed.
-      { path: "ratingPhotos", kind: "array", valueShape: "mixed", purpose: "photo", stability: "versioned" },
+      // 0.6 landed: reviewHelper.js's sanitizeRatingPhotos() now uploads through
+      // s3Keys.business.reviewPhoto(businessId) — entity "businesses", purpose
+      // "review-photo", keyed by the FOREIGN businessId field on this document, not
+      // this collection's own _id. `entity`/`entityIdField` override the scope
+      // defaults so `plan` mints the same key shape the write path actually
+      // produces; without this a migrated legacy object would land under
+      // reviews/<reviewId>/photo/... while every future regeneration writes to
+      // businesses/<businessId>/review-photo/... — a permanent, silent mismatch.
+      // Same (entity, purpose) as businessList.reviews[].ratingPhotos below by
+      // design: both are the same kind of asset, just reached via two code paths.
+      { path: "ratingPhotos", kind: "array", valueShape: "mixed", purpose: "review-photo", entity: "businesses", entityIdField: "businessId", stability: "versioned" },
+      // No entityIdField override: zero rows in either DB as of the 0.1 baseline
+      // (see progress doc finding 5), so what this SHOULD key off is unverified
+      // against any real write path. Falls back to this scope's own doc._id.
+      // If rows ever appear, check the real write site before trusting this.
       { path: "userProfileImage", kind: "single", valueShape: "mixed", purpose: "avatar", stability: "stable" },
     ],
     invalidate: [],
@@ -615,6 +637,12 @@ export const validateRegistry = async (db = null) => {
       }
       if (!["stable", "versioned"].includes(field.stability)) {
         problems.push(`${where}, field "${id}": unknown stability "${field.stability}"`);
+      }
+      if (field.entity !== undefined && (typeof field.entity !== "string" || !field.entity)) {
+        problems.push(`${where}, field "${id}": entity override must be a non-empty string`);
+      }
+      if (field.entityIdField !== undefined && (typeof field.entityIdField !== "string" || !field.entityIdField)) {
+        problems.push(`${where}, field "${id}": entityIdField override must be a non-empty string`);
       }
     }
   }

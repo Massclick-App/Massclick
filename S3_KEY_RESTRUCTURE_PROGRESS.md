@@ -1,8 +1,11 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-13 by Claude · **Active runId:** none
-**Current step:** Phase 1 COMPLETE · **Status:** Phase 0 + Phase 1 (1.1–1.5) all DONE and deployed to dev+prod ·
-**1.5 fully closed — DEV and PROD both verified (gates + live upload smoke tests). Next up: Phase 2, on the user's go-ahead.**
+**Current step:** 2.2 (in progress) · **Status:** Phase 0 + Phase 1 all DONE and deployed to dev+prod ·
+**2.1 turns out to already be done (built ahead of schedule in 0.1). 2.2's `plan` subcommand is built and
+verified against real dev+prod data. `copy`/`verify-s3`/`rewrite`/`verify`/resumability/`reverse` are
+NOT built yet — nothing in Track B is possible until they are. User authorized starting Phase 2 ("GO
+CONTINUE"); this is Track A prep, still gated from ever touching a production key or document.**
 
 ### Everything Phase 0 + Phase 1 built — one place
 
@@ -107,7 +110,8 @@ objects, same field shapes, same volume.
 | 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | ✅ **DONE, STRICT** | `verifyS3PathEnforcement.js` 23/23 · `lintS3Paths.js` 0/0 |
 | 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
 | 1.5 | Deploy Phase 1 dev → prod | ✅ **DONE** | dev: gates clean + 2 live uploads confirmed canonical · **prod (2026-08-13): checkPublicImageUrls NEWLY broken 0, flush-caches 8830→248 all 7 invalidators ok, live logo upload confirmed canonical + zero errors** |
-| 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
+| 2.1 | Scope registry to all ~20 collections | ✅ **DONE** — already complete from 0.1, one real gap found+fixed 2026-08-13 | `verifyS3ObjectKeys.js` 66/66 |
+| 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | 🟡 **`plan` DONE, verified live** — copy/verify-s3/rewrite/verify/status/doctor/resume/reverse NOT built yet | `plan` run against real dev+prod, `advertisements` scope 8+41=49 and `category` scope 911+402=1313, both matching the plan's own rehearsal sizing |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
 | 4 | **Rehearsal: `category/`** full cycle | ⬜ | smoke + UI clean |
@@ -1111,6 +1115,137 @@ environments.**
 
 ---
 
+## Phase 2 — where it stands
+
+User authorized starting Phase 2 ("GO CONTINUE", 2026-08-13). This is Track A prep — per the plan's
+own "Track A vs Track B" split, nothing here can touch a production key or document; that is Track B,
+triggered on demand, never assumed. `copy`/`rewrite` exist below only as CODE, exercised so far solely
+by read-only `plan` runs against real dev+prod (writes nothing to S3 or either database) and are not
+yet capable of writing anything themselves — that lands with 2.2's next slice.
+
+### 2.1 — turns out to already be done
+
+Re-read `utils/s3ScopeRegistry.js` expecting to extend it to ~20 collections with an `arrayOfObjects`
+kind, per the plan. **It already covers all 20 collections, already has `arrayOfObjects` with
+`itemPath`, and already handles every nested-array case the plan names** (`businessDetails[]`,
+`mediaItems[]`, `evidenceFiles[]`, `popularSearchCards[]`, `history[].screenshotKey`) — built ahead of
+schedule during 0.1, when the registry was first created. Nothing to do here except the one real gap
+below, found while building `plan`'s key-minting logic — not by re-auditing the registry for its own
+sake.
+
+**One real registry bug found and fixed:** `businessReviews.ratingPhotos` declared `entity: "reviews"`,
+`purpose: "photo"` — but the ACTUAL write path since 0.6 (`reviewHelper.js:61`, `sanitizeRatingPhotos`)
+calls `s3Keys.business.reviewPhoto(businessId)`: `entity: "businesses"`, `purpose: "review-photo"`,
+keyed by the review document's **foreign** `businessId` field, not its own `_id`. Left uncorrected,
+`plan` would have minted migrated objects under `reviews/<reviewId>/photo/...` while every future
+regeneration keeps writing to `businesses/<businessId>/review-photo/...` — a permanent, silent
+mismatch that no gate would have caught (the old `verifyS3ObjectKeys.js` fixtures never exercised this
+field).
+
+Fixed by adding two new **optional per-field overrides** to the registry — `entity` and
+`entityIdField` — that beat the scope's own defaults when present. `businessReviews.ratingPhotos` now
+declares `entity: "businesses"`, `entityIdField: "businessId"`, `purpose: "review-photo"` — the same
+`(entity, purpose)` pair `businessList.reviews[].ratingPhotos` already used, by design: both are the
+same kind of asset reached via two different code paths, and they now converge on the same key
+namespace. `businessReviews.userProfileImage` was left on the scope default (zero rows in either DB as
+of the 0.1 baseline — nothing to verify a "correct" mapping against; flagged inline for whoever adds
+the first write path to check the real call site before trusting it).
+
+Side effect: `s3Keys.review.photo(id)` (entity `"reviews"`, purpose `"photo"`) was a bogus, unused
+builder generated from the old wrong declaration — confirmed zero call sites anywhere in the codebase
+before removing it from `utils/s3ObjectKeys.js`. `s3ObjectKeys.js`'s catalogue-building loop now reads
+`field.entity || scope.entity` instead of always trusting the scope, so a future per-field override is
+picked up automatically. **Gate:** `verifyS3ObjectKeys.js` stayed 66/66 through the whole change (the
+removed builder had no fixture depending on it).
+
+### 2.2 — `s3KeyMigration.js` migration verbs — `plan` DONE, rest not started
+
+**New file `utils/s3MigrationScan.js`** — extracted `classify`/`readField`/`connect`/`scanDatabase`/
+`compareIds`/`listBucket` out of `scan`'s inline implementation so `plan` can reuse the exact same
+classification instead of carrying a second copy that could drift from what `scan` reports as the
+baseline. Two small, additive extensions made along the way:
+- `readField` now also returns `seq` (the variant name, e.g. `"webCard"`) for `kind: "object"` fields —
+  needed to mint a stable+seq key; every other kind gets `seq: null`, so `scan`'s own behaviour is
+  unchanged.
+- `scanDatabase`'s `keyOwners` now also carries `entity`/`entityId`/`purpose`/`seq` per owner, resolved
+  via the new per-field registry overrides above. This is what lets `plan` group owners without a
+  second database walk.
+- `listBucket` now returns `{size, etag}` per key instead of a bare size — `verify-s3` (not built yet)
+  will need the ETag to catch a byte-changed object without a full re-download.
+- `externalSamples` lost its 40-row display cap (now unlimited, full value not truncated to 160 chars)
+  — `scan`'s own report still only *displays* a slice via `.slice(0, N)` at the print call site, but
+  `plan` needs the complete list for `external.jsonl` ("review the count before copying" is not
+  reviewable against a sample).
+
+**A real, unrelated bug found and fixed while testing the refactor**, not introduced by it: `scan`'s
+"clone check" print block was accidentally nested *inside* the intra-DB fan-out loop (an indentation
+mistake from 0.1), so it either printed once per fan-out row (up to 10×) when `--compare-uri` was
+given, or **crashed with `TypeError: compare is not iterable`** when it wasn't and any fan-out existed
+at all. Confirmed against `git show HEAD:...` that this exact nesting predates this session — hit for
+real running `scan --uri=<dev> --no-s3` alone while sanity-checking the extraction. Fixed by moving the
+block outside the loop, gated on `if (compare)`. Re-verified against real dev+prod: prints exactly once
+now, both with and without `--compare-uri`.
+
+**New file `utils/s3MigrationManifest.js`** — the on-disk run-state layer the plan's "Where run state
+lives" section describes. `_migrations/s3-key-restructure/<runId>/` is the source of truth (not Mongo —
+it describes the shared bucket, not either database). Two file categories, handled differently on
+purpose:
+- **Plan outputs** (`manifest.jsonl`, `conflicts.jsonl`, `orphans.jsonl`, `missing.jsonl`,
+  `external.jsonl`) — written once by `plan`, checksummed into `meta.json`, and every later subcommand
+  must call `verifyManifestChecksums()` first and refuse to run if a byte changed.
+- **Append-only logs** (`copied.jsonl`, `applied-<db>.jsonl`, `swept.jsonl`, `reversed.jsonl`) — not
+  built yet (belongs to `copy`/`rewrite`/`sweep`/`reverse`), but the primitives are ready:
+  `appendJsonl` (log after success, never before), `readJsonl` (tolerates and reports a torn final
+  line without throwing — risk 7), `truncateTornLine` (the repair `doctor` will call), and
+  `loadDoneRowIds` (resumability's core primitive: the `Set` of `rowId`s to skip on `resume`).
+- `state.json` is written via temp-file-then-rename (`writeJsonAtomic`) — a kill mid-write can never
+  leave a torn `state.json`, unlike the append-only logs which log-after-success instead.
+- **Gate:** hand-written smoke test exercising every function (checksum mismatch detection, torn-line
+  detection + truncation, state round-trip) — all passed. No dedicated `verify*.js` gate script yet;
+  worth adding one alongside `copy`'s gate once that lands, rather than in isolation.
+
+**New file `model/maintenance/s3KeyMigrationJobModel.js`** — the Mongo mirror for the lease and the
+(not-yet-built) monitoring card, modelled on `s3CacheHeaderMigrationJobModel.js` per the plan. Own
+`JOB_TYPE`, own collection (`s3_key_migration_jobs`, added to `collectionName.js`), own `activeSlot`
+unique partial index — deliberately not sharing a job type with the WebP/cache-header jobs so they
+never contend over the same documents. **Not wired up to any command yet** — `plan`/`copy`/`rewrite`
+don't write to it, because nothing reads it yet either (that's 2.3, the monitoring card). Building the
+model now, wiring it in once the card exists, avoids maintaining dead writes in the meantime.
+
+**`plan` subcommand — DONE and verified against real data.** `node scripts/s3KeyMigration.js plan
+--uri=<dev> --compare-uri=<prod> [--scope=<scopeKey>]`. Always mints a fresh runId (Do-Not-Do rule 4 —
+never accepts `--run=` itself; that flag is for every OTHER subcommand to target a run `plan` already
+produced). Writes ONLY to local disk — confirmed by inspection, no S3 SDK call and no Mongo write
+anywhere in the function, matching the plan's N.2 characterization exactly.
+
+Resolution rule (the plan's "Key referenced by BOTH databases" table) implemented generically instead
+of case-by-case: every owner of an oldKey reduces to its `(entity, entityId, purpose, seq)` identity;
+owners are grouped by that identity; each distinct group mints its own newKey via `s3Path()` and gets
+its own manifest row. One group = shared identity (the expected common case). More than one group =
+logged to `conflicts.jsonl` for human review before `copy` runs — mechanically identical to build
+either way, so cross-DB splits and intra-DB fan-out need no special-casing.
+
+**Verified against real dev+prod, read-only reads only:**
+```
+--scope=advertisements   8 manifest rows (all "shared") + 41 orphans = 49   <- matches the plan's own
+                                                                               Rehearsal 1 sizing exactly
+--scope=category         911 manifest rows (all "shared") + 402 orphans = 1313   <- plan says "1,312",
+                                                                               off by 1, negligible drift
+```
+Spot-checked a `category` variant row: `newKey: categories/<id>/variant/mobileVertical` — the exact
+stable+seq shape `s3Keys.category.variant(id, "webCard")` produces, matching the 1.5 live smoke test.
+0 conflicts, 0 missing, 0 external in both scopes at this data snapshot. Both test run directories were
+deleted after verification — no real Rehearsal has started; that's step 3/4, after `copy`/`rewrite`
+exist.
+
+**Still NOT built:** `copy`, `verify-s3`, `rewrite`, `verify`, `sweep`, `status`, `doctor`, `resume`,
+`reverse`, `rollback-copies`, `undelete`, `restore-from-local`, the monitoring card, and the 5 admin
+endpoints. None of Track B is reachable — and no rehearsal (item 3/4) can start — until at minimum
+`copy`/`rewrite`/`verify`/`reverse` exist, since the plan requires `reverse` be written and rehearsed
+**before `rewrite` is ever run for real**.
+
+---
+
 ## Active run
 
 ```
@@ -1335,6 +1470,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-13 | **Phase 2 started (user said "GO CONTINUE"). 2.1 found already done from 0.1; `plan` (part of 2.2) built and verified live.** Discovered and fixed a real registry bug hit while building `plan`'s key-minting logic: `businessReviews.ratingPhotos` was declared under the wrong entity/purpose, which would have made migrated legacy objects permanently diverge from what `reviewHelper.js` actually writes going forward — added `entity`/`entityIdField` per-field overrides to `s3ScopeRegistry.js` to fix it, and deleted the now-provably-dead `s3Keys.review.photo` builder it had produced. Extracted `scan`'s DB-walking logic into `utils/s3MigrationScan.js` so `plan` reuses the identical classification rather than a second copy — found and fixed an unrelated pre-existing bug in the process (`scan`'s clone-check block was nested inside the fan-out loop, crashing on `scan --uri=only` with any fan-out present). Built `utils/s3MigrationManifest.js` (checksummed plan outputs, torn-line-tolerant append-only logs, atomic `state.json`) and `model/maintenance/s3KeyMigrationJobModel.js` (not wired to any command yet — waits for the 2.3 monitoring card). `plan` verified against real dev+prod data in two scopes: `advertisements` (8+41=49, matching the plan's own Rehearsal 1 size exactly) and `category` (911+402=1313 vs the plan's stated 1,312 — 1 off, explained by normal data drift). All 4 core gates stayed green throughout (31/22/66/23); a pre-existing, unrelated hardcoded-bucket-URL leak in `client/.../MRP/mrp.js` was found by the regression gate and flagged as a separate task rather than fixed inline. **Still not built:** `copy`, `verify-s3`, `rewrite`, `verify`, `sweep`, `status`, `doctor`, `resume`, `reverse`, the monitoring card, the 5 admin endpoints — nothing in Track B or the rehearsals is reachable yet. Full detail in "Phase 2 — where it stands" above. |
 | 2026-08-13 | **1.5 DONE — prod deployed and verified, Phase 1 fully complete on both environments.** Confirmed on the server (read-only `git log`) that `origin/prod` had fast-forwarded to `df5a666b`, matching `dev` HEAD exactly, before running anything. `checkPublicImageUrls` against prod: NEWLY broken 0, same 6 pre-existing failures as baseline. `flush-caches --commit` against `redis-prod` via a one-off SSH tunnel (host port 6379, not 6380 like dev — confirmed against the VPS docs before connecting): 8830→248 keys, all 7 invalidators `ok`. Live smoke test: tailed both prod API replicas' logs while the user uploaded a real business logo through the prod admin UI; grepped both replicas for `error`/`resolveUploadPath`/`throw` — none, and no per-upload log line exists in this codebase's logging so verification was done directly against `massClick.businesslists` instead, which showed the new logo landing on exactly `businesses/<id>/logo.webp` at the same timestamp as the test. Full write-up in the "1.5 — prod deployed and verified" section above. |
 | 2026-08-12 | **1.4 DONE — all 51 call sites across 22 files migrated, `S3_PATH_MODE` flipped to `strict`.** Full detail in the "Phase 1 — where it stands" section above; summary: found and fixed a real bug mid-migration (`isEntityId` rejected real Mongoose ObjectId objects — would have broken every call site, gate never caught it since fixtures were plain strings); found 3 registry/`s3Keys` builder gaps and closed them as each file needing them came up; resolved the `reviewHelper.js` design question flagged when `businessListHelper.js` was migrated (reuse `s3Keys.business.reviewPhoto`, per that file's own docstring); used a ULID entity id for 3 genuinely decoupled upload endpoints (massclick event media, FCM images, category variants uploaded before a category exists); found and fixed the SAME class of cache-staleness gap three separate times (certificates, customer avatars, category images) — moving a purpose to its registry-declared `stable` form without wiring every read site through `assetUrl` would have reintroduced the exact bug 0.4 exists to prevent; survived a live collision with the user's own concurrent commit in the same working directory (verified no corruption); and hit + fixed the Edit-tool CRLF-churn issue on 5 more files, confirming empirically that `core.autocrlf=true` makes most such churn cosmetic (already-uniform files round-trip clean) except where a file's stored blob was already internally inconsistent. All 5 gates (`verifyS3KeyUtils` 31/31, `verifyAssetUrl` 22/22, `verifyS3ObjectKeys` 66/66, `verifyS3PathEnforcement` 23/23, `lintS3Paths.js` 0/0) green at every commit. |
 | 2026-08-12 | **1.3 done, shipped in `warn` mode.** `resolveUploadPath()` chokepoint in `s3Uploder.js` (token or canonical string passes through; legacy string warns once per call site and keeps working; strict mode throws — controlled by `S3_PATH_MODE`, default `warn`). `deleteEntityAssets(entity, entityId)` cascade delete, refuses the whole page if any listed key fails `belongsToEntity()`. `lintS3Paths.js` static scanner — found **51 legacy call sites across 22 files** (one more than the hand-written inventory: `scripts/fixRatingPhotos.js:128`, mirroring `reviewHelper.js`'s pattern), 0 bucket-literal leaks; it is *correctly* failing right now, that failure IS 1.4's todo list. New gate `verifyS3PathEnforcement.js`, 22/22, all four gates plus the new one re-run clean. **Two process gotchas hit and fixed:** the Edit tool normalised `s3Uploder.js`'s mixed CRLF/LF to uniform CRLF, corrupting `git diff --numstat` with ~40 lines of pure line-ending noise — repaired via a byte-exact Node/`latin1` reconstruction pulling the original bytes back from `git show HEAD:...` (a `sed`-based first attempt silently stripped all `\r` and made it worse); and `/server/scripts` is entirely gitignored, so both new scripts needed `git add -f` or they'd have been silently left uncommitted. |
