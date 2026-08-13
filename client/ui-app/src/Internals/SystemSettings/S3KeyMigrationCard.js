@@ -1,12 +1,20 @@
 /**
- * Monitoring card for the S3 key restructure migration — step 2.3.
+ * Control + monitoring card for the S3 key restructure migration — step 2.3, extended
+ * 2026-08-13 to let the card actually start runs (`plan`/`copy`/`verify-s3`/
+ * `rewrite`/`verify`), not just watch them. `reverse`/`rollback-copies`/`doctor`/
+ * `resume` stay CLI-only for now — a deliberate later phase.
  *
- * No "Start" button by design (see the plan's "Read-only, plus stop. Never start."):
- * `--commit` writes, `--uri=` targeting, and conflict review all belong on the CLI,
- * where they can't be mis-clicked into rewriting the wrong database. This card only
- * ever reads the job doc the CLI writes as it runs, and can Pause/Cancel — both of
- * which are always safe, per the plan, and are the whole point of a phone-friendly
- * card.
+ * Every action that would pass `--commit` server-side goes through
+ * `TypeToConfirmModal` — the operator must type the exact phrase the backend
+ * independently checks (`copy:<scope>` / `rewrite:<scope>`, escalating to the literal
+ * "RUN ON PROD" once `target === "prod"`) before the button even enables. A misclick
+ * alone can never trigger a write.
+ *
+ * `plan` mints a fresh run but writes no job doc of its own (only `copy`/`rewrite` are
+ * job-doc-tracked — see utils/s3MigrationJobTracking.js), so `activeRunId`/
+ * `activeScope` below are local UI state, not derived from the polled `job`. Once a
+ * `copy`/`rewrite` is started against that runId, the existing `latest` poll picks up
+ * the job doc it creates, same as before.
  *
  * Liveness is derived from heartbeat age, NOT from `status` — a hard-killed CLI
  * process leaves `status: "running"` frozen at its last value forever, so trusting
@@ -17,10 +25,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axiosInstance from "../../services/axiosInstance.js";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import styles from "./BusinessImageMigrationCard.module.css";
+import TypeToConfirmModal from "./TypeToConfirmModal.js";
 
 const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 const LEASE_DURATION_MS = 90 * 1000;
+const BASE = `${API_URL}/admin/system-settings/s3-key-migration`;
 
 const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -80,6 +90,11 @@ const livenessOf = (job) => {
   return { label: "⚠️ Worker not responding — run doctor then resume", tone: "danger" };
 };
 
+/** Mirrors s3KeyMigrationController.js's expectedConfirmPhrase — the backend checks
+ * this independently, so a mismatch here just means the button never enables, not a
+ * security gap. */
+const confirmPhrase = ({ subcommand, scope, target }) => (target === "prod" ? "RUN ON PROD" : `${subcommand}:${scope}`);
+
 export default function S3KeyMigrationCard() {
   const [job, setJob] = useState(null);
   const [runs, setRuns] = useState([]);
@@ -88,13 +103,36 @@ export default function S3KeyMigrationCard() {
   const [pausing, setPausing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [note, setNote] = useState("");
+  const [errorNote, setErrorNote] = useState("");
+
+  // --- new-plan controls ---
+  const [scopes, setScopes] = useState([]);
+  const [selectedScope, setSelectedScope] = useState("all");
+  const [planning, setPlanning] = useState(false);
+
+  // --- the run currently being worked, independent of the polled job doc since
+  // `plan` alone never creates one ---
+  const [activeRunId, setActiveRunId] = useState("");
+  const [activeScope, setActiveScope] = useState("");
+  const [conflictCount, setConflictCount] = useState(null);
+  const [rewriteTarget, setRewriteTarget] = useState("dev");
+
+  const [copyingDryRun, setCopyingDryRun] = useState(false);
+  const [verifyingS3, setVerifyingS3] = useState(false);
+  const [rewritingDryRun, setRewritingDryRun] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [lastActionOutput, setLastActionOutput] = useState("");
+
+  // { subcommand, scope, target, title, params, endpoint, extraBody } | null
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   const loadLatest = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setRefreshing(true);
     try {
       const [latestRes, runsRes] = await Promise.all([
-        axiosInstance.get(`${API_URL}/admin/system-settings/s3-key-migration/latest`, { headers: authHeaders() }),
-        axiosInstance.get(`${API_URL}/admin/system-settings/s3-key-migration/runs`, { headers: authHeaders(), params: { limit: 10 } }),
+        axiosInstance.get(`${BASE}/latest`, { headers: authHeaders() }),
+        axiosInstance.get(`${BASE}/runs`, { headers: authHeaders(), params: { limit: 10 } }),
       ]);
       // The one currently-exclusive run (if any) is what matters most; fall back to
       // whatever was most recently touched so the card isn't blank between runs.
@@ -116,6 +154,12 @@ export default function S3KeyMigrationCard() {
     (async () => {
       setLoading(true);
       await loadLatest({ silent: true });
+      try {
+        const scopesRes = await axiosInstance.get(`${BASE}/scopes`, { headers: authHeaders() });
+        if (!cancelled) setScopes(Array.isArray(scopesRes.data?.data) ? scopesRes.data.data : []);
+      } catch {
+        // Non-fatal — the scope <select> just falls back to "all" only.
+      }
       if (!cancelled) setLoading(false);
     })();
     return () => {
@@ -143,11 +187,7 @@ export default function S3KeyMigrationCard() {
     setPausing(true);
     setNote("");
     try {
-      const response = await axiosInstance.post(
-        `${API_URL}/admin/system-settings/s3-key-migration/pause`,
-        { jobId: job._id },
-        { headers: authHeaders() },
-      );
+      const response = await axiosInstance.post(`${BASE}/pause`, { jobId: job._id }, { headers: authHeaders() });
       setJob(response.data?.data || null);
       setNote("Pause requested — the running CLI process will stop at its next checkpoint (usually within a few seconds).");
     } catch (error) {
@@ -157,16 +197,12 @@ export default function S3KeyMigrationCard() {
     }
   };
 
-  const cancelRun = async () => {
+  const cancelJobRun = async () => {
     if (!job?._id || !window.confirm("Cancel this run? Resume it later from the CLI with `resume --run=... --commit` if you change your mind.")) return;
     setCancelling(true);
     setNote("");
     try {
-      const response = await axiosInstance.post(
-        `${API_URL}/admin/system-settings/s3-key-migration/cancel`,
-        { jobId: job._id },
-        { headers: authHeaders() },
-      );
+      const response = await axiosInstance.post(`${BASE}/cancel`, { jobId: job._id }, { headers: authHeaders() });
       setJob(response.data?.data || null);
       setNote("Cancel requested — the running CLI process will stop at its next checkpoint.");
     } catch (error) {
@@ -176,6 +212,72 @@ export default function S3KeyMigrationCard() {
     }
   };
 
+  const runPlan = async () => {
+    setPlanning(true);
+    setErrorNote("");
+    setLastActionOutput("");
+    try {
+      const response = await axiosInstance.post(`${BASE}/plan`, { scope: selectedScope }, { headers: authHeaders() });
+      const data = response.data?.data || {};
+      setActiveRunId(data.runId || "");
+      setActiveScope(data.scope || selectedScope);
+      setConflictCount(typeof data.conflictCount === "number" ? data.conflictCount : null);
+      setLastActionOutput(data.output || "");
+      setNote(`Plan complete — runId ${data.runId}. ${data.conflictCount ? `${data.conflictCount} conflicts — review before copying.` : "No conflicts."}`);
+    } catch (error) {
+      setErrorNote(error.response?.data?.message || error.message || "Failed to run plan");
+      setLastActionOutput(error.response?.data?.data?.output || "");
+    } finally {
+      setPlanning(false);
+    }
+  };
+
+  const runDryRun = async ({ endpoint, body, setBusy, label }) => {
+    setBusy(true);
+    setErrorNote("");
+    setLastActionOutput("");
+    try {
+      const response = await axiosInstance.post(`${BASE}/${endpoint}`, body, { headers: authHeaders() });
+      const data = response.data?.data || {};
+      setLastActionOutput(data.output || "");
+      setNote(`${label} finished.`);
+      loadLatest({ silent: true });
+    } catch (error) {
+      setErrorNote(error.response?.data?.message || error.message || `Failed to run ${label}`);
+      setLastActionOutput(error.response?.data?.output || error.response?.data?.data?.output || "");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openCommitConfirm = ({ subcommand, endpoint, target, title, params, extraBody }) => {
+    const scope = activeScope || selectedScope;
+    setConfirmModal({ subcommand, endpoint, target, title, params, extraBody, scope });
+  };
+
+  const submitConfirm = async (typedValue) => {
+    if (!confirmModal) return;
+    setConfirmBusy(true);
+    setErrorNote("");
+    try {
+      const response = await axiosInstance.post(
+        `${BASE}/${confirmModal.endpoint}`,
+        { ...confirmModal.extraBody, commit: true, confirm: typedValue },
+        { headers: authHeaders() },
+      );
+      setLastActionOutput(response.data?.data?.output || "");
+      setNote(`${confirmModal.title} started.`);
+      setConfirmModal(null);
+      loadLatest({ silent: true });
+    } catch (error) {
+      setErrorNote(error.response?.data?.message || error.message || "Commit failed");
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
+
+  const hasRun = Boolean(activeRunId);
+
   return (
     <div className={cx("migration-card")}>
       <div className={cx("migration-header")}>
@@ -183,8 +285,8 @@ export default function S3KeyMigrationCard() {
           <div className={cx("migration-eyebrow")}>Admin maintenance</div>
           <h3 className={cx("migration-title")}>S3 Key Restructure</h3>
           <p className={cx("migration-subtitle")}>
-            Read-only monitor for the S3 key migration CLI. Runs are started from the terminal only —
-            this card can watch, pause, and cancel, never start.
+            Plan, copy, verify, and rewrite from here. `reverse`/`rollback-copies`/`doctor`/`resume` are
+            still CLI-only. Every commit requires typing an exact confirmation phrase.
           </p>
         </div>
         <div className={cx(`status-chip ${liveness.tone}`)}>{liveness.label}</div>
@@ -196,10 +298,159 @@ export default function S3KeyMigrationCard() {
       </div>
 
       {note ? <div className={cx("inline-note")}>{note}</div> : null}
+      {errorNote ? <div className={cx("error-box")}><strong>Error:</strong> {errorNote}</div> : null}
+
+      <div className={cx("migration-controls")}>
+        <div className={cx("field-row")}>
+          <span>New plan — scope</span>
+          <select value={selectedScope} onChange={(event) => setSelectedScope(event.target.value)} disabled={planning}>
+            <option value="all">all</option>
+            {scopes.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={cx("migration-actions")}>
+          <button type="button" className={cx("action-button primary")} onClick={runPlan} disabled={planning}>
+            {planning ? "Planning..." : "Run plan"}
+          </button>
+        </div>
+        <div className={cx("scope-note")}>
+          Plan always reads both dev and prod — it only ever writes to local disk, never to S3 or a
+          database, so it needs no confirmation.
+        </div>
+      </div>
+
+      {hasRun ? (
+        <div className={cx("migration-controls")}>
+          <div className={cx("details-grid compact")}>
+            <div className={cx("details-card")}>
+              <div className={cx("details-label")}>Working run</div>
+              <div className={cx("details-value")}>{activeRunId}</div>
+            </div>
+            <div className={cx("details-card")}>
+              <div className={cx("details-label")}>Scope</div>
+              <div className={cx("details-value")}>{activeScope}</div>
+            </div>
+            <div className={cx("details-card")}>
+              <div className={cx("details-label")}>Conflicts</div>
+              <div className={cx("details-value")}>{conflictCount === null ? "—" : conflictCount}</div>
+            </div>
+          </div>
+
+          {conflictCount ? (
+            <div className={cx("error-box")}>
+              <strong>{conflictCount} unresolved conflicts.</strong> Copy (commit) is disabled — review
+              conflicts.jsonl for this run before proceeding. Dry runs are still safe.
+            </div>
+          ) : null}
+
+          <div className={cx("migration-actions")}>
+            <button
+              type="button"
+              className={cx("action-button secondary")}
+              disabled={copyingDryRun}
+              onClick={() => runDryRun({ endpoint: "copy", body: { runId: activeRunId, commit: false }, setBusy: setCopyingDryRun, label: "Copy (dry run)" })}
+            >
+              {copyingDryRun ? "Running..." : "Copy (dry run)"}
+            </button>
+            <button
+              type="button"
+              className={cx("action-button danger")}
+              disabled={Boolean(conflictCount)}
+              onClick={() =>
+                openCommitConfirm({
+                  subcommand: "copy",
+                  endpoint: "copy",
+                  title: "Copy — commit",
+                  params: [["Run", activeRunId], ["Scope", activeScope]],
+                  extraBody: { runId: activeRunId },
+                })
+              }
+            >
+              Copy (commit)
+            </button>
+            <button
+              type="button"
+              className={cx("action-button secondary")}
+              disabled={verifyingS3}
+              onClick={() => runDryRun({ endpoint: "verify-s3", body: { runId: activeRunId }, setBusy: setVerifyingS3, label: "Verify S3" })}
+            >
+              {verifyingS3 ? "Running..." : "Verify S3"}
+            </button>
+          </div>
+
+          <div className={cx("field-row")}>
+            <span>Rewrite / verify target</span>
+            <select value={rewriteTarget} onChange={(event) => setRewriteTarget(event.target.value)}>
+              <option value="dev">dev</option>
+              <option value="prod">prod</option>
+            </select>
+          </div>
+          {rewriteTarget === "prod" ? (
+            <div className={cx("scope-note")}>
+              Prod rewrite should only ever follow a soaked, verified dev rewrite — see
+              S3_KEY_RESTRUCTURE_PROGRESS.md's Track B ordering. The confirm phrase escalates to
+              "RUN ON PROD" for this target.
+            </div>
+          ) : null}
+
+          <div className={cx("migration-actions")}>
+            <button
+              type="button"
+              className={cx("action-button secondary")}
+              disabled={rewritingDryRun}
+              onClick={() =>
+                runDryRun({
+                  endpoint: "rewrite",
+                  body: { runId: activeRunId, target: rewriteTarget, commit: false },
+                  setBusy: setRewritingDryRun,
+                  label: "Rewrite (dry run)",
+                })
+              }
+            >
+              {rewritingDryRun ? "Running..." : "Rewrite (dry run)"}
+            </button>
+            <button
+              type="button"
+              className={cx("action-button danger")}
+              onClick={() =>
+                openCommitConfirm({
+                  subcommand: "rewrite",
+                  endpoint: "rewrite",
+                  target: rewriteTarget,
+                  title: `Rewrite — commit (${rewriteTarget})`,
+                  params: [["Run", activeRunId], ["Scope", activeScope], ["Target DB", rewriteTarget]],
+                  extraBody: { runId: activeRunId, target: rewriteTarget },
+                })
+              }
+            >
+              Rewrite (commit)
+            </button>
+            <button
+              type="button"
+              className={cx("action-button secondary")}
+              disabled={verifying}
+              onClick={() => runDryRun({ endpoint: "verify", body: { runId: activeRunId, target: rewriteTarget }, setBusy: setVerifying, label: "Verify" })}
+            >
+              {verifying ? "Running..." : "Verify"}
+            </button>
+          </div>
+
+          {lastActionOutput ? (
+            <details className={cx("scope-note")}>
+              <summary>Last command output</summary>
+              <pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{lastActionOutput}</pre>
+            </details>
+          ) : null}
+        </div>
+      ) : null}
 
       {!job ? (
         <div className={cx("inline-note")}>
-          {loading ? "Loading…" : "No migration run has ever reported to this card. Start one from the CLI: node scripts/s3KeyMigration.js plan --uri=... --compare-uri=..."}
+          {loading ? "Loading…" : "No copy/rewrite job has ever reported to this card yet — run a plan above, then Copy or Rewrite to start one."}
         </div>
       ) : (
         <>
@@ -207,7 +458,7 @@ export default function S3KeyMigrationCard() {
             <button type="button" className={cx("action-button secondary")} onClick={pauseRun} disabled={pausing || !pausable}>
               {pausing ? "Pausing..." : "Pause"}
             </button>
-            <button type="button" className={cx("action-button danger")} onClick={cancelRun} disabled={cancelling || !cancellable}>
+            <button type="button" className={cx("action-button danger")} onClick={cancelJobRun} disabled={cancelling || !cancellable}>
               {cancelling ? "Cancelling..." : "Cancel"}
             </button>
             <button type="button" className={cx("action-button secondary")} onClick={() => loadLatest()} disabled={loading || refreshing}>
@@ -296,6 +547,19 @@ export default function S3KeyMigrationCard() {
             ))}
           </div>
         </div>
+      ) : null}
+
+      {confirmModal ? (
+        <TypeToConfirmModal
+          title={confirmModal.title}
+          params={confirmModal.params}
+          phrase={confirmPhrase({ subcommand: confirmModal.subcommand, scope: confirmModal.scope, target: confirmModal.target })}
+          danger
+          confirmLabel="Run commit"
+          busy={confirmBusy}
+          onConfirm={submitConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
       ) : null}
     </div>
   );

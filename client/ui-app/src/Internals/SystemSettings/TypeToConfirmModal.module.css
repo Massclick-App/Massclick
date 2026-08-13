@@ -1,0 +1,121 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 24, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.dialog {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: #1a1d24;
+}
+
+.title.danger {
+  color: #b3261e;
+}
+
+.paramsList {
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: #f6f7f9;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.paramsList div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.paramsList span:first-child {
+  color: #6b7280;
+}
+
+.paramsList span:last-child {
+  font-weight: 600;
+  color: #1a1d24;
+  word-break: break-all;
+  text-align: right;
+}
+
+.prompt {
+  font-size: 13px;
+  color: #374151;
+  margin: 16px 0 6px;
+}
+
+.prompt strong {
+  font-family: monospace;
+  background: #f1f1f4;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-family: monospace;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #b3261e;
+  box-shadow: 0 0 0 3px rgba(179, 38, 30, 0.12);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.button {
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button.cancel {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #1a1d24;
+}
+
+.button.confirm {
+  background: #b3261e;
+  color: #ffffff;
+}
+
+.button.confirm:disabled {
+  background: #e5b3af;
+}

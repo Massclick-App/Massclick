@@ -120,6 +120,117 @@ objects, same field shapes, same volume.
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
 | 4 | **Rehearsal: `category/`** full cycle | ⬜ | smoke + UI clean |
 
+### 2026-08-13 - dev `advertisements` key-restructure rehearsal (Codex)
+
+Run on the dev VPS at `/home/admin/nodeapps/dev-massclick-api/server`, commit
+`099685e1dd52a7de02af19dfbb5b66afd64ab7af`.
+
+- Scoped backup first: `/home/admin/backups/s3-key-restructure/dev-advertisments-20260813-133902`
+- Run ID: `01KZX2NSPY0KE0ZTWA0MF6RPQ5`
+- `plan --scope=advertisements`: 8 manifest rows, 0 missing, 41 orphans, 0 external, 0 conflicts
+- `copy --commit --state-uri=<dev>`: 8/8 copied to new canonical keys; old keys untouched
+- `verify-s3`: PASS, 8/8 new keys present, 8/8 sizes match, 8/8 old keys still present
+- `rewrite --uri=<dev> --commit --state-uri=<dev>`: 8/8 applied to `massClick_dev`, 0 stale
+- `flush-caches --commit`: all 7 invalidators OK; Redis 2151 -> 214 keys
+- `verify --uri=<dev>`: PASS, 8/8 fields hold canonical keys, 8/8 new keys present, 0 array corruption
+- Mongo job doc: `status=completed`, `phase=rewrite`, `targetDb=massClick_dev`, `counts.done=8/8`
+- `doctor`: manifest checksums OK, no torn lines, copied tail check 8/8 present
+- Public image scan: `checkPublicImageUrls --api=https://dev-api.massclick.in/api --compare=imgcheck-2026-08-12-dev-1.5.json`
+  reported 748 assets, 745 OK, 3 known/pre-existing broken, **NEWLY broken: 0**
+
+This rehearsal intentionally did not run `reverse` or `rollback-copies`: dev is now left on the new
+canonical advertisement keys so the app can be smoke-tested in the real UI. Prod was not rewritten.
+
+### 2026-08-13 - dev `category` rehearsal attempted, then reverted (Codex)
+
+Run on the dev VPS at `/home/admin/nodeapps/dev-massclick-api/server`, commit
+`099685e1dd52a7de02af19dfbb5b66afd64ab7af`.
+
+- Scoped backup first: `/home/admin/backups/s3-key-restructure/dev-categories-20260813-142501`
+- Run ID: `01KZX58W744B4PH074VTZ3YKDA`
+- `plan --scope=category`: 911 manifest rows, 402 orphans, 0 conflicts
+- `copy --commit --state-uri=<dev>` and `rewrite --uri=<dev> --commit --state-uri=<dev>` reached job status
+  `completed`, with `targetDb=massClick_dev`
+- Post-run `verify-s3` failed: 2 deterministic category newKeys had size mismatches. Root cause found in the
+  manifest: the same category `_id` (`6a0c2eaf1cd0e0343e0ca37a`) has different old image keys/sizes in dev vs prod,
+  but the deterministic target key is the same (`legacy-image` and `variant/mobileVertical`). The later copy overwrote
+  the earlier copy at the canonical key, so one DB side would point at the wrong bytes.
+- Because this invalidates the category rehearsal, dev was reverted with `reverse --run=01KZX58W744B4PH074VTZ3YKDA
+  --uri=<dev> --commit`: 909/909 applied DB writes reversed back to old category image keys.
+- The category copied new-key objects were cleaned up; a post-reverse `verify` intentionally fails because fields no
+  longer hold newKeys and those copied newKeys are gone (`field holds newKey: 0/909`, `newKey present in S3: 0/909`).
+- Public image scan after revert stayed clean:
+  `checkPublicImageUrls --api=https://dev-api.massclick.in/api --compare=imgcheck-2026-08-12-dev-1.5.json` reported
+  748 assets, 745 OK, the same 3 known/pre-existing broken, **NEWLY broken: 0**.
+
+Prod was not touched. The most likely operational cause is that dev was not a perfect fresh prod clone:
+the same category `_id` had different image keys/bytes in `massClick_dev` and `massClick`, so a deterministic
+target key collided during the rehearsal. **Before retrying category or any broad/full migration, re-clone
+prod to dev cleanly, then re-run `plan` and review conflicts before any `copy --commit`.**
+
+### 2026-08-13 — `plan` hardened against this exact bug (Claude)
+
+The planner's main loop processes one `oldKey` at a time, so two DIFFERENT `oldKey`s (dev's category
+image vs prod's) that independently mint the SAME deterministic `newKey` were invisible to it —
+`copy` would silently overwrite one DB's bytes with the other's, exactly what happened above. Fixed:
+
+- `plan` now buffers manifest rows and runs a second pass, grouping by `newKey`.
+- Same `newKey` + identical `size`/`etag` from different `oldKey`s (byte-identical, e.g. dev and prod
+  really are in sync) → merged into one manifest row, all owners rewritten together, `mapKind:
+  "merged-duplicate-newkey"`, `mergedFromOldKeys` recorded for audit.
+- Same `newKey` + different `size`/`etag` → **excluded from the manifest entirely**, written to
+  `conflicts.jsonl` as `kind: "duplicate-newkey-diff-bytes"` with both source rows, for human review.
+- `copy --commit` now reads `conflicts.jsonl` first and refuses outright if it is non-empty — a plan
+  with unresolved conflicts can no longer reach `copy` at all, previously the conflicts file was
+  advisory only.
+- Logic extracted to `server/utils/s3ManifestDedup.js` (pure, no fs/S3/DB) so it's unit-testable.
+  `server/scripts/verifyS3ManifestDedup.js` reproduces the category incident above as a fixture
+  (18/18 green) plus the safe-merge and ordinary-single-row cases, so a regression here fails a gate
+  rather than surfacing again mid-rehearsal.
+
+Not yet done: no `plan` was re-run against real data with this fix (that requires the fresh prod→dev
+clone first, per the operational rule above) — this hardening is proven against fixtures only so far.
+
+### 2026-08-13 — admin UI can now start plan/copy/verify-s3/rewrite/verify (Claude)
+
+Per user request, the SystemSettings card stopped being monitor-only. Plan approved at
+`C:\Users\USER\.claude\plans\parsed-sauteeing-garden.md`; full reasoning lives there. Summary:
+
+- **Design choice: spawn the CLI as a child process, don't refactor it in-process.** The sibling
+  `s3CacheHeaderMigrationHelper.js` calls its logic in-process; this script is ~1600 lines of hardening
+  earned from real incidents, so the admin route now runs the exact same already-proven code path via
+  `child_process.spawn`, rather than re-deriving its behavior in a second copy.
+- `server/scripts/s3KeyMigration.js`: additive env-var fallback for `--uri`/`--compare-uri`/`--state-uri`
+  (`S3_MIGRATION_URI`/`S3_MIGRATION_COMPARE_URI`/`S3_MIGRATION_STATE_URI`) so a spawned child never needs
+  a connection string on argv (visible to `ps aux`). Flag still wins when present — verified no change to
+  existing CLI behavior (usage text, `plan`'s own `--uri` refusal) with these unset.
+- New `server/helper/s3Migration/s3KeyMigrationRunner.js`: `resolveTargetUri("dev"|"prod")` — the only
+  place a target label becomes a real connection string, read from new `S3_MIGRATION_DEV_URI` /
+  `S3_MIGRATION_PROD_URI` env vars — **not yet added to any deployed `.env`, user must add these by hand**.
+  `plan`/`verify-s3`/`verify` run to completion and return their output (they don't loop or need
+  interrupting); `copy`/`rewrite` are fire-and-forget, tracked via the existing job-doc mechanism
+  (`--state-uri` always resolves to dev, matching every proven rehearsal invocation).
+- New routes/controller actions in `systemSettingsRoutes.js` / `s3KeyMigrationController.js`: POST
+  `plan`/`copy`/`verify-s3`/`rewrite`/`verify`, GET `scopes`. Any `commit: true` body requires a `confirm`
+  field matching a server-computed phrase (`expectedConfirmPhrase` in the runner module) —
+  `"<subcommand>:<scope>"`, escalating to the literal `"RUN ON PROD"` once `target === "prod"`. The
+  plan response also surfaces `conflictCount` (reading `conflicts.jsonl` directly) so the UI can warn
+  before anyone attempts a `copy --commit` the CLI would refuse anyway.
+- New `client/ui-app/.../TypeToConfirmModal.js` — no modal component existed anywhere in the admin
+  frontend before this (everything else uses `window.confirm()`); commit actions here require literally
+  typing the phrase, matching the backend guard.
+- `S3KeyMigrationCard.js` extended (not replaced): scope-select + "Run plan", then
+  copy/verify-s3/rewrite/verify controls once a run exists, target dev/prod selector for
+  rewrite/verify, conflict-count banner disabling Copy (commit) client-side.
+- New gate `server/scripts/verifyS3KeyMigrationRunner.js` — pure unit tests for `resolveTargetUri` and
+  `expectedConfirmPhrase`, no spawning, no DB (11/11 green).
+- **Not yet done / needs the user:** add `S3_MIGRATION_DEV_URI`/`S3_MIGRATION_PROD_URI` to both
+  deployments' `.env`; click through the UI end-to-end once deployed (dry-run plan → copy → verify-s3 on
+  a throwaway scope, confirm the modal's typed-confirm gate actually blocks an unconfirmed commit). Per
+  standing preference, the dev server was not started and the UI was not exercised in a browser this
+  session — verification here was gate scripts + Babel parse checks only.
+- `reverse`/`rollback-copies`/`doctor`/`resume` remain CLI-only — a deliberate later phase, not built.
+
 **End of Track A = "ready to run".** Nothing further happens until the user triggers it.
 
 ## The night before the run

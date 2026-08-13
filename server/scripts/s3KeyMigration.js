@@ -55,6 +55,7 @@ import { SCOPES, registryCollections } from "../utils/s3ScopeRegistry.js";
 import { connect, scanDatabase, compareIds, listBucket } from "../utils/s3MigrationScan.js";
 import { s3Path, isCanonicalKey } from "../utils/s3ObjectKeys.js";
 import { ulid } from "../utils/idGen.js";
+import { resolveDuplicateNewKeys } from "../utils/s3ManifestDedup.js";
 import {
   newRunId,
   ensureRunDir,
@@ -93,8 +94,11 @@ const flag = (name) => {
 };
 const has = (name) => argv.includes(`--${name}`);
 
-const URI = flag("uri");
-const COMPARE_URI = flag("compare-uri");
+/** Env-var fallback lets a spawned child process (the admin UI) pass connection
+ * strings without putting them on argv, where `ps aux` on the box could see them.
+ * The flag is always checked first, so every hand-typed CLI invocation is unaffected. */
+const URI = flag("uri") || process.env.S3_MIGRATION_URI || null;
+const COMPARE_URI = flag("compare-uri") || process.env.S3_MIGRATION_COMPARE_URI || null;
 const OUT = flag("out");
 const SKIP_S3 = has("no-s3");
 /** Nothing in this CLI writes anything without this. `scan` ignores it entirely. */
@@ -104,7 +108,7 @@ const SCOPE_FLAG = flag("scope") || "all";
 const CONCURRENCY = Number(flag("concurrency")) || 8;
 /** Where the monitoring-card job doc is written. Job tracking is skipped entirely
  * (with a warning) if this isn't given — copy/rewrite still work standalone. */
-const STATE_URI = flag("state-uri");
+const STATE_URI = flag("state-uri") || process.env.S3_MIGRATION_STATE_URI || null;
 
 const BUCKET = process.env.AWS_S3_BUCKET_MASSCLICK;
 
@@ -638,6 +642,15 @@ const cmdPlan = async () => {
   const mapKindCounts = {};
   let totalBytes = 0;
 
+  // Buffered, NOT written to manifestFile yet — a deterministic newKey is minted from
+  // (entity, entityId, purpose, seq) alone, so two DIFFERENT oldKeys (typically the
+  // same entity's dev vs prod image) can independently mint the SAME newKey. That only
+  // becomes visible once every oldKey has been processed, so newKey-collision detection
+  // is a second pass below. See the 2026-08-13 category rehearsal note in
+  // S3_RESTRUCTURE_PROGRESS.md — this is exactly the bug that fired there (two size
+  // mismatches, silently overwritten, never flagged as a conflict).
+  const pendingRows = [];
+
   for (const oldKey of allOldKeys) {
     const ownersA = (scanA.keyOwners.get(oldKey) || []).map((o) => ({ ...o, db: label }));
     const ownersB = (scanB.keyOwners.get(oldKey) || []).map((o) => ({ ...o, db: compareLabel }));
@@ -689,8 +702,7 @@ const cmdPlan = async () => {
         counts.conflicts += 1;
         continue;
       }
-      appendJsonl(manifestFile, {
-        rowId: ulid(),
+      pendingRows.push({
         oldKey,
         newKey: token.key,
         size: bucketMeta.size,
@@ -698,9 +710,27 @@ const cmdPlan = async () => {
         mapKind,
         owners: group.owners,
       });
-      counts.rows += 1;
-      totalBytes += bucketMeta.size || 0;
     }
+  }
+
+  // --- second pass: detect duplicate deterministic newKeys minted from different
+  // oldKeys. Same newKey + identical bytes (size+etag) is safe to merge — it is the
+  // same image stored twice (e.g. dev/prod clones in sync). Same newKey + DIFFERENT
+  // bytes means the two databases disagree about what this entity's image actually
+  // is; copying either one over the other is a silent, unreviewable data loss, so it
+  // is routed to conflicts.jsonl instead and excluded from the manifest. Logic lives
+  // in utils/s3ManifestDedup.js so it can be unit-tested without a live DB/S3 — see
+  // scripts/verifyS3ManifestDedup.js.
+  const dedup = resolveDuplicateNewKeys(pendingRows, { ulid });
+  const { mergedNewKeyGroups, duplicateNewKeyGroups } = dedup;
+  for (const row of dedup.manifestRows) {
+    appendJsonl(manifestFile, row);
+    counts.rows += 1;
+    totalBytes += row.size || 0;
+  }
+  for (const entry of dedup.conflictEntries) {
+    appendJsonl(conflictsFile, entry);
+    counts.conflicts += 1;
   }
 
   // Orphans: bucket objects with zero owners in EITHER db. Scope-filtered by
@@ -736,11 +766,15 @@ const cmdPlan = async () => {
 
   console.log(`  manifest rows (newKeys to create):  ${counts.rows}`);
   for (const [kind, n] of Object.entries(mapKindCounts)) console.log(`    ${pad(kind, 10)}${num(n, 8)}`);
+  if (mergedNewKeyGroups) console.log(`    merged (dup newKey, same bytes)  ${num(mergedNewKeyGroups, 4)}`);
   console.log(`  total bytes to copy:                ${(totalBytes / 1048576).toFixed(1)} MB`);
   console.log(`  missing (pre-existing, not copied):  ${counts.missing}`);
   console.log(`  orphans (untouched):                 ${counts.orphans}`);
   console.log(`  external (untouched):                ${counts.external}`);
   console.log(`  conflicts.jsonl entries:              ${counts.conflicts}   ${counts.conflicts ? "<-- REVIEW before copy" : "(expect near-empty)"}`);
+  if (duplicateNewKeyGroups) {
+    console.log(`    of which duplicate-newkey-diff-bytes: ${duplicateNewKeyGroups}   <-- same entity, different bytes in each DB — excluded from manifest, copy would refuse anyway`);
+  }
   console.log(`\n  run directory: ${runFile(runId, "")}`);
   console.log(`  meta.json checksums cover: ${Object.keys(meta.checksums).join(", ") || "(no plan-output files were written — nothing in scope?)"}`);
   console.log(`\n=== plan complete for run ${runId} — nothing was written to S3 or to any database ===\n`);
@@ -762,6 +796,18 @@ const cmdPlan = async () => {
  */
 const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRENCY, stateUri = STATE_URI } = {}) => {
   const meta = requireRun(runId);
+  if (commit) {
+    const { rows: conflictRows } = readJsonl(runFile(runId, "conflicts.jsonl"));
+    if (conflictRows.length) {
+      die(
+        `run ${runId} has ${conflictRows.length} unresolved conflicts.jsonl entries — copy --commit refuses to run.\n` +
+          `  Review ${runFile(runId, "conflicts.jsonl")} first. Rows involved in a conflict were NOT written to\n` +
+          `  the manifest, so copy cannot silently skip past them — this is a stop-and-look gate, not a bug.\n` +
+          `  If the conflicts are expected/harmless, resolve the underlying data (e.g. re-clone dev from prod)\n` +
+          `  and re-run \`plan\` to get a clean manifest.`,
+      );
+    }
+  }
   const { rows } = readJsonl(runFile(runId, "manifest.jsonl"));
   const copiedFile = runFile(runId, "copied.jsonl");
   const { tornLastLine } = readJsonl(copiedFile);
