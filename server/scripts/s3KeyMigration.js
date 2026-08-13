@@ -884,7 +884,7 @@ const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRE
     // a clean completion, releaseSlot (status already set by the admin action) for a
     // voluntary stop. Never leave activeSlot held past this point.
     if (stopCache) await tracker.releaseSlot(jobId);
-    else await tracker.finishJob(jobId, { failed });
+    else await tracker.finishJob(jobId, { failed, counts: { total: rows.length, done: doneNow.size, skipped: 0, failed } });
   }
   if (jobConnection) await jobConnection.close();
 
@@ -1132,7 +1132,7 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT, stateUri
     // Must run BEFORE the connections close in `finally` below.
     if (tracker) {
       if (stopped) await tracker.releaseSlot(jobId);
-      else await tracker.finishJob(jobId, { failed: 0 });
+      else await tracker.finishJob(jobId, { failed: 0, counts: { total: pending.length, done: applied, skipped: stale, failed: 0 } });
     }
   } catch (error) {
     if (tracker) await tracker.failJob(jobId, error);

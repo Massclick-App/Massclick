@@ -1,14 +1,14 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-13 by Claude · **Active runId:** none
-**Current step:** 2.3 done (code complete) · **Status:** Phase 0 + Phase 1 all DONE, deployed to dev+prod ·
-**2.1 already done (built ahead of schedule in 0.1). All of 2.2's CLI verbs exist:
-`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`status`/`doctor`/`resume`/`reverse`/`rollback-copies`. 2.3
-(monitoring card + 5 admin endpoints + job-doc lease/heartbeat wired into copy/rewrite) is also built.
-`plan`/`copy`/`verify-s3`/`rollback-copies` are proven against real data. `rewrite`/`reverse`'s real
-DB-write cycle, AND everything in 2.3 that needs a real Mongo write (job claim/heartbeat/pause-cancel),
-are code-complete but UNTESTED against real data — blocked by the Claude Code permission classifier, user
-chose to defer. Do not start Rehearsal 1 until this is closed.** Still missing:
+**Current step:** Track A prep essentially DONE · **Status:** Phase 0 + Phase 1 all DONE, deployed to dev+prod ·
+**2.1 and 2.2 are both fully proven against real data now, including the real DB-write cycle**
+(`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`reverse`/`rollback-copies` all run for real, dev only, on
+the `advertisements` scope, then fully cleaned up — see "rewrite/reverse's real DB-write cycle — DONE").
+2.3's job-doc tracking is proven for the `copy`/`rewrite` phases (found and fixed a real bug: `counts.done`
+wasn't synced to the true final value). **Still open before Rehearsal 1:** the heartbeat timer and
+pause/cancel (`isStopRequested` stopping a live loop) haven't been exercised — the test run was too fast
+to hit either — and the card has never been viewed in a browser. Still missing entirely:
 `sweep`/`undelete`/`restore-from-local` — low priority, only needed at S.3, deliberately deferred.
 
 ### Everything Phase 0 + Phase 1 built — one place
@@ -115,8 +115,8 @@ objects, same field shapes, same volume.
 | 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
 | 1.5 | Deploy Phase 1 dev → prod | ✅ **DONE** | dev: gates clean + 2 live uploads confirmed canonical · **prod (2026-08-13): checkPublicImageUrls NEWLY broken 0, flush-caches 8830→248 all 7 invalidators ok, live logo upload confirmed canonical + zero errors** |
 | 2.1 | Scope registry to all ~20 collections | ✅ **DONE** — already complete from 0.1, one real gap found+fixed 2026-08-13 | `verifyS3ObjectKeys.js` 66/66 |
-| 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | 🟡 **ALL CLI verbs built** (`sweep`/`undelete`/`restore-from-local` excepted, low priority) — `plan`/`copy`/`verify-s3`/`rollback-copies` proven for real; `rewrite`/`reverse`'s real DB-write cycle blocked by permission classifier, user deferred it | `copy --commit` + `verify-s3` + `rollback-copies --commit` all proven on real S3 data; `rewrite --commit` attempt blocked, dev doc confirmed byte-identical afterward |
-| 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | 🟡 **code complete** — untested against real Mongo | code review + `@babel/core` parse checks + import checks; no live job doc ever created |
+| 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | ✅ **DONE, full cycle proven for real** (`sweep`/`undelete`/`restore-from-local` excepted, low priority, deferred) | full `plan`→`copy`→`rewrite`→`verify`→`reverse`→`rollback-copies` cycle run for real on dev, all 8 rows independently confirmed applied then reverted byte-identical |
+| 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | 🟡 **job-doc tracking proven for copy/rewrite**; heartbeat/pause-cancel/card-in-browser still untested | real job doc created+updated+completed twice against live Mongo; found+fixed a real `counts.done` sync bug live |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
 | 4 | **Rehearsal: `category/`** full cycle | ⬜ | smoke + UI clean |
 
@@ -1332,30 +1332,51 @@ runs — correct output, no crashes, torn-line/checksum logic exercised. `rollba
 exercised for real (see below) and worked correctly: 8/8 deleted, confirmed via an independent DB read
 that nothing else had changed.
 
-### `rewrite`/`reverse`'s real DB-write cycle — attempted, blocked by the platform, deferred by the user
+### `rewrite`/`reverse`'s real DB-write cycle — DONE, proven end-to-end, 2026-08-13
 
-Planned a full real rehearsal-style cycle on dev only, never prod, after getting the user's explicit
-go-ahead (they flagged the shared-bucket/shared-container risk and asked for extra care, not a "no"):
-`plan` → `copy --commit` (8 objects, ran clean, same category already approved) → `rewrite --commit
---uri=<dev>` → `verify` → `reverse --commit --uri=<dev>` → `rollback-copies --commit`.
+First attempt was blocked by the Claude Code auto-mode permission classifier (a platform-level gate on
+`--commit` writes against a Mongo connection string, independent of the user's in-chat approval — not
+routed around). User chose to defer initially, then asked how to grant the permission properly. Added
+`"Bash(node scripts/s3KeyMigration.js *)"` to `.claude/settings.local.json`'s `permissions.allow` — scoped
+to this one script, not a blanket DB-write allowance, per the user's explicit choice of the broader-but-
+still-scoped option over a dev-only-restricted one. Took effect after a session restart.
 
-**The `rewrite --commit` step itself was blocked by the Claude Code auto-mode permission classifier**,
-independent of the user's in-chat approval — this is a platform-level gate on `--commit` writes against a
-Mongo connection string, not a bug, and not something to route around. Asked the user how to proceed
-(run it themselves / adjust their permission settings / skip for now); **they chose skip for now.**
+**Full real cycle then run against a fresh `advertisements`-scope plan, dev only, never prod** — every
+step verified independently against the live document, not just trusted from the tool's own output:
 
-**What this means concretely:** `rewrite`, `verify`, and `reverse` are built, syntax-checked, and dry-run
-tested, but **the actual DB-write path (`updateOne` with the old-value filter) has never executed against
-a real document.** `copy`/`verify-s3`/`rollback-copies` (S3-only) ARE fully proven against real data — copy
-wrote 8 real objects, verify-s3 independently confirmed them, rollback-copies deleted them, all correct.
-The dev document used for the abandoned test (`advertisments` `69b78fb46b431f14622ec84e`) was independently
-re-read before and after the attempt and confirmed **byte-identical** — nothing touched it, as expected
-since the blocked step never ran.
+```
+BEFORE   bannerImageKey: advertisements/banners/ad-1773637556236.webp   (read directly, before anything ran)
 
-**Before trusting `rewrite`/`reverse` for a real Rehearsal (step 3), this real DB-write cycle still needs
-to happen** — either the user runs `rewrite --commit`/`reverse --commit` themselves once, or grants the
-permission for Claude to do it. Do not skip straight to Rehearsal 1 on the strength of code review alone;
-the plan's own reasoning for demanding a rehearsed `reverse` before a real `rewrite` applies exactly here.
+copy --commit    8/8 copied, 0 failed
+rewrite --commit --uri=<dev>    8/8 applied, 0 stale
+  independent re-read: bannerImageKey now advertisements/<id>/banner-web/<ulid>  <- exact match to plan's newKey
+verify --uri=<dev>    field holds newKey 8/8, canonical 8/8, present in S3 8/8, array corruption 0   PASS
+reverse --commit --uri=<dev>    8/8 reversed, 0 stale
+  independent re-read: bannerImageKey back to advertisements/banners/ad-1773637556236.webp — BYTE-IDENTICAL to BEFORE
+  all 8 manifest rows checked (not just the one sampled) — all 8 confirmed reverted correctly
+rollback-copies --commit    8/8 S3 objects deleted
+```
+
+**Job-doc tracking (2.3) proven live in the same run**, via `--state-uri=<dev>` on `copy` and `rewrite`:
+the job doc was created in `s3_key_migration_jobs`, correctly showed `phase` transitioning `copy` ->
+`rewrite`, `targetDb: "massClick_dev"` recorded accurately, `status: "completed"` with `activeSlot`
+correctly released (absent from the doc) both times, and `leaseExpiresAt` correctly cleared.
+
+**One real, minor bug found and fixed by this live run:** the job doc's `counts.done` was left at `5`
+after an 8-item run completed — progress is only pushed every 5 completions (throttled, by design, to
+avoid hammering Mongo), and nothing forced a final sync to the TRUE total before `finishJob` marked the
+run complete. Fixed: `finishJob` now accepts an optional `counts` object carrying the real final tally,
+and both `cmdCopy`/`cmdRewrite` now pass it. This is exactly the kind of gap dry-run testing and code
+review cannot catch — only a real run with a total not evenly divisible by the throttle interval exposes
+it, which is why this real test was worth insisting on rather than trusting review alone.
+
+Test job doc and local run directory both deleted afterward — no lasting state anywhere except the git
+history of the bug fix.
+
+**`rewrite`, `verify`, `reverse`, `rollback-copies`, and the job-doc tracking (`copy`/`rewrite` phases) are
+now all proven against real data, not just code-reviewed.** This satisfies the plan's own requirement that
+`reverse` be rehearsed before `rewrite` is trusted — retroactively, since this session's rewrite ran first,
+but proven in the same sitting before anything moved on. **Rehearsal 1 is no longer blocked on this.**
 
 **Still NOT built:** `sweep`, `undelete`, `restore-from-local`. Only needed at S.3, 30+ days after a Track B
 run that hasn't started — low priority, deliberately deferred.
@@ -1447,12 +1468,19 @@ Parse-checked the JSX with `@babel/core` directly (`parseSync` with `@babel/pres
 dev server, respecting the standing "ask before npm build/start" preference) — `S3KeyMigrationCard.js` and
 the edited `SystemSettings.js` both parse clean. All 4 core gates stayed green throughout.
 
-**What was NOT tested: anything that requires a real Mongo write** — `claimJob`'s upsert-and-unique-index
-behaviour, the heartbeat timer, `isStopRequested` actually stopping a running loop, the pause/cancel
-endpoints, the card actually rendering live data. This is the SAME category of gap already flagged for
-`rewrite`/`reverse` (a real DB write), just against a brand-new, empty bookkeeping collection instead of
-business data — bundled with that same open item rather than attempting another live write unprompted
-after the user had already asked to hold off once this session.
+**Update 2026-08-13 — `claimJob`, `updateProgress`, `finishJob`, and `releaseSlot` are now proven for
+real** (see "rewrite/reverse's real DB-write cycle — DONE" above): the job doc was created, updated,
+transitioned phase, and cleanly completed twice in a row (once for `copy`, once for `rewrite`) against
+real Mongo, and caught a real bug (`counts.done` not synced to the true final value) that no amount of
+code review or dry-run testing would have surfaced.
+
+**Still NOT tested:** the heartbeat timer actually firing over a long-running command (the test run was too
+fast — 8 items — to exercise it), `isStopRequested` actually stopping a running loop mid-flight (needs a
+deliberate pause/cancel click during a run in progress), the two admin endpoints (`pause`/`cancel` — never
+called), and the card actually rendering live data in a browser (no UI check done, per the standing
+preference against browser-preview tools for this project — verification here has been API/DB-level only).
+These need either a longer real run to naturally exercise the heartbeat, or a deliberate pause-mid-run
+test, before Rehearsal 1's own SIGKILL/tunnel-drop tests are attempted.
 
 ---
 
@@ -1680,6 +1708,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-13 | **The real DB-write cycle finally proven end-to-end — Rehearsal 1 is unblocked.** User asked how to grant the permission the classifier had been blocking; added a scoped `Bash(node scripts/s3KeyMigration.js *)` allow rule to `.claude/settings.local.json` after confirming with the user how broad to make it (they chose the whole-script version over a dev-only-restricted one). After a session restart, ran the full real cycle on a fresh `advertisements` plan, dev only: `copy --commit` (8/8), `rewrite --commit` (8/8, independently re-read from the live document and matched the planned newKey exactly), `verify` (clean PASS), `reverse --commit` (8/8, independently re-read and confirmed byte-identical to the pre-migration snapshot across all 8 rows, not just one), `rollback-copies --commit` (8/8 S3 objects cleaned up). Also ran with `--state-uri` to exercise 2.3's job-doc tracking live — the doc was created, transitioned phase `copy`→`rewrite`, and completed cleanly twice, with `activeSlot` correctly released each time. **Found and fixed a real bug this way that no dry-run or code review would have caught:** `counts.done` on the job doc stayed at `5` after an 8-item run finished, because progress is only pushed every 5 completions and nothing forced a final sync before marking the job complete — `finishJob` now accepts the true final counts. Test job doc and run directory deleted afterward. Still open before Rehearsal 1: the heartbeat timer and pause/cancel were never exercised (the run was too fast), and the card has never been opened in a browser. All 4 core gates stayed green throughout. Full detail in "rewrite/reverse's real DB-write cycle — DONE" above. |
 | 2026-08-13 | **2.3 built: monitoring card, 5 admin endpoints, and job-doc lease/heartbeat wired into `copy`/`rewrite`.** Asked the user how to handle the gap between the plan's card design (polls a Mongo job doc with heartbeat liveness) and the CLI (which didn't write to that job doc at all) — offered a lighter state.json-reading alternative; **user chose the full plan-matching version**, so this meant wiring real lease/claim/heartbeat/pause-cancel bookkeeping into already-working, already-tested `copy`/`rewrite` loops, not just adding a read-only view. Built `utils/s3MigrationJobTracking.js` as a connection-bound factory (the CLI's per-invocation `mongoose.createConnection()` needs `connection.model(...)`, not the app's shared default connection the new controller uses) with `claimJob`/`updateProgress`/`isStopRequested`/`finishJob`/`failJob`/`releaseSlot`. Gave `runPool` a `shouldStop()` callback so Pause/Cancel from the card can actually stop a running `copy` mid-flight, not just relabel a job doc nobody's watching. Caught and fixed a real bug before it shipped: `rewrite`'s finish/release calls were originally placed AFTER the `finally` block that closes the job-doc connection, so they'd have silently failed against a closed connection — found by re-reading the control flow, since there was no way to test it live. Built the 5-endpoint controller (no `/start`, matching the plan) and the React card (liveness from heartbeat age, never from `status` alone — a hard-killed CLI freezes `status:"running"` forever). Also fixed an unrelated pre-existing gap while at it: the hardcoded bucket URL in `client/.../MRP/mrp.js` that 0.5 should have caught (`lintS3Paths.js` back to 0/0). Verified everything that doesn't need a real Mongo write: `node --check` + dynamic `import()` on every new/changed server file, `@babel/core` parse checks on the JSX (no build run, per the standing preference), all 4 core gates green throughout. **Deliberately did NOT attempt another real Mongo write this session** — the job-doc claim/heartbeat/pause-cancel machinery is bundled with the already-deferred `rewrite`/`reverse` real-write gap rather than testing it live unprompted. Full detail in "2.3 — monitoring card" above. |
 | 2026-08-13 | **All of 2.2's CLI verbs built in one continued session: `copy`, `verify-s3`, `rewrite`, `verify`, `status`, `doctor`, `resume`, `reverse`, `rollback-copies`.** `copy`/`verify-s3` proven end-to-end on real S3 data with user approval: 8/8 objects copied, verify-s3 independently confirmed, idempotent re-run correctly no-op'd, test objects deleted after. Built `utils/s3RetryPolicy.js` (withRetry/NON_RETRYABLE_AWS_CODES copied verbatim from the cache-header migration per the plan's own instruction, plus a small concurrency pool). Attempted the full real rehearsal-style cycle (`plan`→`copy`→`rewrite`→`verify`→`reverse`→`rollback-copies`) on dev only, after the user approved it with an important caution: dev and prod share the same S3 bucket/container, so revert correctly and be very careful with prod. The `rewrite --commit` step itself was blocked by the Claude Code auto-mode permission classifier — a platform-level gate independent of the user's in-chat approval, not routed around per instructions. Asked the user how to proceed; **they chose to skip the real test for now.** Cleaned up fully: `rollback-copies --commit` deleted the 8 test S3 objects (itself a real, successful test of that command), and an independent before/after DB read confirmed the dev document was never touched. **Net result: `rewrite`/`verify`/`reverse` are code-complete, syntax-checked and dry-run tested, but their real DB-write path has never executed — this must happen (user-run or permission-granted) before Rehearsal 1 can start**, per the plan's own "reverse must be rehearsed before rewrite runs for real" rule. All 3 core gates stayed green throughout. Full detail in "Phase 2 — where it stands" above. |
 | 2026-08-13 | **Phase 2 started (user said "GO CONTINUE"). 2.1 found already done from 0.1; `plan` (part of 2.2) built and verified live.** Discovered and fixed a real registry bug hit while building `plan`'s key-minting logic: `businessReviews.ratingPhotos` was declared under the wrong entity/purpose, which would have made migrated legacy objects permanently diverge from what `reviewHelper.js` actually writes going forward — added `entity`/`entityIdField` per-field overrides to `s3ScopeRegistry.js` to fix it, and deleted the now-provably-dead `s3Keys.review.photo` builder it had produced. Extracted `scan`'s DB-walking logic into `utils/s3MigrationScan.js` so `plan` reuses the identical classification rather than a second copy — found and fixed an unrelated pre-existing bug in the process (`scan`'s clone-check block was nested inside the fan-out loop, crashing on `scan --uri=only` with any fan-out present). Built `utils/s3MigrationManifest.js` (checksummed plan outputs, torn-line-tolerant append-only logs, atomic `state.json`) and `model/maintenance/s3KeyMigrationJobModel.js` (not wired to any command yet — waits for the 2.3 monitoring card). `plan` verified against real dev+prod data in two scopes: `advertisements` (8+41=49, matching the plan's own Rehearsal 1 size exactly) and `category` (911+402=1313 vs the plan's stated 1,312 — 1 off, explained by normal data drift). All 4 core gates stayed green throughout (31/22/66/23); a pre-existing, unrelated hardcoded-bucket-URL leak in `client/.../MRP/mrp.js` was found by the regression gate and flagged as a separate task rather than fixed inline. **Still not built:** `copy`, `verify-s3`, `rewrite`, `verify`, `sweep`, `status`, `doctor`, `resume`, `reverse`, the monitoring card, the 5 admin endpoints — nothing in Track B or the rehearsals is reachable yet. Full detail in "Phase 2 — where it stands" above. |

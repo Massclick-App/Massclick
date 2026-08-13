@@ -126,7 +126,14 @@ export const createJobTracker = (connection) => {
     return timer;
   };
 
-  const finishJob = async (jobId, { failed = 0 } = {}) => {
+  /**
+   * `counts`, if given, is the TRUE final tally — not the last periodic checkpoint.
+   * Progress is only pushed every 5 completions (throttled, to avoid hammering Mongo),
+   * so without this a run whose total isn't a multiple of 5 finishes with
+   * `counts.done` stuck a few short of the real number. Caught live: an 8-item run
+   * completed with `done: 5` on the job doc despite all 8 actually succeeding.
+   */
+  const finishJob = async (jobId, { failed = 0, counts } = {}) => {
     const now = new Date();
     await Model.updateOne(ownedFilter(jobId), {
       $set: {
@@ -134,6 +141,7 @@ export const createJobTracker = (connection) => {
         finishedAt: now,
         lastHeartbeatAt: now,
         leaseExpiresAt: null,
+        ...(counts ? { counts } : {}),
       },
       $unset: { activeSlot: 1, workerId: 1 },
     });
