@@ -1,8 +1,8 @@
 # S3 Key Restructure — Progress
 
-**Last updated:** 2026-08-12 by Claude · **Active runId:** none
-**Current step:** 1.5 · **Status:** Phase 0 COMPLETE and deployed to dev+prod · **1.1–1.4 ALL DONE** ·
-**1.5 in progress — DEV fully verified (gates + live upload smoke test); prod deploy still outstanding**
+**Last updated:** 2026-08-13 by Claude · **Active runId:** none
+**Current step:** Phase 1 COMPLETE · **Status:** Phase 0 + Phase 1 (1.1–1.5) all DONE and deployed to dev+prod ·
+**1.5 fully closed — DEV and PROD both verified (gates + live upload smoke tests). Next up: Phase 2, on the user's go-ahead.**
 
 ### Everything Phase 0 + Phase 1 built — one place
 
@@ -106,7 +106,7 @@ objects, same field shapes, same volume.
 | 1.2 | `idGen.js` ULID | ✅ DONE | same gate |
 | 1.3 | Enforcement: chokepoint + lint + `deleteEntityAssets` | ✅ **DONE, STRICT** | `verifyS3PathEnforcement.js` 23/23 · `lintS3Paths.js` 0/0 |
 | 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
-| 1.5 | Deploy Phase 1 dev → prod | 🟡 **DEV FULLY VERIFIED** | dev: gates clean + 2 live uploads confirmed canonical in the DB · **prod deploy still outstanding** |
+| 1.5 | Deploy Phase 1 dev → prod | ✅ **DONE** | dev: gates clean + 2 live uploads confirmed canonical · **prod (2026-08-13): checkPublicImageUrls NEWLY broken 0, flush-caches 8830→248 all 7 invalidators ok, live logo upload confirmed canonical + zero errors** |
 | 2.1–2.2 | Scope registry + `s3KeyMigration.js` (reverse/resume/doctor) | ⬜ | — |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
@@ -1066,9 +1066,48 @@ Both resolve to the registry's exact expected shape — `s3Keys.business.logo()`
 no gate could**: a real upload, through the real admin UI, against the real dev database, under
 strict mode, with no fallback. **Dev is now fully verified — call it done.**
 
-**Prod deploy not yet done.** Same sequence: deploy backend to prod, `checkPublicImageUrls
---api=<prod> --compare=<latest prod baseline>` (must be NEWLY broken 0), then ideally repeat this
-same live-upload spot-check against prod before considering 1.5 fully closed.
+### 1.5 — prod deployed and verified 2026-08-13
+
+Confirmed on the server first, read-only, before doing anything: `git log -1` on
+`/home/admin/nodeapps/massclick-api` showed `df5a666b`, matching local `dev` HEAD exactly (and
+`origin/prod` had fast-forwarded to the same commit — 0 commits behind dev). The user deployed prod
+themselves, as planned; nothing here required Claude to push or deploy.
+
+```
+checkPublicImageUrls --api=https://api.massclick.in/api
+  --compare=imgcheck-2026-08-12-prod-after-deploy.json   (the pre-Phase-1 prod baseline, itself
+                                                            captured right after the 0.8 Phase 0 deploy)
+  765/771 assets resolve, 17/17 endpoints 2xx, NEWLY broken: 0
+  (same 6 pre-existing 403s as baseline — 4 plain missing objects + the 2 already-documented
+  doubled-URL entries from 0.5 — unrelated to this deploy)
+  report saved: imgcheck-2026-08-13-prod-1.5.json
+
+flush-caches --commit  (via one-off SSH tunnel to redis-prod, 127.0.0.1:6379 -> local 6479;
+                         redis-prod's host port is 6379, NOT offset like redis-dev's 6380 — see
+                         D:\dev_abishek\vps\massclick.md)
+  8830 keys -> 248, all 7 invalidators returned ok, full output read (no FAIL line)
+  remaining 248 (category:* 212, seo-meta:* 18, blog:* 17, advertisment:* 1) are cache entries
+  repopulated by live traffic in the few seconds between flush and the next scan — expected,
+  not a gap; the script's own output says as much
+```
+
+**Live upload smoke test, prod:** tailed `massclick-api-prod-1` logs live while the user uploaded a
+real business logo through the prod admin UI. No explicit per-upload log line exists in this
+codebase's logging (confirmed: grepping the surrounding 10 minutes on **both** `-prod-1` and
+`-prod-2` for `error|resolveUploadPath|throw` came back empty on both replicas — the request could
+have landed on either), so verification was direct against the database rather than the log line
+itself:
+
+```
+massClick.businesslists   "Abishek Toy Shop"   _id 6a3b6500d9248f81ec5d5b59
+  logoImageKey:   businesses/6a3b6500d9248f81ec5d5b59/logo.webp
+  logoUploadedAt: 2026-08-13T04:51:06.117Z   <- matches the test, canonical + stable, correct
+```
+
+Resolves to the registry's exact expected shape — `s3Keys.business.logo()` — same as dev's own
+smoke test. Zero errors on either prod replica, exactly one canonical-key write, at the exact time
+of the test. **Prod is now fully verified. 1.5 — and Phase 1 as a whole — is DONE, both
+environments.**
 
 ---
 
@@ -1296,6 +1335,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-13 | **1.5 DONE — prod deployed and verified, Phase 1 fully complete on both environments.** Confirmed on the server (read-only `git log`) that `origin/prod` had fast-forwarded to `df5a666b`, matching `dev` HEAD exactly, before running anything. `checkPublicImageUrls` against prod: NEWLY broken 0, same 6 pre-existing failures as baseline. `flush-caches --commit` against `redis-prod` via a one-off SSH tunnel (host port 6379, not 6380 like dev — confirmed against the VPS docs before connecting): 8830→248 keys, all 7 invalidators `ok`. Live smoke test: tailed both prod API replicas' logs while the user uploaded a real business logo through the prod admin UI; grepped both replicas for `error`/`resolveUploadPath`/`throw` — none, and no per-upload log line exists in this codebase's logging so verification was done directly against `massClick.businesslists` instead, which showed the new logo landing on exactly `businesses/<id>/logo.webp` at the same timestamp as the test. Full write-up in the "1.5 — prod deployed and verified" section above. |
 | 2026-08-12 | **1.4 DONE — all 51 call sites across 22 files migrated, `S3_PATH_MODE` flipped to `strict`.** Full detail in the "Phase 1 — where it stands" section above; summary: found and fixed a real bug mid-migration (`isEntityId` rejected real Mongoose ObjectId objects — would have broken every call site, gate never caught it since fixtures were plain strings); found 3 registry/`s3Keys` builder gaps and closed them as each file needing them came up; resolved the `reviewHelper.js` design question flagged when `businessListHelper.js` was migrated (reuse `s3Keys.business.reviewPhoto`, per that file's own docstring); used a ULID entity id for 3 genuinely decoupled upload endpoints (massclick event media, FCM images, category variants uploaded before a category exists); found and fixed the SAME class of cache-staleness gap three separate times (certificates, customer avatars, category images) — moving a purpose to its registry-declared `stable` form without wiring every read site through `assetUrl` would have reintroduced the exact bug 0.4 exists to prevent; survived a live collision with the user's own concurrent commit in the same working directory (verified no corruption); and hit + fixed the Edit-tool CRLF-churn issue on 5 more files, confirming empirically that `core.autocrlf=true` makes most such churn cosmetic (already-uniform files round-trip clean) except where a file's stored blob was already internally inconsistent. All 5 gates (`verifyS3KeyUtils` 31/31, `verifyAssetUrl` 22/22, `verifyS3ObjectKeys` 66/66, `verifyS3PathEnforcement` 23/23, `lintS3Paths.js` 0/0) green at every commit. |
 | 2026-08-12 | **1.3 done, shipped in `warn` mode.** `resolveUploadPath()` chokepoint in `s3Uploder.js` (token or canonical string passes through; legacy string warns once per call site and keeps working; strict mode throws — controlled by `S3_PATH_MODE`, default `warn`). `deleteEntityAssets(entity, entityId)` cascade delete, refuses the whole page if any listed key fails `belongsToEntity()`. `lintS3Paths.js` static scanner — found **51 legacy call sites across 22 files** (one more than the hand-written inventory: `scripts/fixRatingPhotos.js:128`, mirroring `reviewHelper.js`'s pattern), 0 bucket-literal leaks; it is *correctly* failing right now, that failure IS 1.4's todo list. New gate `verifyS3PathEnforcement.js`, 22/22, all four gates plus the new one re-run clean. **Two process gotchas hit and fixed:** the Edit tool normalised `s3Uploder.js`'s mixed CRLF/LF to uniform CRLF, corrupting `git diff --numstat` with ~40 lines of pure line-ending noise — repaired via a byte-exact Node/`latin1` reconstruction pulling the original bytes back from `git show HEAD:...` (a `sed`-based first attempt silently stripped all `\r` and made it worse); and `/server/scripts` is entirely gitignored, so both new scripts needed `git add -f` or they'd have been silently left uncommitted. |
 | 2026-08-11 | **0.7 code done.** `flush-caches` added to the migration CLI — dry-run by default, discovers invalidators by reflection (verified: all 7), reports cached-key counts before/after, and refuses to run at all if Redis is unreachable. **Risk 6's premise turns out to be wrong:** `prerender-node` is a dependency but is imported nowhere, `app.js` never references it, and `prerenderServer.js` is standalone with a hardcoded Windows Chrome path. Either prerendering is not deployed or it lives in nginx outside this repo. The command handles both — POSTs to `PRERENDER_PURGE_URL` when set, otherwise prints an explicit SKIPPED. Two user items: confirm whether prerender is deployed, and run the flush once against a real Redis (not reachable from this machine). |
