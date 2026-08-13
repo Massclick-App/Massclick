@@ -111,7 +111,7 @@ objects, same field shapes, same volume.
 | 1.4 | Migrate 51 call sites across 22 files | ✅ **DONE** — all 22 files, `S3_PATH_MODE=strict` flipped | lint gate 0/0 ✅ · `S3_PATH_MODE` defaults to strict ✅ |
 | 1.5 | Deploy Phase 1 dev → prod | ✅ **DONE** | dev: gates clean + 2 live uploads confirmed canonical · **prod (2026-08-13): checkPublicImageUrls NEWLY broken 0, flush-caches 8830→248 all 7 invalidators ok, live logo upload confirmed canonical + zero errors** |
 | 2.1 | Scope registry to all ~20 collections | ✅ **DONE** — already complete from 0.1, one real gap found+fixed 2026-08-13 | `verifyS3ObjectKeys.js` 66/66 |
-| 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | 🟡 **`plan`/`copy`/`verify-s3` DONE** — rewrite/verify/status/doctor/resume/reverse NOT built yet | `plan` verified live; `verify-s3` verified live (0/8 newKeys present pre-copy, 8/8 oldKeys intact); `copy --commit` not yet exercised for real |
+| 2.2 | `s3KeyMigration.js` migration verbs (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`sweep` + resume/reverse/doctor) | 🟡 **`plan`/`copy`/`verify-s3` DONE, real `--commit` tested + cleaned up** — rewrite/verify/status/doctor/resume/reverse NOT built yet | real `copy --commit` on 8 objects: 8/8 copied, `verify-s3` PASS, re-run correctly no-op'd, test objects deleted after |
 | 2.3 | Monitoring card + 5 admin endpoints (no `/start`) | ⬜ | stale lease shows the warning, not progress |
 | 3 | **Rehearsal: `advertisements/`** + SIGKILL ×2 + tunnel drop | ⬜ | reverse proven · resume proven · card proven |
 | 4 | **Rehearsal: `category/`** full cycle | ⬜ | smoke + UI clean |
@@ -1263,13 +1263,22 @@ present** (nothing copied yet) and **8/8 oldKeys still present**, with the right
 and a non-zero exit code. This proves `verify-s3`'s read path and HeadObject logic work correctly
 against real data; the test run directory was deleted afterward, no lasting state.
 
-**Deliberately NOT yet tested: an actual `copy --commit`.** That is the first real WRITE this build
-would make to the shared bucket (`massclickdev`, shared by dev AND prod) — additive-only and reversible
-(bucket versioning is Enabled, nothing gets deleted, `rollback-copies` — not built yet — would remove
-just the new objects), but still the first time this session's code would create real state outside
-this machine. Held back for an explicit check-in with the user rather than just doing it, given how
-consistently this project's own docs treat any bucket write as the sensitive boundary. Small and fully
-reversible either way, so this is a low-stakes ask, not a blocker.
+### `copy --commit` — REAL test run, user-approved, 2026-08-13
+
+Asked the user first (first real WRITE this build would make to the shared bucket, even though
+additive-only and reversible via versioning). Approved. Full real cycle against a fresh
+`advertisements`-scope plan (8 rows):
+
+```
+copy --commit          8/8 copied, 0 failed
+verify-s3               newKey present 8/8, size matches 8/8, oldKey still present 8/8   PASS
+copy --commit  (again)  already copied: 8, pending: 0 — correctly recognised as done, zero S3 calls
+```
+
+Proves the resumability skip (`copied.jsonl`) actually prevents a re-copy, not just in theory. Cleaned
+up immediately after — deleted all 8 newKey objects (read straight from `copied.jsonl`, not
+re-derived), confirmed via the delete-marker mechanism (bucket versioning Enabled, so this is itself
+reversible). No lasting state; this was a validation run, not the start of a real Rehearsal.
 
 **Still NOT built:** `rewrite`, `verify`, `sweep`, `status`, `doctor`, `resume`, `reverse`,
 `rollback-copies`, `undelete`, `restore-from-local`, the monitoring card, and the 5 admin endpoints.
