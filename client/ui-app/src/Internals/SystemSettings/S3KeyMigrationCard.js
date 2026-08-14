@@ -31,6 +31,11 @@ const cx = createScopedClassNames(styles);
 const API_URL = process.env.REACT_APP_API_URL;
 const LEASE_DURATION_MS = 90 * 1000;
 const BASE = `${API_URL}/admin/system-settings/s3-key-migration`;
+// plan/verify-s3/verify run the CLI to completion server-side and return its full
+// output in one response (no job-doc polling) — the shared axiosInstance's 20s
+// default is tuned for ordinary admin calls and is too tight for a real scope like
+// `category` (900+ manifest rows across both live DBs).
+const LONG_RUNNING_TIMEOUT_MS = 120 * 1000;
 
 const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -217,7 +222,11 @@ export default function S3KeyMigrationCard() {
     setErrorNote("");
     setLastActionOutput("");
     try {
-      const response = await axiosInstance.post(`${BASE}/plan`, { scope: selectedScope }, { headers: authHeaders() });
+      const response = await axiosInstance.post(
+        `${BASE}/plan`,
+        { scope: selectedScope },
+        { headers: authHeaders(), timeout: LONG_RUNNING_TIMEOUT_MS },
+      );
       const data = response.data?.data || {};
       setActiveRunId(data.runId || "");
       setActiveScope(data.scope || selectedScope);
@@ -232,12 +241,12 @@ export default function S3KeyMigrationCard() {
     }
   };
 
-  const runDryRun = async ({ endpoint, body, setBusy, label }) => {
+  const runDryRun = async ({ endpoint, body, setBusy, label, timeout }) => {
     setBusy(true);
     setErrorNote("");
     setLastActionOutput("");
     try {
-      const response = await axiosInstance.post(`${BASE}/${endpoint}`, body, { headers: authHeaders() });
+      const response = await axiosInstance.post(`${BASE}/${endpoint}`, body, { headers: authHeaders(), timeout });
       const data = response.data?.data || {};
       setLastActionOutput(data.output || "");
       setNote(`${label} finished.`);
@@ -376,7 +385,15 @@ export default function S3KeyMigrationCard() {
               type="button"
               className={cx("action-button secondary")}
               disabled={verifyingS3}
-              onClick={() => runDryRun({ endpoint: "verify-s3", body: { runId: activeRunId }, setBusy: setVerifyingS3, label: "Verify S3" })}
+              onClick={() =>
+                runDryRun({
+                  endpoint: "verify-s3",
+                  body: { runId: activeRunId },
+                  setBusy: setVerifyingS3,
+                  label: "Verify S3",
+                  timeout: LONG_RUNNING_TIMEOUT_MS,
+                })
+              }
             >
               {verifyingS3 ? "Running..." : "Verify S3"}
             </button>
@@ -433,7 +450,15 @@ export default function S3KeyMigrationCard() {
               type="button"
               className={cx("action-button secondary")}
               disabled={verifying}
-              onClick={() => runDryRun({ endpoint: "verify", body: { runId: activeRunId, target: rewriteTarget }, setBusy: setVerifying, label: "Verify" })}
+              onClick={() =>
+                runDryRun({
+                  endpoint: "verify",
+                  body: { runId: activeRunId, target: rewriteTarget },
+                  setBusy: setVerifying,
+                  label: "Verify",
+                  timeout: LONG_RUNNING_TIMEOUT_MS,
+                })
+              }
             >
               {verifying ? "Running..." : "Verify"}
             </button>
