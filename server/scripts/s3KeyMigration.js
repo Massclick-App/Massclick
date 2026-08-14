@@ -906,7 +906,7 @@ const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRE
       shouldStop,
     );
   } catch (error) {
-    if (tracker) await tracker.failJob(jobId, error);
+    if (tracker) await tracker.failJob(jobId, error).catch(() => {});
     throw error;
   } finally {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -929,8 +929,8 @@ const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRE
     // Whether stopped or finished, the job doc must stop being "ours" — finishJob for
     // a clean completion, releaseSlot (status already set by the admin action) for a
     // voluntary stop. Never leave activeSlot held past this point.
-    if (stopCache) await tracker.releaseSlot(jobId);
-    else await tracker.finishJob(jobId, { failed, counts: { total: rows.length, done: doneNow.size, skipped: 0, failed } });
+    if (stopCache) await tracker.releaseSlot(jobId).catch(() => {});
+    else await tracker.finishJob(jobId, { failed, counts: { total: rows.length, done: doneNow.size, skipped: 0, failed } }).catch(() => {});
   }
   if (jobConnection) await jobConnection.close();
 
@@ -1141,7 +1141,7 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT, stateUri
       } catch (error) {
         if (/ECONNREFUSED|ETIMEDOUT|ServerSelection|topology was destroyed/i.test(error.message)) {
           writeState(runId, { phase: "rewrite", cursor: ownerKey, counts: { total: rows.length, done: applied, skipped: stale, failed: 0 } });
-          if (tracker) await tracker.failJob(jobId, error);
+          if (tracker) await tracker.failJob(jobId, error).catch(() => {});
           die(
             `\nTunnel down mid-rewrite (${error.message}).\n` +
               `Applied ${applied} before this — all logged and safe. Reconnect the SSH tunnel and re-run\n` +
@@ -1177,11 +1177,11 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT, stateUri
 
     // Must run BEFORE the connections close in `finally` below.
     if (tracker) {
-      if (stopped) await tracker.releaseSlot(jobId);
-      else await tracker.finishJob(jobId, { failed: 0, counts: { total: pending.length, done: applied, skipped: stale, failed: 0 } });
+      if (stopped) await tracker.releaseSlot(jobId).catch(() => {});
+      else await tracker.finishJob(jobId, { failed: 0, counts: { total: pending.length, done: applied, skipped: stale, failed: 0 } }).catch(() => {});
     }
   } catch (error) {
-    if (tracker) await tracker.failJob(jobId, error);
+    if (tracker) await tracker.failJob(jobId, error).catch(() => {});
     throw error;
   } finally {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -1256,9 +1256,16 @@ const cmdVerify = async () => {
       problems.push(`  NOT CANONICAL  ${row.collection}.${row.docId}.${row.locator} = ${row.to}`);
     }
 
+    // Project only the BASE field (e.g. "ratingPhotos", not "ratingPhotos.41"). Mongo's
+    // array-index dot-notation in a projection re-indexes the result to a single-element
+    // array starting at 0, so projecting the full locator for an array-index path silently
+    // returns the wrong element — found live: verify reported "expected X, got undefined"
+    // for ratingPhotos.41..44 while the document, read without that projection, held the
+    // correct value at the real index all along.
+    const baseField = row.locator.split(".")[0];
     const doc = await connection.db.collection(row.collection).findOne(
       { _id: new mongoose.Types.ObjectId(row.docId) },
-      { projection: { [row.locator]: 1 } },
+      { projection: { [baseField]: 1 } },
     );
     const current = doc ? row.locator.split(".").reduce((v, k) => (v == null ? v : v[k]), doc) : undefined;
     if (current !== row.to) {
