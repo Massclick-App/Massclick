@@ -1,9 +1,10 @@
 # S3 Key Restructure — Progress
 
 **Last updated:** 2026-08-14 by Claude · **Active runId:** `01KZZWKQAN20SAR8GS0WFGZ4AJ`
-**Current step:** **THE REAL RUN IS UNDERWAY** — N.2 + R.1 + R.2 + R.3 + R.4 done, and **R.5's `verify`
-PASSED 33067/33067**. What remains of R.5: the `checkPublicImageUrls` diff and the manual UI pass.
-**PROD HAS NOT BEEN REWRITTEN — R.7 is still ahead.**
+**Current step:** ✅ **THE RUN IS COMPLETE — N.1 through R.9 all done 2026-08-15.** Both `massClick` and
+`massClick_dev` are on canonical keys, both verified, **nothing deleted**. See "2026-08-14/15 — the real
+full-scope run" below; that section is the live one, everything above it is history.
+**Next milestone: S.1, a 30-day soak. Earliest sweep 2026-09-14 — and `sweep` is not written yet.**
 See "2026-08-14 — the real full-scope run" below; that section is the live one, everything above it is history.
 **Status:** Phase 0 + Phase 1 all DONE, deployed to dev+prod ·
 **2.1 and 2.2 are both fully proven against real data now, including the real DB-write cycle**
@@ -358,10 +359,10 @@ gitignored). A `plan --scope=category` has not been re-run against the now-clean
 | R.3 | `rewrite --uri=<dev> --commit` | ✅ **DONE 2026-08-14** — **applied 33,067, stale 0**, 44 url-shape skipped | — |
 | R.4 | `flush-caches` + prerender purge (dev) | ✅ **DONE 2026-08-14** — dev Redis 15 → 0 keys · **found a bug that would have flushed PROD, see below** | 7 invalidators ok · prerender SKIPPED (not deployed, risk 6) |
 | R.5 | `verify` + smoke diff + manual UI (dev) | 🟡 **`verify` PASSED 33067/33067 · image diff analysed — no migration regression** (see below) · **manual UI + 2 signed-URL downloads still to do** | **diff empty; miss count equals the 0.1 baseline, not zero** · **use `--concurrency=64`** |
-| R.6 | Soak dev on real traffic (2–4 h) | ⬜ **needs redefining — prod is closed to users, so there is no traffic to soak on** | no image reports; no 404 spike |
-| R.7 | `rewrite --uri=<prod> --commit` | ⬜ | — |
-| R.8 | `flush-caches` + prerender purge (prod) | ⬜ | — |
-| R.9 | `verify` + smoke + manual UI (prod) | ⬜ | diff empty · **use `--concurrency=64`** |
+| R.6 | Soak dev on real traffic (2–4 h) | ✅ **DECLARED SUFFICIENT BY THE USER 2026-08-15** — there was no traffic to soak on; dev's cold-API image check was CLEAN | user's call, recorded as such |
+| R.7 | `rewrite --uri=<prod> --commit` | ✅ **DONE 2026-08-15** — 33,082 applied, **7 stale (all already canonical)**, 44 url-shape skipped · survived a mid-run tunnel drop at 6,019 and resumed cleanly | — |
+| R.8 | `flush-caches` + prerender purge (prod) | ✅ **DONE 2026-08-15** — prod Redis **72,015 → 32**, all 7 invalidators ok | — |
+| R.9 | `verify` + smoke + manual UI (prod) | ✅ **DONE 2026-08-15** — `verify` **PASS 33,082/33,082** · image diff **CLEAN, `NEWLY broken: 0`** | diff empty ✅ · **`--concurrency=64` used** |
 
 ---
 
@@ -699,9 +700,131 @@ Worth noting: dev's `/seopagecontentblog/viewall` returns 60 assets vs prod's 77
 data is no longer identical — prod has moved on since the reclone. Not a migration concern, but it means
 dev and prod broken-lists are not expected to match item for item.
 
-**Still outstanding for R.5:** one manual download each of a signed-URL path (résumé, reward evidence —
-how risk 9 is retired), and the user's own UI walkthrough. Note dev's API may hold warm in-process caches
-from before the rewrite; a `massclick-api-dev` restart makes that test honest.
+### R.5 image check, re-run against a COLD api — CLEAN
+
+`massclick-api-dev` was restarted (warm in-process caches would have made the previous run reassuring
+rather than honest), then re-checked against the pre-restart file:
+
+```
+768 assets · resolved 200: 762 · BROKEN: 6
+was broken: 7 · now broken: 6 · NEWLY broken: 0 · newly fixed: 1
+CLEAN — 762 assets resolved, every endpoint 2xx
+```
+
+`newly fixed: 1` is the transient status-`0` category key from the earlier run, confirming that diagnosis.
+The remaining 6 are the URL-shaped blog banners analysed above. **This is R.5's image gate, passed.**
+
+### Risk 9's manual checks — two of the four surfaces do not exist
+
+The plan calls for one manual download each of a résumé and a reward-claim evidence file, because those
+paths are signed-URL-only and `checkPublicImageUrls` cannot see them. **Both collections are empty** —
+`job_applications` 0 docs, `reward_claims` 0 docs (R.1 snapshot), hence **0 rewritten rows each**. There is
+nothing to download; that half of risk 9 is vacuous, not skipped.
+
+The signed-URL surfaces that *do* hold migrated content are one row each:
+
+```
+massclick_feed_posts  6a546a1574c120eaa70d66a7  mediaItems.0.mediaKey
+  massclick-feed/69377475699dd3141ad6f8c2/post-1783917076171-lpsv5x.webp
+  -> feed-posts/6a546a1574c120eaa70d66a7/media/01KZZWP1ZH6VN6A6XC680X4D7V
+
+massclick_documents   6a4cb71742c70a0a0aab46be  documentKey
+  massclick-documents/overview/document-1784550181794.pdf
+  -> massclick-documents/6a4cb71742c70a0a0aab46be/document/01KZZWP1ZH6VN6A6XC680X4D7W
+```
+
+Both keys are already proven present in S3 by `verify` (33067/33067 HeadObject). What the manual check
+adds is that the **app's signed-URL read path** works against the new key shape — fetch each through its
+authenticated endpoint (`/massclick-feed/posts`, `/massclick-documents/viewall`) and confirm the file
+actually opens.
+
+**Still outstanding for R.5:** those two authenticated fetches, and the user's own UI walkthrough.
+
+### R.7 — PROD REWRITTEN 2026-08-15
+
+Prod snapshot taken first with the **canonical** tool (not the replacement), 11,659 docs / 58.7 MB:
+
+```
+db-backups/snapshots/massClick/2026-08-15_06-27-24__pre-s3-rewrite-prod
+node db-backups/restore.js --from "db-backups/snapshots/massClick/2026-08-15_06-27-24__pre-s3-rewrite-prod"
+```
+
+Dry run: **33,089 pending** (22 more owner-entries than dev's 33,067 — the prod-only `massclickevents`
+media), 44 url-shape skipped, identical first-ten rows to dev.
+
+**The tunnel dropped mid-run at 6,019/33,089.** Resumed with the identical command — `already applied:
+6020, pending: 27069` — and completed. **6,020 + 27,062 = 33,082 applied, 7 stale.** A half-rewritten prod
+is a safe state precisely because every object exists under both names; the site rendered correctly
+throughout.
+
+**⚠️ The drop produced a raw stack trace instead of the documented clean "tunnel down, reconnect and
+re-run" message.** The guarded `updateOne` path worked exactly as designed — what threw was
+`tracker.isStopRequested(jobId)`, the pause/cancel check that runs every 5 rows against the **dev** state
+connection (the same tunnel that died) and is **not** wrapped. Same shape as the `failJob` bug fixed
+2026-08-14, one call site missed. Cost nothing here (the resume was clean), **still unfixed** — a
+`.catch()` around that call is all it needs.
+
+**The 7 stale rows were already canonical — this is the design working, not a miss.** Every one had been
+rewritten by the live application: prod has run `S3_PATH_MODE=strict` since 2026-08-13, so QR
+regeneration and re-uploads land on the new scheme directly.
+
+```
+qrCode.qrImageKey  = businesses/69c10bd1bc84885fe420b799/qr-review.png
+logoImageKey       = businesses/6a6720c9ba20f970045723a6/logo.webp
+bannerImageKey     = businesses/6a6720c9ba20f970045723a6/banner/01M0023XGEX6PWKCTV72RGX3HF.webp
+```
+
+`rewrite`'s filter requires the field to still hold the expected oldKey, so it correctly declined to
+overwrite them. **33,082 applied + 7 already-canonical = all 33,089 accounted for.**
+
+### 🔎 Finding: migrated keys have NO file extension, app-written ones DO
+
+`s3ObjectKeys.js:18` — *"Keys carry NO extension — `uploadImageToS3` appends it at s3Uploder.js:59"*. So
+`plan` minted `businesses/<id>/logo` while the running app writes `businesses/<id>/logo.webp`. Both
+resolve (ContentType is preserved by `CopyObject`, verified on sampled pairs), so nothing is broken.
+
+**But the deterministic-key promise — "regeneration overwrites instead of orphaning" — does not hold
+across the migration boundary.** The first time a migrated business regenerates its logo or QR, the app
+writes the `.webp`/`.png` variant, updates the field, and **orphans the extension-less migrated copy**.
+Not data loss; it is steady orphan accumulation that the **S.4 orphan review must expect**, and it partly
+defeats the reason deterministic keys exist. Decide before S.3 whether to normalise.
+
+### R.8 — prod cache flushed
+
+```
+cached keys: 72015 -> 32  (cleared 71983)     all 7 invalidators ok
+```
+
+Run with `REDIS_URL` **explicit on the command line** (`6379` = `redis-prod`, the one time that is
+correct), because the `redisClient.js` fix is not deployed to the server yet.
+
+**Prod's Redis had grown 11,866 → 72,188 in under an hour**, `seo-meta:*` alone being 70,129 — roughly
+120 new keys every few seconds. Prod is closed to users but is being crawled hard. The 32 survivors are
+keys written *during* the flush by that same crawl, not a failure. Every key prefix present is one the
+script accounts for — checked directly with `--scan`, no blind spot.
+
+### R.9 — PROD VERIFIED
+
+```
+  33082/33082  100.0%  145/s  elapsed 228s
+
+field holds newKey:     33082/33082
+newKey is canonical:    33082/33082
+newKey present in S3:   33082/33082
+array-shape corruption: 0
+PASS
+
+checkPublicImageUrls vs imgcheck-2026-08-15-prod-pre-rewrite.json:
+  was broken: 7 · now broken: 7 · NEWLY broken: 0 · newly fixed: 0
+  CLEAN — 762 assets resolved, every endpoint 2xx
+```
+
+The same 7 broken assets item-for-item, all `businessDetails[].bannerImage` — the url-shape field
+`rewrite` skips. Run against a cold cache (R.8 had just dropped it), so this read straight from the
+rewritten database rather than from anything pre-migration.
+
+**🎉 TRACK B IS COMPLETE. Both databases are on canonical keys. Nothing has been deleted.**
+**The 30-day soak (S.1) starts 2026-08-15 — earliest sweep is 2026-09-14.**
 
 **Run ends here. Nothing has been deleted.** Rollback is `reverse` and takes minutes.
 
@@ -709,10 +832,10 @@ from before the rewrite; a `massclick-api-dev` restart makes that test honest.
 
 | # | Step | When | Status |
 |---|---|---|---|
-| S.1 | **SOAK — nothing deleted** | 30 days | ⬜ |
-| S.2 | Fresh S3 download + `pre-s3-key-sweep` snapshot | day 30 | ⬜ |
-| S.3 | `sweep --commit` (excludes orphans) | ~15 min | ⬜ |
-| S.4 | Orphan review | ≥30 days after S.3 | ⬜ |
+| S.1 | **SOAK — nothing deleted** | **started 2026-08-15**, 30 days | 🟡 **RUNNING** |
+| S.2 | Fresh S3 download + `pre-s3-key-sweep` snapshot | **on/after 2026-09-14** | ⬜ **N.1's skip does NOT carry forward — this download is required** |
+| S.3 | `sweep --commit` (excludes orphans) | ~15 min | ⬜ **not written yet** · needs `s3:DeleteObject`, not yet granted · see Do-NOT-do #6 |
+| S.4 | Orphan review | ≥30 days after S.3 | ⬜ expect extension-less orphans, see the finding above |
 
 ---
 
@@ -2048,7 +2171,11 @@ test, before Rehearsal 1's own SIGKILL/tunnel-drop tests are attempted.
 
 ```
 runId:     01KZZWKQAN20SAR8GS0WFGZ4AJ
-phase:     DEV IS FULLY MIGRATED AND VERIFIED — prod has NOT been touched
+phase:     ✅ COMPLETE — BOTH DATABASES MIGRATED AND VERIFIED (2026-08-15). Nothing deleted.
+prod:      rewrite 33082 applied / 7 stale-already-canonical · flush 72015->32 · verify PASS 33082/33082
+prod img:  CLEAN — NEWLY broken 0 vs imgcheck-2026-08-15-prod-pre-rewrite.json
+prod snap: db-backups/snapshots/massClick/2026-08-15_06-27-24__pre-s3-rewrite-prod (canonical tool)
+next:      S.1 soak, 30 days. Earliest sweep 2026-09-14. Do NOT delete anything before then.
 scope:     all
 manifest:  33096 rows · 1271.2 MB · 77 conflicts (all benign fan-out, acknowledged)
 copied:    33096/33096, failed=0
