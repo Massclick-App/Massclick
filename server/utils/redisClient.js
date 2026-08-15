@@ -4,7 +4,22 @@ let redisClient = null;
 let isConnected = false;
 let reconnectTimer = null;
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+/**
+ * Resolved at CONNECT time, not at module load. This used to be a module-level
+ * `const REDIS_URL = process.env.REDIS_URL || <default>`, which is evaluated the moment
+ * this file is imported — and ES module imports run BEFORE the importing module's body,
+ * so it read process.env before that module's `dotenv.config()` had loaded `.env`. A
+ * REDIS_URL that lived only in `.env` was therefore invisible, and the connection
+ * silently fell back to the default below.
+ *
+ * On the server that default is `redis-prod`, so `flush-caches` run from the DEV
+ * checkout connected to PRODUCTION's Redis — caught 2026-08-14 during R.4 only because
+ * the script printed the env value it had read after dotenv (6380) while the client
+ * reported the one it had bound at import time (6379), and the key counts disagreed
+ * (11,474 vs dev's 15). Passing REDIS_URL as a real env var on the command line always
+ * worked, which is why this stayed hidden.
+ */
+const resolveRedisUrl = () => process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const RECONNECT_DELAY = 5000; // 5 seconds
 
 const setupRedisErrorHandlers = () => {
@@ -54,9 +69,10 @@ const attemptReconnect = () => {
 };
 
 export const initRedis = async () => {
+  const redisUrl = resolveRedisUrl();
   try {
     redisClient = createClient({
-      url: REDIS_URL,
+      url: redisUrl,
       socket: {
         reconnectStrategy: (retries) => {
           if (retries > 10) {
@@ -72,10 +88,10 @@ export const initRedis = async () => {
 
     await redisClient.connect();
     isConnected = true;
-    console.log('[Cache] ✓ Redis connected successfully:', REDIS_URL);
+    console.log('[Cache] ✓ Redis connected successfully:', redisUrl);
     return redisClient;
   } catch (error) {
-    console.warn('[Cache] ⚠ Redis unavailable at startup — app will work without caching:', error.message);
+    console.warn(`[Cache] ⚠ Redis unavailable at startup (${redisUrl}) — app will work without caching:`, error.message);
     isConnected = false;
     // Don't throw, allow app to continue
     return null;

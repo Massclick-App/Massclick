@@ -56,6 +56,7 @@ import { connect, scanDatabase, compareIds, listBucket } from "../utils/s3Migrat
 import { s3Path, isCanonicalKey } from "../utils/s3ObjectKeys.js";
 import { ulid } from "../utils/idGen.js";
 import { resolveDuplicateNewKeys } from "../utils/s3ManifestDedup.js";
+import { evaluateConflictGate } from "../utils/s3ConflictGate.js";
 import {
   newRunId,
   ensureRunDir,
@@ -106,6 +107,9 @@ const COMMIT = has("commit");
 const RUN_ID = flag("run");
 const SCOPE_FLAG = flag("scope") || "all";
 const CONCURRENCY = Number(flag("concurrency")) || 8;
+/** Exact count of REVIEWABLE conflicts.jsonl entries the operator has read and accepts.
+ * Never able to bypass a blocking kind — see utils/s3ConflictGate.js. */
+const ACKNOWLEDGE_CONFLICTS = flag("acknowledge-conflicts");
 /** Where the monitoring-card job doc is written. Job tracking is skipped entirely
  * (with a warning) if this isn't given — copy/rewrite still work standalone. */
 const STATE_URI = flag("state-uri") || process.env.S3_MIGRATION_STATE_URI || null;
@@ -798,14 +802,15 @@ const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRE
   const meta = requireRun(runId);
   if (commit) {
     const { rows: conflictRows } = readJsonl(runFile(runId, "conflicts.jsonl"));
-    if (conflictRows.length) {
-      die(
-        `run ${runId} has ${conflictRows.length} unresolved conflicts.jsonl entries — copy --commit refuses to run.\n` +
-          `  Review ${runFile(runId, "conflicts.jsonl")} first. Rows involved in a conflict were NOT written to\n` +
-          `  the manifest, so copy cannot silently skip past them — this is a stop-and-look gate, not a bug.\n` +
-          `  If the conflicts are expected/harmless, resolve the underlying data (e.g. re-clone dev from prod)\n` +
-          `  and re-run \`plan\` to get a clean manifest.`,
-      );
+    // Kind-aware: `duplicate-newkey-diff-bytes`/`missing-entity-id`/`key-mint-failed`
+    // (and any unrecognised kind) refuse unconditionally, because their rows are
+    // MISSING from the manifest. `split`/`fanout` rows are present in the manifest and
+    // only logged for review, so they are acknowledgeable by exact count. Full
+    // reasoning + fail-closed rationale in utils/s3ConflictGate.js.
+    const gate = evaluateConflictGate({ conflictRows, acknowledgeRaw: ACKNOWLEDGE_CONFLICTS, runId });
+    if (!gate.allowed) die(gate.reason);
+    if (gate.reviewable) {
+      console.log(`\n  ${gate.reviewable} reviewable conflict entries acknowledged (--acknowledge-conflicts=${gate.reviewable}); 0 blocking.`);
     }
   }
   const { rows } = readJsonl(runFile(runId, "manifest.jsonl"));
@@ -951,11 +956,43 @@ const cmdCopy = async ({ runId = RUN_ID, commit = COMMIT, concurrency = CONCURRE
  * never moves). This is the gate `copy` claims to have passed, checked independently
  * rather than trusted.
  */
+/** Single-line \r progress for the long read-only passes (`verify-s3`, `verify`).
+ * Without it they print nothing between their header and their final summary, which on
+ * a 33k-row run is 20+ minutes of silence that is indistinguishable from a hang — this
+ * cost a real "is it stuck?" stop during the 2026-08-14 run, with the only way to tell
+ * being to check the process's CPU counter from outside. Throttled to ~4 updates/sec so
+ * the reporting never becomes the bottleneck it is reporting on. */
+const progressReporter = ({ everyMs = 250 } = {}) => {
+  const startedAt = Date.now();
+  let lastWrite = 0;
+  let lastLine = "";
+  return (completed, total) => {
+    const now = Date.now();
+    if (completed !== total && now - lastWrite < everyMs) return;
+    lastWrite = now;
+    const elapsedSec = (now - startedAt) / 1000;
+    const rate = elapsedSec > 0 ? completed / elapsedSec : 0;
+    const remainingSec = rate > 0 ? Math.round((total - completed) / rate) : null;
+    const eta =
+      remainingSec === null
+        ? "—"
+        : remainingSec >= 60
+          ? `${Math.floor(remainingSec / 60)}m${String(remainingSec % 60).padStart(2, "0")}s`
+          : `${remainingSec}s`;
+    const pct = total ? ((completed / total) * 100).toFixed(1) : "0.0";
+    const line = `  ${completed}/${total}  ${pct}%  ${rate.toFixed(0)}/s  elapsed ${Math.round(elapsedSec)}s  eta ${eta}`;
+    process.stdout.write(`\r${line}${" ".repeat(Math.max(0, lastLine.length - line.length))}`);
+    lastLine = line;
+  };
+};
+
 const cmdVerifyS3 = async () => {
   requireRun();
   const { rows } = readJsonl(runFile(RUN_ID, "manifest.jsonl"));
   console.log(`\n=== s3KeyMigration verify-s3 — run ${RUN_ID} — READ-ONLY ===`);
-  console.log(`manifest rows: ${rows.length}\n`);
+  console.log(`manifest rows: ${rows.length}`);
+  console.log(`concurrency:   ${CONCURRENCY}`);
+  console.log(`HeadObject calls to make: ${rows.length * 2}  (newKey + oldKey per row)\n`);
 
   if (!rows.length) {
     console.log("Nothing to verify — empty manifest.\n");
@@ -978,7 +1015,7 @@ const cmdVerifyS3 = async () => {
   let sizeMismatch = 0;
   const problems = [];
 
-  await runPool(rows, CONCURRENCY, async (row) => {
+  const results = await runPool(rows, CONCURRENCY, async (row) => {
     const [newHead, oldHead] = await Promise.all([head(row.newKey), head(row.oldKey)]);
     if (!newHead.exists) {
       newMissing += 1;
@@ -991,16 +1028,28 @@ const cmdVerifyS3 = async () => {
       oldMissing += 1;
       problems.push(`  OLD MISSING   ${row.oldKey}  (should still exist — copy never moves)`);
     }
-  });
+  }, progressReporter());
+  process.stdout.write("\n\n");
+
+  // runPool captures a throwing worker into results rather than propagating it, so a
+  // row whose HeadObject failed outright (throttling that exhausted withRetry,
+  // AccessDenied, a dropped connection) never touched ANY of the counters above — and
+  // would therefore have been reported as passing. An unchecked row is not a verified
+  // row: count it explicitly and fail the gate.
+  const errored = results.filter((r) => r && !r.ok);
+  for (const r of errored.slice(0, 10)) {
+    problems.push(`  CHECK FAILED  ${r.item.newKey}  (neither key could be checked: ${r.error?.message || r.error})`);
+  }
 
   for (const p of problems.slice(0, 50)) console.log(p);
   if (problems.length > 50) console.log(`  ... and ${problems.length - 50} more`);
 
+  if (errored.length) console.log(`\nrows that could not be checked at all: ${errored.length}   <-- NOT counted as passing`);
   console.log(`\nnewKey present:        ${rows.length - newMissing}/${rows.length}`);
   console.log(`newKey size matches:   ${rows.length - newMissing - sizeMismatch}/${rows.length - newMissing}`);
   console.log(`oldKey still present:  ${rows.length - oldMissing}/${rows.length}`);
 
-  if (newMissing || oldMissing || sizeMismatch) {
+  if (newMissing || oldMissing || sizeMismatch || errored.length) {
     console.log(`\nFAIL\n`);
     process.exitCode = 1;
   } else {
@@ -1111,6 +1160,11 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT, stateUri
   let stale = 0;
   let stopped = false;
   const staleExamples = [];
+  // Serial by design (ordering + resumability beat speed on a write path), so this is
+  // ~50 rows/s over the tunnel — 11 minutes for a 33k run with no output at all before
+  // this was added. R.7 does exactly this against PROD; "is it stuck?" is not a
+  // question anyone should be asking there.
+  const report = progressReporter();
 
   try {
     let i = 0;
@@ -1173,7 +1227,9 @@ const cmdRewrite = async ({ runId = RUN_ID, uri = URI, commit = COMMIT, stateUri
       if (tracker && i % 5 === 0) {
         await tracker.updateProgress(jobId, { counts: { total: pending.length, done: applied, skipped: stale, failed: 0 }, cursor: ownerKey }).catch(() => {});
       }
+      report(i, pending.length);
     }
+    process.stdout.write("\n");
 
     // Must run BEFORE the connections close in `finally` below.
     if (tracker) {
@@ -1250,7 +1306,7 @@ const cmdVerify = async () => {
   let notCanonical = 0;
   const problems = [];
 
-  await runPool(applied, CONCURRENCY, async (row) => {
+  const results = await runPool(applied, CONCURRENCY, async (row) => {
     if (!isCanonicalKey(row.to)) {
       notCanonical += 1;
       problems.push(`  NOT CANONICAL  ${row.collection}.${row.docId}.${row.locator} = ${row.to}`);
@@ -1277,16 +1333,27 @@ const cmdVerify = async () => {
       s3Missing += 1;
       problems.push(`  S3 MISSING  ${row.to}  (${row.collection}.${row.docId}.${row.locator})`);
     }
-  });
+  }, progressReporter());
+  process.stdout.write("\n");
 
   // Array-shape corruption guard: re-scan the scopes touched and confirm no field the
   // registry declares as an array kind has been flattened into a `{"0":{…}}` object.
+  console.log("\n  re-scanning for array-shape corruption (no progress output — one pass over the touched scopes)...");
   const rescan = await scanDatabase(connection, dbLabel, BUCKET);
   await connection.close();
+
+  // Same unchecked-row hole as verify-s3: runPool captures a throwing worker rather
+  // than propagating it, so a row whose DB read or HeadObject failed outright touched
+  // none of the counters below and would otherwise be reported as passing.
+  const errored = results.filter((r) => r && !r.ok);
+  for (const r of errored.slice(0, 10)) {
+    problems.push(`  CHECK FAILED  ${r.item.collection}.${r.item.docId}.${r.item.locator}  (${r.error?.message || r.error})`);
+  }
 
   for (const p of problems.slice(0, 50)) console.log(p);
   if (problems.length > 50) console.log(`  ... and ${problems.length - 50} more`);
 
+  if (errored.length) console.log(`\nrows that could not be checked at all: ${errored.length}   <-- NOT counted as passing`);
   console.log(`\nfield holds newKey:     ${applied.length - fieldMismatch}/${applied.length}`);
   console.log(`newKey is canonical:    ${applied.length - notCanonical}/${applied.length}`);
   console.log(`newKey present in S3:   ${applied.length - s3Missing}/${applied.length}`);
@@ -1295,7 +1362,7 @@ const cmdVerify = async () => {
     for (const c of rescan.corruptArrays.slice(0, 10)) console.log(`  CORRUPT ARRAY  ${c.collection} ${c.docId} ${c.locator}`);
   }
 
-  if (fieldMismatch || s3Missing || notCanonical || rescan.corruptArrays.length) {
+  if (fieldMismatch || s3Missing || notCanonical || rescan.corruptArrays.length || errored.length) {
     console.log(`\nFAIL\n`);
     process.exitCode = 1;
   } else {
@@ -1546,8 +1613,13 @@ const cmdReverse = async () => {
   const connection = await connect(URI, dbLabel);
   let reversed = 0;
   let stale = 0;
+  // Same serial shape as rewrite — and this is the rollback path, run under pressure
+  // when something has already gone wrong. Silence is least acceptable here.
+  const report = progressReporter();
   try {
+    let i = 0;
     for (const r of pending) {
+      i += 1;
       const result = await connection.db.collection(r.collection).updateOne(
         { _id: new mongoose.Types.ObjectId(r.docId), [r.locator]: r.to },
         { $set: { [r.locator]: r.from } },
@@ -1557,9 +1629,11 @@ const cmdReverse = async () => {
         reversed += 1;
       } else {
         stale += 1;
-        console.log(`  STALE  ${r.collection}.${r.docId}.${r.locator}  no longer holds ${r.to} — already changed since rewrite, left alone`);
+        console.log(`\n  STALE  ${r.collection}.${r.docId}.${r.locator}  no longer holds ${r.to} — already changed since rewrite, left alone`);
       }
+      report(i, pending.length);
     }
+    process.stdout.write("\n");
   } finally {
     await connection.close();
   }
@@ -1656,7 +1730,7 @@ const main = async () => {
           `           rollback-copies, collections, flush-caches\n\n` +
           `  node scripts/s3KeyMigration.js scan --uri=... [--compare-uri=...] [--out=...] [--no-s3]\n` +
           `  node scripts/s3KeyMigration.js plan --uri=... --compare-uri=... [--scope=<scopeKey>]\n` +
-          `  node scripts/s3KeyMigration.js copy --run=<runId> [--commit] [--concurrency=8]\n` +
+          `  node scripts/s3KeyMigration.js copy --run=<runId> [--commit] [--concurrency=8] [--acknowledge-conflicts=<n>]\n` +
           `  node scripts/s3KeyMigration.js verify-s3 --run=<runId>\n` +
           `  node scripts/s3KeyMigration.js rewrite --run=<runId> --uri=... [--commit]\n` +
           `  node scripts/s3KeyMigration.js verify --run=<runId> --uri=...\n` +

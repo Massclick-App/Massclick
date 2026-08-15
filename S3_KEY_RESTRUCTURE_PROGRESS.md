@@ -1,7 +1,11 @@
 # S3 Key Restructure — Progress
 
-**Last updated:** 2026-08-14 by Claude · **Active runId:** none
-**Current step:** Track A prep essentially COMPLETE, one item left · **Status:** Phase 0 + Phase 1 all DONE, deployed to dev+prod ·
+**Last updated:** 2026-08-14 by Claude · **Active runId:** `01KZZWKQAN20SAR8GS0WFGZ4AJ`
+**Current step:** **THE REAL RUN IS UNDERWAY** — N.2 + R.1 + R.2 + R.3 + R.4 done, and **R.5's `verify`
+PASSED 33067/33067**. What remains of R.5: the `checkPublicImageUrls` diff and the manual UI pass.
+**PROD HAS NOT BEEN REWRITTEN — R.7 is still ahead.**
+See "2026-08-14 — the real full-scope run" below; that section is the live one, everything above it is history.
+**Status:** Phase 0 + Phase 1 all DONE, deployed to dev+prod ·
 **2.1 and 2.2 are both fully proven against real data now, including the real DB-write cycle**
 (`plan`/`copy`/`verify-s3`/`rewrite`/`verify`/`reverse`/`rollback-copies` all run for real, dev only, on
 the `advertisements` scope, then fully cleaned up — see "rewrite/reverse's real DB-write cycle — DONE").
@@ -342,22 +346,362 @@ gitignored). A `plan --scope=category` has not been re-run against the now-clean
 
 | # | Step | Status | Gate |
 |---|---|---|---|
-| N.1 | Fresh full S3 download (~65+ min, unattended) | ⬜ | `failures === 0` and `downloaded + skipped === totalObjects` |
-| N.2 | `plan` — full manifest | ⬜ | `conflicts.jsonl` reviewed — **expect near-empty** |
+| N.1 | Fresh full S3 download (~65+ min, unattended) | ⏭️ **DELIBERATELY SKIPPED 2026-08-14** — reasoning below | — |
+| N.2 | `plan` — full manifest | ✅ **DONE 2026-08-14** — run `01KZZWKQAN20SAR8GS0WFGZ4AJ` | 77 conflicts, **all benign fan-out**, 0 blocking |
 
 ## Track B — the run window (~4–6 h, on demand)
 
 | # | Step | Status | Gate |
 |---|---|---|---|
-| R.1 | Snapshot both DBs | ⬜ | checksums verified, counts match live |
-| R.2 | `copy --commit` (~45–90 min) | ⬜ | `verify-s3` 100%; **old keys all still present** |
-| R.3 | `rewrite --uri=<dev> --commit` | ⬜ | — |
-| R.4 | `flush-caches` + prerender purge (dev) | ⬜ | — |
-| R.5 | `verify` + smoke diff + manual UI (dev) | ⬜ | **diff empty; miss count equals the 0.1 baseline, not zero** |
-| R.6 | Soak dev on real traffic (2–4 h) | ⬜ | no image reports; no 404 spike |
+| R.1 | Snapshot both DBs | 🟡 **taken, being REDONE with the canonical tool** — see below | checksums verified, counts match live |
+| R.2 | `copy --commit` (~45–90 min) | ✅ **DONE + VERIFIED 2026-08-14** — 33,096/33,096, `failed=0` | `verify-s3` **PASS**: newKey present 33096/33096, sizes match 33096/33096, **oldKey still present 33096/33096** |
+| R.3 | `rewrite --uri=<dev> --commit` | ✅ **DONE 2026-08-14** — **applied 33,067, stale 0**, 44 url-shape skipped | — |
+| R.4 | `flush-caches` + prerender purge (dev) | ✅ **DONE 2026-08-14** — dev Redis 15 → 0 keys · **found a bug that would have flushed PROD, see below** | 7 invalidators ok · prerender SKIPPED (not deployed, risk 6) |
+| R.5 | `verify` + smoke diff + manual UI (dev) | 🟡 **`verify` PASSED 33067/33067 · image diff analysed — no migration regression** (see below) · **manual UI + 2 signed-URL downloads still to do** | **diff empty; miss count equals the 0.1 baseline, not zero** · **use `--concurrency=64`** |
+| R.6 | Soak dev on real traffic (2–4 h) | ⬜ **needs redefining — prod is closed to users, so there is no traffic to soak on** | no image reports; no 404 spike |
 | R.7 | `rewrite --uri=<prod> --commit` | ⬜ | — |
 | R.8 | `flush-caches` + prerender purge (prod) | ⬜ | — |
-| R.9 | `verify` + smoke + manual UI (prod) | ⬜ | diff empty |
+| R.9 | `verify` + smoke + manual UI (prod) | ⬜ | diff empty · **use `--concurrency=64`** |
+
+---
+
+## 2026-08-14 — the real full-scope run (Claude, with the user driving)
+
+**Active runId: `01KZZWKQAN20SAR8GS0WFGZ4AJ`.** This is the live section. Everything above it about
+rehearsals is history.
+
+**Context that shaped the whole session: the user closed prod to users** (the API stays up — needed for
+R.9's `checkPublicImageUrls` gate — but no one is browsing). So the dataset is effectively frozen, which
+removes the "moving target" problem the 0.1 baseline documented. It is not *perfectly* frozen: prod still
+recorded `businesslists.analytics` page views at 10:22 and 10:26 (crawlers or monitoring), so expect
+counter-only drift, never key-field drift.
+
+### N.1 — deliberately skipped, and why that is safe
+
+The user stopped the full S3 download at ~3,440/38,976 objects (~7 h projected, not the doc's "~65 min").
+Skipping it is sound **for this run**, on four grounds:
+
+1. **Nothing between here and R.9 deletes or modifies an existing object.** `copy` writes new keys only;
+   `rewrite` touches Mongo. The only verb that deletes pre-existing objects is `sweep` (S.3, day 30) —
+   which is not even written yet.
+2. **Versioning covers the one real S3 risk** (a deterministic-newKey overwrite). An overwrite makes a new
+   version; the old bytes survive 90 days under `expire-noncurrent-90d`. The app credentials have
+   `DeleteObject` (needed by `deleteEntityAssets` and `rollback-copies`) but **not**
+   `DeleteObjectVersion` — so no bug in this codebase can destroy a version.
+3. **Nothing could consume the download anyway** — `restore-from-local` was never built.
+4. **It cannot be a consistent snapshot.** 38,976 objects now vs 36,187 at the 0.1 baseline; objects are
+   written while it downloads.
+
+**Where it IS still required: S.2, day 30, immediately before `sweep --commit`** — the only irreversible
+step. Do not carry this skip forward to there.
+
+### Dev was NOT a clean clone — 7 collections recloned first
+
+`plan` was run once on the drifted data purely as a diagnostic (it is read-only). It exposed a real
+distortion: **all 908 category rows had prod-only owners**, because the 2026-08-14 category rehearsal had
+left dev on the new canonical keys while prod held the old ones — and `plan` cannot attribute a canonical
+key to an owner, so all 909 canonical category objects sat in `orphans.jsonl` while dev actively
+referenced them. Same for the 4 `businessreviews` docs left on canonical keys by the resilience testing.
+
+Had that plan been used: `rewrite --uri=<dev>` would have applied ~0 category rows, so **R.5 would have
+verified dev with no category coverage at all**, and categories would have reached prod at R.7 with no dev
+rehearsal in this run.
+
+Recloned exactly the drifted collections, scoped — **not a full-database reclone**, because the
+2026-08-13 full reclone silently reverted three `masterlocations` docs (see [[feedback_reclone_ahead_check]]
+and the 2026-08-13 section above). `masterlocations` and `gmaps_leads` are not in the 20-collection
+registry, so scoping to the registry left the whole locations initiative untouched.
+
+Recloned: `businesslists`, `businessreviews`, `categories`, `fcmcampaigns`, `massclick_feed_posts`,
+`msgusers`, `seopagecontentblogs`. Post-reclone `diff --check-content` on all seven: **`differs=0`,
+`missing-in-dev=0` across the board.**
+
+**The ahead-check was run first, per the standing rule** — for every collection with `differs > 0`, which
+side was newer:
+
+| Collection | What actually differed | Verdict |
+|---|---|---|
+| `businesslists` (162) | `analytics` only — prod-ahead view counters. **No `masterLocation` differences at all** | safe |
+| `businessreviews` (4) | `ratingPhotos` — dev on canonical keys from the resilience test | safe, prod's version wanted |
+| `categories` (536) | the rehearsal's canonical keys | safe, deliberate revert |
+| `seopagecontentblogs` (11), `massclick_feed_posts` (2), `msgusers` (5) | prod-ahead | safe |
+
+**devAhead = 0 everywhere.**
+
+**Two collections deliberately NOT recloned**, because each holds one dev-only document that `reclone`
+would destroy and whose provenance could not be verified:
+
+- `eventlocations` — "Big Studio", a Trichy venue, capacity 200
+- `massclickevents` — "V3 Singing Club – Let's Sing Together (Volume 2)", created 2026-07-31
+
+**The bounded cost of that choice: 18 manifest rows are prod-only**, all `massclickevents` media for the
+4 events that exist only in prod. Those 18 reach prod at R.7 without a dev rehearsal. The
+`mediaItems[N].mediaKey` array-index *code path* is still exercised on dev by the other `massclickevents`
+rows, so it is 4 specific documents that go unrehearsed, not a code path. 18 rows out of 33,096.
+
+### N.2 — the clean plan
+
+```
+manifest rows:  33096      shared 32942 · split 154
+total bytes:    1271.2 MB
+missing:        45   (all businessList/, owned by BOTH dbs — the known pre-existing baseline)
+orphans:        5958
+external:       0
+conflicts:      77
+```
+
+Independently checked against the manifest, not taken from the summary line:
+
+| Signal | Value |
+|---|---|
+| Category rows with a dev owner | **908 / 908** (was 0/908 pre-reclone) |
+| Review-photo rows with a dev owner | **50 / 50** |
+| Rows owned by both DBs | 33,078 / 33,096 |
+| Rows owned by dev only | **0** |
+| Rows owned by prod only | 18 (the `massclickevents` above) |
+| Distinct newKeys | **33,096 / 33,096** |
+| `duplicate-newkey-diff-bytes` | **0** |
+
+**All 77 conflicts are `split`, and all 77 are benign** — every group is owned by *both* databases, i.e.
+zero real dev/prod disagreements. They are one S3 object referenced by two different entities: 76 × a
+business banner also used as an seo-blog's `businessDetails[].bannerImage`, plus 1 × an event banner also
+used as its image. Their rows ARE in the manifest (they are 154 of the 33,096) — each owner mints its own
+newKey and is rewritten independently.
+
+Note the `split` label is slightly misleading for these: the `dbsInvolved.size > 1` check looks at all
+owners rather than per-group, so a pure fan-out reads as "split". Cosmetic, worth knowing.
+
+Those 50 review-photo rows are `ratingPhotos.N` array-index locators — exactly the shape of the `verify`
+projection bug fixed on 2026-08-14. **R.5 genuinely exercises that fix now** instead of taking it on faith.
+
+### The conflicts gate had to be fixed before `copy --commit` could run at all
+
+`copy --commit` refused on ANY non-empty `conflicts.jsonl` and advised "re-clone dev from prod and re-run
+plan". **That advice cannot resolve a fan-out** — a shared image is a permanent property of the data, not
+drift — so a full-scope run was permanently blocked by rows carrying no risk.
+
+The gate conflated two different things:
+
+| Conflict kind | In the manifest? | Real risk |
+|---|---|---|
+| `duplicate-newkey-diff-bytes`, `missing-entity-id`, `key-mint-failed` | **excluded** | Yes — rows silently absent from the run |
+| `split` / `fanout` | **included** | No — logged for human review only |
+
+Fixed with a kind-aware gate in new **`server/utils/s3ConflictGate.js`** (pure function, no fs/S3/DB —
+same testability split as `s3ManifestDedup.js`):
+
+- Blocking kinds refuse unconditionally. **No flag value can bypass them.**
+- `split`/`fanout` are acknowledgeable via `--acknowledge-conflicts=<exact count>` — the exact number, so
+  acknowledging requires having read the file.
+- **Fail-closed:** any unrecognised kind, or a row with no `kind`, counts as blocking. A future `plan`
+  change cannot slip a new kind through an existing acknowledgment.
+
+New gate **`server/scripts/verifyS3ConflictGate.js`** — 42/42, fixtures taken from this run's real 77-split
+shape and the real 2026-08-13 category incident.
+
+### R.2 — copy, done
+
+```bash
+node scripts/s3KeyMigration.js copy --run=01KZZWKQAN20SAR8GS0WFGZ4AJ --commit \
+  --acknowledge-conflicts=77 --state-uri=<dev>
+```
+
+**33,096/33,096 copied, `failed=0`.** Old keys untouched.
+
+### `verify-s3` — PASS, and the concurrency lesson that got it there
+
+```
+  33096/33096  100.0%  94/s  elapsed 353s
+
+newKey present:        33096/33096
+newKey size matches:   33096/33096
+oldKey still present:  33096/33096
+
+PASS — every newKey exists at the right size, every oldKey is still untouched.
+```
+
+**It took three attempts, and the first two were abandoned — that part matters more than the PASS.** At
+the default `--concurrency=8` it ran at **8 rows/s (~1000 ms per HeadObject)** and projected 60+ minutes;
+one attempt was killed at 30 minutes with no output at all, because the command printed nothing between
+its header and its summary.
+
+**Root cause: latency, not throttling.** At `--concurrency=64` the same work runs at **94 rows/s and
+finishes in 353 seconds** — a 12× difference from one flag.
+
+**Always pass `--concurrency=64` to `verify-s3` and to `verify` (R.5, R.9).** The default of 8 turns a
+6-minute gate into an hour and invites someone to skip it.
+
+### Two real bugs found while adding progress output
+
+1. **`verify-s3` and `verify` reported unchecked rows as PASSING.** `runPool` captures a throwing worker
+   into `results` instead of propagating it, and neither command ever inspected `results`. A row whose
+   HeadObject failed outright (throttling that exhausted `withRetry`, `AccessDenied`, a dropped
+   connection) incremented none of the counters — so the gate could print `33096/33096` and `PASS` having
+   never actually checked some rows. **Both now count errored rows, list them as `CHECK FAILED`, report
+   `rows that could not be checked at all: N`, and fail the gate.** This is exactly the exposure the
+   latency problem would have created.
+2. **`prodDevSync.js`'s `--check-content` is blind to Date fields.** Its `stableStringify` walks
+   `Object.keys()`, and a `Date` has none, so every Date serialises to `{}`. Proven live: `users` reported
+   `differs=0` while `lastLoginAt`/`updatedAt` plainly differed on 3+ documents. Scope checked — **Date is
+   the only affected BSON type**; ObjectId, Decimal128, Long and Binary are all distinguished correctly.
+   No reclone decision this session was affected (key fields are strings). **Not yet fixed.**
+
+Also added: single-line `\r` progress with rate and ETA to `verify-s3` and `verify`, via a shared
+`progressReporter()`. Before this they printed nothing between header and summary — on a 33k-row run that
+is 20+ minutes of silence indistinguishable from a hang, and the only way to tell was reading the
+process's CPU counter from outside.
+
+### R.3 dry run — clean, and the 44 skips explained
+
+```
+pending: 33067   skipped (url-shape): 44
+```
+
+All 44 are `seopagecontentblogs.businessDetails[N].bannerImage`, `valueShape: "url"` — the field stores a
+full URL, not a bare key, so `rewrite` deliberately skips it. **Zero `fcmcampaigns`.** These are the plan's
+own "Special cases", deferred because handling them means a schema decision, not a rewrite-in-place. They
+are the same rows behind the 76 business↔seo-blog fan-out conflicts: business side stores a key, seo-blog
+side stores a URL to the same object.
+
+**🚨 This creates a trap at S.3 — see the Do-NOT-do list.**
+
+### R.1 — and a correction about the backup tooling
+
+**Correction, recorded because it wasted effort:** Claude searched only inside `massclick/` and concluded
+the backup tooling did not exist, then wrote a replacement (`server/scripts/snapshotCollections.js`) on
+that false premise. **`db-backups/backup.js`, `list.js` and `restore.js` exist at
+`D:\dev_abishek\db-backups\` — a sibling of this repo — exactly as the "Backups taken" section below
+already said.** The canonical tool is strictly better: it has a real `restore.js` (3 modes, verifies
+checksums and refuses on a tampered snapshot), records indexes, appends to `MANIFEST.md`, and refuses prod
+without `--prod`. The replacement had none of that. **Use `db-backups/backup.js`. Do not build another
+snapshot tool.**
+
+### R.3 — dev rewritten
+
+```
+applied this run: 33067   stale (skipped, filter didn't match): 0
+```
+
+Confirmed independently afterwards from a different code path: re-running the `rewrite` dry run reports
+`already applied: 33067, pending: 0`. `reverse` reports 33,067 pending, i.e. the rollback is armed.
+
+**`rewrite` and `reverse` had the same silence problem as `verify-s3`** and both now use the shared
+`progressReporter()`. `rewrite` is **serial by design** (ordering and resumability beat speed on a write
+path), so it runs at ~50 rows/s over the tunnel — 11 minutes for 33k rows, previously with zero output.
+**R.7 does exactly this against prod**, and `reverse` is the rollback path run under pressure when
+something has already gone wrong; silence was least acceptable in exactly those two places.
+
+While it ran with no output, progress was readable from outside by counting lines in
+`applied-massClick_dev.jsonl` — that file is appended to only *after* each write is confirmed, so it is
+both the progress bar and the resume log.
+
+### R.4 — 🚨 the dev cache flush was about to hit PRODUCTION
+
+**The bug:** `server/utils/redisClient.js` line 7 read
+
+```js
+const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+```
+
+at **module load**. ES module imports are evaluated *before* the importing module's body, so this ran
+before `s3KeyMigration.js` called `dotenv.config()` — meaning a `REDIS_URL` that existed only in `.env`
+was invisible, and the connection silently fell back to the default. **On the server that default,
+`6379`, is `redis-prod`.**
+
+So `flush-caches` run from the **dev** checkout on the server connected to **production's** Redis. Caught
+only because the script printed the env value it read *after* dotenv (`6380`) while the client reported
+the one it bound at import time (`6379`), and the key counts settled it:
+
+```
+script reported:            11,474 keys
+redis-dev  (host 6380):         15 keys
+redis-prod (host 6379):     11,561 keys     <-- what it was actually connected to
+```
+
+A `--commit` there would have dropped ~11.5k production cache keys. It did not happen — the flush was run
+locally through the tunnel instead, where `REDIS_URL` was passed as a real env var on the command line
+(which always worked, and is why this stayed hidden).
+
+**Fixed:** the URL is now resolved inside `initRedis()` via `resolveRedisUrl()`, i.e. at connect time,
+after dotenv has run. Proven with an ordering test — set `REDIS_URL` *after* importing the module, and the
+client now uses the new value (`6399`) instead of the frozen default. The failure message now names the
+URL it tried, so a future mismatch is visible immediately.
+
+**Still open, user's call:** local `server/.env` line 40 is `REDIS_URL=redis://127.0.0.1:6379` — prod's
+port. Harmless today (nothing is tunnelled on 6379 locally), but it means the local default names prod.
+
+**Result of the actual flush:** dev Redis 15 → 0. Prod untouched (11,561 → 11,866, still growing, i.e.
+live). Dev only had 15 keys because dev gets no traffic — the flush was nearly a no-op, which is fine:
+what matters is the guarantee, not the count.
+
+### R.5 — `verify` PASSED on dev
+
+```
+  33067/33067  100.0%  188/s  elapsed 176s
+
+field holds newKey:     33067/33067
+newKey is canonical:    33067/33067
+newKey present in S3:   33067/33067
+array-shape corruption: 0
+
+PASS — every applied field holds a canonical newKey that exists in S3, no array corruption.
+```
+
+`newKey present in S3: 33067/33067` independently re-confirms the copy from the database side.
+`array-shape corruption: 0` clears the 0.3 `setByPath` bug class, including the 50 `ratingPhotos.N`
+array-index locators that exercise the projection fix.
+
+176 seconds at `--concurrency=64`, against the 60+ minutes the default would have taken.
+
+### R.5 image check — reported FAILED, correctly, for a reason that is NOT the migration
+
+`checkPublicImageUrls` on dev returned **`NEWLY broken: 3`** against
+`imgcheck-2026-08-14-dev-post-resilience.json`. Investigated to the bottom; **no migration regression.**
+Do not re-derive this — the field names differ by four characters and it is easy to misread.
+
+Every broken asset is `seopagecontentblog.businessDetails[N].**bannerImage**` — the `valueShape: "url"`
+field, one of the 44 `rewrite` deliberately skips. The field the migration *did* write on the same
+subdocument is `businessDetails[N].**bannerImageKey**` (61 rows applied). **Two different fields.**
+
+They are also two different **objects**. The one applied row mentioning `banner-1768806705739` moved
+`businessList/banners/banner-1768806705739.**webp**` (a `businesslists.bannerImageKey`). The broken asset
+is `banner-1768806705739.**jpg**` — a different object, never in the manifest, referenced only by the blog's
+URL field, and 403 because it is genuinely not in the bucket. This is the pre-existing breakage 0.5
+recorded ("PROD IS SERVING A DOUBLED URL TO USERS RIGHT NOW") — doubled, tripled and quadrupled variants
+all appear.
+
+**Why they looked "newly" broken:** `seopagecontentblogs` was recloned from prod earlier the same day
+(prod was ahead on 11 docs). Dev and prod now hold byte-identical values for those documents — verified
+directly. So dev inherited prod's malformed URLs; the count went `was broken: 6 → now broken: 6`, with 3
+swapped for 3. **The baseline predates the reclone, which is what makes the diff misleading.**
+
+**One dev asset returned status `0`** — `categories/69cb749586a448f790422221/legacy-image`, a *migrated*
+key, which looked alarming. It was a transient fetch failure in the checker: the object is present
+(HeadObject, 4,152 B) and the public URL returned **HTTP 200 on 4/4 retries**. Treat a lone `0` as
+"re-check before believing", not as a 404 — the checker does not retry.
+
+**Also verified while there: `copy` preserved object metadata.** Sampled old/new pairs across category,
+logo and banner keys — `ContentType`, `ContentLength` and `Cache-Control` identical on every one
+(`MetadataDirective: "COPY"` doing its job). Note one category object is `application/octet-stream` on
+**both** sides — that is pre-existing on the source, not introduced here.
+
+### Baselines captured 2026-08-15 — use these, not the older ones
+
+| File | What it is |
+|---|---|
+| `imgcheck-2026-08-15-prod-pre-rewrite.json` | **PROD, genuinely pre-migration — this is R.9's comparison point.** 769 assets, 762 ok, **7 broken**, all `seopagecontentblog…bannerImage` |
+| `imgcheck-2026-08-15-dev-post-rewrite.json` | DEV after the full rewrite. 768 assets, 761 ok, 7 broken (6 blog + the 1 transient) |
+
+**R.9's gate is `NEWLY broken: 0` against the prod file above** — prod already has 7 broken assets and will
+still have them afterwards, because they live in the field `rewrite` skips.
+
+Worth noting: dev's `/seopagecontentblog/viewall` returns 60 assets vs prod's 77, so the two sides' blog
+data is no longer identical — prod has moved on since the reclone. Not a migration concern, but it means
+dev and prod broken-lists are not expected to match item for item.
+
+**Still outstanding for R.5:** one manual download each of a signed-URL path (résumé, reward evidence —
+how risk 9 is retired), and the user's own UI walkthrough. Note dev's API may hold warm in-process caches
+from before the rewrite; a `massclick-api-dev` restart makes that test honest.
 
 **Run ends here. Nothing has been deleted.** Rollback is `reverse` and takes minutes.
 
@@ -1703,13 +2047,25 @@ test, before Rehearsal 1's own SIGKILL/tunnel-drop tests are attempted.
 ## Active run
 
 ```
-runId:     none
-phase:     —
-scope:     —
-manifest:  —
-lease:     —
-last stop: —
+runId:     01KZZWKQAN20SAR8GS0WFGZ4AJ
+phase:     DEV IS FULLY MIGRATED AND VERIFIED — prod has NOT been touched
+scope:     all
+manifest:  33096 rows · 1271.2 MB · 77 conflicts (all benign fan-out, acknowledged)
+copied:    33096/33096, failed=0
+verify-s3: PASS — 33096/33096 present · sizes match · old keys all still present (353s at --concurrency=64)
+rewrite:   dev DONE — applied 33067, stale 0, 44 url-shape skipped
+flush:     dev Redis 15 -> 0 · prod untouched
+verify:    dev PASS — 33067/33067 field+canonical+S3 · array corruption 0 (176s at --concurrency=64)
+reverse:   ARMED — 33067 rows pending in applied-massClick_dev.jsonl
+imgcheck:  dev analysed — 0 migration regressions (all 6 blog 403s are the url-shape field rewrite skips,
+           1 status-0 was transient and re-fetches 200). Metadata preserved: ContentType/size/Cache-Control.
+baselines: imgcheck-2026-08-15-prod-pre-rewrite.json  <-- R.9 compares against THIS (7 broken already)
+           imgcheck-2026-08-15-dev-post-rewrite.json
+last stop: R.5 nearly done. Remaining: 2 signed-URL manual downloads + the user's UI walkthrough.
+           Then R.6 (redefine — no traffic to soak on), then R.7 = FIRST PROD WRITE.
 ```
+
+**Run everything HeadObject-heavy with `--concurrency=64`.** The default 8 gives ~8 rows/s here.
 
 ---
 
@@ -1719,7 +2075,15 @@ last stop: —
 |---|---|---|---|---|
 | 2026-08-14 | massClick_dev | pre-category-s3-rehearsal | `db-backups/snapshots/massClick_dev/2026-08-14_06-25-23__pre-category-s3-rehearsal` | 545 docs, checksum ok |
 | 2026-08-14 | massClick_dev | pre-resilience-test-reviews | `db-backups/snapshots/massClick_dev/2026-08-14_07-01-30__pre-resilience-test-reviews` | 64 docs, checksum ok |
-| (also note: the actual backup tool lives at `D:\dev_abishek\db-backups\`, a sibling of this repo, not inside it — `db-backups/` here is gitignored and only holds snapshot output) | | | | |
+| 2026-08-14 | massClick_dev ×7 | pre-reclone-* | `massclick/db-backups/2026-08-14T10-19-03-561Z_pre-reclone-<collection>/` | written by `prodDevSync.js` before each wipe |
+| 2026-08-14 | both | pre-s3-rewrite (R.1) | see note below | **being retaken with the canonical tool** |
+
+> **⚠️ THE BACKUP TOOL IS AT `D:\dev_abishek\db-backups\`, A SIBLING OF THIS REPO — NOT INSIDE IT.**
+> `massclick/db-backups/` is gitignored and only holds output written by `prodDevSync.js`. Claude looked
+> only inside the repo on 2026-08-14, wrongly concluded the tool was missing, and wrote a redundant
+> `server/scripts/snapshotCollections.js` before finding `backup.js` + `restore.js` sitting at the sibling
+> path. The canonical tool wins on every axis that matters — it has a **restore** path, records indexes,
+> logs to `MANIFEST.md`, and guards prod behind `--prod`. Use it. Do not write another one.
 
 Command form (always scope with `--collections`; `--prod` is mandatory for db `massClick`):
 
@@ -1747,7 +2111,7 @@ seopagecontentblogs,trackedkeywords,users
 
 ## ⛔ Do NOT do — ordering rules a fresh session will otherwise break
 
-These four look like harmless optimisations from cold. They are not.
+These look like harmless optimisations from cold. They are not.
 
 1. **Do not reorder Phase 1 after the migration.** The path registry must ship *before* `plan` runs, so
    new uploads already land on canonical keys and fall outside the manifest.
@@ -1772,6 +2136,31 @@ These four look like harmless optimisations from cold. They are not.
    **Safe windows:** any time before `plan`, or after R.9. **Unsafe:** everything in between.
    **After any re-clone, re-run `scan` on dev** — the baseline miss count is what `verify` is checked
    against, and a stale one makes R.5 either fail spuriously or hide a real regression.
+
+6. **🚨 `sweep` MUST treat URL-shaped references as live, or it will delete objects that are being
+   served.** Found 2026-08-14. `rewrite` skips `valueShape: "url"` owners — in this run, 44 ×
+   `seopagecontentblogs.businessDetails[N].bannerImage`. So after **both** rewrites those 44 fields still
+   point at the old `businessList/banners/*.webp` keys, while the business documents that shared those
+   objects have moved to `businesses/<id>/banner/<ulid>`. **Those 44 old keys will then be the only DB
+   references those objects have left.** A sweep that only counts bare-key references will read them as
+   unreferenced and delete images the live blog pages are rendering. The scanner *does* parse URL-shaped
+   values (that is how they reached the manifest at all), so this should hold — but **prove it before
+   `sweep --commit`, do not assume it.** Related: `copy` created 44
+   `seo-blogs/.../business-banner/<ulid>` objects that nothing will ever reference — harmless orphans,
+   but do not let them confuse the S.4 orphan review.
+
+7. **Do not run the HeadObject-heavy commands at the default concurrency.** `verify-s3` and `verify` are
+   latency-bound: `--concurrency=8` gives ~8 rows/s (an hour for 33k rows), `--concurrency=64` gives ~94
+   rows/s (six minutes). On 2026-08-14 the default caused two abandoned attempts and nearly caused the
+   gate to be skipped entirely before R.3. **Always pass `--concurrency=64`.**
+
+8. **🚨 Always pass `REDIS_URL` explicitly when flushing caches — never trust `.env`.** Found 2026-08-14
+   (see R.4 above). The module-load bug in `redisClient.js` is fixed, but the habit is the real
+   protection: `6380` is `redis-dev`, `6379` is `redis-prod`, the default is `6379`, and a dev flush that
+   silently lands on prod looks exactly like a successful dev flush. **Before any `--commit` flush,
+   confirm which Redis you are on by key count** — `docker exec redis-dev redis-cli dbsize` vs
+   `docker exec redis-prod redis-cli dbsize` — not by what the command prints about itself. R.8 flushes
+   prod deliberately; that is the one time `6379` is correct.
 
 Also: **never `move`.** Copy, verify, rewrite, soak, then sweep. The bucket is shared.
 
@@ -1926,6 +2315,7 @@ massClick refs         31,789       31,843       +54
 
 | Date | What happened |
 |---|---|
+| 2026-08-14 | **THE REAL RUN STARTED — N.2, R.1 and R.2 done, run `01KZZWKQAN20SAR8GS0WFGZ4AJ`.** User closed prod to users first (API left up, since R.9's gate needs it). **N.1 skipped deliberately** after the full S3 download projected ~7 h — justified because nothing before S.3 deletes, versioning plus the absence of `DeleteObjectVersion` covers overwrite risk, `restore-from-local` was never built, and a multi-hour download of a live bucket is not a consistent snapshot anyway; **still mandatory at S.2**. A first `plan` on drifted data exposed that dev was still on canonical keys from the previous day's rehearsals, which would have left **R.5 verifying dev with zero category coverage** — fixed by recloning 7 drifted collections (scoped to the registry, so `masterlocations` was untouched, unlike the 2026-08-13 full reclone), with the ahead-check run first: devAhead=0 everywhere, `businesslists`'s 162 diffs were `analytics` counters only and — checked specifically — contained **no `masterLocation` differences**. Two collections deliberately left alone (`eventlocations`, `massclickevents`) rather than destroy one dev-only document each; the bounded cost is 18 prod-only manifest rows. Re-planned clean: 33,096 rows, all newKeys distinct, **0 `duplicate-newkey-diff-bytes`**, and all 77 conflicts verified benign (every group owned by *both* DBs — one image shared by a business and an seo-blog). **`copy --commit` had to be unblocked first**: the old gate refused on ANY conflict and advised a reclone, which cannot resolve a fan-out — so a full-scope run was permanently blocked by rows carrying no risk. Replaced with a kind-aware gate (`utils/s3ConflictGate.js` + 42-test `verifyS3ConflictGate.js`): blocking kinds are unbypassable by any flag, `split`/`fanout` need `--acknowledge-conflicts=<exact count>`, unknown kinds fail closed. **R.2: 33,096/33,096 copied, `failed=0`, and `verify-s3` PASS on all three counts** (newKey present, sizes match, old keys still present). That gate took three attempts: the first two were abandoned at ~8 rows/s on the default `--concurrency=8`, root-caused to latency rather than throttling — at `--concurrency=64` the same work runs at 94 rows/s and finishes in 353 s, a 12× difference from one flag, and that now applies to R.5/R.9 too. **Two real bugs found:** `verify-s3`/`verify` never inspected `runPool`'s results, so a row whose HeadObject *threw* counted as **passing** — a partial verification could print `PASS`; and `prodDevSync.js`'s `--check-content` is blind to Date fields (proven live on `users`; Date is the only affected BSON type). First fixed, second filed. Also added rate/ETA progress output to both long read-only passes, after 30 minutes of silence was indistinguishable from a hang. **Process failure worth remembering:** Claude searched only inside `massclick/`, wrongly concluded the backup tooling was missing, and wrote a redundant `snapshotCollections.js` before finding `backup.js`/`restore.js` at the sibling `D:\dev_abishek\db-backups\` — which the doc already documented. R.1 is being retaken with the canonical tool. **Flagged for S.3: the 44 URL-shaped `businessDetails[].bannerImage` skips become the only DB references to their old keys after both rewrites — a naive sweep will delete images the blog pages are serving.** |
 | 2026-08-14 | **Category rehearsal run for real, and Track A's remaining resilience gaps closed.** User confirmed env vars were already set on both VPS `.env`s and had dev redeployed to `518df8e7` (was 2 commits stale, oddly behind prod). Found in passing: pushes to the `prod` branch already fast-forward-deploy via CI, so Phase 2.3's admin-endpoint code (`06815051`) was already live on the production server — bigger than the doc's "nothing has reached production" assumption; left as-is per user instruction, not touched further. Re-ran `plan --scope=category` against the now-cleanly-recloned data: 0 conflicts (vs 76 the first time) — confirmed the dedup fix works. Backed up `categories`, then ran the full real cycle for real: `copy --commit` (908/908), `verify-s3` (PASS), `rewrite --commit --uri=dev` (908/908), `verify` (PASS, 0 array corruption), `flush-caches` (7/7 ok), `checkPublicImageUrls` (0 newly broken — 5 apparently-new broken banner images turned out to be unrelated pre-existing drift on `seopagecontentblog`'s live, reshuffling listing, confirmed by checking the rewrite's manifest touched only the `categories` collection). Dev left on new category keys, same choice as `advertisements`. **Then ran the outstanding resilience tests**, using `businessReviews` (50 rows, clean plan) as the test bed since it was small enough to interrupt reliably: (1) SIGKILL mid-`copy` — killed at 1/50, `doctor` confirmed no torn line, re-ran `copy` and it correctly resumed to 50/50, `verify-s3` PASS; (2) tunnel-drop mid-`rewrite` — opened a dedicated temp SSH tunnel (so the user's own tunnel was never touched) and killed only that tunnel process mid-write. **Found a real bug**: the crash-path's own `tracker.failJob()` call used the SAME now-dead connection to record the failure, and since that write wasn't guarded, it threw and masked the documented clean "tunnel down, reconnect and re-run" message behind a raw uncaught `MongoServerSelectionError` stack trace. Fixed all 6 `tracker.failJob/finishJob/releaseSlot` call sites in `s3KeyMigration.js` with `.catch(() => {})`, matching the existing `updateProgress` pattern — confirmed 30/50 rows had genuinely, correctly applied before the drop (no corruption), resumed the rest, then hit a second, separate real bug on `verify`: `field holds newKey: 0/50` even though the data was actually correct (`newKey present in S3: 50/50`) — root cause was `verify`'s projection using the full locator (`ratingPhotos.41`) instead of the base field, and Mongo's array-index projection re-indexes the result to a single-element array, so `doc.ratingPhotos[41]` on the projected doc read back `undefined`. Fixed by projecting only the base field, matching how `scan`/`plan` already build projections from the registry — re-ran `verify`, now PASS 50/50. (3) heartbeat + (4) pause/cancel — tested directly against `createJobTracker` in isolation (a throwaway script in `server/_tmp/`, deleted after) rather than hunting for a "just right sized" real scope: heartbeat's `lastHeartbeatAt` was observed advancing at exactly the documented 30s interval; `isStopRequested()` was proven to flip `false→true` the instant an external actor (simulating the admin `/pause` endpoint) changed the job doc's `status`, and `releaseSlot` correctly cleared `activeSlot`. `businessReviews` ended up fully migrated as a side effect of this testing (bonus real progress, not originally planned) — backed up first, final `verify` PASS 50/50, caches flushed, image check clean. **Track A is now fully closed except one item: the monitoring card has still never been viewed in a browser** — needs the user, per the project's standing no-browser-tools rule. All 4 core gates stayed green throughout. |
 | 2026-08-13 | **The real DB-write cycle finally proven end-to-end — Rehearsal 1 is unblocked.** User asked how to grant the permission the classifier had been blocking; added a scoped `Bash(node scripts/s3KeyMigration.js *)` allow rule to `.claude/settings.local.json` after confirming with the user how broad to make it (they chose the whole-script version over a dev-only-restricted one). After a session restart, ran the full real cycle on a fresh `advertisements` plan, dev only: `copy --commit` (8/8), `rewrite --commit` (8/8, independently re-read from the live document and matched the planned newKey exactly), `verify` (clean PASS), `reverse --commit` (8/8, independently re-read and confirmed byte-identical to the pre-migration snapshot across all 8 rows, not just one), `rollback-copies --commit` (8/8 S3 objects cleaned up). Also ran with `--state-uri` to exercise 2.3's job-doc tracking live — the doc was created, transitioned phase `copy`→`rewrite`, and completed cleanly twice, with `activeSlot` correctly released each time. **Found and fixed a real bug this way that no dry-run or code review would have caught:** `counts.done` on the job doc stayed at `5` after an 8-item run finished, because progress is only pushed every 5 completions and nothing forced a final sync before marking the job complete — `finishJob` now accepts the true final counts. Test job doc and run directory deleted afterward. Still open before Rehearsal 1: the heartbeat timer and pause/cancel were never exercised (the run was too fast), and the card has never been opened in a browser. All 4 core gates stayed green throughout. Full detail in "rewrite/reverse's real DB-write cycle — DONE" above. |
 | 2026-08-13 | **2.3 built: monitoring card, 5 admin endpoints, and job-doc lease/heartbeat wired into `copy`/`rewrite`.** Asked the user how to handle the gap between the plan's card design (polls a Mongo job doc with heartbeat liveness) and the CLI (which didn't write to that job doc at all) — offered a lighter state.json-reading alternative; **user chose the full plan-matching version**, so this meant wiring real lease/claim/heartbeat/pause-cancel bookkeeping into already-working, already-tested `copy`/`rewrite` loops, not just adding a read-only view. Built `utils/s3MigrationJobTracking.js` as a connection-bound factory (the CLI's per-invocation `mongoose.createConnection()` needs `connection.model(...)`, not the app's shared default connection the new controller uses) with `claimJob`/`updateProgress`/`isStopRequested`/`finishJob`/`failJob`/`releaseSlot`. Gave `runPool` a `shouldStop()` callback so Pause/Cancel from the card can actually stop a running `copy` mid-flight, not just relabel a job doc nobody's watching. Caught and fixed a real bug before it shipped: `rewrite`'s finish/release calls were originally placed AFTER the `finally` block that closes the job-doc connection, so they'd have silently failed against a closed connection — found by re-reading the control flow, since there was no way to test it live. Built the 5-endpoint controller (no `/start`, matching the plan) and the React card (liveness from heartbeat age, never from `status` alone — a hard-killed CLI freezes `status:"running"` forever). Also fixed an unrelated pre-existing gap while at it: the hardcoded bucket URL in `client/.../MRP/mrp.js` that 0.5 should have caught (`lintS3Paths.js` back to 0/0). Verified everything that doesn't need a real Mongo write: `node --check` + dynamic `import()` on every new/changed server file, `@babel/core` parse checks on the JSX (no build run, per the standing preference), all 4 core gates green throughout. **Deliberately did NOT attempt another real Mongo write this session** — the job-doc claim/heartbeat/pause-cancel machinery is bundled with the already-deferred `rewrite`/`reverse` real-write gap rather than testing it live unprompted. Full detail in "2.3 — monitoring card" above. |
