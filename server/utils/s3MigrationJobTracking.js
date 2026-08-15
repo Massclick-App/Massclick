@@ -112,10 +112,38 @@ export const createJobTracker = (connection) => {
    * A light, unowned read — used by the CLI's own loop to voluntarily stop when the
    * UI has flipped status to "paused"/"cancelled". This is what makes pause/cancel
    * actually stop a running CLI process, not just relabel a job doc nobody watches.
+   *
+   * NEVER THROWS. This read runs every 5 rows against the `--state-uri` connection,
+   * which for every proven invocation is the DEV database — i.e. the same SSH tunnel
+   * the run itself depends on. Unguarded, it threw during the 2026-08-15 prod rewrite
+   * when the tunnel dropped at 6,019/33,089 and produced a raw MongoServerSelectionError
+   * stack trace, burying the clean "tunnel down, reconnect and re-run" message that
+   * `rewrite`'s own guarded write path was about to print. Same shape as the unguarded
+   * `failJob` calls fixed 2026-08-14 — bookkeeping must never decide the fate of the run.
+   *
+   * Returns FALSE (i.e. "keep going") when the read fails, deliberately: a failed read
+   * is not evidence that anyone pressed pause. If the connection really is gone, the
+   * next actual write fails a moment later and is handled where the good error message
+   * lives. The alternative — treating an unreadable job doc as "stop" — would abort a
+   * healthy run on one transient blip.
    */
+  let stopCheckFailureWarned = false;
   const isStopRequested = async (jobId) => {
-    const job = await Model.findById(jobId).select("status").lean();
-    return !job || job.status !== "running";
+    try {
+      const job = await Model.findById(jobId).select("status").lean();
+      return !job || job.status !== "running";
+    } catch (error) {
+      if (!stopCheckFailureWarned) {
+        stopCheckFailureWarned = true;
+        console.warn(
+          `\n[job-tracking] pause/cancel check unreadable (${error.message}).\n` +
+            `  Continuing — a failed read is not a pause. The monitoring card may show stale\n` +
+            `  progress, and pause/cancel from the UI will not be honored until it recovers.\n` +
+            `  If the connection is genuinely down, the next write will say so properly.`,
+        );
+      }
+      return false;
+    }
   };
 
   const startHeartbeat = (jobId) => {
