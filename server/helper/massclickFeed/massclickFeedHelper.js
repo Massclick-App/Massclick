@@ -1,13 +1,22 @@
-import { ObjectId } from "mongodb";
+import mongoose from "mongoose";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import massclickFeedPostModel from "../../model/massclickFeed/massclickFeedPostModel.js";
+import massclickFeedFollowModel from "../../model/massclickFeed/massclickFeedFollowModel.js";
 import otpUserModel from "../../model/msg91Model/usersModels.js";
 import { getSignedUrlByKey, uploadImageToS3 } from "../../s3Uploder.js";
 import { s3Keys } from "../../utils/s3ObjectKeys.js";
 
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime",
+  "application/pdf", "text/plain", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+]);
+const MAX_IMAGE_SIZE = 45 * 1024 * 1024;
 const MAX_IMAGES = 4;
+const { ObjectId } = mongoose.Types;
+const ALLOWED_ACTIONS = new Set(["call", "whatsapp", "book", "shop", "learn"]);
 
 const escapeRegExp = (value = "") =>
   value.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -101,8 +110,8 @@ const validatePostPayload = (data = {}) => {
   if (files.length > MAX_IMAGES) throw new Error(`Upload up to ${MAX_IMAGES} images`);
 
   files.forEach((file) => {
-    if (!ALLOWED_IMAGE_TYPES.has(file.fileType)) throw new Error("Only JPG, PNG, and WebP images are allowed");
-    if (getBase64Size(file.mediaFile) > MAX_IMAGE_SIZE) throw new Error("Each image must be 5 MB or smaller");
+    if (!ALLOWED_IMAGE_TYPES.has(file.fileType)) throw new Error("Unsupported attachment type");
+    if (getBase64Size(file.mediaFile) > MAX_IMAGE_SIZE) throw new Error("Each attachment must be 45 MB or smaller");
   });
 
   if (data.offerStartsAt && data.offerEndsAt) {
@@ -110,6 +119,15 @@ const validatePostPayload = (data = {}) => {
     const endsAt = new Date(data.offerEndsAt);
     if (endsAt < startsAt) throw new Error("Offer end date must be after start date");
   }
+  const actions = Array.isArray(data.callToActions) ? data.callToActions : [];
+  if (actions.length > 3) throw new Error("Choose up to three call-to-action buttons");
+  if (new Set(actions.map((item) => item.action)).size !== actions.length) throw new Error("Duplicate call-to-action buttons are not allowed");
+  actions.forEach((item) => {
+    if (!ALLOWED_ACTIONS.has(item.action)) throw new Error("Invalid call-to-action type");
+    if (!String(item.value || "").trim()) throw new Error(`Add a destination for ${item.label || item.action}`);
+    if (["call", "whatsapp"].includes(item.action) && String(item.value).replace(/\D/g, "").length < 7) throw new Error(`Add a valid number for ${item.label}`);
+    if (!["call", "whatsapp"].includes(item.action) && !/^https?:\/\//i.test(String(item.value))) throw new Error(`${item.label} must use a complete http:// or https:// URL`);
+  });
 };
 
 const uploadFeedImages = async (files = [], postId) =>
@@ -126,7 +144,7 @@ const uploadFeedImages = async (files = [], postId) =>
       );
 
       return {
-        mediaType: "image",
+        mediaType: file.fileType?.startsWith("video/") ? "video" : file.fileType?.startsWith("image/") ? "image" : "file",
         mediaKey: uploadResult.key,
         fileName: file.fileName || "feed-image",
         fileType: file.fileType,
@@ -158,6 +176,20 @@ export const createMassclickFeedPost = async (data = {}, actor = {}) => {
     businessLocation: business?.location || customer.businessLocation || "",
     title: data.title || "",
     text: data.text || "",
+    postType: data.postType || "update",
+    callToAction: data.callToAction || "",
+    callToActions: Array.isArray(data.callToActions)
+      ? data.callToActions.slice(0, 3).map((item) => ({ action: String(item.action || ""), label: String(item.label || ""), value: String(item.value || "") }))
+      : [],
+    hashtags: Array.isArray(data.hashtags) ? data.hashtags.slice(0, 20) : [],
+    audience: Array.isArray(data.audience) ? data.audience : [],
+    radiusKm: Number(data.radiusKm) || 5,
+    scheduledAt: data.scheduledAt || null,
+    expireAfterDays: data.expireAfterDays ? Number(data.expireAfterDays) : null,
+    pinPost: data.pinPost === true,
+    allowComments: data.allowComments !== false,
+    showShareButton: data.showShareButton !== false,
+    trackPerformance: data.trackPerformance !== false,
     offerStartsAt: data.offerStartsAt || null,
     offerEndsAt: data.offerEndsAt || null,
     mediaItems,
@@ -191,19 +223,62 @@ export const listMassclickFeedPosts = async ({
   }
 
   const total = await massclickFeedPostModel.countDocuments(query);
-  const posts = await massclickFeedPostModel
-    .find(query)
-    .sort({ createdAt: -1 })
-    .skip((pageNo - 1) * pageSize)
-    .limit(pageSize)
-    .lean();
+  const following = actorId && ObjectId.isValid(String(actorId))
+    ? await massclickFeedFollowModel.find({ followerUserId: actorId }).select("businessId -_id").lean()
+    : [];
+  const followedIds = following.map((item) => item.businessId);
+  const posts = await massclickFeedPostModel.aggregate([
+    { $match: query },
+    { $addFields: { followedRank: { $cond: [{ $in: ["$businessId", followedIds] }, 1, 0] } } },
+    { $sort: { followedRank: -1, createdAt: -1 } },
+    { $skip: (pageNo - 1) * pageSize },
+    { $limit: pageSize },
+    { $project: { followedRank: 0 } },
+  ]);
+  const businessIds = [...new Set(posts.map((post) => String(post.businessId || "")).filter(Boolean))];
+  const followerCounts = businessIds.length ? await massclickFeedFollowModel.aggregate([
+    { $match: { businessId: { $in: businessIds.map((id) => new ObjectId(id)) } } },
+    { $group: { _id: "$businessId", count: { $sum: 1 } } },
+  ]) : [];
+  const countByBusiness = new Map(followerCounts.map((item) => [String(item._id), item.count]));
+  const followedSet = new Set(followedIds.map(String));
 
   return {
-    data: posts.map((post) => normalizePost(post, actorId)),
+    data: posts.map((post) => ({
+      ...normalizePost(post, actorId),
+      isFollowing: followedSet.has(String(post.businessId || "")),
+      followersCount: countByBusiness.get(String(post.businessId || "")) || 0,
+    })),
     total,
     pageNo,
     pageSize,
   };
+};
+
+export const setMassclickFeedFollow = async (businessId, shouldFollow, actor = {}) => {
+  const actorId = getActorId(actor);
+  if (!actorId || !ObjectId.isValid(String(actorId))) throw new Error("Login required");
+  if (!ObjectId.isValid(String(businessId))) throw new Error("Invalid business ID");
+  const business = await businessListModel.exists({ _id: businessId, isActive: true });
+  if (!business) throw new Error("Business not found");
+  if (shouldFollow) {
+    await massclickFeedFollowModel.updateOne(
+      { followerUserId: actorId, businessId },
+      { $setOnInsert: { followerUserId: actorId, businessId, createdAt: new Date() } },
+      { upsert: true }
+    );
+  } else {
+    await massclickFeedFollowModel.deleteOne({ followerUserId: actorId, businessId });
+  }
+  const followersCount = await massclickFeedFollowModel.countDocuments({ businessId });
+  return { businessId: String(businessId), isFollowing: Boolean(shouldFollow), followersCount };
+};
+
+export const listMassclickFeedFollows = async (actor = {}) => {
+  const actorId = getActorId(actor);
+  if (!actorId || !ObjectId.isValid(String(actorId))) throw new Error("Login required");
+  const follows = await massclickFeedFollowModel.find({ followerUserId: actorId }).sort({ createdAt: -1 }).lean();
+  return { businessIds: follows.map((item) => String(item.businessId)) };
 };
 
 export const toggleMassclickFeedLike = async (postId, actor = {}) => {
@@ -263,7 +338,7 @@ export const recordMassclickFeedShare = async (postId, actor = {}) => {
 
 export const updateMassclickFeedStatus = async (postId, data = {}, actor = {}) => {
   if (!ObjectId.isValid(postId)) throw new Error("Invalid post ID");
-  if (!["active", "hidden", "rejected", "expired"].includes(data.status)) {
+  if (!["active", "draft", "scheduled", "hidden", "rejected", "expired"].includes(data.status)) {
     throw new Error("Invalid post status");
   }
 

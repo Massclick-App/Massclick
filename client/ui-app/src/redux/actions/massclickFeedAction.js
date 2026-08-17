@@ -96,3 +96,10 @@ export const updateMassclickFeedPostStatus = (postId, status) =>
 
 export const deleteMassclickFeedPost = (postId) =>
   updateFeedPost(() => axiosInstance.delete(`${API_URL}/massclick-feed/posts/${postId}`));
+
+export const setMassclickFeedFollow = (businessId, follow) => async (dispatch) => {
+  const response = await axiosInstance.put(`${API_URL}/massclick-feed/follows/${businessId}`, { follow });
+  dispatch({ type: "MASSCLICK_FEED_FOLLOW_UPDATED", payload: response.data });
+  dispatch(getMassclickFeedPosts({ pageSize: 50 }));
+  return response.data;
+};
