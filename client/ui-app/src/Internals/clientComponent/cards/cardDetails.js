@@ -1140,14 +1140,14 @@ const BusinessDetail = React.memo(() => {
                       {certificateLabels.length > 0 ? certificateLabels.join(", ") : "Not verified yet"}
                     </span>
                   </div>
-                  {business.category?.toLowerCase().includes("bank") && business.contactList && <div className={cx("business-CardDetails-infoItem")}>
+                  {/* {business.category?.toLowerCase().includes("bank") && business.contactList && <div className={cx("business-CardDetails-infoItem")}>
                       <span className={cx("business-CardDetails-infoLabel")}>
                         IFSC Code
                       </span>
                       <span className={cx("business-CardDetails-infoValue")}>
                         {business.contactList}
                       </span>
-                    </div>}
+                    </div>} */}
                   <div className={cx("business-CardDetails-infoItem")}>
                     <span className={cx("business-CardDetails-infoLabel")}>
                       Address
