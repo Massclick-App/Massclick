@@ -186,6 +186,7 @@ app.use("/", hiringRoutes);
 app.use(legacyUrlRedirectMiddleware);
 app.use("/", rewardRoutes);
 
+
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
   maxAge: "365d",
