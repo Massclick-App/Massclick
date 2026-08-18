@@ -108,3 +108,5 @@ client/ui-app/src/Internals/seoData/metaseoData.json
 /db-backups
 CERTIFICATE_SYSTEM_HANDOFF.md
 MOBILE_URL_MIGRATION_HANDOFF.md
+/tmp
+/output
