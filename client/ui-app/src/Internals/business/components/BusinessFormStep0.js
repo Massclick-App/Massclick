@@ -420,7 +420,7 @@ const BusinessFormStep0 = ({
       <div className={cx("section-grid", "section-grid-2")}>
         <div className={fieldClass()}>
           <label htmlFor="email" className="form-input-label">Email</label>
-          <input type="email" id="email" name="email" className={`form-text-input ${fieldErrors.email ? "error" : ""}`} value={formData.email} onChange={handleChange} placeholder="business@example.com" />
+          <input type="email" id="email" name="email" className={`form-text-input ${fieldErrors.email ? "error" : ""}`} value={formData.email} onChange={handleChange} placeholder="contact@organisation.org" />
           {renderFieldError("email")}
         </div>
 

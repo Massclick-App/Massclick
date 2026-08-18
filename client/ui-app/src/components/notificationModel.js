@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -19,6 +19,8 @@ import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import BusinessCenterRoundedIcon from "@mui/icons-material/BusinessCenterRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import MailRoundedIcon from "@mui/icons-material/MailRounded";
 import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
@@ -134,6 +136,23 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
   const [toastMessage, setToastMessage] = useState("");
   const [rewardClaims, setRewardClaims] = useState([]);
   const [rewardClaimsLoading, setRewardClaimsLoading] = useState(false);
+  const categoryScrollerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  const scrollCategories = (direction) => {
+    categoryScrollerRef.current?.scrollBy({
+      left: direction * Math.min(260, categoryScrollerRef.current.clientWidth * 0.65),
+      behavior: "smooth",
+    });
+  };
 
   const getUserName = (id) => users.find((u) => u._id === id)?.userName || "Admin";
 
@@ -380,31 +399,31 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
         sx={{
           position: "fixed",
           zIndex: 1399,
-          top: { xs: "auto", md: 84 },
-          bottom: { xs: 0, md: "auto" },
+          top: { xs: "auto", sm: 76, md: 84 },
+          bottom: { xs: 0, sm: 16, md: "auto" },
           right: { xs: 0, sm: 16, md: 32 },
           left: { xs: 0, sm: "auto" },
-          width: { xs: "100%", sm: 480, md: 540 },
+          width: { xs: "100%", sm: 500, md: 560 },
           maxWidth: { xs: "100%", sm: "calc(100vw - 32px)" },
-          height: { xs: "72vh", sm: "62vh", md: "56vh" },
-          maxHeight: { xs: "72vh", sm: "62vh", md: "56vh" },
+          height: { xs: "min(82dvh, 680px)", sm: "min(76dvh, 720px)", md: "min(72dvh, 760px)" },
+          maxHeight: { xs: "calc(100dvh - 16px)", sm: "calc(100dvh - 92px)", md: "calc(100dvh - 108px)" },
           display: "flex",
           flexDirection: "column",
           bgcolor: "#ffffff",
           border: "1px solid #edf0f6",
-          borderRadius: { xs: "20px 20px 0 0", sm: "18px" },
-          boxShadow: "0 22px 60px rgba(7, 20, 95, 0.16)",
+          borderRadius: { xs: "22px 22px 0 0", sm: "20px" },
+          boxShadow: "0 24px 70px rgba(7, 20, 95, 0.20)",
           overflow: "hidden",
         }}
       >
-        <Box sx={{ px: 2.25, py: 1.8, borderBottom: "1px solid #edf2f7" }}>
+        <Box sx={{ px: { xs: 2, sm: 2.5 }, py: { xs: 1.5, sm: 1.8 }, borderBottom: "1px solid #edf2f7", flexShrink: 0 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1.5}>
             <Stack direction="row" alignItems="center" gap={1.25} sx={{ minWidth: 0 }}>
               <Avatar sx={{ width: 40, height: 40, bgcolor: "#fff3e8", color: BRAND_ORANGE }}>
                 <NotificationsActiveRoundedIcon />
               </Avatar>
               <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 900, color: BRAND_NAVY, fontSize: 20, lineHeight: 1.1 }}>
+                <Typography sx={{ fontWeight: 900, color: BRAND_NAVY, fontSize: { xs: 18, sm: 20 }, lineHeight: 1.1 }}>
                   Notifications
                 </Typography>
                 <Typography sx={{ color: "#64748b", fontSize: 13, mt: 0.4 }}>
@@ -431,15 +450,18 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
           </Stack>
         </Box>
 
-        <Box sx={{
-          px: 2,
-          py: 1.1,
+        <Stack direction="row" alignItems="center" sx={{
+          px: { xs: 1, sm: 1.25 },
+          py: 0.9,
           borderBottom: "1px solid #edf2f7",
-          overflowX: "auto",
-          scrollbarWidth: "none",
-          "&::-webkit-scrollbar": { display: "none" },
+          flexShrink: 0,
+          bgcolor: "#fff",
         }}>
-          <Stack direction="row" gap={1} sx={{ minWidth: "max-content" }}>
+          <IconButton aria-label="Scroll categories left" onClick={() => scrollCategories(-1)} size="small" sx={{ flexShrink: 0, color: BRAND_NAVY }}>
+            <ChevronLeftRoundedIcon />
+          </IconButton>
+          <Box ref={categoryScrollerRef} sx={{ overflowX: "auto", flex: 1, scrollBehavior: "smooth", scrollbarWidth: "thin", scrollbarColor: "#b8c1d6 transparent", pb: 0.5, "&::-webkit-scrollbar": { height: 4 }, "&::-webkit-scrollbar-thumb": { bgcolor: "#b8c1d6", borderRadius: 99 } }}>
+          <Stack direction="row" gap={0.75} sx={{ minWidth: "max-content" }}>
             {CATEGORY_ORDER.map((category) => {
               const active = activeFilter === category;
               return (
@@ -449,7 +471,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                   onClick={() => setActiveFilter(category)}
                   variant={active ? "filled" : "outlined"}
                   sx={{
-                    height: 28,
+                    height: 30,
                     borderRadius: "8px",
                     fontWeight: 800,
                     color: active ? "#ffffff" : BRAND_NAVY,
@@ -464,7 +486,11 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
               );
             })}
           </Stack>
-        </Box>
+          </Box>
+          <IconButton aria-label="Scroll categories right" onClick={() => scrollCategories(1)} size="small" sx={{ flexShrink: 0, color: BRAND_NAVY }}>
+            <ChevronRightRoundedIcon />
+          </IconButton>
+        </Stack>
 
         {isLoading ? (
           <Box sx={{ py: 7, display: "flex", justifyContent: "center" }}>
@@ -475,6 +501,8 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
             disablePadding
             sx={{
               flex: 1,
+              minHeight: 0,
+              overscrollBehavior: "contain",
               overflowY: "auto",
               bgcolor: "#f8fafc",
               scrollbarWidth: "thin",
@@ -528,8 +556,8 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                           onClick={() => setExpandedId(expanded ? null : item.id)}
                           sx={{
                             alignItems: "flex-start",
-                            gap: 1.35,
-                            px: 2,
+                            gap: { xs: 1, sm: 1.35 },
+                            px: { xs: 1.25, sm: 2 },
                             py: 1.35,
                             borderLeft: `3px solid ${expanded || item.unread || isSearchRequest ? BRAND_ORANGE : "transparent"}`,
                             borderRadius: isSearchRequest ? "12px 12px 0 0" : 0,
@@ -546,7 +574,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                             </Avatar>
                           </Badge>
                           <Box sx={{ minWidth: 0, flex: 1 }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
+                            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "flex-start" }} gap={{ xs: 0.35, sm: 1 }}>
                               <Box sx={{ minWidth: 0 }}>
                                 <Typography noWrap sx={{ fontWeight: 900, color: BRAND_NAVY, fontSize: 14.5 }}>
                                   {item.title}
@@ -555,7 +583,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                                   {item.subtitle}
                                 </Typography>
                               </Box>
-                              <Typography sx={{ color: "#7c89a3", fontSize: 11, whiteSpace: "nowrap", pt: 0.2 }}>
+                              <Typography sx={{ color: "#7c89a3", fontSize: 11, whiteSpace: "nowrap", pt: 0.2, order: { xs: -1, sm: 0 } }}>
                                 {formatTime(item.createdAt)}
                               </Typography>
                             </Stack>

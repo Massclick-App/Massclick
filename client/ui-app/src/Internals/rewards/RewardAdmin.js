@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Autocomplete, Button, Chip, Dialog, DialogActions, DialogContent,
   DialogTitle, FormControl, FormControlLabel, InputAdornment, InputLabel,
   MenuItem, Select, Switch, TextField, Tooltip,
 } from "@mui/material";
 import {
-  Award, BadgeIndianRupee, CheckCircle2, CircleHelp, Clock3, Edit3,
-  Layers3, PauseCircle, Plus, ShieldCheck, Sparkles, Target, Trash2,
-  TrendingUp, Users, X,
+  AlertCircle, Award, BadgeIndianRupee, CheckCircle2, CircleHelp, Clock3,
+  Download, Edit3, FileSpreadsheet, Layers3, PauseCircle, Plus, ShieldCheck,
+  Sparkles, Target, Trash2, TrendingUp, Upload, Users, X,
 } from "lucide-react";
 import CustomizedTable from "../../components/Table/CustomizedTable";
 import { deleteRewardRule, fetchRewardCategoryOptions, fetchRewardRules, saveRewardRule } from "../../services/rewardService";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import styles from "./RewardAdmin.module.css";
+import { downloadRewardPolicyTemplate, parseRewardPolicyWorkbook } from "./rewardPolicyExcel";
 
 const cx = createScopedClassNames(styles);
 const emptyRule = {
@@ -44,6 +45,9 @@ export default function RewardAdmin() {
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
   const [tableRules, setTableRules] = useState([]); const [tableTotal, setTableTotal] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null); const [deleting, setDeleting] = useState(false);
+  const [importRows, setImportRows] = useState(null); const [importFileName, setImportFileName] = useState("");
+  const [importing, setImporting] = useState(false); const [readingFile, setReadingFile] = useState(false);
+  const fileInputRef = useRef(null);
   const load = useCallback(async () => {
     setLoading(true);
     try { const [ruleData, categoryData] = await Promise.all([fetchRewardRules(), fetchRewardCategoryOptions()]); setRules(ruleData); setCategories(categoryData); }
@@ -86,6 +90,36 @@ export default function RewardAdmin() {
       setDeleting(false);
     }
   }, [load]);
+  const readImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setReadingFile(true); setMessage("");
+    try {
+      const rows = await parseRewardPolicyWorkbook(file, categories, rules);
+      setImportRows(rows); setImportFileName(file.name);
+    } catch (error) {
+      setMessage(error.message || "Unable to read the Excel workbook.");
+    } finally { setReadingFile(false); }
+  };
+  const importValidRows = async () => {
+    const validRows = (importRows || []).filter((row) => row.errors.length === 0);
+    if (!validRows.length) return;
+    setImporting(true); setMessage("");
+    const failures = [];
+    for (const row of validRows) {
+      try { await saveRewardRule(row.rule); }
+      catch (error) { failures.push(`Row ${row.rowNumber}: ${error.response?.data?.message || error.message || "save failed"}`); }
+    }
+    setImporting(false);
+    if (failures.length) {
+      setMessage(`${validRows.length - failures.length} policies imported; ${failures.length} failed. ${failures.slice(0, 2).join(" ")}`);
+    } else {
+      setMessage(`${validRows.length} reward ${validRows.length === 1 ? "policy" : "policies"} imported successfully.`);
+      setImportRows(null); setImportFileName("");
+    }
+    await load();
+  };
   const fetchTableData = useCallback((page, limit, filters = {}) => {
     const search = String(filters.search || "").trim().toLowerCase();
     const statusFilter = filters.status || "all";
@@ -120,7 +154,8 @@ export default function RewardAdmin() {
   ], []);
 
   return <main className={cx("page")}>
-    <header className={cx("hero")}><div><div className={cx("eyebrow")}><Sparkles size={15} /> LOYALTY OPERATIONS</div><h1>Rewards control centre</h1><p>Design sustainable earning policies across every MassClick category, with transparent caps and verified milestones.</p></div><Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setEditing({ ...emptyRule })} className={cx("primary-action")}>Create reward policy</Button></header>
+    <input ref={fileInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={readImportFile} hidden />
+    <header className={cx("hero")}><div><div className={cx("eyebrow")}><Sparkles size={15} /> LOYALTY OPERATIONS</div><h1>Rewards control centre</h1><p>Design sustainable earning policies across every MassClick category, with transparent caps and verified milestones.</p></div><div className={cx("hero-actions")}><Button variant="text" startIcon={<Download size={18} />} onClick={() => downloadRewardPolicyTemplate(categories)}>Template</Button><Button variant="outlined" startIcon={<Upload size={18} />} onClick={() => fileInputRef.current?.click()} disabled={readingFile}>{readingFile ? "Reading Excel…" : "Import Excel"}</Button><Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setEditing({ ...emptyRule })} className={cx("primary-action")}>Create reward policy</Button></div></header>
 
     <section className={cx("summary-grid")}>
       <SummaryCard icon={Layers3} label="Configured categories" value={format(rules.length)} note={`${format(categories.length)} available in MassClick`} tone="orange" />
@@ -139,6 +174,21 @@ export default function RewardAdmin() {
       <DialogTitle className={cx("delete-dialog-title")}><span><Trash2 size={23} /></span><div><small>DELETE POLICY</small><h2>Remove reward policy?</h2><p>This stops future claims for the selected category.</p></div></DialogTitle>
       <DialogContent className={cx("delete-dialog-content")}><div className={cx("delete-category")}><Award size={20} /><div><span>Selected category</span><strong>{deleteTarget?.categoryName}</strong><small>{deleteTarget?.categoryKey}</small></div></div><p><b>Historical data is protected.</b> Existing claims, customer wallet balances and awarded-point transactions will not be deleted.</p></DialogContent>
       <DialogActions className={cx("delete-dialog-actions")}><Button onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button><Button variant="contained" color="error" startIcon={<Trash2 size={17} />} onClick={() => remove(deleteTarget)} disabled={deleting}>{deleting ? "Deleting policy…" : "Delete policy"}</Button></DialogActions>
+    </Dialog>
+
+    <Dialog open={Boolean(importRows)} onClose={() => !importing && setImportRows(null)} maxWidth="lg" fullWidth PaperProps={{ className: cx("import-dialog") }}>
+      <DialogTitle className={cx("dialog-title")}><div><span className={cx("section-kicker")}>BULK POLICY IMPORT</span><h2>Review Excel reward policies</h2><p>{importFileName} · Validate every row before writing policies.</p></div><button onClick={() => setImportRows(null)} disabled={importing} aria-label="Close import dialog"><X size={20} /></button></DialogTitle>
+      <DialogContent className={cx("import-content")}>
+        <div className={cx("import-summary")}>
+          <div><FileSpreadsheet size={22} /><span>Total rows<strong>{importRows?.length || 0}</strong></span></div>
+          <div className={cx("import-valid")}><CheckCircle2 size={22} /><span>Ready to import<strong>{importRows?.filter((row) => !row.errors.length).length || 0}</strong></span></div>
+          <div className={cx("import-invalid")}><AlertCircle size={22} /><span>Need attention<strong>{importRows?.filter((row) => row.errors.length).length || 0}</strong></span></div>
+          <Button variant="outlined" startIcon={<Download size={17} />} onClick={() => downloadRewardPolicyTemplate(categories)}>Download template</Button>
+        </div>
+        <div className={cx("import-table-wrap")}><table className={cx("import-table")}><thead><tr><th>Excel row</th><th>Category</th><th>Milestones</th><th>Enquiry cap</th><th>Monthly cap</th><th>Mode</th><th>Action</th><th>Validation</th></tr></thead><tbody>{importRows?.map((row) => <tr key={row.rowNumber} className={cx(row.errors.length ? "row-error" : "row-valid")}><td>#{row.rowNumber}</td><td><b>{row.rule.categoryName || "Unknown"}</b><small>{row.rule.categoryKey}</small></td><td>{row.rule.basePoints} / {row.rule.acceptedBonus} / {row.rule.completedBonus} / {row.rule.customerConfirmedBonus}</td><td>{row.rule.maxPointsPerEnquiry} pts</td><td>{row.rule.monthlyCustomerCap} pts</td><td>{row.rule.approvalMode}<small>{row.rule.enabled ? "Active" : "Paused"}</small></td><td><span className={cx(row.action === "Update" ? "update-badge" : "create-badge")}>{row.action}</span></td><td>{row.errors.length ? <span className={cx("error-copy")}><AlertCircle size={14} />{row.errors.join("; ")}</span> : <span className={cx("ready-copy")}><CheckCircle2 size={14} />Ready</span>}</td></tr>)}</tbody></table></div>
+        {importRows?.some((row) => row.errors.length) && <p className={cx("import-note")}><AlertCircle size={16} /> Invalid rows will not be imported. Correct them in Excel and select the updated file to include them.</p>}
+      </DialogContent>
+      <DialogActions className={cx("dialog-actions")}><Button startIcon={<Download size={17} />} onClick={() => downloadRewardPolicyTemplate(categories)} disabled={importing}>Template</Button><Button onClick={() => fileInputRef.current?.click()} disabled={importing}>Choose another file</Button><Button variant="contained" startIcon={<Upload size={17} />} onClick={importValidRows} disabled={importing || !importRows?.some((row) => !row.errors.length)}>{importing ? "Importing…" : `Import ${importRows?.filter((row) => !row.errors.length).length || 0} valid rows`}</Button></DialogActions>
     </Dialog>
 
     <Dialog open={Boolean(editing)} onClose={() => !saving && setEditing(null)} maxWidth="md" fullWidth PaperProps={{ className: cx("dialog-paper") }}>

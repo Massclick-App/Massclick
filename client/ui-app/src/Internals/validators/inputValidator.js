@@ -1,3 +1,5 @@
+import { isValidEmailAddress } from "../../utils/emailValidation.js";
+
 /**
  * Comprehensive Input Validator
  * Handles: type validation, normalization, business logic, keyword cleaning, data quality
@@ -141,7 +143,7 @@ class InputValidator {
 
       // Check format (phone or email)
       const isPhone = /^[\d\s+\-()]{6,}$/.test(contact);
-      const isEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(contact);
+      const isEmail = isValidEmailAddress(contact);
 
       if (!isPhone && !isEmail) {
         errors.push('Contact must be valid phone or email');
@@ -198,9 +200,7 @@ class InputValidator {
       errors.push('Email is required');
     } else {
       const email = data.email.trim().toLowerCase();
-      const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
-      if (!emailRegex.test(email)) {
+      if (!isValidEmailAddress(email)) {
         errors.push('Invalid email format');
       }
 
