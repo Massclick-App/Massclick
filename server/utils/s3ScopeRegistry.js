@@ -64,6 +64,7 @@ import massclickFeedPostModel from "../model/massclickFeed/massclickFeedPostMode
 import massclickDocumentsModel from "../model/massclickDocuments/massclickDocumentsModel.js";
 import fcmCampaignModel from "../model/fcmCampaignModel/fcmCampaignModel.js";
 import chatMessageModel from "../model/chat/chatMessageModel.js";
+import supportTicketModel from "../model/support/supportTicketModel.js";
 
 import {
   invalidateAdvertisementCache,
@@ -90,6 +91,20 @@ const stringy = { $type: "string", $ne: "" };
 const elemStringy = { $elemMatch: { $type: "string", $ne: "" } };
 
 export const SCOPES = {
+  supportTickets: {
+    scopeKey: "supportTickets",
+    scopeLabel: "Support Tickets",
+    scopeDescription: "Customer support ticket attachments.",
+    folderPrefix: "support-tickets",
+    entity: "support-tickets",
+    collection: "supporttickets",
+    model: supportTicketModel,
+    progressKey: "tickets",
+    projection: { replies: 1 },
+    buildQuery: () => ({ "replies.attachments.key": stringy }),
+    fields: [{ path: "replies", kind: "arrayOfObjects", itemPath: "attachments.key", valueShape: "key", purpose: "attachment", stability: "versioned" }],
+    invalidate: [],
+  },
   chatMessages: {
     scopeKey: "chatMessages",
     scopeLabel: "Chat Messages",

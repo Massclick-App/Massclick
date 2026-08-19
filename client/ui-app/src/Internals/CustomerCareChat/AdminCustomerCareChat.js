@@ -279,6 +279,13 @@ export default function AdminCustomerCareChat() {
         ERR('handleUnreadCount error:', error);
       }
     };
+    const handlePresence = (presence) => {
+      const matches = (conversation) =>
+        String(conversation?.customerUserId || "") === String(presence?.userId || "") ||
+        Boolean(presence?.mobileNumber && conversation?.customerMobile === presence.mobileNumber);
+      setConversations((prev) => prev.map((conversation) => matches(conversation) ? { ...conversation, isOnline: Boolean(presence.online) } : conversation));
+      setSelected((current) => matches(current) ? { ...current, isOnline: Boolean(presence.online) } : current);
+    };
 
     const isConnected = Boolean(socket?.connected);
     LOG('Socket effect: socket already connected?', isConnected, '| id:', socket?.id);
@@ -290,6 +297,7 @@ export default function AdminCustomerCareChat() {
     socket?.on("chat:conversation:updated", handleConversationUpdated);
     socket?.on("chat:message:new", handleMessageNew);
     socket?.on("chat:unread:count", handleUnreadCount);
+    socket?.on("chat:presence", handlePresence);
 
     return () => {
       LOG('Socket effect cleanup — removing listeners');
@@ -299,6 +307,7 @@ export default function AdminCustomerCareChat() {
       socket?.off("chat:conversation:updated", handleConversationUpdated);
       socket?.off("chat:message:new", handleMessageNew);
       socket?.off("chat:unread:count", handleUnreadCount);
+      socket?.off("chat:presence", handlePresence);
     };
   }, [scrollToEnd, selected?.id, loadConversations]);
 
@@ -364,9 +373,9 @@ export default function AdminCustomerCareChat() {
 
   const handleAttachment = (file) => {
     if (!file) return;
-    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "text/plain", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    if (!allowed.includes(file.type)) return setSendError("Unsupported file. Use an image, PDF, TXT, DOC or DOCX file.");
-    if (file.size > 8 * 1024 * 1024) return setSendError("The attachment must be 8 MB or smaller.");
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm", "video/quicktime", "application/pdf", "text/plain", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip", "application/x-zip-compressed"];
+    if (!allowed.includes(file.type)) return setSendError("Unsupported image, video or document type.");
+    if (file.size > 15 * 1024 * 1024) return setSendError("The attachment must be 15 MB or smaller.");
     const reader = new FileReader();
     reader.onload = () => setAttachment({ dataUrl: reader.result, fileName: file.name, mimeType: file.type, fileSize: file.size });
     reader.onerror = () => setSendError("The selected file could not be read.");

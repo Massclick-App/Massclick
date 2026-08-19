@@ -20,5 +20,5 @@ const asyncAction = (type, request) => async (dispatch) => {
 export const loadSupportTickets = (status = "all") => asyncAction("LIST", () => listTicketsApi(status));
 export const createSupportTicket = (data) => asyncAction("CREATE", () => createTicketApi(data));
 export const loadSupportTicket = (id) => asyncAction("DETAIL", () => getTicketApi(id));
-export const replySupportTicket = (id, message) => asyncAction("UPDATE", () => replyTicketApi(id, message));
+export const replySupportTicket = (id, message, attachments = []) => asyncAction("UPDATE", () => replyTicketApi(id, message, attachments));
 export const closeSupportTicket = (id) => asyncAction("UPDATE", () => updateTicketStatusApi(id, "closed"));

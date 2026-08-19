@@ -38,6 +38,7 @@
 .avatar { width:42px; height:42px; display:grid; place-items:center; border-radius:50%; background:#eaf1ff; color:var(--care-primary); font-weight:800; }
 .conversationActive .avatar { background:linear-gradient(145deg,var(--care-accent),#ff8a39); color:#fff; }
 .unread { position:absolute; right:-3px; bottom:-2px; min-width:17px; height:17px; padding:0 4px; display:grid; place-items:center; border:2px solid #fff; border-radius:9px; background:var(--care-accent); color:#fff; font-size:9px; font-weight:800; }
+.presenceDot { position:absolute; right:-1px; top:-1px; width:11px; height:11px; border:2px solid #fff; border-radius:50%; background:#22c55e; box-shadow:0 0 0 2px rgba(34,197,94,.14); }
 .conversationHead { width:100%; min-width:0; display:flex; justify-content:space-between; gap:8px; align-items:center; }
 .customerName { min-width:0; flex:1; overflow:hidden; color:#111827; font-size:13px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
 .conversationTime { color:#94a3b8; font-size:10px; white-space:nowrap; }
@@ -52,6 +53,7 @@
 .headerName { color:#111827; font-size:14px; font-weight:800; }
 .onlineLine { display:flex; align-items:center; gap:6px; margin-top:2px; color:#64748b; font-size:11px; }
 .onlineDot { width:6px; height:6px; border-radius:50%; background:#22c55e; }
+.offlineDot { background:#94a3b8; box-shadow:none; }
 .headerActions { display:flex; align-items:center; gap:4px; }
 .iconAction { width:34px; height:34px; border:0; border-radius:9px; background:transparent; color:#53647c; display:grid; place-items:center; cursor:pointer; }
 .iconAction:hover { background:#f1f5f9; color:var(--care-primary); }
@@ -66,6 +68,7 @@
 .bubbleAdmin { border:0; border-radius:15px 5px 15px 15px; background:linear-gradient(145deg,var(--care-primary),#064ecb); color:#fff; box-shadow:0 7px 17px rgba(11,63,165,.18); }
 .messageText { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.5; }
 .messageImage { display:block; width:min(100%,360px); max-height:260px; margin-bottom:8px; border-radius:9px; object-fit:cover; }
+.messageVideo { display:block; width:min(100%,400px); max-height:280px; margin-bottom:8px; border-radius:9px; background:#0f172a; }
 .fileCard { display:flex; align-items:center; gap:8px; min-width:190px; padding:9px 10px; margin-bottom:7px; border-radius:8px; background:rgba(148,163,184,.16); color:inherit; text-decoration:none; font-size:11px; font-weight:700; }
 .messageMeta { display:flex; justify-content:flex-end; align-items:center; gap:4px; margin-top:5px; opacity:.68; font-size:9px; }
 .emptyChat { height:100%; display:grid; place-items:center; color:#64748b; font-size:13px; text-align:center; }

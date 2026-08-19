@@ -23,8 +23,13 @@
 .bubbleCustomer { background: #10275b; color: #fff; border-bottom-right-radius: 4px; }
 .messageMeta { display: block; font-size: .65rem; opacity: .65; margin-top: 6px; }
 .messageImage { display:block; width:min(100%,320px); max-height:240px; margin-bottom:7px; border-radius:9px; object-fit:cover; }
+.messageVideo { display:block; width:min(100%,360px); max-height:260px; margin-bottom:7px; border-radius:9px; background:#0f172a; }
 .fileCard { display:flex; align-items:center; gap:7px; padding:8px 10px; margin-bottom:6px; border-radius:8px; background:rgba(148,163,184,.18); color:inherit; text-decoration:none; font-size:.75rem; font-weight:700; }
-.composer { margin: 0 clamp(18px,5vw,56px) 24px; padding: 6px 7px 6px 18px; border: 1px solid #dce2eb; border-radius: 999px; background: #fff; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 8px; box-shadow: 0 5px 18px rgba(28,44,75,.05); }
+.composerArea { position:relative; margin:0 clamp(18px,5vw,56px) 24px; }
+.composer { margin:0; padding:6px 7px 6px 9px; border:1px solid #dce2eb; border-radius:999px; background:#fff; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:7px; box-shadow:0 5px 18px rgba(28,44,75,.05); }
+.composerTools { display:flex; align-items:center; gap:1px; }.composerTools input { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }.composerTools label,.composerTools button { width:31px; height:31px; padding:0; border:0; border-radius:50%; display:grid; place-items:center; background:transparent; color:#74829a; cursor:pointer; }.composerTools label:hover,.composerTools button:hover { background:#edf2ff; color:#274bc7; }
+.attachmentPreview { width:max-content; max-width:min(100%,420px); min-height:42px; margin:0 0 7px 5px; padding:6px 7px 6px 10px; display:flex; align-items:center; gap:8px; border:1px solid #dce4f1; border-radius:10px; background:#f7f9ff; color:#54647e; }.attachmentPreview > span { min-width:0; display:grid; gap:1px; }.attachmentPreview strong { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.72rem; }.attachmentPreview small { color:#929daf; font-size:.62rem; }.attachmentPreview button { width:27px; height:27px; padding:0; border:0; border-radius:50%; display:grid; place-items:center; background:#edf0f5; color:#66738a; cursor:pointer; }
+.emojiPicker { position:absolute; left:8px; bottom:55px; z-index:3; display:flex; gap:2px; padding:6px; border:1px solid #dce3ed; border-radius:11px; background:#fff; box-shadow:0 10px 28px rgba(15,23,42,.16); }.emojiPicker button { width:31px; height:31px; padding:0; border:0; border-radius:7px; background:transparent; font-size:18px; cursor:pointer; }.emojiPicker button:hover { background:#f1f4f8; }
 .composer :global(.MuiOutlinedInput-root) { padding: 0; font-size: .88rem; }
 .composer :global(.MuiOutlinedInput-notchedOutline) { border: 0; }
 .composer :global(.MuiInputBase-input) { padding: 9px 0; }
@@ -34,7 +39,7 @@
 @media (max-width: 800px) {
   .header { min-height: 70px; padding: 12px 18px; }
   .messages { padding: 18px 22px; }
-  .composer { margin: 0 16px 16px; }
+  .composerArea { margin: 0 16px 16px; }
 }
 @media (max-width: 480px) {
   .header { min-height: 64px; padding: 10px 14px; }
@@ -43,7 +48,9 @@
   .status { font-size: 0; }
   .messages { padding: 14px 12px; }
   .bubble { max-width: 88%; font-size: .86rem; }
-  .composer { margin: 0 10px max(10px,env(safe-area-inset-bottom)); padding-left: 14px; }
+  .composerArea { margin: 0 10px max(10px,env(safe-area-inset-bottom)); }
+  .composer { padding-left:7px; gap:3px; }
+  .composerTools { gap:0; }.composerTools label,.composerTools button { width:27px; height:29px; }
   .composer > button { width: 38px; height: 38px; min-width: 38px; }
 }
 @media (prefers-reduced-motion: reduce) { .messages { scroll-behavior: auto; } }

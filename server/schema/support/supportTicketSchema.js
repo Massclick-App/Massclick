@@ -1,10 +1,18 @@
 import mongoose, { Schema } from "mongoose";
 
+const attachmentSchema = new Schema({
+  key: { type: String, required: true, trim: true },
+  fileName: { type: String, required: true, trim: true, maxlength: 180 },
+  mimeType: { type: String, required: true, trim: true, maxlength: 120 },
+  fileSize: { type: Number, required: true, min: 1 },
+}, { _id: false });
+
 const replySchema = new Schema({
   senderType: { type: String, enum: ["customer", "admin"], required: true },
   senderId: { type: Schema.Types.ObjectId, required: true },
   senderName: { type: String, default: "", trim: true },
   text: { type: String, required: true, trim: true, maxlength: 4000 },
+  attachments: { type: [attachmentSchema], default: [] },
 }, { timestamps: true });
 
 const supportTicketSchema = new Schema({

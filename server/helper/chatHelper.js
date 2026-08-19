@@ -5,14 +5,19 @@ import { emitToRoom } from "../websocket/roomManager.js";
 import { WS_EVENTS, buildRoom } from "../websocket/constants.js";
 import { uploadImageToS3, getSignedUrlByKey } from "../s3Uploder.js";
 import { s3Path } from "../utils/s3ObjectKeys.js";
+import { isCustomerOnline } from "../websocket/connectionManager.js";
 
 const MAX_MESSAGE_LENGTH = 2000;
-const MAX_ATTACHMENT_SIZE = 8 * 1024 * 1024;
+const MAX_ATTACHMENT_SIZE = 15 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = new Set([
   "image/jpeg", "image/png", "image/gif", "image/webp",
+  "video/mp4", "video/webm", "video/quicktime",
   "application/pdf", "text/plain",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/zip", "application/x-zip-compressed",
 ]);
 
 const toObjectId = (id) => {
@@ -36,7 +41,14 @@ const serializeDoc = (doc) => {
   };
 };
 
-export const serializeConversation = serializeDoc;
+export const serializeConversation = (doc) => {
+  const value = serializeDoc(doc);
+  if (!value) return value;
+  return {
+    ...value,
+    isOnline: isCustomerOnline({ userId: value.customerUserId, mobileNumber: value.customerMobile }),
+  };
+};
 export const serializeMessage = (doc) => {
   const value = serializeDoc(doc);
   if (!value?.attachment?.key) return value;
