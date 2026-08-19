@@ -26,6 +26,7 @@ import MarkChatReadIcon from "@mui/icons-material/MarkChatRead";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import SendIcon from "@mui/icons-material/Send";
+import CustomerCareWorkspace from "./CustomerCareWorkspace";
 import {
   fetchChatConversations,
   fetchChatMessages,
@@ -80,6 +81,9 @@ export default function AdminCustomerCareChat() {
   const [sendError, setSendError] = useState(null);
   const [listError, setListError] = useState(null);
   const [authExpired, setAuthExpired] = useState(false);
+  const [mobilePane, setMobilePane] = useState("list");
+  const [showDetails, setShowDetails] = useState(false);
+  const [attachment, setAttachment] = useState(null);
   const endRef = useRef(null);
   // Always-current ref so socket event handlers (closed over at effect-run time)
   // can read the latest selected conversation without stale closure issues.
@@ -311,7 +315,7 @@ export default function AdminCustomerCareChat() {
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || !selected?.id || sending) return;
+    if ((!text && !attachment) || !selected?.id || sending) return;
 
     LOG('handleSend: sending message to conversation:', selected.id, '| length:', text.length);
     setSending(true);
@@ -322,8 +326,10 @@ export default function AdminCustomerCareChat() {
       const result = await sendChatMessageApi({
         conversationId: selected.id,
         text,
+        attachment,
         token: getAdminChatToken(),
       });
+      setAttachment(null);
       LOG('handleSend: success — message id:', result.message?.id);
       setSelected(result.conversation);
       setConversations((prev) => upsertConversation(prev, result.conversation));
@@ -356,6 +362,68 @@ export default function AdminCustomerCareChat() {
     setConversations((prev) => upsertConversation(prev, updated));
   };
 
+  const handleAttachment = (file) => {
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "text/plain", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!allowed.includes(file.type)) return setSendError("Unsupported file. Use an image, PDF, TXT, DOC or DOCX file.");
+    if (file.size > 8 * 1024 * 1024) return setSendError("The attachment must be 8 MB or smaller.");
+    const reader = new FileReader();
+    reader.onload = () => setAttachment({ dataUrl: reader.result, fileName: file.name, mimeType: file.type, fileSize: file.size });
+    reader.onerror = () => setSendError("The selected file could not be read.");
+    reader.readAsDataURL(file);
+  };
+
+  const selectConversation = (conversation) => {
+    setSelected(conversation);
+    setMobilePane("chat");
+  };
+
+  const quickReplies = [
+    "Thanks for reaching out. How can I help?",
+    "Please share your registered mobile number.",
+    "Our team is checking this and will update you shortly.",
+  ];
+
+  return (
+    <CustomerCareWorkspace
+      attachment={attachment}
+      authExpired={authExpired}
+      connected={connected}
+      conversations={conversations}
+      formatTime={formatTime}
+      getInitials={getInitials}
+      handleSend={handleSend}
+      handleAttachment={handleAttachment}
+      handleStatusUpdate={handleStatusUpdate}
+      input={input}
+      listError={listError}
+      loadingList={loadingList}
+      loadingMessages={loadingMessages}
+      messages={messages}
+      mobilePane={mobilePane}
+      quickReplies={quickReplies}
+      search={search}
+      selected={selected}
+      selectConversation={selectConversation}
+      sendError={sendError}
+      sending={sending}
+      setInput={setInput}
+      setAttachment={setAttachment}
+      setListError={setListError}
+      setMobilePane={setMobilePane}
+      setSearch={setSearch}
+      setSendError={setSendError}
+      setShowDetails={setShowDetails}
+      setStatus={setStatus}
+      showDetails={showDetails}
+      status={status}
+      loadConversations={loadConversations}
+      markRead={() => selected && markChatRead({ conversationId: selected.id, token })}
+      endRef={endRef}
+    />
+  );
+
+  // eslint-disable-next-line no-unreachable
   return (
     <Box sx={{ width: "100%", maxWidth: 1280, mx: "auto" }}>
       <Box sx={{ mb: 3, width: "100%" }}>

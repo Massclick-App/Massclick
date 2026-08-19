@@ -3,6 +3,7 @@ import { Box, Button, CircularProgress, IconButton, TextField, Typography } from
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import {
   fetchChatMessages,
@@ -15,6 +16,13 @@ import { AUTH_EXPIRED_EVENT, connectSocket } from "../../services/socketService"
 import styles from "./CustomerChatPanel.module.css";
 
 const LOG = () => {};const WARN = () => {};const ERR = () => {};const cx = createScopedClassNames(styles);
+
+const COMMON_QUESTIONS = [
+  "How do I update my business details?",
+  "I am not getting leads, what should I do?",
+  "How does business verification work?",
+  "My payment failed, what should I do?",
+];
 
 const formatTime = (value) => {
   if (!value) return "";
@@ -45,6 +53,7 @@ export default function CustomerChatPanel({
   const [authExpired, setAuthExpired] = useState(false);
   const [, setAuthVersion] = useState(0);
   const endRef = useRef(null);
+  const inputRef = useRef(null);
 
   const token = getCustomerChatToken();
   const isLoggedIn = Boolean(token);
@@ -309,11 +318,20 @@ export default function CustomerChatPanel({
             {loading && <CircularProgress size={28} sx={{ m: "auto", color: "#ff7a00" }} />}
             {!loading && messages.length === 0 && (
               <div className={cx("emptyState")}>
-                <Typography sx={{ fontWeight: 800, color: "#0f172a", mb: 1 }}>How can we help?</Typography>
-                Send your question and the Massclick team will reply here.
+                <span className={cx("wave")} aria-hidden="true">👋</span>
+                <Typography sx={{ fontWeight: 800, color: "#151d2f", mb: 0.5, fontSize: "1.35rem" }}>Hello!</Typography>
+                <Typography sx={{ color: "#68758c", mb: 2.5 }}>How can we assist you today?</Typography>
+                <p className={cx("questionsLabel")}>Common questions</p>
+                <div className={cx("questions")}>
+                  {COMMON_QUESTIONS.map((question) => (
+                    <button key={question} type="button" onClick={() => { setInput(question); inputRef.current?.focus(); }}>
+                      <span>{question}</span><span aria-hidden="true">›</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            {messages.map((message) => {
+            {messages.map((message) => { 
               const isCustomer = message.senderType === "customer";
               return (
                 <div
@@ -321,6 +339,12 @@ export default function CustomerChatPanel({
                   className={cx(`bubbleRow ${isCustomer ? "bubbleRowCustomer" : "bubbleRowAdmin"}`)}
                 >
                   <div className={cx(`bubble ${isCustomer ? "bubbleCustomer" : "bubbleAdmin"}`)}>
+                    {message.attachment?.url && (message.attachment.mimeType || "").startsWith("image/") && (
+                      <a href={message.attachment.url} target="_blank" rel="noreferrer"><img className={cx("messageImage")} src={message.attachment.url} alt={message.attachment.fileName || "Chat attachment"} /></a>
+                    )}
+                    {message.attachment?.url && !(message.attachment.mimeType || "").startsWith("image/") && (
+                      <a className={cx("fileCard")} href={message.attachment.url} target="_blank" rel="noreferrer"><AttachFileIcon fontSize="small" />{message.attachment.fileName}</a>
+                    )}
                     {message.text}
                     <span className={cx("messageMeta")}>
                       {message.senderName || (isCustomer ? "You" : "Support")} · {formatTime(message.createdAt)}
@@ -339,9 +363,10 @@ export default function CustomerChatPanel({
 
           <div className={cx("composer")}>
             <TextField
+              inputRef={inputRef}
               size="small"
               value={input}
-              placeholder={conversation?.status === "closed" ? "Reply to reopen this chat" : "Type your message"}
+              placeholder={conversation?.status === "closed" ? "Reply to reopen this chat" : "Type your message..."}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {

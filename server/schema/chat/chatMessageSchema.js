@@ -18,7 +18,13 @@ const chatMessageSchema = new mongoose.Schema({
     index: true,
   },
   senderName: { type: String, default: "", trim: true },
-  text: { type: String, required: true, trim: true, maxlength: 2000 },
+  text: { type: String, default: "", trim: true, maxlength: 2000 },
+  attachment: {
+    key: { type: String, default: "", trim: true },
+    fileName: { type: String, default: "", trim: true, maxlength: 180 },
+    mimeType: { type: String, default: "", trim: true, maxlength: 100 },
+    fileSize: { type: Number, default: 0, min: 0 },
+  },
   readByCustomerAt: { type: Date, default: null },
   readByAdminAt: { type: Date, default: null },
 }, {

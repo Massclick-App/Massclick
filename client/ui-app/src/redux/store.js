@@ -46,6 +46,7 @@ import searchRequestReducer from './reducers/searchRequestReducer.js';
 import massclickEventReducer from './reducers/massclickEventReducer.js';
 import legalDocumentsReducer from './reducers/legalDocumentsReducer.js';
 import hiringReducer from './reducers/hiringReducer.js';
+import supportReducer from './reducers/supportReducer.js';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -94,6 +95,7 @@ const rootReducer = combineReducers({
   userFeedback: userFeedbackReducer,
   searchRequests: searchRequestReducer,
   massclickEvents: massclickEventReducer,
+  support: supportReducer,
 });
 
 let storeInstance = null;

@@ -3,8 +3,17 @@ import chatConversationModel from "../model/chat/chatConversationModel.js";
 import chatMessageModel from "../model/chat/chatMessageModel.js";
 import { emitToRoom } from "../websocket/roomManager.js";
 import { WS_EVENTS, buildRoom } from "../websocket/constants.js";
+import { uploadImageToS3, getSignedUrlByKey } from "../s3Uploder.js";
+import { s3Path } from "../utils/s3ObjectKeys.js";
 
 const MAX_MESSAGE_LENGTH = 2000;
+const MAX_ATTACHMENT_SIZE = 8 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  "image/jpeg", "image/png", "image/gif", "image/webp",
+  "application/pdf", "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
 
 const toObjectId = (id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("INVALID_ID");
@@ -28,7 +37,17 @@ const serializeDoc = (doc) => {
 };
 
 export const serializeConversation = serializeDoc;
-export const serializeMessage = serializeDoc;
+export const serializeMessage = (doc) => {
+  const value = serializeDoc(doc);
+  if (!value?.attachment?.key) return value;
+  return {
+    ...value,
+    attachment: {
+      ...value.attachment,
+      url: getSignedUrlByKey(value.attachment.key),
+    },
+  };
+};
 
 export const getAdminUnreadCount = () =>
   chatConversationModel.countDocuments({ unreadForAdmin: { $gt: 0 } });
@@ -146,17 +165,40 @@ export const listChatMessages = async ({
   };
 };
 
-export const sendChatMessage = async ({ conversationId, user, text }) => {
+export const sendChatMessage = async ({ conversationId, user, text, attachment }) => {
   const conversation = await getConversationForUser(conversationId, user);
-  const cleanText = normalizeMessageText(text);
+  const hasAttachment = Boolean(attachment?.dataUrl);
+  const cleanText = hasAttachment && !String(text || "").trim() ? "" : normalizeMessageText(text);
   const senderType = user.authType === "admin" ? "admin" : "customer";
 
+  let uploadedAttachment;
+  const messageId = new mongoose.Types.ObjectId();
+  if (hasAttachment) {
+    const mimeType = String(attachment.mimeType || "").toLowerCase();
+    const fileName = String(attachment.fileName || "attachment").replace(/[\r\n]/g, " ").slice(0, 180);
+    const dataMatch = String(attachment.dataUrl).match(/^data:([\w/+.-]+);base64,(.+)$/);
+    if (!dataMatch || dataMatch[1].toLowerCase() !== mimeType) throw new Error("INVALID_ATTACHMENT_DATA");
+    const padding = (dataMatch[2].match(/=*$/)?.[0].length || 0);
+    const decodedSize = Math.floor((dataMatch[2].length * 3) / 4) - padding;
+    const fileSize = Number(attachment.fileSize) || decodedSize;
+    if (!ALLOWED_ATTACHMENT_TYPES.has(mimeType)) throw new Error("INVALID_ATTACHMENT_TYPE");
+    if (!decodedSize || decodedSize > MAX_ATTACHMENT_SIZE || Math.abs(fileSize - decodedSize) > 2) throw new Error("INVALID_ATTACHMENT_SIZE");
+    const upload = await uploadImageToS3(
+      attachment.dataUrl,
+      s3Path({ entity: "chat-messages", entityId: messageId, purpose: "attachment" }),
+      { skipImageConversion: !mimeType.startsWith("image/") },
+    );
+    uploadedAttachment = { key: upload.key, fileName, mimeType, fileSize };
+  }
+
   const message = await chatMessageModel.create({
+    _id: messageId,
     conversationId: conversation.id,
     senderType,
     senderId: user.userId,
     senderName: user.userName || (senderType === "admin" ? "Admin" : "Customer"),
     text: cleanText,
+    ...(uploadedAttachment ? { attachment: uploadedAttachment } : {}),
     ...(senderType === "admin"
       ? { readByAdminAt: new Date() }
       : { readByCustomerAt: new Date() }),
@@ -167,7 +209,7 @@ export const sendChatMessage = async ({ conversationId, user, text }) => {
       status: "open",
       closedAt: null,
       closedBy: null,
-      lastMessageText: cleanText,
+      lastMessageText: cleanText || `Attachment: ${uploadedAttachment?.fileName || "file"}`,
       lastMessageAt: message.createdAt,
       lastMessageSenderType: senderType,
     },
