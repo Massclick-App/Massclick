@@ -4,7 +4,7 @@ import User from "../../model/msg91Model/usersModels.js";
 import { assetUrl } from "../../utils/assetUrl.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import searchLogModel from "../../model/businessList/searchLogModel.js";
-import { sendWhatsAppMessage, sendLoginWelcomeMessage } from "../../helper/msg91/smsGatewayHelper.js";
+import { sendWhatsAppMessage, sendLoginWelcomeMessage, maybeSendLoginWelcome } from "../../helper/msg91/smsGatewayHelper.js";
 import { getSettings } from "../../helper/systemSettings/settingsService.js";
 import { logAuthAuditEvent } from "../../auth/authAuditStore.js";
 import { resolveAuthActorFromToken } from "../../auth/authResolver.js";
@@ -214,13 +214,23 @@ export const verifyOtpAction = async (req, res) => {
 
     let user = await User.findOne({ mobileNumber1: cleanNumber });
     let isNewUser = false;
+    // True when this request creates the account without a name — the greeting
+    // then has to wait for the profile-setup save that follows.
+    let nameDeferred = false;
 
     if (!user) {
 
       isNewUser = true;
 
       const normalizedUserName = String(userName || "").trim();
-      if (!isReviewer && normalizedUserName.length < 2) {
+      // Mobile asks for the name on the profile-setup screen that follows
+      // verification, so it legitimately posts without one and the account is
+      // created under the `User_<mobile>` placeholder below. Web asks in the
+      // same modal as the code and is still held to it — otherwise a closed
+      // modal would strand a placeholder account with no way back to it.
+      const nameCollectedAfterLogin = registeredFrom === "mobile";
+      nameDeferred = nameCollectedAfterLogin && normalizedUserName.length < 2;
+      if (!isReviewer && !nameCollectedAfterLogin && normalizedUserName.length < 2) {
         return res.status(400).json({
           success: false,
           code: "NAME_REQUIRED",
@@ -321,11 +331,13 @@ export const verifyOtpAction = async (req, res) => {
       console.error("Customer reward summary sync failed:", walletSyncError.message);
     }
 
-    if (isNewUser && !isReviewer && settings?.whatsapp_login_welcome) {
-      try {
-        await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
-      } catch (err) {
-        console.error("WhatsApp welcome message failed:", err.message);
+    if (isNewUser && !isReviewer) {
+      // No-op while the account is still on its placeholder name; the flag is
+      // what tells the profile save (updateOtpUser) to greet them instead.
+      const welcomed = await maybeSendLoginWelcome(user);
+      if (!welcomed && nameDeferred) {
+        user.loginWelcomePending = true;
+        await user.save();
       }
     }
 

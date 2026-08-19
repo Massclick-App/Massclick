@@ -94,6 +94,15 @@ const message91UsersSchema = new mongoose.Schema({
   loginCount: { type: Number, default: 0 },
   welcomeBonusEligible: { type: Boolean, default: false },
   welcomeBonusGrantedAt: { type: Date, default: null },
+  // The WhatsApp welcome can only go out once the account has a real name.
+  // Web has one at verify time; mobile only gets one after profile setup,
+  // so there are two possible send points and this stamp stops them from
+  // doubling up.
+  loginWelcomeSentAt: { type: Date, default: null },
+  // Set only when an account is created before its owner has typed a name,
+  // so the profile save that follows knows a greeting is still owed.
+  // Accounts predating this flag stay false and are never retro-greeted.
+  loginWelcomePending: { type: Boolean, default: false },
   rewardPoints: {
     availablePoints: { type: Number, min: 0, default: 0 },
     lifetimeEarned: { type: Number, min: 0, default: 0 },
