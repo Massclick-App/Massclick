@@ -135,6 +135,7 @@ const UserRewardsPage = lazy(() => import(/* webpackChunkName: "user-rewards" */
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
 const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock" */ './Internals/clientComponent/mobileHomeDock/MobileHomeDock.js'));
+const AppInstallPrompt = lazy(() => import(/* webpackChunkName: "app-install-prompt" */ './Internals/clientComponent/appInstallPrompt/AppInstallPrompt.js'));
 // Google ad surfaces are intentionally disabled for now.
 // Uncomment these lines if you want to restore them later.
 // const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
@@ -411,6 +412,7 @@ function AppRoutes({
       </Suspense>
       {!isAdminSurface && showGlobalChrome && (
         <Suspense fallback={null}>
+          <AppInstallPrompt />
           <MobileHomeDock
             isLoggedIn={Boolean(getAuthSnapshot()?.customer?.token || localStorage.getItem("authToken"))}
             onRequireLogin={() => setOpenLoginModal(true)}
