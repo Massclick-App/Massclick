@@ -11,6 +11,8 @@ import {
   recordWhatsAppAttempt,
 } from "./whatsappReliabilityHelper.js";
 
+import { getSettings } from "../systemSettings/settingsService.js";
+
 const logger = createLogger('SMS');
 const MSG91_WHATSAPP_BULK_URL = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
 const MSG91_WHATSAPP_NUMBER = process.env.MSG91_WHATSAPP_SENDER_ID;
@@ -1076,3 +1078,37 @@ export const sendEnquiryBusinessLead = async (mobile, lead = {}, context = {}) =
   return response;
 };
 
+
+/// Placeholder names are what `verifyOtpAction` falls back to when an account
+/// is created before its owner has typed a name (the mobile flow asks on the
+/// screen after verification). Greeting someone as "User_9894804201" is worse
+/// than not greeting them yet, so the send waits for the real thing.
+const hasRealUserName = (user) =>
+  Boolean(user?.userName) &&
+  user.userName.trim().length >= 2 &&
+  !/^User_\d+$/.test(user.userName.trim());
+
+/// Sends the one-time WhatsApp welcome if this account is due one, and stamps
+/// the user so a later call is a no-op. Safe to call from every point where an
+/// account might have just become complete; never throws.
+///
+/// Returns true only when a message actually went out.
+export const maybeSendLoginWelcome = async (user) => {
+  if (!user || user.loginWelcomeSentAt || !hasRealUserName(user)) return false;
+
+  try {
+    const settings = await getSettings();
+    if (!settings?.whatsapp_login_welcome) return false;
+
+    await sendLoginWelcomeMessage(user.mobileNumber1, user.userName);
+    // Stamped only after a successful send, so a transient MSG91 failure
+    // leaves the next login or profile save free to retry.
+    user.loginWelcomeSentAt = new Date();
+    user.loginWelcomePending = false;
+    await user.save();
+    return true;
+  } catch (err) {
+    logger.error(`WhatsApp welcome message failed: ${err.message}`);
+    return false;
+  }
+};
