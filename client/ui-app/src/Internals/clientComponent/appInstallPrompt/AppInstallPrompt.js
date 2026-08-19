@@ -55,27 +55,37 @@ const hasRelatedNativeAppInstalled = async () => {
 };
 
 const AppInstallPrompt = () => {
+  const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     let timerId = null;
 
-    const decideVisibility = async () => {
+    const showPromptSheet = async (event = null) => {
       if (!isAndroidMobileBrowser()) return;
       if (readDismissedUntil() > getNow()) return;
       if (await hasRelatedNativeAppInstalled()) return;
 
       timerId = window.setTimeout(() => {
-        if (!cancelled) setVisible(true);
+        if (cancelled) return;
+        setInstallPromptEvent(event);
+        setVisible(true);
       }, 1200);
     };
 
-    decideVisibility();
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      showPromptSheet(event);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    showPromptSheet();
 
     return () => {
       cancelled = true;
       if (timerId) window.clearTimeout(timerId);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
   }, []);
 
@@ -88,6 +98,15 @@ const AppInstallPrompt = () => {
 
   const handleInstall = () => {
     snoozePrompt(MONTH_MS);
+    const promptEvent = installPromptEvent;
+    setVisible(false);
+
+    if (promptEvent && typeof promptEvent.prompt === "function") {
+      promptEvent.prompt();
+      setInstallPromptEvent(null);
+      return;
+    }
+
     window.location.href = PLAY_STORE_URL;
   };
 
