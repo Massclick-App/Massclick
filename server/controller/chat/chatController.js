@@ -56,6 +56,7 @@ export const sendChatMessageAction = async (req, res) => {
       conversationId: req.params.id,
       user: req.chatUser,
       text: req.body.text,
+      attachment: req.body.attachment,
     });
     res.send(result);
   } catch (error) {

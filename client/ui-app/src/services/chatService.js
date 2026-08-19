@@ -67,12 +67,12 @@ export const fetchChatMessages = ({
       .then((res) => res.data)
   );
 
-export const sendChatMessageApi = ({ conversationId, text, token }) =>
+export const sendChatMessageApi = ({ conversationId, text, attachment, token }) =>
   retryWithBackoff(() =>
     axiosInstance
       .post(
         `${API_URL}/chat/conversations/${conversationId}/messages`,
-        { text },
+        { text, attachment },
         getAuthHeader(token)
       )
       .then((res) => res.data),
