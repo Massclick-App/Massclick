@@ -65,6 +65,7 @@ export default function CustomerCareWorkspace(props) {
                   <span className={styles.avatarWrap}>
                     <span className={styles.avatar}>{getInitials(conversation.customerName)}</span>
                     {!!conversation.unreadForAdmin && <span className={styles.unread}>{conversation.unreadForAdmin}</span>}
+                    {conversation.isOnline && <span className={styles.presenceDot} title="Online" />}
                   </span>
                   <span style={{ minWidth: 0 }}>
                     <span className={styles.conversationHead}><span className={styles.customerName}>{conversation.customerName || "Customer"}</span><span className={styles.conversationTime}>{formatTime(conversation.lastMessageAt)}</span></span>
@@ -83,7 +84,7 @@ export default function CustomerCareWorkspace(props) {
               <div className={styles.profileSummary}>
                 <button className={`${styles.iconAction} ${styles.mobileBack}`} onClick={() => setMobilePane("list")} aria-label="Back to conversations"><ArrowBackIcon fontSize="small" /></button>
                 <span className={styles.headerAvatar}>{getInitials(selected.customerName)}</span>
-                <span style={{ minWidth: 0 }}><div className={styles.headerName}>{selected.customerName || "Customer"}</div><div className={styles.onlineLine}><span className={styles.onlineDot} />{selected.customerMobile || "No mobile"} · {selected.status}</div></span>
+                <span style={{ minWidth: 0 }}><div className={styles.headerName}>{selected.customerName || "Customer"}</div><div className={styles.onlineLine}><span className={`${styles.onlineDot} ${selected.isOnline ? "" : styles.offlineDot}`} />{selected.customerMobile || "No mobile"} · {selected.isOnline ? "Online" : "Offline"}</div></span>
               </div>
               <div className={styles.headerActions}>
                 <button className={`${styles.iconAction} ${styles.desktopOnly}`} onClick={markRead} aria-label="Mark read"><DoneAllIcon fontSize="small" /></button>
@@ -97,7 +98,7 @@ export default function CustomerCareWorkspace(props) {
               {!loadingMessages && messages.length === 0 && <div className={styles.emptyChat}>No messages in this conversation yet.</div>}
               {messages.map((message) => {
                 const admin = message.senderType === "admin";
-                return <div key={message.id || message._id} className={`${styles.messageRow} ${admin ? styles.messageRowAdmin : ""}`}><div className={`${styles.bubble} ${admin ? styles.bubbleAdmin : ""}`}>{message.attachment?.url && (message.attachment.mimeType || "").startsWith("image/") && <a href={message.attachment.url} target="_blank" rel="noreferrer"><img className={styles.messageImage} src={message.attachment.url} alt={message.attachment.fileName || "Chat attachment"} /></a>}{message.attachment?.url && !(message.attachment.mimeType || "").startsWith("image/") && <a className={styles.fileCard} href={message.attachment.url} target="_blank" rel="noreferrer"><AttachFileIcon sx={{ fontSize: 18 }} /><span>{message.attachment.fileName}</span></a>}{message.text && <p className={styles.messageText}>{message.text}</p>}<div className={styles.messageMeta}>{formatTime(message.createdAt)}{admin && <DoneAllIcon sx={{ fontSize: 13 }} />}</div></div></div>;
+                return <div key={message.id || message._id} className={`${styles.messageRow} ${admin ? styles.messageRowAdmin : ""}`}><div className={`${styles.bubble} ${admin ? styles.bubbleAdmin : ""}`}>{message.attachment?.url && (message.attachment.mimeType || "").startsWith("image/") && <a href={message.attachment.url} target="_blank" rel="noreferrer"><img className={styles.messageImage} src={message.attachment.url} alt={message.attachment.fileName || "Chat attachment"} /></a>}{message.attachment?.url && (message.attachment.mimeType || "").startsWith("video/") && <video className={styles.messageVideo} src={message.attachment.url} controls preload="metadata" />}{message.attachment?.url && !(message.attachment.mimeType || "").startsWith("image/") && !(message.attachment.mimeType || "").startsWith("video/") && <a className={styles.fileCard} href={message.attachment.url} target="_blank" rel="noreferrer"><AttachFileIcon sx={{ fontSize: 18 }} /><span>{message.attachment.fileName}</span></a>}{message.text && <p className={styles.messageText}>{message.text}</p>}<div className={styles.messageMeta}>{formatTime(message.createdAt)}{admin && <DoneAllIcon sx={{ fontSize: 13 }} />}</div></div></div>;
               })}
               <div ref={endRef} />
             </div>
@@ -106,7 +107,7 @@ export default function CustomerCareWorkspace(props) {
               {attachment && <div className={styles.attachmentPreview}><AttachFileIcon sx={{ fontSize: 16 }} /><span>{attachment.fileName}</span><button onClick={() => setAttachment(null)} aria-label="Remove attachment"><CloseIcon sx={{ fontSize: 15 }} /></button></div>}
               {showEmoji && <div className={styles.emojiPicker}>{emojis.map((emoji) => <button key={emoji} onClick={() => { setInput(`${input}${emoji}`); setShowEmoji(false); }}>{emoji}</button>)}</div>}
               <div className={styles.composerBox}>
-                <input id="care-chat-attachment" className={styles.fileInput} type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,.doc,.docx" onChange={(event) => { handleAttachment(event.target.files?.[0]); event.target.value = ""; }} />
+                <input id="care-chat-attachment" className={styles.fileInput} type="file" accept="image/*,video/mp4,video/webm,video/quicktime,.pdf,.txt,.doc,.docx,.xls,.xlsx,.zip" onChange={(event) => { handleAttachment(event.target.files?.[0]); event.target.value = ""; }} />
                 <label className={styles.composerIcon} htmlFor="care-chat-attachment" aria-label="Attach file" title="Attach file"><AttachFileIcon sx={{ fontSize: 19 }} /></label>
                 <textarea rows="1" value={input} placeholder={selected.status === "closed" ? "Reply to reopen this chat" : "Type a reply..."} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); handleSend(); } }} />
                 <button className={styles.composerIcon} onClick={() => setShowEmoji((value) => !value)} aria-label="Add emoji"><SentimentSatisfiedAltIcon sx={{ fontSize: 19 }} /></button>

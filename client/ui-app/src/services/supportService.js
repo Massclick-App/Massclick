@@ -7,5 +7,5 @@ const config = () => ({ headers: { Authorization: `Bearer ${getCustomerToken()}`
 export const listTicketsApi = (status = "all") => axiosInstance.get(`${API_URL}/chat/tickets`, { ...config(), params: { status } }).then((res) => res.data);
 export const createTicketApi = (payload) => axiosInstance.post(`${API_URL}/chat/tickets`, payload, config()).then((res) => res.data.ticket);
 export const getTicketApi = (id) => axiosInstance.get(`${API_URL}/chat/tickets/${id}`, config()).then((res) => res.data.ticket);
-export const replyTicketApi = (id, message) => axiosInstance.post(`${API_URL}/chat/tickets/${id}/replies`, { message }, config()).then((res) => res.data.ticket);
+export const replyTicketApi = (id, message, attachments = []) => axiosInstance.post(`${API_URL}/chat/tickets/${id}/replies`, { message, attachments }, config()).then((res) => res.data.ticket);
 export const updateTicketStatusApi = (id, status) => axiosInstance.patch(`${API_URL}/chat/tickets/${id}/status`, { status }, config()).then((res) => res.data.ticket);

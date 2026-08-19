@@ -12,5 +12,5 @@ const handle = (res, error) => {
 export const createTicketAction = async (req, res) => { try { res.status(201).send({ ticket: await createSupportTicket({ user: req.chatUser, ...req.body }) }); } catch (error) { handle(res, error); } };
 export const listTicketsAction = async (req, res) => { try { res.send(await listSupportTickets({ user: req.chatUser, ...req.query })); } catch (error) { handle(res, error); } };
 export const getTicketAction = async (req, res) => { try { res.send({ ticket: await getSupportTicket({ user: req.chatUser, id: req.params.id }) }); } catch (error) { handle(res, error); } };
-export const replyTicketAction = async (req, res) => { try { res.send({ ticket: await replySupportTicket({ user: req.chatUser, id: req.params.id, message: req.body.message }) }); } catch (error) { handle(res, error); } };
+export const replyTicketAction = async (req, res) => { try { res.send({ ticket: await replySupportTicket({ user: req.chatUser, id: req.params.id, message: req.body.message, attachments: req.body.attachments }) }); } catch (error) { handle(res, error); } };
 export const updateTicketStatusAction = async (req, res) => { try { res.send({ ticket: await updateSupportTicketStatus({ user: req.chatUser, id: req.params.id, status: req.body.status }) }); } catch (error) { handle(res, error); } };

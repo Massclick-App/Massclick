@@ -4,12 +4,21 @@ import {
   removeConnection,
   addRoomToConnection,
   removeRoomFromConnection,
+  getCustomerConnectionCount,
 } from "../connectionManager.js";
+import { emitToRoom } from "../roomManager.js";
 
 export const registerCoreHandlers = (socket) => {
   const { userId, userName, mobileNumber1, userRole, authType } = socket.data.user;
 
-  addConnection(socket.id, { userId, userName, mobileNumber: mobileNumber1, role: userRole });
+  addConnection(socket.id, { userId, userName, mobileNumber: mobileNumber1, role: userRole, authType });
+
+  if (authType === "customer" && getCustomerConnectionCount({ userId, mobileNumber: mobileNumber1 }) === 1) {
+    emitToRoom(buildRoom.adminChat(), WS_EVENTS.CHAT_PRESENCE, {
+      userId: String(userId), mobileNumber: mobileNumber1 || "", online: true,
+      changedAt: new Date().toISOString(),
+    });
+  }
 
   // Auto-join personal rooms immediately on connection
   const userRoom = buildRoom.user(userId);
@@ -67,5 +76,11 @@ export const registerCoreHandlers = (socket) => {
   socket.on("disconnect", (reason) => {
     console.log(`[WS] - ${userName || userId} socket=${socket.id} reason=${reason}`);
     removeConnection(socket.id);
+    if (authType === "customer" && getCustomerConnectionCount({ userId, mobileNumber: mobileNumber1 }) === 0) {
+      emitToRoom(buildRoom.adminChat(), WS_EVENTS.CHAT_PRESENCE, {
+        userId: String(userId), mobileNumber: mobileNumber1 || "", online: false,
+        changedAt: new Date().toISOString(),
+      });
+    }
   });
 };

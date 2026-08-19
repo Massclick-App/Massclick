@@ -4,6 +4,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import InsertEmoticonOutlinedIcon from "@mui/icons-material/InsertEmoticonOutlined";
+import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
 import {
   fetchChatMessages,
@@ -51,6 +54,8 @@ export default function CustomerChatPanel({
   const [connected, setConnected] = useState(false);
   const [showOfflineWarning, setShowOfflineWarning] = useState(false);
   const [authExpired, setAuthExpired] = useState(false);
+  const [attachment, setAttachment] = useState(null);
+  const [showEmoji, setShowEmoji] = useState(false);
   const [, setAuthVersion] = useState(0);
   const endRef = useRef(null);
   const inputRef = useRef(null);
@@ -231,7 +236,7 @@ export default function CustomerChatPanel({
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || !conversation?.id || sending) return;
+    if ((!text && !attachment) || !conversation?.id || sending) return;
 
     LOG('handleSend: sending to conversation:', conversation.id, '| text length:', text.length);
     setSending(true);
@@ -239,7 +244,8 @@ export default function CustomerChatPanel({
     setError("");
     try {
       const currentToken = getCustomerChatToken();
-      const result = await sendChatMessageApi({ conversationId: conversation.id, text, token: currentToken });
+      const result = await sendChatMessageApi({ conversationId: conversation.id, text, attachment, token: currentToken });
+      setAttachment(null);
       LOG('handleSend: success — message id:', result.message?.id);
       setConversation(result.conversation);
       setMessages((prev) => mergeMessage(prev, result.message));
@@ -259,6 +265,19 @@ export default function CustomerChatPanel({
       setSending(false);
     }
   };
+
+  const chooseAttachment = (file) => {
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm", "video/quicktime", "application/pdf", "text/plain", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip", "application/x-zip-compressed"];
+    if (!allowed.includes(file.type)) { setError("Unsupported file type."); return; }
+    if (file.size > 15 * 1024 * 1024) { setError("The file must be 15 MB or smaller."); return; }
+    const reader = new FileReader();
+    reader.onload = () => { setAttachment({ dataUrl: reader.result, fileName: file.name, mimeType: file.type, fileSize: file.size }); setError(""); };
+    reader.onerror = () => setError("The selected file could not be read.");
+    reader.readAsDataURL(file);
+  };
+
+  const emojis = ["😀", "😊", "👍", "🙏", "❤️", "✅", "🎉", "📞"];
 
   const handleLoginClick = () => {
     if (onRequireLogin) onRequireLogin();
@@ -342,7 +361,10 @@ export default function CustomerChatPanel({
                     {message.attachment?.url && (message.attachment.mimeType || "").startsWith("image/") && (
                       <a href={message.attachment.url} target="_blank" rel="noreferrer"><img className={cx("messageImage")} src={message.attachment.url} alt={message.attachment.fileName || "Chat attachment"} /></a>
                     )}
-                    {message.attachment?.url && !(message.attachment.mimeType || "").startsWith("image/") && (
+                    {message.attachment?.url && (message.attachment.mimeType || "").startsWith("video/") && (
+                      <video className={cx("messageVideo")} src={message.attachment.url} controls preload="metadata" />
+                    )}
+                    {message.attachment?.url && !(message.attachment.mimeType || "").startsWith("image/") && !(message.attachment.mimeType || "").startsWith("video/") && (
                       <a className={cx("fileCard")} href={message.attachment.url} target="_blank" rel="noreferrer"><AttachFileIcon fontSize="small" />{message.attachment.fileName}</a>
                     )}
                     {message.text}
@@ -361,7 +383,19 @@ export default function CustomerChatPanel({
             <div ref={endRef} />
           </div>
 
+          <div className={cx("composerArea")}>
+            {attachment && <div className={cx("attachmentPreview")}><AttachFileIcon fontSize="small" /><span><strong>{attachment.fileName}</strong><small>{attachment.fileSize >= 1048576 ? `${(attachment.fileSize / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(attachment.fileSize / 1024))} KB`}</small></span><button onClick={() => setAttachment(null)} aria-label="Remove attachment"><CloseIcon fontSize="small" /></button></div>}
+            {showEmoji && <div className={cx("emojiPicker")}>{emojis.map((emoji) => <button key={emoji} onClick={() => { setInput(`${input}${emoji}`); setShowEmoji(false); inputRef.current?.focus(); }}>{emoji}</button>)}</div>}
           <div className={cx("composer")}>
+            <div className={cx("composerTools")}>
+              <input id="customer-chat-image" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={(event) => { chooseAttachment(event.target.files?.[0]); event.target.value = ""; }} />
+              <label htmlFor="customer-chat-image" title="Upload image" aria-label="Upload image"><ImageOutlinedIcon fontSize="small" /></label>
+              <input id="customer-chat-video" type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(event) => { chooseAttachment(event.target.files?.[0]); event.target.value = ""; }} />
+              <label htmlFor="customer-chat-video" title="Upload video" aria-label="Upload video"><VideoLibraryOutlinedIcon fontSize="small" /></label>
+              <input id="customer-chat-file" type="file" accept=".pdf,.txt,.doc,.docx,.xls,.xlsx,.zip" onChange={(event) => { chooseAttachment(event.target.files?.[0]); event.target.value = ""; }} />
+              <label htmlFor="customer-chat-file" title="Upload file" aria-label="Upload file"><AttachFileIcon fontSize="small" /></label>
+              <button onClick={() => setShowEmoji((value) => !value)} title="Add emoji" aria-label="Add emoji"><InsertEmoticonOutlinedIcon fontSize="small" /></button>
+            </div>
             <TextField
               inputRef={inputRef}
               size="small"
@@ -380,11 +414,12 @@ export default function CustomerChatPanel({
             <Button
               variant="contained"
               onClick={handleSend}
-              disabled={!input.trim() || sending}
+              disabled={(!input.trim() && !attachment) || sending}
               sx={{ minWidth: 46, bgcolor: "#ff7a00", "&:hover": { bgcolor: "#e65100" } }}
             >
               {sending ? <CircularProgress size={18} color="inherit" /> : <SendIcon fontSize="small" />}
             </Button>
+          </div>
           </div>
         </>
       )}
