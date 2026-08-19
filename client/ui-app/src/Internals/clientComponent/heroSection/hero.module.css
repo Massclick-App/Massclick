@@ -205,18 +205,22 @@
   padding: 6px 14px;
   font-size: 14px;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.85);
+  /* Solid, not translucent: these chips sit on top of the frosted
+     .hero-content panel, and stacking one light translucent surface on
+     another collapses legibility. It also drops a redundant blur layer. */
+  background: #ffffff;
   border: 1px solid rgba(0,0,0,0.05);
   border-radius: 999px;
-  backdrop-filter: blur(6px);
   box-shadow:
     0 6px 14px rgba(0,0,0,0.06),
     inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: all .25s ease;
+  transition:
+    translate 0.24s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.24s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .trust-card:hover {
-  transform: translateY(-3px);
+  translate: 0 -3px;
   box-shadow: 0 12px 24px rgba(0,0,0,0.12);
 }
 
@@ -266,8 +270,13 @@
   font-size: clamp(1.4rem, 2vw, 1.8rem);
   font-weight: 700;
   line-height: 1.15;
+  /* Tracking is size-specific. Display type reads too loose as it grows, so
+     it tightens; the subtitle below stays at 0. This was previously only set
+     in the phone breakpoint, leaving desktop headings untracked. */
+  letter-spacing: -0.02em;
   color: var(--brand-blue);
   margin: 0;
+  text-wrap: balance;
 }
 
 .hero-title-accent {
@@ -309,7 +318,9 @@
   border-radius: var(--search-radius);
   border: 1.5px solid #ececec;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  transition: 0.25s ease;
+  transition:
+    border-color 0.2s ease-out,
+    box-shadow 0.2s ease-out;
   overflow: visible;
   z-index: auto;
 }
@@ -399,6 +410,9 @@
   cursor: pointer;
   transform: translateY(-50%);
   place-items: center;
+  transition:
+    background-color 0.18s ease-out,
+    transform 0.13s ease-out;
 }
 
 .voice-search-button svg {
@@ -407,6 +421,13 @@
 
 .voice-search-button:hover {
   background: rgba(154, 52, 18, 0.08);
+}
+
+/* Feedback on press, not on release. The centring translate has to stay in
+   the same `transform` — a separate `scale` composes after it and would
+   nudge the button off centre. */
+.voice-search-button:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.9);
 }
 
 .voice-search-button:focus-visible {
@@ -446,7 +467,12 @@
   white-space: nowrap;
 
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  /* Explicit properties, not `all`: the fill below is a pseudo-element, so
+     `all` was also tweening layout-adjacent values for no reason. */
+  transition:
+    border-color 0.2s ease-out,
+    box-shadow 0.2s ease-out,
+    scale 0.13s ease-out;
 }
 
 .search-button-text {
@@ -454,7 +480,7 @@
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--color-primary-text);
-  transition: color 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: color 0.18s ease-out;
 }
 
 .search-button:hover .search-button-text {
@@ -462,7 +488,7 @@
 }
 
 .search-button:focus-visible {
-  outline: 3px solid rgba(255, 123, 0, 0.35);
+  outline: 2px solid var(--color-primary-text);
   outline-offset: 2px;
 }
 
@@ -470,30 +496,35 @@
   border-color: #ff7b00;
 }
 
+/* The fill rises straight up from the bottom edge, so the intermediate frames
+   point at the outcome instead of taking a decorative detour across the
+   button. Kept fast — this is the primary action, not an ornament. */
 .search-button::before {
   content: "";
   position: absolute;
   background-color: #ff7b00;
   width: 100%;
   height: 100%;
-  left: 0%;
-  bottom: 0%;
-  transform: translate(-100%, 100%);
+  left: 0;
+  bottom: 0;
+  transform: translateY(100%);
   border-radius: inherit;
-  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
   z-index: -1;
 }
 
 .search-button:hover::before {
-  animation: shakeBack 0.6s forwards;
+  transform: translateY(0);
 }
 
 .search-button:hover .search-icon {
   color: #ffffff;
-  transform: scale(1.2);
+  scale: 1.12;
 }
 
+/* Feedback on press, not on release. */
 .search-button:active {
+  scale: 0.975;
   box-shadow: none;
 }
 
@@ -501,20 +532,10 @@
   position: relative;
   font-size: 20px;
   color: var(--color-primary);
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  transition:
+    color 0.18s ease-out,
+    scale 0.18s ease-out;
   z-index: 1;
-}
-
-@keyframes shakeBack {
-  0% {
-    transform: translate(-100%, 100%);
-  }
-  50% {
-    transform: translate(20%, -20%);
-  }
-  100% {
-    transform: translate(0%, 0%);
-  }
 }
 
 /* ========================================================= */
@@ -852,7 +873,7 @@
     font-size: clamp(.56rem, 2.35vw, .7rem);
   }
   .trust-card + .trust-card { border-left: 1px solid #f1f1f1; }
-  .trust-card:hover { transform: none; box-shadow: none; }
+  .trust-card:hover { translate: none; box-shadow: none; }
   .trust-icon { width: 35px; height: 35px; border-radius: 11px; display: grid; place-items: center; background: #fff1e5; box-shadow: inset 0 0 0 1px rgba(255,123,0,.05); }
   .trust-icon svg { font-size: 20px; }
   .trust-card:nth-child(2) .trust-icon { background: #eee9ff; color: #5426dc; }
@@ -865,23 +886,107 @@
 
 @media (min-width: 768px) and (max-width: 1199px) {
   .hero-section { padding-block: 34px; }
-  .hero-title { font-size: clamp(2.6rem, 6vw, 4rem); }
+  /* Much larger than the desktop heading, so it needs proportionally more
+     negative tracking and tighter leading. */
+  .hero-title {
+    font-size: clamp(2.6rem, 6vw, 4rem);
+    letter-spacing: -0.035em;
+    line-height: 1.06;
+  }
   .hero-subtitle { font-size: 1.12rem; }
   .hero-content { max-width: 960px; }
   .trust-copy { flex-direction: row; align-items: baseline; white-space: nowrap; }
 }
 
+/* ========================================================= */
+/* --- User preferences --- */
+/* Reduced motion still gets feedback, just not vestibular    */
+/* feedback: colour and background changes stay, travel and   */
+/* scaling go.                                                */
+/* ========================================================= */
+
 @media (prefers-reduced-motion: reduce) {
   .mic-listening,
-  .voice-dots span,
-  .search-button:hover::before {
+  .voice-dots span {
     animation: none;
   }
 
   .input-group,
   .search-button,
   .search-icon,
+  .search-button-text,
+  .voice-search-button,
   .trust-card {
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-duration: 0.15s;
+  }
+
+  /* The fill still arrives, it just does not travel. */
+  .search-button::before {
     transition: none;
+  }
+
+  .search-button:active {
+    scale: none;
+  }
+
+  .search-button:hover .search-icon {
+    scale: none;
+  }
+
+  .voice-search-button:active:not(:disabled) {
+    transform: translateY(-50%);
+  }
+
+  .trust-card:hover {
+    translate: none;
+  }
+}
+
+/* Frost the glass rather than blurring through it.
+   These sit last on purpose: they need to win over the width breakpoints
+   above, which set the translucent values they are replacing. */
+@media (prefers-reduced-transparency: reduce) {
+  .search-bar-container {
+    background: #ffffff;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .search-bar-container {
+    background: #ffffff;
+    backdrop-filter: none;
+  }
+
+  .input-group,
+  .search-button {
+    border-color: var(--brand-blue);
+  }
+
+  .hero-subtitle,
+  .trust-copy small {
+    color: #333333;
+  }
+
+  .custom-input::placeholder {
+    color: rgba(51, 51, 51, 0.85);
+  }
+}
+
+/* Only from tablet up. Below 768px .hero-content is intentionally a bare
+   wrapper — the search bar is the card there — so forcing a panel back would
+   break that layout rather than make it legible. */
+@media (prefers-reduced-transparency: reduce) and (min-width: 768px) {
+  .hero-content {
+    background: #ffffff;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) and (min-width: 768px) {
+  .hero-content {
+    background: #ffffff;
+    backdrop-filter: none;
   }
 }

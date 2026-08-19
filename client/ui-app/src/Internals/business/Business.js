@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "../validators/inputValidator.js";
+import { isValidEmailAddress } from "../../utils/emailValidation.js";
 import { getAllBusinessList, createBusinessList, editBusinessList, editBusinessSection, deleteBusinessList, trackQrDownload, updateBusinessBadges, regenerateBusinessCertificates, exportBusinessList, revertPaidStatus } from "../../redux/actions/businessListAction";
 import { getAllLocation, createLocation } from "../../redux/actions/locationAction";
 import { getAllCategory, businessCategorySearch } from "../../redux/actions/categoryAction";
@@ -2114,7 +2115,7 @@ const BusinessList = React.memo(() => {
       { field: "pincode", label: "Pincode", required: true, example: "600001", suggestion: "Enter a valid 6 digit Indian pincode.", validate: value => /^[1-9][0-9]{5}$/.test(value) || "must be a valid 6 digit Indian pincode." },
       { field: "location", label: "Location", required: true, example: "Chennai", suggestion: "Choose from location suggestions when available." },
       { field: "globalAddress", label: "Global address", required: true, example: "12A Gandhi Road, Chennai, Tamil Nadu 600001", suggestion: "Enter the complete searchable address." },
-      { field: "email", label: "Email", required: true, example: "owner@example.com", suggestion: "Use the business or owner email.", validate: value => /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value) || "must be a valid email address." },
+      { field: "email", label: "Email", required: true, example: "contact@organisation.org", suggestion: "All valid domains are supported, including .org, .in and .co.in.", validate: value => isValidEmailAddress(value) || "must be a valid email address with a complete domain." },
       { field: "contact", label: "Phone", required: true, example: "9876543210", suggestion: "Enter the main customer-facing number.", validate: value => passOrMessage(digitsOnly(value).length >= 10 && digitsOnly(value).length <= 15, "must contain 10 to 15 digits.") },
       { field: "contactList", label: "Enquiry number", required: true, example: "9876543210", suggestion: "Use the number that should receive enquiries.", validate: value => passOrMessage(digitsOnly(value).length >= 10 && digitsOnly(value).length <= 15, "must contain 10 to 15 digits.") },
       { field: "whatsappNumber", label: "WhatsApp number", required: true, example: "9876543210", suggestion: "Use a WhatsApp-enabled number.", validate: value => passOrMessage(digitsOnly(value).length >= 10 && digitsOnly(value).length <= 15, "must contain 10 to 15 digits.") },

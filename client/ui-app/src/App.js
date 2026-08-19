@@ -129,6 +129,8 @@ const UserFeedbackPage = lazy(() => import(/* webpackChunkName: "user-feedback" 
 const UserHelpPage = lazy(() => import(/* webpackChunkName: "user-help" */ './Internals/clientComponent/userMenu/HelpPage/HelpPage.js'));
 const UserMassclickDocumentsPage = lazy(() => import(/* webpackChunkName: "user-documents" */ './Internals/clientComponent/userMenu/MassclickDocuments/MassclickDocumentsPage.js'));
 const UserMassclickFeedPage = lazy(() => import(/* webpackChunkName: "user-feed" */ './Internals/clientComponent/userMenu/MassclickFeed/MassclickFeedPage.js'));
+const SpotlightWorkspacePage = lazy(() => import(/* webpackChunkName: "spotlight-workspace" */ './Internals/clientComponent/userMenu/SpotlightWorkspace/SpotlightWorkspacePage.js'));
+const SpotlightCreatePage = lazy(() => import(/* webpackChunkName: "spotlight-create" */ './Internals/clientComponent/userMenu/SpotlightCreate/SpotlightCreatePage.js'));
 const UserRewardsPage = lazy(() => import(/* webpackChunkName: "user-rewards" */ './Internals/clientComponent/userMenu/Rewards/RewardsPage.js'));
 
 const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
@@ -291,6 +293,12 @@ function AppRoutes({
           <Route path="/user_voucher" element={<Navigate to="/user_marketing-materials?type=voucher" replace />} />
           <Route path="/user_massclick-documents" element={<UserMassclickDocumentsPage />} />
           <Route path="/user_feed" element={<UserMassclickFeedPage />} />
+          <Route path="/user_spotlight/calendar" element={<SpotlightWorkspacePage mode="calendar" />} />
+          <Route path="/user_spotlight/create" element={<SpotlightCreatePage />} />
+          <Route path="/user_spotlight/media" element={<SpotlightWorkspacePage mode="media" />} />
+          <Route path="/user_spotlight/campaigns" element={<SpotlightWorkspacePage mode="campaigns" />} />
+          <Route path="/user_spotlight/leads" element={<SpotlightWorkspacePage mode="leads" />} />
+          <Route path="/user_spotlight/reports" element={<SpotlightWorkspacePage mode="reports" />} />
           <Route path="/user_favorites" element={<UserFavoritesPage />} />
           <Route path="/user_rewards" element={<UserRewardsPage />} />
           <Route path="/user_customer-service" element={<UserCustomerServicePage />} />

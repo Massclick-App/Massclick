@@ -51,6 +51,14 @@ export default function massclickFeedReducer(state = initialState, action) {
         ),
       };
 
+    case "MASSCLICK_FEED_FOLLOW_UPDATED":
+      return {
+        ...state,
+        posts: state.posts.map((post) => String(post.businessId) === String(action.payload.businessId)
+          ? { ...post, isFollowing: action.payload.isFollowing, followersCount: action.payload.followersCount }
+          : post),
+      };
+
     case FETCH_MASSCLICK_FEED_FAILURE:
     case CREATE_MASSCLICK_FEED_POST_FAILURE:
     case MASSCLICK_FEED_ACTION_FAILURE:

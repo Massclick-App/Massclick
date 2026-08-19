@@ -11,6 +11,7 @@ import {
 } from "../../auth/authMiddleware.js";
 import { logAuthAuditEvent } from "../../auth/authAuditStore.js";
 import { resolveAuthActorFromToken } from "../../auth/authResolver.js";
+import { maybeSendLoginWelcome } from "../../helper/msg91/smsGatewayHelper.js";
 
 const JWT_SECRET = process.env.JWT_SECRET
 
@@ -213,6 +214,14 @@ export const updateOtpUser = async (req, res) => {
     user.updatedAt = new Date();
     await user.save();
 
+
+    // A mobile signup reaches verify without a name, so this save is the
+    // first moment the account has one worth greeting. Gated on the flag set
+    // at account creation — without it, every existing user's next profile
+    // edit would fire a welcome message at them.
+    if (user.loginWelcomePending) {
+      await maybeSendLoginWelcome(user);
+    }
 
     const userObject = user.toObject();
     if (userObject.profileImageKey) {

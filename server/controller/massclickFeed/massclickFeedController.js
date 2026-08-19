@@ -7,6 +7,8 @@ import {
   recordMassclickFeedShare,
   toggleMassclickFeedLike,
   updateMassclickFeedStatus,
+  setMassclickFeedFollow,
+  listMassclickFeedFollows,
 } from "../../helper/massclickFeed/massclickFeedHelper.js";
 
 const getActor = (req) => req.authActor || req.authUser || req.user || {};
@@ -90,6 +92,25 @@ export const deleteMassclickFeedPostAction = async (req, res) => {
     res.send({ success: true, post });
   } catch (error) {
     console.error("deleteMassclickFeedPostAction error:", error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const setMassclickFeedFollowAction = async (req, res) => {
+  try {
+    const result = await setMassclickFeedFollow(req.params.businessId, req.body.follow !== false, getActor(req));
+    res.send({ success: true, ...result });
+  } catch (error) {
+    console.error("setMassclickFeedFollowAction error:", error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const listMassclickFeedFollowsAction = async (req, res) => {
+  try {
+    res.send(await listMassclickFeedFollows(getActor(req)));
+  } catch (error) {
+    console.error("listMassclickFeedFollowsAction error:", error);
     res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };

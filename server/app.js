@@ -106,7 +106,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
 app.use(helmet({
   crossOriginResourcePolicy: false,
   contentSecurityPolicy: false,
@@ -185,6 +184,7 @@ app.use("/", legalDocumentRoutes);
 app.use("/", hiringRoutes);
 app.use(legacyUrlRedirectMiddleware);
 app.use("/", rewardRoutes);
+
 
 app.use(express.static(CLIENT_BUILD_PATH, {
   index: false,
