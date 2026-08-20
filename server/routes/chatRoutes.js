@@ -14,10 +14,17 @@ import {
   requireChatCustomer,
 } from "../helper/chatAuthHelper.js";
 import { chatRateLimit } from "../middleware/rateLimitMiddleware.js";
+import { createTicketAction, getTicketAction, listTicketsAction, replyTicketAction, updateTicketStatusAction } from "../controller/support/supportTicketController.js";
 
 const router = express.Router();
 
 router.use("/api/chat", chatRateLimit);
+
+router.get("/api/chat/tickets", chatAuthentication, listTicketsAction);
+router.post("/api/chat/tickets", chatAuthentication, requireChatCustomer, createTicketAction);
+router.get("/api/chat/tickets/:id", chatAuthentication, getTicketAction);
+router.post("/api/chat/tickets/:id/replies", chatAuthentication, replyTicketAction);
+router.patch("/api/chat/tickets/:id/status", chatAuthentication, updateTicketStatusAction);
 
 router.post(
   "/api/chat/conversations/start",

@@ -10,6 +10,17 @@ export const removeConnection = (socketId) => _connections.delete(socketId);
 
 export const getConnection = (socketId) => _connections.get(socketId);
 
+const sameCustomer = (connection, { userId, mobileNumber } = {}) => {
+  if (connection.authType !== "customer") return false;
+  if (userId && String(connection.userId) === String(userId)) return true;
+  return Boolean(mobileNumber && connection.mobileNumber && String(connection.mobileNumber) === String(mobileNumber));
+};
+
+export const getCustomerConnectionCount = (identity) =>
+  [..._connections.values()].filter((connection) => sameCustomer(connection, identity)).length;
+
+export const isCustomerOnline = (identity) => getCustomerConnectionCount(identity) > 0;
+
 export const addRoomToConnection = (socketId, room) => {
   _connections.get(socketId)?.rooms.add(room);
 };

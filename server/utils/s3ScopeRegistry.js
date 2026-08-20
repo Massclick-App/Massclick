@@ -63,6 +63,8 @@ import massclickEventModel from "../model/massclickEvent/massclickEventModel.js"
 import massclickFeedPostModel from "../model/massclickFeed/massclickFeedPostModel.js";
 import massclickDocumentsModel from "../model/massclickDocuments/massclickDocumentsModel.js";
 import fcmCampaignModel from "../model/fcmCampaignModel/fcmCampaignModel.js";
+import chatMessageModel from "../model/chat/chatMessageModel.js";
+import supportTicketModel from "../model/support/supportTicketModel.js";
 
 import {
   invalidateAdvertisementCache,
@@ -89,6 +91,36 @@ const stringy = { $type: "string", $ne: "" };
 const elemStringy = { $elemMatch: { $type: "string", $ne: "" } };
 
 export const SCOPES = {
+  supportTickets: {
+    scopeKey: "supportTickets",
+    scopeLabel: "Support Tickets",
+    scopeDescription: "Customer support ticket attachments.",
+    folderPrefix: "support-tickets",
+    entity: "support-tickets",
+    collection: "supporttickets",
+    model: supportTicketModel,
+    progressKey: "tickets",
+    projection: { replies: 1 },
+    buildQuery: () => ({ "replies.attachments.key": stringy }),
+    fields: [{ path: "replies", kind: "arrayOfObjects", itemPath: "attachments.key", valueShape: "key", purpose: "attachment", stability: "versioned" }],
+    invalidate: [],
+  },
+  chatMessages: {
+    scopeKey: "chatMessages",
+    scopeLabel: "Chat Messages",
+    scopeDescription: "Customer-care chat attachments.",
+    folderPrefix: "chat-messages",
+    entity: "chat-messages",
+    collection: "chatmessages",
+    model: chatMessageModel,
+    progressKey: "messages",
+    projection: { attachment: 1 },
+    buildQuery: () => ({ "attachment.key": stringy }),
+    fields: [
+      { path: "attachment.key", kind: "single", valueShape: "key", purpose: "attachment", stability: "versioned" },
+    ],
+    invalidate: [],
+  },
   businessList: {
     scopeKey: "businessList",
     scopeLabel: "Business List",

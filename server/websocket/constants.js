@@ -19,6 +19,7 @@ export const WS_EVENTS = {
   CHAT_MESSAGE_NEW:      "chat:message:new",
   CHAT_CONVERSATION_UPDATED: "chat:conversation:updated",
   CHAT_UNREAD_COUNT:     "chat:unread:count",
+  CHAT_PRESENCE:         "chat:presence",
 
   // ── Lead domain ───────────────────────────────────────────────────────────────
   LEAD_ANALYTICS_UPDATE: "lead:analytics:update",
