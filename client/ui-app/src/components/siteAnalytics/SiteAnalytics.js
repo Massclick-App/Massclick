@@ -139,7 +139,7 @@ const breakdownText = (row) => {
 };
 
 export default function SiteAnalytics() {
-  const [filters, setFilters] = useState({ mode: "preset", days: 28, start: "", end: "", device: "", browser: "" });
+  const [filters, setFilters] = useState({ mode: "preset", days: 28, hours: 0, start: "", end: "", device: "", browser: "" });
   const [granularity, setGranularity] = useState("day");
   const [reloadToken, setReloadToken] = useState(0);
   const [exporting, setExporting] = useState(false);
@@ -155,7 +155,8 @@ export default function SiteAnalytics() {
       if (filters.start) f.start = filters.start;
       if (filters.end) f.end = filters.end;
     } else {
-      f.days = filters.days;
+      if (filters.hours) f.hours = filters.hours;
+      else f.days = filters.days;
     }
     if (filters.device) f.device = filters.device;
     if (filters.browser) f.browser = filters.browser;
@@ -170,11 +171,13 @@ export default function SiteAnalytics() {
   const current = overview.data?.current || {};
   const previous = overview.data?.previous || {};
   const trendRows = useMemo(() => trends.data?.trend || [], [trends.data]);
-  const periodLabel = overview.data?.days ? `previous ${overview.data.days} days` : "previous period";
+  const periodLabel = overview.data?.hours
+    ? `previous ${overview.data.hours} hours`
+    : overview.data?.days ? `previous ${overview.data.days} days` : "previous period";
 
   // Weekly / monthly buckets sum the daily figures.
   const chartData = useMemo(() => {
-    const source = granularity === "day" ? trendRows : Object.values(trendRows.reduce((acc, row) => {
+    const source = granularity === "day" || granularity === "hour" ? trendRows : Object.values(trendRows.reduce((acc, row) => {
       const key = bucketOf(row.date, granularity);
       const bucket = acc[key] || (acc[key] = { date: key, visitors: 0, sessions: 0, pageViews: 0, businessClicks: 0 });
       bucket.visitors += row.visitors;
@@ -188,11 +191,20 @@ export default function SiteAnalytics() {
 
   const rangeLabel = filters.mode === "custom" && (filters.start || filters.end)
     ? `${filters.start || "start"} → ${filters.end || "today"}`
-    : `Last ${filters.days} day${filters.days === 1 ? "" : "s"}`;
+    : filters.hours ? `Last ${filters.hours} hours` : `Last ${filters.days} day${filters.days === 1 ? "" : "s"}`;
 
   const hasActiveFilter = filters.device || filters.browser || filters.mode === "custom";
-  const resetFilters = () => setFilters({ mode: "preset", days: 28, start: "", end: "", device: "", browser: "" });
   const patch = (changes) => setFilters((prev) => ({ ...prev, ...changes }));
+  const resetFilters = () => { setFilters({ mode: "preset", days: 28, hours: 0, start: "", end: "", device: "", browser: "" }); setGranularity("day"); };
+  const selectPreset = (value) => {
+    if (value === "hour-range") {
+      patch({ hours: filters.hours || 24 });
+      setGranularity("hour");
+    } else {
+      patch({ days: Number(value), hours: 0 });
+      if (granularity === "hour") setGranularity("day");
+    }
+  };
 
   const handleExport = useCallback(async () => {
     setExporting(true);
@@ -341,7 +353,8 @@ export default function SiteAnalytics() {
       </TextField>
 
       {filters.mode === "preset" ? (
-        <TextField select size="small" value={filters.days} onChange={(e) => patch({ days: Number(e.target.value) })} className={styles.field}>
+        <TextField select size="small" value={filters.hours ? "hour-range" : filters.days} onChange={(e) => selectPreset(e.target.value)} className={styles.field}>
+          <MenuItem value="hour-range">Last 24 hours</MenuItem>
           {PRESETS.map((d) => <MenuItem key={d} value={d}>Last {d} day{d === 1 ? "" : "s"}</MenuItem>)}
         </TextField>
       ) : (
@@ -349,6 +362,18 @@ export default function SiteAnalytics() {
           <TextField type="date" size="small" label="From" InputLabelProps={{ shrink: true }} value={filters.start} inputProps={{ max: filters.end || todayISO() }} onChange={(e) => patch({ start: e.target.value })} className={styles.field} />
           <TextField type="date" size="small" label="To" InputLabelProps={{ shrink: true }} value={filters.end} inputProps={{ min: filters.start, max: todayISO() }} onChange={(e) => patch({ end: e.target.value })} className={styles.field} />
         </>
+      )}
+
+      {filters.mode === "preset" && Boolean(filters.hours) && (
+        <TextField
+          select size="small" label="Hours" value={filters.hours}
+          onChange={(e) => patch({ hours: Number(e.target.value) })}
+          className={styles.field}
+        >
+          {Array.from({ length: 24 }, (_, index) => index + 1).map((hour) => (
+            <MenuItem key={hour} value={hour}>Last {hour} hour{hour === 1 ? "" : "s"}</MenuItem>
+          ))}
+        </TextField>
       )}
 
       {/* displayEmpty is required: "" is the "all" value, and MUI renders a
@@ -401,10 +426,10 @@ export default function SiteAnalytics() {
       <PanelHead
         icon={InsightsRoundedIcon}
         tone="blue"
-        title="Daily Traffic Overview"
-        subtitle={granularity === "day" ? "Visitors, page views and business clicks per day (IST)." : "Daily figures summed into buckets (IST)."}
+        title={granularity === "hour" ? "Hourly Traffic Overview" : "Daily Traffic Overview"}
+        subtitle={granularity === "hour" ? "Visitors, page views and business clicks by hour (IST)." : granularity === "day" ? "Visitors, page views and business clicks per day (IST)." : "Daily figures summed into buckets (IST)."}
         action={<TextField select size="small" value={granularity} onChange={(e) => setGranularity(e.target.value)} className={styles.granularity}>
-          {GRANULARITIES.map((g) => <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>)}
+          {(filters.hours ? [{ value: "hour", label: "Hour" }] : GRANULARITIES).map((g) => <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>)}
         </TextField>}
       />
       <div className={styles.chart}>

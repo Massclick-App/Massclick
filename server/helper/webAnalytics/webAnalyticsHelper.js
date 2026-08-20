@@ -343,7 +343,9 @@ export const ingestEvents = async (req) => {
 // ---------------------------------------------------------------------------
 
 const DAY_MS = 86400000;
+const HOUR_MS = 3600000;
 const MAX_TREND_DAYS = 366;
+const MAX_TREND_HOURS = 24;
 
 const clampDays = (days) => Math.min(Math.max(parseInt(days, 10) || 28, 1), 365);
 const clampLimit = (limit, fallback = 25, max = 500) =>
@@ -397,6 +399,15 @@ const resolveRange = (query = {}) => {
         const previousStart = new Date(start.getTime() - spanMs);
         const days = Math.max(Math.round(spanMs / DAY_MS), 1);
         return { start, end, previousStart, days, custom: true };
+    }
+
+    const requestedHours = parseInt(query.hours, 10);
+    if (Number.isFinite(requestedHours) && requestedHours > 0) {
+        const hours = Math.min(requestedHours, MAX_TREND_HOURS);
+        const end = new Date();
+        const start = new Date(end.getTime() - hours * HOUR_MS);
+        const previousStart = new Date(start.getTime() - hours * HOUR_MS);
+        return { start, end, previousStart, days: 1, hours, custom: false };
     }
 
     const days = clampDays(query.days);
@@ -528,7 +539,7 @@ const overviewForRange = async (start, end, query) => {
 };
 
 export const getOverview = async (query) => {
-    const { start, end, previousStart, days } = resolveRange(query);
+    const { start, end, previousStart, days, hours } = resolveRange(query);
 
     const [current, previous, newVisitors, previousNewVisitors] = await Promise.all([
         overviewForRange(start, end, query),
@@ -539,15 +550,18 @@ export const getOverview = async (query) => {
 
     return {
         days,
+        ...(hours ? { hours } : {}),
         current: { ...current, newVisitors },
         previous: { ...previous, newVisitors: previousNewVisitors },
     };
 };
 
 export const getTrends = async (query) => {
-    const { start, end, days } = resolveRange(query);
-    const dayExpr = {
-        $dateToString: { format: "%Y-%m-%d", date: "$ts", timezone: DASHBOARD_TIMEZONE },
+    const { start, end, days, hours } = resolveRange(query);
+    const hourly = Boolean(hours);
+    const bucketFormat = hourly ? "%Y-%m-%dT%H:00" : "%Y-%m-%d";
+    const bucketExpr = {
+        $dateToString: { format: bucketFormat, date: "$ts", timezone: DASHBOARD_TIMEZONE },
     };
 
     const typeSum = (type) => ({ $sum: { $cond: [{ $eq: ["$type", type] }, 1, 0] } });
@@ -561,7 +575,7 @@ export const getTrends = async (query) => {
                     bySession: [
                         {
                             $group: {
-                                _id: { day: dayExpr, sessionId: "$sessionId" },
+                                _id: { bucket: bucketExpr, sessionId: "$sessionId" },
                                 pageViews: typeSum("page_view"),
                                 businessViews: typeSum("business_view"),
                                 businessClicks: typeSum("business_click"),
@@ -577,7 +591,7 @@ export const getTrends = async (query) => {
                         },
                         {
                             $group: {
-                                _id: "$_id.day",
+                                _id: "$_id.bucket",
                                 sessions: { $sum: 1 },
                                 pageViews: { $sum: "$pageViews" },
                                 businessViews: { $sum: "$businessViews" },
@@ -591,8 +605,8 @@ export const getTrends = async (query) => {
                         },
                     ],
                     byVisitor: [
-                        { $group: { _id: { day: dayExpr, deviceId: "$deviceId" } } },
-                        { $group: { _id: "$_id.day", visitors: { $sum: 1 } } },
+                        { $group: { _id: { bucket: bucketExpr, deviceId: "$deviceId" } } },
+                        { $group: { _id: "$_id.bucket", visitors: { $sum: 1 } } },
                     ],
                 },
             },
@@ -605,7 +619,7 @@ export const getTrends = async (query) => {
             { $match: { firstSeen: { $gte: start, $lt: end } } },
             {
                 $group: {
-                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$firstSeen", timezone: DASHBOARD_TIMEZONE } },
+                    _id: { $dateToString: { format: bucketFormat, date: "$firstSeen", timezone: DASHBOARD_TIMEZONE } },
                     n: { $sum: 1 },
                 },
             },
@@ -616,23 +630,38 @@ export const getTrends = async (query) => {
     const visitorRows = new Map((result?.byVisitor || []).map((row) => [row._id, row.visitors]));
     const newVisitorsByDay = new Map((newVisitorRows || []).map((row) => [row._id, row.n]));
 
-    // Emit a row for every calendar day in the window so charts render gapless.
+    // Emit a row for every day/hour bucket in the window so charts render gapless.
     // Stepping forward from `start` covers both preset and custom ranges; IST
     // has no DST, so each 24h step advances the local date by exactly one.
     const trend = [];
     const seen = new Set();
-    const dayCount = Math.min(Math.max(Math.ceil((end.getTime() - start.getTime()) / DAY_MS), 1), MAX_TREND_DAYS);
-    for (let i = 0; i < dayCount; i += 1) {
-        const day = istDayFormatter.format(new Date(start.getTime() + i * DAY_MS));
-        if (seen.has(day)) continue;
-        seen.add(day);
-        const row = sessionRows.get(day);
+    const stepMs = hourly ? HOUR_MS : DAY_MS;
+    const bucketCount = hourly
+        ? hours
+        : Math.min(Math.max(Math.ceil((end.getTime() - start.getTime()) / DAY_MS), 1), MAX_TREND_DAYS);
+    const hourKey = (date) => {
+        const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: DASHBOARD_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", hourCycle: "h23",
+        }).formatToParts(date).reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+        return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:00`;
+    };
+    // Hour presets end at the current hour and emit exactly the requested
+    // number of gapless labels (one for 1 hour, two for 2 hours, and so on).
+    const firstBucket = hourly ? new Date(end.getTime() - (hours - 1) * HOUR_MS) : start;
+    for (let i = 0; i < bucketCount; i += 1) {
+        const bucket = hourly
+            ? hourKey(new Date(firstBucket.getTime() + i * stepMs))
+            : istDayFormatter.format(new Date(firstBucket.getTime() + i * stepMs));
+        if (seen.has(bucket)) continue;
+        seen.add(bucket);
+        const row = sessionRows.get(bucket);
         const sessions = row?.sessions || 0;
         const pageViews = row?.pageViews || 0;
         trend.push({
-            date: day,
-            visitors: visitorRows.get(day) || 0,
-            newVisitors: newVisitorsByDay.get(day) || 0,
+            date: bucket,
+            visitors: visitorRows.get(bucket) || 0,
+            newVisitors: newVisitorsByDay.get(bucket) || 0,
             sessions,
             pageViews,
             businessViews: row?.businessViews || 0,
@@ -646,7 +675,7 @@ export const getTrends = async (query) => {
         });
     }
 
-    return { days, trend };
+    return { days, ...(hours ? { hours, granularity: "hour" } : {}), trend };
 };
 
 export const getTopPages = async (query) => {

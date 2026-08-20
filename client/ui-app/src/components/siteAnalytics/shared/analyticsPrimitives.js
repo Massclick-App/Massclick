@@ -72,6 +72,10 @@ export const bucketOf = (date, granularity) => {
 };
 
 export const labelOfBucket = (date, granularity) => {
+  if (granularity === "hour") {
+    const d = new Date(`${date}:00+05:30`);
+    return d.toLocaleTimeString("en-IN", { hour: "numeric", hour12: true, timeZone: "Asia/Kolkata" });
+  }
   const d = new Date(`${date}T00:00:00`);
   if (granularity === "month") return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
   if (granularity === "week") return `w/c ${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
