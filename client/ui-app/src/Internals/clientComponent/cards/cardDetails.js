@@ -1147,7 +1147,7 @@ const BusinessDetail = React.memo(() => {
                       <span className={cx("business-CardDetails-infoValue")}>
                         {business.contactList}
                       </span>
-                    </div>} */}
+                    </div>}
                   <div className={cx("business-CardDetails-infoItem")}>
                     <span className={cx("business-CardDetails-infoLabel")}>
                       Address
