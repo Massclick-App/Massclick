@@ -27,7 +27,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -p 2244 \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_HOST }} \
-            'echo "Current commit:" && cd /home/admin/nodeapps/massclick-api && git rev-parse HEAD'
+            'echo "Current commit:" && cd /home/admin/apps/massclick/backend-prod && git rev-parse HEAD'
 
       - name: Deploy Backend
         run: |
