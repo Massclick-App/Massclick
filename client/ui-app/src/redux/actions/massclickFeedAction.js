@@ -89,6 +89,15 @@ export const addMassclickFeedComment = (postId, text) =>
 export const shareMassclickFeedPost = (postId) =>
   updateFeedPost(() => axiosInstance.post(`${API_URL}/massclick-feed/posts/${postId}/share`));
 
+export const toggleMassclickFeedSave = (postId) =>
+  updateFeedPost(() => axiosInstance.post(`${API_URL}/massclick-feed/posts/${postId}/save`));
+
+export const recordMassclickFeedView = (postId) =>
+  updateFeedPost(() => axiosInstance.post(`${API_URL}/massclick-feed/posts/${postId}/view`));
+
+export const recordMassclickFeedEnquiry = (postId) =>
+  updateFeedPost(() => axiosInstance.post(`${API_URL}/massclick-feed/posts/${postId}/enquiry`));
+
 export const updateMassclickFeedPostStatus = (postId, status) =>
   updateFeedPost(() =>
     axiosInstance.patch(`${API_URL}/massclick-feed/posts/${postId}/status`, { status })

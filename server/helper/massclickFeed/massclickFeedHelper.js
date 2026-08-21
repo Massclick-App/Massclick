@@ -16,7 +16,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
 const MAX_IMAGE_SIZE = 45 * 1024 * 1024;
 const MAX_IMAGES = 4;
 const { ObjectId } = mongoose.Types;
-const ALLOWED_ACTIONS = new Set(["call", "whatsapp", "book", "shop", "learn"]);
+const ALLOWED_ACTIONS = new Set(["call", "whatsapp", "book", "shop", "learn", "direction"]);
 
 const escapeRegExp = (value = "") =>
   value.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -36,6 +36,7 @@ const getActorId = (actor = {}) => actor.subjectId || actor.userId || actor._id 
 
 const normalizePost = (post = {}, actorId = "") => {
   const likes = post.likes || [];
+  const savedBy = post.savedBy || [];
   const comments = (post.comments || []).filter((comment) => !comment.isDeleted);
 
   return {
@@ -48,6 +49,9 @@ const normalizePost = (post = {}, actorId = "") => {
     commentsCount: comments.length,
     likedByMe: actorId
       ? likes.some((likeId) => String(likeId) === String(actorId))
+      : false,
+    savedByMe: actorId
+      ? savedBy.some((userId) => String(userId) === String(actorId))
       : false,
     comments,
   };
@@ -334,6 +338,37 @@ export const recordMassclickFeedShare = async (postId, actor = {}) => {
 
   if (!updatedPost) throw new Error("Post not found");
   return normalizePost(updatedPost, getActorId(actor));
+};
+
+export const toggleMassclickFeedSave = async (postId, actor = {}) => {
+  const actorId = getActorId(actor);
+  if (!actorId || !ObjectId.isValid(String(actorId))) throw new Error("Login required");
+  const post = await massclickFeedPostModel.findOne({ _id: postId, isDeleted: false });
+  if (!post) throw new Error("Post not found");
+  const saved = (post.savedBy || []).some((id) => String(id) === String(actorId));
+  post.savedBy = saved ? post.savedBy.filter((id) => String(id) !== String(actorId)) : [...post.savedBy, actorId];
+  post.updatedAt = new Date();
+  return normalizePost((await post.save()).toObject(), actorId);
+};
+
+export const recordMassclickFeedView = async (postId, actor = {}) => {
+  const post = await massclickFeedPostModel.findOneAndUpdate(
+    { _id: postId, isDeleted: false },
+    { $inc: { viewsCount: 1 } },
+    { new: true }
+  ).lean();
+  if (!post) throw new Error("Post not found");
+  return normalizePost(post, getActorId(actor));
+};
+
+export const recordMassclickFeedEnquiry = async (postId, actor = {}) => {
+  const post = await massclickFeedPostModel.findOneAndUpdate(
+    { _id: postId, isDeleted: false },
+    { $inc: { enquiriesCount: 1 } },
+    { new: true }
+  ).lean();
+  if (!post) throw new Error("Post not found");
+  return normalizePost(post, getActorId(actor));
 };
 
 export const updateMassclickFeedStatus = async (postId, data = {}, actor = {}) => {

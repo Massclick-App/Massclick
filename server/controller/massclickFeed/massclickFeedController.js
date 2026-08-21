@@ -9,6 +9,9 @@ import {
   updateMassclickFeedStatus,
   setMassclickFeedFollow,
   listMassclickFeedFollows,
+  toggleMassclickFeedSave,
+  recordMassclickFeedView,
+  recordMassclickFeedEnquiry,
 } from "../../helper/massclickFeed/massclickFeedHelper.js";
 
 const getActor = (req) => req.authActor || req.authUser || req.user || {};
@@ -75,6 +78,20 @@ export const recordMassclickFeedShareAction = async (req, res) => {
     res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };
+
+const runPostInteraction = (handler, label) => async (req, res) => {
+  try {
+    const post = await handler(req.params.id, getActor(req));
+    res.send({ success: true, post });
+  } catch (error) {
+    console.error(`${label} error:`, error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const toggleMassclickFeedSaveAction = runPostInteraction(toggleMassclickFeedSave, "toggleMassclickFeedSaveAction");
+export const recordMassclickFeedViewAction = runPostInteraction(recordMassclickFeedView, "recordMassclickFeedViewAction");
+export const recordMassclickFeedEnquiryAction = runPostInteraction(recordMassclickFeedEnquiry, "recordMassclickFeedEnquiryAction");
 
 export const updateMassclickFeedStatusAction = async (req, res) => {
   try {

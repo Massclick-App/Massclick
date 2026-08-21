@@ -288,6 +288,7 @@ function AppRoutes({
             path="/user_marketing-materials"
             element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMarketingMaterialsPage /> : <Navigate to="/user_dashboard" replace />}
           />
+          <Route path="/user/marketing-materials" element={<Navigate to="/user_marketing-materials" replace />} />
           <Route path="/user_visiting-card" element={<Navigate to="/user_marketing-materials" replace />} />
           <Route path="/user_letterhead" element={<Navigate to="/user_marketing-materials?type=letterhead" replace />} />
           <Route path="/user_quotation" element={<Navigate to="/user_marketing-materials?type=quotation" replace />} />

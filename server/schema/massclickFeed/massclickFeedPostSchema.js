@@ -62,6 +62,9 @@ const massclickFeedPostSchema = new Schema({
   offerEndsAt: { type: Date, default: null },
   mediaItems: { type: [feedMediaSchema], default: [] },
   likes: [{ type: Schema.Types.ObjectId }],
+  savedBy: [{ type: Schema.Types.ObjectId }],
+  viewsCount: { type: Number, default: 0 },
+  enquiriesCount: { type: Number, default: 0 },
   sharesCount: { type: Number, default: 0 },
   comments: { type: [feedCommentSchema], default: [] },
   status: {

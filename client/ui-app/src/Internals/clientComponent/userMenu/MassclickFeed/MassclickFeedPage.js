@@ -15,6 +15,7 @@ import CampaignIcon from "@mui/icons-material/Campaign";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { Home, PlusCircle, LayoutGrid, Send, Users, BarChart3, CalendarDays, Image as Picture, FileText, Crown, Eye, UserRound, Newspaper, Heart, MessageCircle, Share2, Bookmark, SlidersHorizontal, Tag, BriefcaseBusiness, Play, BellRing, X, ChevronLeft, ChevronRight, MapPin, Star, Clock3, Phone, MessageSquareText } from "lucide-react";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
@@ -26,6 +27,9 @@ import {
   shareMassclickFeedPost,
   toggleMassclickFeedLike,
   setMassclickFeedFollow,
+  toggleMassclickFeedSave,
+  recordMassclickFeedView,
+  recordMassclickFeedEnquiry,
 } from "../../../../redux/actions/massclickFeedAction.js";
 import styles from "./MassclickFeedPage.module.css";
 
@@ -177,6 +181,103 @@ const FILTER_POST_TYPES = {
   Announcements: "announcement",
   Videos: "video",
   Polls: "poll",
+};
+
+const replicaMenu = [
+  [Home, "Spotlight Feed"], [PlusCircle, "Create Post"], [LayoutGrid, "Planner"],
+  [Send, "Campaigns"], [UserRound, "Leads"], [Users, "Audience"],
+  [BarChart3, "Insights"], [CalendarDays, "Calendar"], [Newspaper, "My Posts"],
+  [Bookmark, "Saved"], [Picture, "Media Library"], [FileText, "Reports"],
+];
+
+const ReplicaPost = ({ post, index, onLike, onShare, onComment, onOpen, onSave, onEnquire }) => {
+  const [commenting, setCommenting] = useState(false);
+  const [comment, setComment] = useState("");
+  const [busyAction, setBusyAction] = useState("");
+  const [actionNotice, setActionNotice] = useState("");
+  const media = post?.mediaItems?.find((item) => item.mediaUrl);
+  const business = post?.businessName || "MassClick Business";
+  const initials = business.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+  const likes = post?.likesCount ?? post?.likes?.length ?? 0;
+  const comments = post?.commentsCount ?? post?.comments?.length ?? 0;
+  const shares = post?.sharesCount ?? 0;
+  const hashtags = (post?.hashtags || []).map((tag) => `#${String(tag).replace(/^#/, "")}`).join(" ");
+  const postedAt = post?.createdAt ? new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(post.createdAt)) : "Time unavailable";
+  const runAction = async (name, action, successMessage = "") => {
+    if (busyAction) return false;
+    setBusyAction(name); setActionNotice("");
+    try { await action(); if (successMessage) setActionNotice(successMessage); return true; }
+    catch { setActionNotice("That action could not be completed. Please try again."); return false; }
+    finally { setBusyAction(""); }
+  };
+  const submitComment = () => { if (comment.trim()) runAction("comment", () => onComment(post._id, comment.trim())).then((saved) => { if (saved) { setComment(""); setCommenting(false); } }); };
+  return <article className={cx("replica-post")}>
+    <header><span className={cx("replica-avatar", index % 2 && "replica-avatar-warm")}>{initials}</span><div><strong>{business}</strong><small><time dateTime={post?.createdAt || undefined} title={post?.createdAt ? new Date(post.createdAt).toString() : undefined}>{postedAt}</time> · Public{post?.businessLocation ? ` · ${post.businessLocation}` : ""}</small></div><button type="button" onClick={() => onOpen(post)}>•••</button></header>
+    <div className={cx("replica-copy")} onClick={() => onOpen(post)} role="button" tabIndex="0">
+      {post?.title && <h3>{post.title}</h3>}
+      {post?.text && <p>{post.text}</p>}
+      {hashtags && <a href="#spotlight-posts" onClick={(event) => event.preventDefault()}>{hashtags}</a>}
+    </div>
+    {media && (media.mediaType === "video" ? <video className={cx("replica-post-image")} src={media.mediaUrl} controls preload="metadata" /> : <img className={cx("replica-post-image")} src={media.mediaUrl} alt={media.fileName || business} onClick={() => onOpen(post)} />)}
+    <div className={cx("poster-facts")}><span><Star size={16}/><b>4.8</b><small>Customer rating</small></span><span><MapPin size={16}/><b>{post?.businessLocation || "Local"}</b><small>Business location</small></span><span><Clock3 size={16}/><b>Open Today</b><small>Business hours</small></span></div>
+    <div className={cx("poster-metrics")}><span><Eye/><b>{formatCompactNumber(post?.viewsCount || 0)}</b><small>Views</small></span><span className={post.likedByMe ? cx("metric-liked") : ""}><Heart fill={post.likedByMe ? "currentColor" : "none"}/><b>{likes.toLocaleString()}</b><small>Interested</small></span><span><MessageSquareText/><b>{(post?.enquiriesCount || 0).toLocaleString()}</b><small>Enquiries</small></span><span><Share2/><b>{shares.toLocaleString()}</b><small>Shares</small></span></div>
+    <div className={cx("poster-ctas")}><button type="button" disabled={busyAction === "enquiry"} onClick={()=>runAction("enquiry",()=>onEnquire(post._id),"Enquiry sent successfully")}><MessageSquareText/>{busyAction === "enquiry" ? "Sending…" : "Enquire Now"}</button>{(post.callToActions || []).slice(0,2).map((item)=><a key={item.action} href={getActionHref(item)} target={["call","whatsapp"].includes(item.action)?undefined:"_blank"} rel="noreferrer">{item.action === "call" ? <Phone/> : <MapPin/>}{item.label}</a>)}{!post.callToActions?.length && <button type="button" disabled={busyAction === "callback"} onClick={()=>runAction("callback",()=>onEnquire(post._id),"Callback requested")}><Phone/>{busyAction === "callback" ? "Requesting…" : "Request Callback"}</button>}</div>
+    {actionNotice && <div className={cx("poster-notice")} role="status">✓ {actionNotice}</div>}
+    <div className={cx("replica-social-counts")}><span><i>●</i><b>♥</b> {likes.toLocaleString()}</span><span>{comments.toLocaleString()} Comment{comments === 1 ? "" : "s"} · {shares.toLocaleString()} Share{shares === 1 ? "" : "s"}</span></div>
+    <footer>
+      <button type="button" aria-pressed={Boolean(post.likedByMe)} disabled={busyAction === "like"} className={post.likedByMe ? cx("liked") : ""} onClick={() => runAction("like", () => onLike(post._id))}><Heart size={18} fill={post.likedByMe ? "currentColor" : "none"}/> {busyAction === "like" ? "Updating…" : post.likedByMe ? "Liked" : "Like"}</button>
+      <button type="button" onClick={() => setCommenting((value) => !value)}><MessageCircle size={18}/> Comment</button>
+      <button type="button" onClick={() => onShare(post)}><Share2 size={18}/> Share</button>
+      <button type="button" aria-pressed={Boolean(post.savedByMe)} disabled={busyAction === "save"} className={post.savedByMe ? cx("saved") : ""} onClick={() => runAction("save", () => onSave(post._id))}><Bookmark size={18} fill={post.savedByMe ? "currentColor" : "none"}/> {busyAction === "save" ? "Updating…" : post.savedByMe ? "Saved" : "Save"}</button>
+    </footer>
+    {commenting && <div className={cx("replica-comment")}><input autoFocus maxLength={500} value={comment} onChange={(event) => setComment(event.target.value)} onKeyDown={(event) => event.key === "Enter" && submitComment()} placeholder="Write a comment…"/><span>{comment.length}/500</span><button type="button" disabled={!comment.trim() || busyAction === "comment"} onClick={submitComment}>{busyAction === "comment" ? "Posting…" : "Post"}</button></div>}
+  </article>;
+};
+
+const SpotlightReplica = ({ posts, filteredPosts, activeFilter, setActiveFilter, openComposer, moveToSection, totalViews, totalEngagements, totalLeads, handleLike, handleShare, handleComment, handleSave, handleEnquire, openPost }) => {
+  const [selectedStory, setSelectedStory] = useState(null);
+  const [savedOnly, setSavedOnly] = useState(false);
+  const savedCount = posts.filter((post) => post.savedByMe).length;
+  const displayPosts = (savedOnly ? filteredPosts.filter((post) => post.savedByMe) : filteredPosts).slice(0, savedOnly ? 50 : 4);
+  const storyNames = ["Your Story", "Niraali Institutions", "Prem's Sports Academy", "Sri Amman Catering", "Trichy Tours & Travels", "MassClick Updates"];
+  const stories = storyNames.map((name, index) => {
+    const post = posts[index % Math.max(posts.length, 1)] || displayPosts[index % displayPosts.length];
+    const image = post?.mediaItems?.find((item) => item.mediaType === "image" && item.mediaUrl)?.mediaUrl;
+    return { name, post, image, accent: ["blue","rose","violet","amber","teal","orange"][index] };
+  });
+  const showStory = (index) => setSelectedStory(Math.max(0, Math.min(stories.length - 1, index)));
+  const trendingTags = Object.entries(posts.flatMap((post) => post.hashtags || []).reduce((counts, tag) => ({ ...counts, [tag]: (counts[tag] || 0) + 1 }), {})).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const types = [[Tag,"Offer / Discount"],[Newspaper,"Update / News"],[CalendarDays,"Event"],[LayoutGrid,"Product"],[BellRing,"Service"],[Send,"Announcement"],[BriefcaseBusiness,"Job / Hiring"],[BarChart3,"Poll / Survey"],[Play,"Video Post"]];
+  return <><StickySearchBar/><main className={cx("replica-page")}>
+    <aside className={cx("replica-sidebar")}><nav>{replicaMenu.map(([Icon,label], index) => <button key={label} type="button" className={(label === "Saved" ? savedOnly : index === 0 && !savedOnly) ? cx("active") : ""} onClick={label === "Create Post" ? openComposer : label === "Saved" ? ()=>setSavedOnly(true) : () => { setSavedOnly(false); moveToSection(label); }}><Icon size={19}/><span>{label}</span>{label === "Saved" && <b className={cx("saved-count")}>{savedCount}</b>}</button>)}</nav><section><Crown/><h3>Go Premium</h3><p>Unlock advanced tools, analytics and more to grow your business.</p><button type="button">Upgrade Now →</button></section></aside>
+    <div className={cx("replica-center")}>
+      <section className={cx("replica-stories")}><header><h2>Stories & Status</h2><button type="button" onClick={openComposer}>Create status</button></header><div><button type="button" onClick={openComposer}><span className={cx("story-ring","story-add")}>+</span><small>Add Story</small></button>{stories.map((story,index) => <button type="button" key={story.name} onClick={()=>showStory(index)}><span className={cx("story-ring",`story-${story.accent}`)}>{story.image ? <img src={story.image} alt=""/> : <b>{story.name.split(/\s+/).map(word=>word[0]).slice(0,2).join("")}</b>}<i>●</i></span><small>{story.name}</small></button>)}</div></section>
+      <section className={cx("replica-composer")}><span className={cx("replica-avatar")}>MC</span><button type="button" onClick={openComposer}>What’s on your mind today? <span>☺</span></button><div>{[[Picture,"Photo / Video"],[Tag,"Offer / Discount"],[CalendarDays,"Event"],[BarChart3,"Poll / Survey"]].map(([Icon,label])=><button type="button" key={label} onClick={openComposer}><Icon size={17}/>{label}</button>)}</div></section>
+      {savedOnly && <section className={cx("saved-heading")}><div><Bookmark fill="currentColor"/><span><strong>Saved Posts</strong><small>{savedCount} saved item{savedCount === 1 ? "" : "s"} · posts, posters, videos and documents</small></span></div><button type="button" onClick={()=>setSavedOnly(false)}>Back to Feed</button></section>}
+      <div className={cx("replica-filters")} id="spotlight-posts">{["All Posts","Offers","Updates","Events","Products","Services","Jobs"].map(label => { const filter = label === "All Posts" ? "All" : label; return <button type="button" key={label} className={activeFilter === filter ? cx("active") : ""} onClick={()=>setActiveFilter(filter)}>{label}</button>})}<button type="button" aria-label="More filters"><SlidersHorizontal size={18}/></button></div>
+      <section className={cx("replica-feed")}>{displayPosts.length ? displayPosts.map((post,index)=><ReplicaPost key={post._id || index} post={post} index={index} onLike={handleLike} onShare={handleShare} onComment={handleComment} onSave={handleSave} onEnquire={handleEnquire} onOpen={openPost}/>) : <div className={cx("replica-empty")}>{savedOnly ? <Bookmark/> : <Newspaper/>}<strong>{savedOnly ? "No saved posts yet" : "No Spotlight posts yet"}</strong><span>{savedOnly ? "Tap Save on any post, poster, video or document to keep it here." : "Create the first post to start your local feed."}</span><button type="button" onClick={savedOnly ? ()=>setSavedOnly(false) : openComposer}>{savedOnly ? "Browse Spotlight" : "Create Post"}</button></div>}</section>
+    </div>
+    <aside className={cx("replica-right")}>
+      <section className={cx("replica-insights")}><header><h2>Spotlight Insights</h2><button type="button" onClick={()=>moveToSection("Insights")}>View All</button></header><div>{[[Eye,"Views",totalViews],[Heart,"Engagement",totalEngagements],[UserRound,"Leads",totalLeads],[Newspaper,"Posts",posts.length]].map(([Icon,label,value])=><button type="button" key={label} onClick={()=>moveToSection("Insights")}><Icon size={18}/><small>{label}</small><strong>{formatCompactNumber(value || 0)}</strong><em>Live total</em></button>)}</div><svg viewBox="0 0 300 150" role="img" aria-label="Views and engagement chart"><path d="M5 125 C45 115 55 72 95 76 S145 88 170 38 S225 23 245 65 S280 88 295 82"/><path className={cx("orange")} d="M5 140 C50 132 62 102 100 108 S150 112 178 78 S220 58 246 94 S275 112 295 110"/></svg><footer><span>● Views</span><span>● Engagements</span></footer></section>
+      <section className={cx("replica-create")}><h2>Create Spotlight Post</h2><div>{types.map(([Icon,label])=><button type="button" key={label} onClick={openComposer}><Icon size={19}/><small>{label}</small></button>)}</div></section>
+      <section className={cx("replica-calendar")}><header><h2>Upcoming Calendar</h2><button type="button" onClick={()=>moveToSection("Calendar")}>View All</button></header>{[["Independence Day Offer","15 Aug 2026 · All Day"],["Back to School Campaign","20 Aug 2026 · 10:00 AM"],["Weekend Special Offer","22 Aug 2026 · All Day"]].map(([title,date],index)=><button type="button" key={title} onClick={()=>moveToSection("Calendar")}><CalendarDays size={18}/><span><strong>{title}</strong><small>{date}</small></span></button>)}</section>
+      <section className={cx("replica-trending")}><header><h2>Trending Hashtags</h2><button type="button">View All</button></header>{trendingTags.length ? trendingTags.map(([tag,count])=><button key={tag} type="button"><strong>#{String(tag).replace(/^#/,"")}</strong><small>{count} post{count === 1 ? "" : "s"}</small></button>) : <p className={cx("replica-muted")}>Hashtag counts will appear from published posts.</p>}</section>
+    </aside>
+    <button className={cx("replica-fab")} type="button" onClick={openComposer} aria-label="Create Spotlight post">✎</button>
+    {selectedStory !== null && <div className={cx("status-backdrop")} role="presentation" onMouseDown={()=>setSelectedStory(null)}><section className={cx("status-viewer")} role="dialog" aria-modal="true" aria-label={`${stories[selectedStory].name} status`} onMouseDown={(event)=>event.stopPropagation()}>
+      <div className={cx("status-progress")}>{stories.map((_,index)=><i key={index} className={index <= selectedStory ? cx("seen") : ""}/>)}</div>
+      <header><span className={cx("status-avatar")}>{stories[selectedStory].name.charAt(0)}</span><div><strong>{stories[selectedStory].name}</strong><small>Today · {selectedStory + 2}:15 PM</small></div><button type="button" onClick={()=>setSelectedStory(null)} aria-label="Close status"><X/></button></header>
+      <div className={cx("status-content",`status-${stories[selectedStory].accent}`)}>{stories[selectedStory].image ? <img src={stories[selectedStory].image} alt={stories[selectedStory].name}/> : <div><span>SPOTLIGHT</span><strong>{stories[selectedStory].post?.title || stories[selectedStory].post?.text || "Discover what’s new near you today."}</strong><small>Tap through local offers, updates and moments.</small></div>}</div>
+      <button className={cx("status-prev")} type="button" disabled={selectedStory === 0} onClick={()=>showStory(selectedStory - 1)} aria-label="Previous status"><ChevronLeft/></button><button className={cx("status-next")} type="button" disabled={selectedStory === stories.length - 1} onClick={()=>showStory(selectedStory + 1)} aria-label="Next status"><ChevronRight/></button>
+      <footer><input placeholder="Reply to this status…"/><button type="button" aria-label="Like status"><Heart/></button><button type="button" aria-label="Share status"><Send/></button></footer>
+    </section></div>}
+  </main><Footer/></>;
 };
 
 const matchesFeedFilter = (post = {}, filter = "All") => {
@@ -705,7 +806,26 @@ export default function MassclickFeedPage() {
     navigator.clipboard?.writeText(`${shareText}\n${shareUrl}`);
   };
 
-  return (
+  return <SpotlightReplica
+    posts={posts}
+    filteredPosts={filteredPosts}
+    activeFilter={activeFilter}
+    setActiveFilter={(filter) => { setActiveFilter(filter); setBusinessFilter(""); }}
+    openComposer={openComposer}
+    moveToSection={moveToSection}
+    totalViews={totalViews}
+    totalEngagements={totalEngagements}
+    totalLeads={totalLeads}
+    handleLike={(postId) => dispatch(toggleMassclickFeedLike(postId))}
+    handleShare={handleShare}
+    handleComment={(postId, text) => dispatch(addMassclickFeedComment(postId, text))}
+    handleSave={(postId) => dispatch(toggleMassclickFeedSave(postId))}
+    handleEnquire={(postId) => dispatch(recordMassclickFeedEnquiry(postId))}
+    openPost={(post) => { dispatch(recordMassclickFeedView(post._id)); setSelectedPostId(post._id); }}
+  />;
+
+  // eslint-disable-next-line no-unreachable
+  if (false) return (
     <>
       <StickySearchBar />
       <main className={cx("feed-page")}>
@@ -1175,7 +1295,7 @@ export default function MassclickFeedPage() {
               </div>
             </section>
 
-            <section className={cx("rail-panel")}>
+            <section className={cx("rail-panel")}>  
               <div className={cx("rail-heading")}>
                 <EventAvailableIcon fontSize="small" />
                 <h2 className={cx("rail-heading-title")}>Best Feed Concepts</h2>

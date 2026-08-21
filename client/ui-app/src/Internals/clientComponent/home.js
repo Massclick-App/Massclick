@@ -414,9 +414,7 @@ const LandingPage = React.memo(() => {
       </Helmet>
 
       <div className={cx("home-page")}>
-        <CategoryBar />
-
-        {isScrolled && (
+        {isScrolled ? (
           <Suspense fallback={null}>
             <StickySearchBar
               isScrolled={true}
@@ -428,6 +426,8 @@ const LandingPage = React.memo(() => {
               setCategoryName={setCategoryName}
             />
           </Suspense>
+        ) : (
+          <CategoryBar />
         )}
 
         <main>
