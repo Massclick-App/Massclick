@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import { createMassclickFeedPost } from "../../../../redux/actions/massclickFeedAction.js";
 import styles from "./SpotlightCreatePage.module.css";
-import { Sparkles, PlusCircle, Images, CalendarDays, Send, UserRound, FileText, Settings, Tag, Newspaper, Calendar, Box, Cog, Megaphone, BriefcaseBusiness, BarChart3, Play, UploadCloud, Heart, MessageSquareText, Share2, Bookmark, Lightbulb, Eye } from "lucide-react";
+import { Sparkles, PlusCircle, Images, CalendarDays, Send, UserRound, FileText, Settings, Tag, Newspaper, Calendar, Box, Cog, Megaphone, BriefcaseBusiness, BarChart3, Play, UploadCloud, Heart, MessageSquareText, Share2, Bookmark, Lightbulb, Eye, ArrowLeft } from "lucide-react";
 
 const types = [["offer","Offer / Discount"],["update","Update / News"],["event","Event"],["product","Product"],["service","Service"],["announcement","Announcement"],["job","Job / Hiring"],["poll","Poll / Survey"],["video","Video Post"]];
 const audiences = ["Local Customers","New Customers","Students","Families","Business Owners","Fitness Enthusiasts"];
@@ -17,10 +17,10 @@ const readFile = (file) => new Promise((resolve,reject) => { const reader=new Fi
 const createNav = [[Sparkles,"Spotlight","/user_feed"],[PlusCircle,"Create Post","/user_spotlight/create"],[Newspaper,"My Posts","/user_feed"],[CalendarDays,"Calendar","/user_spotlight/calendar"],[Send,"Campaigns","/user_spotlight/campaigns"],[UserRound,"Leads","/user_spotlight/leads"],[Images,"Media Library","/user_spotlight/media"],[FileText,"Reports","/user_spotlight/reports"],[Settings,"Settings","/user_dashboard"]];
 const typeIcons = { offer:Tag, update:Newspaper, event:Calendar, product:Box, service:Cog, announcement:Megaphone, job:BriefcaseBusiness, poll:BarChart3, video:Play };
 
-function CreateSpotlightReference({form,update,previews,inputRef,addFiles,removeFile,tag,setTag,addTag,user,loading,publish,saveDraft,message}){
+function CreateSpotlightReference({form,update,previews,inputRef,addFiles,removeFile,tag,setTag,addTag,user,loading,publish,saveDraft,message,onBack}){
   const firstMedia=previews[0];
   const business=user.businessName||user.userName||"Your Business Name";
-  return <><StickySearchBar/><main className={styles.referencePage}>
+  return <><div className={styles.referenceDesktopHeader}><StickySearchBar/></div><div className={styles.referenceMobileHeader}><button type="button" onClick={onBack} aria-label="Go back"><ArrowLeft/><span>Back</span></button><strong>Create Post</strong><span aria-hidden="true"/></div><main className={styles.referencePage}>
     <aside className={styles.referenceNav}><nav>{createNav.map(([Icon,label,to])=><Link key={label} to={to} className={label==="Create Post"?styles.referenceActive:""}><Icon/><span>{label}</span></Link>)}</nav><section><b>♛</b><h3>Go Premium</h3><p>Unlock advanced tools and grow your business faster.</p><button type="button">Upgrade Now</button></section></aside>
     <section className={styles.referenceEditor}><header><h1>Create Spotlight Post</h1><p>Share offers, updates, events or announcements with the right audience.</p></header>
       <label className={styles.referenceLabel}>Post Type</label><div className={styles.referenceTypes}>{types.map(([key,label])=>{const Icon=typeIcons[key]||Sparkles;return <button type="button" key={key} className={form.postType===key?styles.referenceSelected:""} onClick={()=>update("postType",key)}><i><Icon/></i><span>{label}</span></button>})}</div>
@@ -55,7 +55,8 @@ export default function SpotlightCreatePage(){
   const toggleAudience=(name)=>update("audience",form.audience.includes(name)?form.audience.filter(x=>x!==name):[...form.audience,name]);
   const toggleAction=(action,label)=>{const exists=form.callToActions.some(item=>item.action===action);if(exists){update("callToActions",form.callToActions.filter(item=>item.action!==action));setActionErrors(old=>({...old,[action]:""}));setMessage("");return}if(form.callToActions.length>=3){setMessage("Choose up to three call-to-action buttons.");return}const isPhone=action==="call"||action==="whatsapp";const value=isPhone?(user.whatsappNumber||user.mobileNumber1||user.mobile||user.contact||""):(user.website||user.websiteUrl||"");update("callToActions",[...form.callToActions,{action,label,value}]);};
   const setActionValue=(action,value)=>{update("callToActions",form.callToActions.map(item=>item.action===action?{...item,value}:item));setActionErrors(old=>({...old,[action]:""}));setMessage("");};
-  return <CreateSpotlightReference form={form} update={update} previews={previews} inputRef={inputRef} addFiles={addFiles} removeFile={removeFile} tag={tag} setTag={setTag} addTag={addTag} user={user} loading={loading} publish={publish} saveDraft={saveDraft} message={message}/>;
+  const goBack=()=>{if(window.history.length>1)navigate(-1);else navigate("/user_feed")};
+  return <CreateSpotlightReference form={form} update={update} previews={previews} inputRef={inputRef} addFiles={addFiles} removeFile={removeFile} tag={tag} setTag={setTag} addTag={addTag} user={user} loading={loading} publish={publish} saveDraft={saveDraft} message={message} onBack={goBack}/>;
   // eslint-disable-next-line no-unreachable
   if(false) return <><StickySearchBar/><main className={styles.page}>
     <aside>{[["✦","Spotlight","/user_feed"],["＋","Create","/user_spotlight/create"],["▣","My Posts","/user_feed"],["□","Calendar","/user_spotlight/calendar"],["◁","Campaigns","/user_spotlight/campaigns"],["♙","Leads","/user_spotlight/leads"],["▧","Media","/user_spotlight/media"],["▥","Reports","/user_spotlight/reports"],["⚙","Settings","/user_dashboard"]].map(([icon,label,to])=><Link className={label==="Create"?styles.active:""} to={to} key={label}><i>{icon}</i><span>{label}</span></Link>)}</aside>
