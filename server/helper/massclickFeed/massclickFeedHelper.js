@@ -285,6 +285,48 @@ export const listMassclickFeedFollows = async (actor = {}) => {
   return { businessIds: follows.map((item) => String(item.businessId)) };
 };
 
+export const listMassclickFeedBusinesses = async ({ actor = {}, page = 1, limit = 10, search = "" } = {}) => {
+  const actorId = getActorId(actor);
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 10));
+  const safePage = Math.max(1, Number(page) || 1);
+  const query = { isActive: true, businessName: { $ne: "" } };
+  if (actorId && ObjectId.isValid(String(actorId))) query.createdBy = { $ne: new ObjectId(actorId) };
+  const searchTerm = String(search || "").trim();
+  if (searchTerm) {
+    const pattern = new RegExp(escapeRegExp(searchTerm), "i");
+    query.$or = [{ businessName: pattern }, { category: pattern }, { subcategory: pattern }, { location: pattern }, { keywords: pattern }];
+  }
+  const [businesses, total] = await Promise.all([businessListModel.find(query)
+    .select("businessName category location masterLocation publicId logoImageKey averageRating createdBy createdAt")
+    .sort({ amountPaid: -1, createdAt: -1 })
+    .skip((safePage - 1) * safeLimit)
+    .limit(safeLimit)
+    .lean(), businessListModel.countDocuments(query)]);
+  const businessIds = businesses.map((business) => business._id);
+  const [follows, followerCounts, postCounts] = businessIds.length ? await Promise.all([
+    actorId && ObjectId.isValid(String(actorId)) ? massclickFeedFollowModel.find({ followerUserId: actorId, businessId: { $in: businessIds } }).select("businessId -_id").lean() : [],
+    massclickFeedFollowModel.aggregate([{ $match: { businessId: { $in: businessIds } } }, { $group: { _id: "$businessId", count: { $sum: 1 } } }]),
+    massclickFeedPostModel.aggregate([{ $match: { businessId: { $in: businessIds }, status: "active", isDeleted: false } }, { $group: { _id: "$businessId", count: { $sum: 1 } } }]),
+  ]) : [[], [], []];
+  const followed = new Set(follows.map((item) => String(item.businessId)));
+  const followersById = new Map(followerCounts.map((item) => [String(item._id), item.count]));
+  const postsById = new Map(postCounts.map((item) => [String(item._id), item.count]));
+  const data = businesses.map((business) => ({
+    businessId: String(business._id),
+    businessName: business.businessName,
+    businessCategory: business.category || "Local business",
+    businessLocation: business.location || "",
+    districtSlug: business.masterLocation?.district || "",
+    publicId: business.publicId || "",
+    businessLogoUrl: business.logoImageKey ? getSignedUrlByKey(business.logoImageKey) : "",
+    averageRating: Number(business.averageRating || 0),
+    isFollowing: followed.has(String(business._id)),
+    followersCount: followersById.get(String(business._id)) || 0,
+    postsCount: postsById.get(String(business._id)) || 0,
+  })).sort((a, b) => Number(b.isFollowing) - Number(a.isFollowing));
+  return { data, page: safePage, pageSize: safeLimit, total, hasMore: safePage * safeLimit < total };
+};
+
 export const toggleMassclickFeedLike = async (postId, actor = {}) => {
   if (!ObjectId.isValid(postId)) throw new Error("Invalid post ID");
 

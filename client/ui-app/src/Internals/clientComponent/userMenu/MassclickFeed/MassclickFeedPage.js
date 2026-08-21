@@ -19,6 +19,7 @@ import { Home, PlusCircle, LayoutGrid, Send, Users, BarChart3, CalendarDays, Ima
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
+import { buildBusinessPath } from "../../../../utils/searchResultNavigation.js";
 import { isBusinessPeopleUser } from "../../../../utils/userUtils.js";
 import {
   addMassclickFeedComment,
@@ -30,6 +31,7 @@ import {
   toggleMassclickFeedSave,
   recordMassclickFeedView,
   recordMassclickFeedEnquiry,
+  getMassclickFeedBusinesses,
 } from "../../../../redux/actions/massclickFeedAction.js";
 import styles from "./MassclickFeedPage.module.css";
 
@@ -190,7 +192,7 @@ const replicaMenu = [
   [Bookmark, "Saved"], [Picture, "Media Library"], [FileText, "Reports"],
 ];
 
-const ReplicaPost = ({ post, index, onLike, onShare, onComment, onOpen, onSave, onEnquire }) => {
+const ReplicaPost = ({ post, index, onLike, onShare, onComment, onOpen, onSave, onEnquire, onFollow, onProfile }) => {
   const [commenting, setCommenting] = useState(false);
   const [comment, setComment] = useState("");
   const [busyAction, setBusyAction] = useState("");
@@ -218,7 +220,7 @@ const ReplicaPost = ({ post, index, onLike, onShare, onComment, onOpen, onSave, 
   };
   const submitComment = () => { if (comment.trim()) runAction("comment", () => onComment(post._id, comment.trim())).then((saved) => { if (saved) { setComment(""); setCommenting(false); } }); };
   return <article className={cx("replica-post")}>
-    <header><span className={cx("replica-avatar", index % 2 && "replica-avatar-warm")}>{initials}</span><div><strong>{business}</strong><small><time dateTime={post?.createdAt || undefined} title={post?.createdAt ? new Date(post.createdAt).toString() : undefined}>{postedAt}</time> · Public{post?.businessLocation ? ` · ${post.businessLocation}` : ""}</small></div><button type="button" onClick={() => onOpen(post)}>•••</button></header>
+    <header><button className={cx("replica-profile-trigger")} type="button" onClick={() => onProfile(post)} aria-label={`View ${business} profile`}><span className={cx("replica-avatar", index % 2 && "replica-avatar-warm")}>{initials}</span><span><strong>{business}</strong><small><time dateTime={post?.createdAt || undefined} title={post?.createdAt ? new Date(post.createdAt).toString() : undefined}>{postedAt}</time> · Public{post?.businessLocation ? ` · ${post.businessLocation}` : ""}</small></span></button>{post.businessId && <button className={cx("replica-follow", post.isFollowing && "following")} type="button" aria-pressed={Boolean(post.isFollowing)} onClick={() => onFollow(post.businessId, post.isFollowing)}>{post.isFollowing ? "Following" : "Follow"}</button>}<button className={cx("replica-more")} type="button" onClick={() => onOpen(post)} aria-label="Open post details">•••</button></header>
     <div className={cx("replica-copy")} onClick={() => onOpen(post)} role="button" tabIndex="0">
       {post?.title && <h3>{post.title}</h3>}
       {post?.text && <p>{post.text}</p>}
@@ -240,9 +242,49 @@ const ReplicaPost = ({ post, index, onLike, onShare, onComment, onOpen, onSave, 
   </article>;
 };
 
-const SpotlightReplica = ({ posts, filteredPosts, activeFilter, setActiveFilter, openComposer, moveToSection, totalViews, totalEngagements, totalLeads, handleLike, handleShare, handleComment, handleSave, handleEnquire, openPost }) => {
+function BusinessProfileModal({ post, posts, onClose, onFollow }) {
+  const business = post?.businessName || "MassClick Business";
+  const initials = business.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+  const businessPosts = posts.filter((item) => String(item.businessId || "") === String(post?.businessId || ""));
+  const publicActions = (post?.callToActions || []).filter((item) => item?.value).slice(0, 3);
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", closeOnEscape);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", closeOnEscape); };
+  }, [onClose]);
+  return <div className={cx("profile-backdrop")} role="presentation" onMouseDown={onClose}><section className={cx("profile-modal")} role="dialog" aria-modal="true" aria-labelledby="business-profile-title" onMouseDown={(event) => event.stopPropagation()}>
+    <button className={cx("profile-close")} type="button" onClick={onClose} aria-label="Close business profile"><X/></button>
+    <header><div className={cx("profile-avatar")}>{initials}</div><div><small>{post?.ownerActorType === "business" ? "Business account" : "Business person"}</small><h2 id="business-profile-title">{business}</h2><p>{[post?.businessCategory, post?.businessLocation].filter(Boolean).join(" · ") || "Local business on MassClick"}</p></div></header>
+    <div className={cx("profile-stats")}><span><strong>{(post?.followersCount || 0).toLocaleString()}</strong><small>Followers</small></span><span><strong>{businessPosts.length}</strong><small>Spotlight Posts</small></span><span><strong>{businessPosts.reduce((total, item) => total + (item.likesCount || 0), 0).toLocaleString()}</strong><small>Interested</small></span></div>
+    <div className={cx("profile-details")}><h3>Business details</h3><p><BriefcaseBusiness/><span><small>Category</small><strong>{post?.businessCategory || "Local business"}</strong></span></p><p><MapPin/><span><small>Location</small><strong>{post?.businessLocation || "Location not provided"}</strong></span></p><p><UserRound/><span><small>Profile type</small><strong>{post?.ownerActorType === "business" ? "Verified business account" : "Business person"}</strong></span></p></div>
+    {publicActions.length > 0 && <div className={cx("profile-contact")}><h3>Contact business</h3>{publicActions.map((item) => <a key={item.action} href={getActionHref(item)} target={["call","whatsapp"].includes(item.action) ? undefined : "_blank"} rel="noreferrer">{item.action === "call" ? <Phone/> : item.action === "whatsapp" ? <MessageCircle/> : <MapPin/>}<span>{item.label}</span></a>)}</div>}
+    {post?.businessId && <footer><button type="button" className={post.isFollowing ? cx("following") : ""} aria-pressed={Boolean(post.isFollowing)} onClick={() => onFollow(post.businessId, post.isFollowing)}>{post.isFollowing ? "✓ Following" : "+ Follow Business"}</button><small>{post.isFollowing ? "You’ll see this business’s updates first." : "Follow to see new posts and offers first."}</small></footer>}
+  </section></div>;
+}
+
+function BusinessFriendModal({ business, onClose, onFollow }) {
+  const navigate = useNavigate();
+  const initials = business.businessName.split(/\s+/).map((word) => word[0]).slice(0, 2).join("").toUpperCase();
+  const profilePath = buildBusinessPath({ districtSlug: business.districtSlug, location: business.businessLocation, businessName: business.businessName, publicId: business.publicId, id: business.businessId });
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", closeOnEscape);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", closeOnEscape); };
+  }, [onClose]);
+  return <div className={cx("profile-backdrop")} role="presentation" onMouseDown={onClose}><section className={cx("profile-modal","friend-preview-modal")} role="dialog" aria-modal="true" aria-labelledby="friend-preview-title" onMouseDown={(event)=>event.stopPropagation()}><button className={cx("profile-close")} type="button" onClick={onClose} aria-label="Close business preview"><X/></button><header><div className={cx("profile-avatar")}>{business.businessLogoUrl ? <img src={business.businessLogoUrl} alt=""/> : initials}</div><div><small>Business profile</small><h2 id="friend-preview-title">{business.businessName}</h2><p>{[business.businessCategory,business.businessLocation].filter(Boolean).join(" · ") || "Local business on MassClick"}</p></div></header><div className={cx("profile-stats")}><span><strong>{business.followersCount || 0}</strong><small>Followers</small></span><span><strong>{business.postsCount || 0}</strong><small>Spotlight Posts</small></span><span><strong>{business.averageRating ? Number(business.averageRating).toFixed(1) : "New"}</strong><small>Rating</small></span></div><div className={cx("profile-details")}><h3>Basic business details</h3><p><BriefcaseBusiness/><span><small>Category</small><strong>{business.businessCategory || "Local business"}</strong></span></p><p><MapPin/><span><small>Location</small><strong>{business.businessLocation || "Location not provided"}</strong></span></p><p><UserRound/><span><small>MassClick connection</small><strong>{business.isFollowing ? "You are following this business" : "Available to follow"}</strong></span></p></div><footer className={cx("friend-preview-actions")}><button type="button" className={business.isFollowing ? cx("following") : ""} onClick={()=>onFollow(business.businessId,business.isFollowing)}>{business.isFollowing ? "✓ Following" : "+ Follow Business"}</button><button type="button" onClick={()=>navigate(profilePath)}>View Full Profile →</button><small>The full profile opens as a separate business details page.</small></footer></section></div>;
+}
+
+const SpotlightReplica = ({ posts, businesses, businessPage, businessTotal, businessHasMore, businessLoading, loadBusinessPage, searchBusinesses, filteredPosts, activeFilter, setActiveFilter, openComposer, moveToSection, totalViews, totalEngagements, totalLeads, handleLike, handleShare, handleComment, handleSave, handleEnquire, handleFollow, openPost }) => {
   const [selectedStory, setSelectedStory] = useState(null);
+  const [profilePostId, setProfilePostId] = useState(null);
+  const [selectedBusinessId, setSelectedBusinessId] = useState(null);
   const [savedOnly, setSavedOnly] = useState(false);
+  const [businessSearch, setBusinessSearch] = useState("");
+  const businessSearchReady = useRef(false);
   const savedCount = posts.filter((post) => post.savedByMe).length;
   const displayPosts = (savedOnly ? filteredPosts.filter((post) => post.savedByMe) : filteredPosts).slice(0, savedOnly ? 50 : 4);
   const storyNames = ["Your Story", "Niraali Institutions", "Prem's Sports Academy", "Sri Amman Catering", "Trichy Tours & Travels", "MassClick Updates"];
@@ -253,6 +295,14 @@ const SpotlightReplica = ({ posts, filteredPosts, activeFilter, setActiveFilter,
   });
   const showStory = (index) => setSelectedStory(Math.max(0, Math.min(stories.length - 1, index)));
   const trendingTags = Object.entries(posts.flatMap((post) => post.hashtags || []).reduce((counts, tag) => ({ ...counts, [tag]: (counts[tag] || 0) + 1 }), {})).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const visibleBusinesses = businesses;
+  useEffect(() => {
+    if (!businessSearchReady.current) { businessSearchReady.current = true; return undefined; }
+    const timer = window.setTimeout(() => searchBusinesses(businessSearch.trim()), 350);
+    return () => window.clearTimeout(timer);
+    // Search only when the text changes; the callback intentionally uses the latest parent request handler.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessSearch]);
   const types = [[Tag,"Offer / Discount"],[Newspaper,"Update / News"],[CalendarDays,"Event"],[LayoutGrid,"Product"],[BellRing,"Service"],[Send,"Announcement"],[BriefcaseBusiness,"Job / Hiring"],[BarChart3,"Poll / Survey"],[Play,"Video Post"]];
   return <><StickySearchBar/><main className={cx("replica-page")}>
     <aside className={cx("replica-sidebar")}><nav>{replicaMenu.map(([Icon,label], index) => <button key={label} type="button" className={(label === "Saved" ? savedOnly : index === 0 && !savedOnly) ? cx("active") : ""} onClick={label === "Create Post" ? openComposer : label === "Saved" ? ()=>setSavedOnly(true) : () => { setSavedOnly(false); moveToSection(label); }}><Icon size={19}/><span>{label}</span>{label === "Saved" && <b className={cx("saved-count")}>{savedCount}</b>}</button>)}</nav><section><Crown/><h3>Go Premium</h3><p>Unlock advanced tools, analytics and more to grow your business.</p><button type="button">Upgrade Now →</button></section></aside>
@@ -261,10 +311,11 @@ const SpotlightReplica = ({ posts, filteredPosts, activeFilter, setActiveFilter,
       <section className={cx("replica-composer")}><span className={cx("replica-avatar")}>MC</span><button type="button" onClick={openComposer}>What’s on your mind today? <span>☺</span></button><div>{[[Picture,"Photo / Video"],[Tag,"Offer / Discount"],[CalendarDays,"Event"],[BarChart3,"Poll / Survey"]].map(([Icon,label])=><button type="button" key={label} onClick={openComposer}><Icon size={17}/>{label}</button>)}</div></section>
       {savedOnly && <section className={cx("saved-heading")}><div><Bookmark fill="currentColor"/><span><strong>Saved Posts</strong><small>{savedCount} saved item{savedCount === 1 ? "" : "s"} · posts, posters, videos and documents</small></span></div><button type="button" onClick={()=>setSavedOnly(false)}>Back to Feed</button></section>}
       <div className={cx("replica-filters")} id="spotlight-posts">{["All Posts","Offers","Updates","Events","Products","Services","Jobs"].map(label => { const filter = label === "All Posts" ? "All" : label; return <button type="button" key={label} className={activeFilter === filter ? cx("active") : ""} onClick={()=>setActiveFilter(filter)}>{label}</button>})}<button type="button" aria-label="More filters"><SlidersHorizontal size={18}/></button></div>
-      <section className={cx("replica-feed")}>{displayPosts.length ? displayPosts.map((post,index)=><ReplicaPost key={post._id || index} post={post} index={index} onLike={handleLike} onShare={handleShare} onComment={handleComment} onSave={handleSave} onEnquire={handleEnquire} onOpen={openPost}/>) : <div className={cx("replica-empty")}>{savedOnly ? <Bookmark/> : <Newspaper/>}<strong>{savedOnly ? "No saved posts yet" : "No Spotlight posts yet"}</strong><span>{savedOnly ? "Tap Save on any post, poster, video or document to keep it here." : "Create the first post to start your local feed."}</span><button type="button" onClick={savedOnly ? ()=>setSavedOnly(false) : openComposer}>{savedOnly ? "Browse Spotlight" : "Create Post"}</button></div>}</section>
+      <section className={cx("replica-feed")}>{displayPosts.length ? displayPosts.map((post,index)=><ReplicaPost key={post._id || index} post={post} index={index} onLike={handleLike} onShare={handleShare} onComment={handleComment} onSave={handleSave} onEnquire={handleEnquire} onFollow={handleFollow} onProfile={(item)=>setProfilePostId(item._id)} onOpen={openPost}/>) : <div className={cx("replica-empty")}>{savedOnly ? <Bookmark/> : <Newspaper/>}<strong>{savedOnly ? "No saved posts yet" : "No Spotlight posts yet"}</strong><span>{savedOnly ? "Tap Save on any post, poster, video or document to keep it here." : "Create the first post to start your local feed."}</span><button type="button" onClick={savedOnly ? ()=>setSavedOnly(false) : openComposer}>{savedOnly ? "Browse Spotlight" : "Create Post"}</button></div>}</section>
     </div>
     <aside className={cx("replica-right")}>
       <section className={cx("replica-insights")}><header><h2>Spotlight Insights</h2><button type="button" onClick={()=>moveToSection("Insights")}>View All</button></header><div>{[[Eye,"Views",totalViews],[Heart,"Engagement",totalEngagements],[UserRound,"Leads",totalLeads],[Newspaper,"Posts",posts.length]].map(([Icon,label,value])=><button type="button" key={label} onClick={()=>moveToSection("Insights")}><Icon size={18}/><small>{label}</small><strong>{formatCompactNumber(value || 0)}</strong><em>Live total</em></button>)}</div><svg viewBox="0 0 300 150" role="img" aria-label="Views and engagement chart"><path d="M5 125 C45 115 55 72 95 76 S145 88 170 38 S225 23 245 65 S280 88 295 82"/><path className={cx("orange")} d="M5 140 C50 132 62 102 100 108 S150 112 178 78 S220 58 246 94 S275 112 295 110"/></svg><footer><span>● Views</span><span>● Engagements</span></footer></section>
+      <section className={cx("business-friends")}><header><div><h2>Find Business Friends</h2><p>Follow local businesses to see their posts first.</p></div><small>{businessLoading ? "Searching…" : `${businessTotal} result${businessTotal===1?"":"s"}`}</small></header><label><span>⌕</span><input value={businessSearch} onChange={(event)=>setBusinessSearch(event.target.value)} placeholder="Search all businesses" aria-label="Search all business friends"/></label><div>{visibleBusinesses.length ? visibleBusinesses.map((business) => <article key={business.businessId}><button className={cx("business-friend-profile")} type="button" onClick={()=>setSelectedBusinessId(business.businessId)}><span>{business.businessLogoUrl ? <img src={business.businessLogoUrl} alt=""/> : business.businessName.split(/\s+/).map((word)=>word[0]).slice(0,2).join("")}</span><div><strong>{business.businessName}</strong><small>{[business.businessCategory,business.businessLocation].filter(Boolean).join(" · ")}</small><em>{business.followersCount} follower{business.followersCount===1?"":"s"} · {business.postsCount} post{business.postsCount===1?"":"s"}</em></div></button><button type="button" className={business.isFollowing ? cx("following") : ""} aria-pressed={Boolean(business.isFollowing)} onClick={()=>handleFollow(business.businessId,business.isFollowing)}>{business.isFollowing ? "Following" : "Follow"}</button></article>) : <p className={cx("replica-muted")}>{businessLoading ? "Searching all businesses…" : "No matching businesses found."}</p>}</div><nav className={cx("business-pagination")} aria-label="Business friends pages"><button type="button" disabled={businessLoading || businessPage===1} onClick={()=>loadBusinessPage(businessPage-1)}>← Previous</button><span>{businessLoading ? "Loading…" : `Page ${businessPage}`}</span><button type="button" disabled={businessLoading || !businessHasMore} onClick={()=>loadBusinessPage(businessPage+1)}>Next →</button></nav></section>
       <section className={cx("replica-create")}><h2>Create Spotlight Post</h2><div>{types.map(([Icon,label])=><button type="button" key={label} onClick={openComposer}><Icon size={19}/><small>{label}</small></button>)}</div></section>
       <section className={cx("replica-calendar")}><header><h2>Upcoming Calendar</h2><button type="button" onClick={()=>moveToSection("Calendar")}>View All</button></header>{[["Independence Day Offer","15 Aug 2026 · All Day"],["Back to School Campaign","20 Aug 2026 · 10:00 AM"],["Weekend Special Offer","22 Aug 2026 · All Day"]].map(([title,date],index)=><button type="button" key={title} onClick={()=>moveToSection("Calendar")}><CalendarDays size={18}/><span><strong>{title}</strong><small>{date}</small></span></button>)}</section>
       <section className={cx("replica-trending")}><header><h2>Trending Hashtags</h2><button type="button">View All</button></header>{trendingTags.length ? trendingTags.map(([tag,count])=><button key={tag} type="button"><strong>#{String(tag).replace(/^#/,"")}</strong><small>{count} post{count === 1 ? "" : "s"}</small></button>) : <p className={cx("replica-muted")}>Hashtag counts will appear from published posts.</p>}</section>
@@ -277,6 +328,8 @@ const SpotlightReplica = ({ posts, filteredPosts, activeFilter, setActiveFilter,
       <button className={cx("status-prev")} type="button" disabled={selectedStory === 0} onClick={()=>showStory(selectedStory - 1)} aria-label="Previous status"><ChevronLeft/></button><button className={cx("status-next")} type="button" disabled={selectedStory === stories.length - 1} onClick={()=>showStory(selectedStory + 1)} aria-label="Next status"><ChevronRight/></button>
       <footer><input placeholder="Reply to this status…"/><button type="button" aria-label="Like status"><Heart/></button><button type="button" aria-label="Share status"><Send/></button></footer>
     </section></div>}
+    {profilePostId && (() => { const profilePost = posts.find((item) => item._id === profilePostId); return profilePost ? <BusinessProfileModal post={profilePost} posts={posts} onClose={()=>setProfilePostId(null)} onFollow={handleFollow}/> : null; })()}
+    {selectedBusinessId && (() => { const selectedBusiness = businesses.find((item)=>String(item.businessId)===String(selectedBusinessId)); return selectedBusiness ? <BusinessFriendModal business={selectedBusiness} onClose={()=>setSelectedBusinessId(null)} onFollow={handleFollow}/> : null; })()}
   </main><Footer/></>;
 };
 
@@ -566,6 +619,13 @@ export default function MassclickFeedPage() {
   const [activeCommandTab, setActiveCommandTab] = useState("Feed");
   const [dataView, setDataView] = useState(null);
   const [businessFilter, setBusinessFilter] = useState("");
+  const [suggestedBusinesses, setSuggestedBusinesses] = useState([]);
+  const [businessPage, setBusinessPage] = useState(1);
+  const [businessTotal, setBusinessTotal] = useState(0);
+  const [businessQuery, setBusinessQuery] = useState("");
+  const [businessHasMore, setBusinessHasMore] = useState(false);
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const businessRequestRef = useRef(0);
   const feedSectionRef = useRef(null);
   const toolsSectionRef = useRef(null);
   const assistantSectionRef = useRef(null);
@@ -655,9 +715,32 @@ export default function MassclickFeedPage() {
 
   useEffect(() => {
     dispatch(getMassclickFeedPosts());
+    setBusinessLoading(true);
+    dispatch(getMassclickFeedBusinesses({ page: 1, limit: 10 })).then((result) => { setSuggestedBusinesses(result.data || []); setBusinessPage(1); setBusinessTotal(result.total || 0); setBusinessHasMore(Boolean(result.hasMore)); }).catch(() => { setSuggestedBusinesses([]); setBusinessTotal(0); setBusinessHasMore(false); }).finally(() => setBusinessLoading(false));
   }, [dispatch]);
 
-  const toggleFollow = (businessId, isFollowing) => dispatch(setMassclickFeedFollow(businessId, !isFollowing));
+  const loadBusinessPage = async (page, search = businessQuery) => {
+    if (page < 1) return;
+    const requestId = ++businessRequestRef.current;
+    setBusinessLoading(true);
+    try {
+      const result = await dispatch(getMassclickFeedBusinesses({ page, limit: 10, search }));
+      if (requestId !== businessRequestRef.current) return;
+      setSuggestedBusinesses(result.data || []);
+      setBusinessPage(page);
+      setBusinessTotal(result.total || 0);
+      setBusinessHasMore(Boolean(result.hasMore));
+    } catch { if (requestId === businessRequestRef.current) { setSuggestedBusinesses([]); setBusinessTotal(0); setBusinessHasMore(false); } }
+    finally { if (requestId === businessRequestRef.current) setBusinessLoading(false); }
+  };
+
+  const searchBusinesses = (search) => { setBusinessQuery(search); loadBusinessPage(1, search); };
+
+  const toggleFollow = async (businessId, isFollowing) => {
+    const result = await dispatch(setMassclickFeedFollow(businessId, !isFollowing));
+    setSuggestedBusinesses((items) => items.map((business) => String(business.businessId) === String(businessId) ? { ...business, isFollowing: result.isFollowing, followersCount: result.followersCount } : business));
+    return result;
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -808,6 +891,13 @@ export default function MassclickFeedPage() {
 
   return <SpotlightReplica
     posts={posts}
+    businesses={suggestedBusinesses}
+    businessPage={businessPage}
+    businessTotal={businessTotal}
+    businessHasMore={businessHasMore}
+    businessLoading={businessLoading}
+    loadBusinessPage={loadBusinessPage}
+    searchBusinesses={searchBusinesses}
     filteredPosts={filteredPosts}
     activeFilter={activeFilter}
     setActiveFilter={(filter) => { setActiveFilter(filter); setBusinessFilter(""); }}
@@ -821,6 +911,7 @@ export default function MassclickFeedPage() {
     handleComment={(postId, text) => dispatch(addMassclickFeedComment(postId, text))}
     handleSave={(postId) => dispatch(toggleMassclickFeedSave(postId))}
     handleEnquire={(postId) => dispatch(recordMassclickFeedEnquiry(postId))}
+    handleFollow={(businessId, isFollowing) => toggleFollow(businessId, isFollowing)}
     openPost={(post) => { dispatch(recordMassclickFeedView(post._id)); setSelectedPostId(post._id); }}
   />;
 

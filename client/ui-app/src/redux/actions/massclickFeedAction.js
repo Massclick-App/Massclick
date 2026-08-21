@@ -112,3 +112,9 @@ export const setMassclickFeedFollow = (businessId, follow) => async (dispatch) =
   dispatch(getMassclickFeedPosts({ pageSize: 50 }));
   return response.data;
 };
+
+export const getMassclickFeedBusinesses = ({ page = 1, limit = 10, search = "" } = {}) => async () => {
+  const params = new URLSearchParams({ page, limit, search });
+  const response = await axiosInstance.get(`${API_URL}/massclick-feed/businesses?${params.toString()}`);
+  return response.data;
+};

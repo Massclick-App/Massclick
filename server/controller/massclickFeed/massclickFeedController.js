@@ -9,6 +9,7 @@ import {
   updateMassclickFeedStatus,
   setMassclickFeedFollow,
   listMassclickFeedFollows,
+  listMassclickFeedBusinesses,
   toggleMassclickFeedSave,
   recordMassclickFeedView,
   recordMassclickFeedEnquiry,
@@ -128,6 +129,16 @@ export const listMassclickFeedFollowsAction = async (req, res) => {
     res.send(await listMassclickFeedFollows(getActor(req)));
   } catch (error) {
     console.error("listMassclickFeedFollowsAction error:", error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const listMassclickFeedBusinessesAction = async (req, res) => {
+  try {
+    const result = await listMassclickFeedBusinesses({ actor: getActor(req), page: req.query.page, limit: req.query.limit, search: req.query.search });
+    res.send(result);
+  } catch (error) {
+    console.error("listMassclickFeedBusinessesAction error:", error);
     res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };

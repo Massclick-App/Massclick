@@ -10,6 +10,7 @@ import {
   updateMassclickFeedStatusAction,
   setMassclickFeedFollowAction,
   listMassclickFeedFollowsAction,
+  listMassclickFeedBusinessesAction,
   toggleMassclickFeedSaveAction,
   recordMassclickFeedViewAction,
   recordMassclickFeedEnquiryAction,
@@ -26,6 +27,7 @@ router.post("/api/massclick-feed/posts/:id/save", requireAuthPolicy("massclick-f
 router.post("/api/massclick-feed/posts/:id/view", requireAuthPolicy("massclick-feed.list"), recordMassclickFeedViewAction);
 router.post("/api/massclick-feed/posts/:id/enquiry", requireAuthPolicy("massclick-feed.interact"), recordMassclickFeedEnquiryAction);
 router.get("/api/massclick-feed/follows", requireAuthPolicy("massclick-feed.interact"), listMassclickFeedFollowsAction);
+router.get("/api/massclick-feed/businesses", requireAuthPolicy("massclick-feed.list"), listMassclickFeedBusinessesAction);
 router.put("/api/massclick-feed/follows/:businessId", requireAuthPolicy("massclick-feed.interact"), setMassclickFeedFollowAction);
 router.patch("/api/massclick-feed/posts/:id/status", requireAdminAuth(), updateMassclickFeedStatusAction);
 router.delete("/api/massclick-feed/posts/:id", requireAdminAuth(), deleteMassclickFeedPostAction);
