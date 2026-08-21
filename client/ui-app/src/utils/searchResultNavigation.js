@@ -345,6 +345,12 @@ export const navigateToSearchResult = ({
     locationName: location,
     isKnownCategory,
 
+    // A user-typed/selected search must always land on results, never on the
+    // subcategory listing page (CategoryRouter's hasSubcategories branch) -
+    // that page is reserved for someone clicking a category card/link, which
+    // is the isKnownCategory:true flow.
+    isSearch: !isKnownCategory,
+
     // Display name - use raw input for UI display
     displayName: searchTerm,
 
