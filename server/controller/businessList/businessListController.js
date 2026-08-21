@@ -1180,6 +1180,13 @@ export const mainSearchController = async (req, res) => {
               1
             ]
           },
+          paidPriority: {
+            $cond: [
+              { $eq: ["$amountPaid", true] },
+              0,
+              1
+            ]
+          },
           verifiedPriority: {
             $cond: [
               { $eq: ["$verification.isVerified", true] },
@@ -1220,13 +1227,15 @@ export const mainSearchController = async (req, res) => {
         $sort: useNearestSort
           ? { _distanceSort: 1, amountPaid: -1, createdAt: -1 }
           : (useCustomSort || {
+              paidPriority: 1,
               verifiedPriority: 1,
+              "badges.priorityScore": -1,
               ...(term ? { textScore: -1 } : {}),
               categoryPriority: 1,
               locationPriority: 1,
-              amountPaid: -1,
               paidDate: -1,
-              createdAt: -1
+              createdAt: -1,
+              _id: 1
             })
       },
       { $skip: skip },
@@ -1272,6 +1281,7 @@ export const mainSearchController = async (req, res) => {
         $project: {
           reviews: 0,
           activeReviews: 0,
+          paidPriority: 0,
           verifiedPriority: 0,
           categoryPriority: 0,
           locationPriority: 0,

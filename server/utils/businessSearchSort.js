@@ -26,10 +26,19 @@ export const sortBusinessesForDefaultSearch = (
   };
 
   return [...businesses].sort((left, right) => {
+    const paidDifference =
+      Number(Boolean(right?.amountPaid)) - Number(Boolean(left?.amountPaid));
+    if (paidDifference !== 0) return paidDifference;
+
     const verifiedDifference =
       Number(Boolean(right?.verification?.isVerified)) -
       Number(Boolean(left?.verification?.isVerified));
     if (verifiedDifference !== 0) return verifiedDifference;
+
+    const priorityScoreDifference =
+      Number(right?.badges?.priorityScore || 0) -
+      Number(left?.badges?.priorityScore || 0);
+    if (priorityScoreDifference !== 0) return priorityScoreDifference;
 
     const leftCategoryPriority =
       normalizeBusinessSortValue(left?.category) === normalizedCategory ? 1 : 0;
@@ -44,10 +53,6 @@ export const sortBusinessesForDefaultSearch = (
     const locationDifference =
       Number(hasLocationPrefix(right)) - Number(hasLocationPrefix(left));
     if (locationDifference !== 0) return locationDifference;
-
-    const paidDifference =
-      Number(Boolean(right?.amountPaid)) - Number(Boolean(left?.amountPaid));
-    if (paidDifference !== 0) return paidDifference;
 
     const paidDateDifference =
       toBusinessSortTimestamp(right?.paidDate) -
