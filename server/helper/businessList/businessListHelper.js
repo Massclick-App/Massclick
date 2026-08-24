@@ -272,6 +272,11 @@ export const createBusinessList = async (reqBody = {}) => {
       const uploadResult = await uploadImageToS3(
         reqBody.logoImage,
         s3Keys.business.logo(businessId),
+        // Logos are stored as uploaded. The default WebP pass is lossy (q70),
+        // and the logo is already re-encoded once by the cropper, so a second
+        // lossy pass costs edge crispness on exactly the asset that gets
+        // enlarged onto the certificate.
+        { skipImageConversion: true },
       );
 
       reqBody.logoImageKey = uploadResult.key;
@@ -1213,6 +1218,8 @@ export const updateBusinessList = async (id, data) => {
       data.logoImage,
       // STABLE — regeneration now overwrites the same key instead of orphaning.
       s3Keys.business.logo(business._id),
+      // Stored as uploaded — see the matching note on the create path above.
+      { skipImageConversion: true },
     );
     business.logoImageKey = uploadResult.key;
     business.logoUploadedAt = new Date();
