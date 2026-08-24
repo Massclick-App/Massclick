@@ -2,27 +2,32 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import sharp from "sharp";
-import QRCode from "qrcode";
 import {
   deleteObjectByKey,
   getImageDataUrlByKey,
   uploadImageToS3,
 } from "../../s3Uploder.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
-import { buildBusinessDetailsUrl, getBusinessId } from "./businessPublicUrlHelper.js";
+import { getBusinessId } from "./businessPublicUrlHelper.js";
 import { s3Keys } from "../../utils/s3ObjectKeys.js";
 import { assetUrl } from "../../utils/assetUrl.js";
 
-// The certificate is a fixed artwork plate (border, seal, laurel, verification
-// chips, headings, bottom band — everything that never changes) with only the
-// per-business fields drawn on top. Hand-coding those ornaments as SVG paths
-// could only ever approximate the design; compositing the artwork itself makes
-// the output identical to the source design by construction.
+// The certificate is a fixed artwork plate (gold border, medal, star row,
+// MassClick mark, verified seal, signature block, Play badge, disclaimer and
+// URL — everything that never changes) with only the per-business fields drawn
+// on top. Hand-coding those ornaments as SVG paths could only ever approximate
+// the design; compositing the artwork itself makes the output identical to the
+// source design by construction.
 //
-// Because the plate is fixed, every field below sits in a fixed slot and
-// long values shrink to fit rather than pushing the layout down.
+// The plate was reconstructed from the designer's 80 per-business PDFs. Because
+// only the logo, name and location differ between them, a per-pixel median over
+// the whole set recovers the background those three fields sit on — see
+// scripts/buildCertificatePlate.py, which rebuilds it from that folder.
+//
+// Because the plate is fixed, every field below sits in a fixed slot and long
+// values shrink to fit rather than pushing the layout down.
 
-export const CERTIFICATE_TEMPLATE_VERSION = 19;
+export const CERTIFICATE_TEMPLATE_VERSION = 20;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,49 +37,48 @@ const ASSET_DIR = path.resolve(__dirname, "../../assets/certificates");
 
 // Bundled via fontconfig in utils/fontBootstrap.js. librsvg ignores @font-face,
 // so these names must match the family names of the fonts in assets/fonts.
-const SANS = "Noto Sans";
-const SANS_TAMIL = "Noto Sans Tamil";
-const TEXT_FONT_FAMILY = `'${SANS}', '${SANS_TAMIL}', sans-serif`;
-const SERIF_FONT_FAMILY = "'Noto Serif', serif";
+//
+// The artwork sets the business name and location in Altone, which ships only
+// under a trial licence and so cannot go on the server. Poppins is the closest
+// geometric sans we can licence (SIL OFL) and the designer already uses it for
+// the disclaimer line on this same certificate, so the two agree. Tamil has no
+// Poppins cut; Noto Sans Tamil picks up business names written in Tamil script.
+const TEXT_FONT_FAMILY = "'Poppins', 'Noto Sans Tamil', sans-serif";
 
 // Sampled from the plate so drawn text matches the artwork it sits on.
-const CERT_NAVY = "#07183f";
-const CERT_GOLD = "#c38a22";
-const CERT_PLAQUE_GOLD = "#f1d275";
-const CERT_TRUST_ORANGE = "#ff8a2a";
-const CERT_FOOTER_GOLD = "#e5bd5a";
-const CERT_PAPER = "#fffdf7";
+const CERT_NAVY = "#151645";
 
-// Design space. The plate is authored at 2x and rendered down to this box.
-const CERT_WIDTH = 720;
-const CERT_HEIGHT = 960;
-const RENDER_SCALE = 2;
+// Design space — the artwork's own PDF point size, so every coordinate below is
+// read straight off the source design with no conversion.
+const CERT_WIDTH = 576;
+const CERT_HEIGHT = 864;
+const RENDER_SCALE = 2.5;
 const CX = CERT_WIDTH / 2;
 
 // Every per-business field, in design-space coordinates. Tune here — nothing
 // else in this file carries layout numbers.
-// Slots are derived from the plate: each one is the region cleared by
-// scripts/buildCertificatePlate.cjs, so text can never collide with artwork.
-const CERTIFICATE_LAYOUTS = {
-  verified: {
-    stars: { cx: CX, cy: 120, count: 5, outerRadius: 8, innerRadius: 3.4, spacing: 20, fill: CERT_GOLD },
-    businessLogo: { cx: CX, cy: 495, maxLogoWidth: 72, maxLogoHeight: 74, paddingX: 17, paddingY: 13, minFrameWidth: 96, minFrameHeight: 88, maxFrameWidth: 134, maxFrameHeight: 112 },
-    businessName: { cy: 574, maxWidth: 438, fontSize: 26, minFontSize: 15, lineHeight: 28, maxLines: 2, weight: 800, fill: CERT_NAVY, letterSpacing: -0.7 },
-    // The plaque itself is part of the plate; only its label is drawn.
-    category: { cy: 625, maxWidth: 275, fontSize: 17, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_PLAQUE_GOLD, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
-    location: { cy: 662, maxWidth: 245, fontSize: 17, minFontSize: 11, lineHeight: 19, maxLines: 2, weight: 800, fill: CERT_NAVY },
-    // The white box and its gold border are on the plate; only the code is drawn.
-    qr: { x: 79, y: 797, size: 82 },
-    footer: { cy: 943, maxWidth: 360, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
-  },
-  trust: {
-    businessLogo: { cx: CX, cy: 467, maxLogoWidth: 62, maxLogoHeight: 66, paddingX: 15, paddingY: 12, minFrameWidth: 86, minFrameHeight: 78, maxFrameWidth: 116, maxFrameHeight: 96, frameStyle: "trust" },
-    businessName: { cy: 527, maxWidth: 410, fontSize: 29, minFontSize: 15, lineHeight: 30, maxLines: 2, weight: 700, fill: CERT_NAVY, fontFamily: SERIF_FONT_FAMILY, letterSpacing: -0.4 },
-    category: { cy: 579, maxWidth: 292, fontSize: 18, minFontSize: 10.5, lineHeight: 18, maxLines: 1, weight: 700, fill: CERT_TRUST_ORANGE, fontFamily: SERIF_FONT_FAMILY, letterSpacing: 0.3 },
-    location: { cy: 614, maxWidth: 220, fontSize: 17, minFontSize: 11, lineHeight: 19, maxLines: 2, weight: 700, fill: CERT_NAVY, fontFamily: SERIF_FONT_FAMILY },
-    qr: { x: 76, y: 766, size: 74 },
-    footer: { cy: 937, maxWidth: 390, fontSize: 12, minFontSize: 8, lineHeight: 12, maxLines: 1, weight: 400, fill: CERT_FOOTER_GOLD, fontFamily: SERIF_FONT_FAMILY },
-  },
+const CERTIFICATE_LAYOUT = {
+  // Logos in the source set are wordmarks as often as they are marks, so the
+  // slot is wide and short and the image is contained inside it rather than
+  // filled to it. No frame: the design sits the logo straight on the paper.
+  //
+  // Hung from its top edge, not centred: across the 80 reference certificates
+  // the logo's top sits at 262.8 with almost no spread (p25-p95 is 262.4-263.6)
+  // while its height varies with the artwork, so the designer clearly aligned
+  // tops and let logos hang to different depths.
+  businessLogo: { cx: CX, top: 262.8, maxLogoWidth: 430, maxLogoHeight: 80 },
+
+  // Name and location are laid out as one block centred on `cy`, so a name that
+  // wraps to two lines pushes the location down instead of overprinting it. The
+  // centre and gap are taken from the design's one-line case, which is what all
+  // but a handful of the 80 reference certificates use. topLimit clears a
+  // full-height logo (262.8 + 80) by a hair.
+  stack: { cy: 372, gap: 5, topLimit: 346, bottomLimit: 419 },
+
+  businessName: { maxWidth: 430, fontSize: 20, minFontSize: 12.5, lineHeight: 23, maxLines: 2, weight: 700, fill: CERT_NAVY },
+  // One line only: immediately below the location sits the star row, which is
+  // painted on the plate and cannot move out of the way.
+  location: { maxWidth: 430, fontSize: 16, minFontSize: 10.5, lineHeight: 19, maxLines: 1, weight: 400, fill: CERT_NAVY },
 };
 
 const escapeXml = (value) =>
@@ -98,28 +102,13 @@ const readAssetDataUrl = (fileName, label) => {
 
 // Read once at boot — the plates are a few hundred KB each and never change.
 // Authored at exactly the output resolution so rendering is a 1:1 blit.
+//
+// Verified and trust currently share one artwork: the designer delivered a
+// single design. Dropping a distinct plate-trust.jpg in place is all that is
+// needed if trust-specific artwork ever arrives.
 const PLATES = {
   verified: readAssetDataUrl("plate-verified.jpg", "verified certificate plate"),
   trust: readAssetDataUrl("plate-trust.jpg", "trust certificate plate"),
-};
-
-const formatCertificateDate = (value = new Date()) => {
-  const date = new Date(value);
-  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
-
-  return safeDate.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const buildCertificateVerifyUrl = (business = {}) => {
-  if (business.businessProfileQrCode?.qrText) {
-    return business.businessProfileQrCode.qrText;
-  }
-
-  return buildBusinessDetailsUrl(business);
 };
 
 const appendCertificateUrls = (business = {}) => {
@@ -150,10 +139,9 @@ const appendCertificateUrls = (business = {}) => {
 
 // Text has to fit slots on a fixed plate, so we need real widths, not an
 // average-glyph guess — that guess ignored letter-spacing and undershot
-// uppercase serif caps badly enough to run the category label through the
-// plaque's diamond markers. Instead, render each string once offscreen and
-// measure its ink. Width scales linearly with font size, so one measurement
-// per string covers every candidate size.
+// uppercase caps badly enough to run long names past the paper edge. Instead,
+// render each string once offscreen and measure its ink. Width scales linearly
+// with font size, so one measurement per string covers every candidate size.
 const MEASURE_REF_SIZE = 64;
 const MEASURE_PAD = 40;
 const measureCache = new Map();
@@ -271,51 +259,25 @@ const textBlockMarkup = ({ lines, fontSize, cy, lineHeight, weight, fill, fontFa
     .join("\n  ");
 };
 
-const qrMarkup = async ({ url, x, y, size, color }) => {
-  try {
-    const raw = await QRCode.toString(url, {
-      type: "svg",
-      margin: 0,
-      color: { dark: color, light: "#00000000" },
-    });
-    const viewBoxMatch = raw.match(/viewBox="([^"]+)"/);
-    const bodyMatch = raw.match(/<svg[^>]*>([\s\S]*)<\/svg>/);
+// Name and location are one block: measure both, then hand each its own centre
+// line so the pair stays centred on the plate's open area whatever they wrap to.
+const stackCentres = (nameBlock, locationBlock, layout) => {
+  const { businessName, location, stack } = layout;
+  const nameHeight = nameBlock.lines.length * businessName.lineHeight;
+  const locationHeight = locationBlock.lines.length * location.lineHeight;
+  const total = nameHeight + stack.gap + locationHeight;
 
-    if (!viewBoxMatch || !bodyMatch) return "";
+  // Clamp rather than let a tall block collide with the logo above or the star
+  // row below, both of which are painted on the plate and cannot move.
+  let top = stack.cy - total / 2;
+  top = Math.min(top, stack.bottomLimit - total);
+  top = Math.max(top, stack.topLimit);
 
-    return `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${viewBoxMatch[1]}">${bodyMatch[1]}</svg>`;
-  } catch (error) {
-    console.warn("[Certificate] Unable to build QR code:", error.message);
-    return "";
-  }
+  return {
+    nameCy: top + nameHeight / 2,
+    locationCy: top + nameHeight + stack.gap + locationHeight / 2,
+  };
 };
-
-const starPoints = ({ cx, cy, outerRadius, innerRadius }) => {
-  const points = [];
-  const startAngle = -Math.PI / 2;
-
-  for (let i = 0; i < 10; i++) {
-    const radius = i % 2 === 0 ? outerRadius : innerRadius;
-    const angle = startAngle + (i * Math.PI) / 5;
-    points.push(`${(cx + Math.cos(angle) * radius).toFixed(2)},${(cy + Math.sin(angle) * radius).toFixed(2)}`);
-  }
-
-  return points.join(" ");
-};
-
-const starsMarkup = (layout) => {
-  if (!layout) return "";
-
-  const firstX = layout.cx - ((layout.count - 1) * layout.spacing) / 2;
-  return `<g>
-    ${Array.from({ length: layout.count }, (_, index) => {
-      const cx = firstX + index * layout.spacing;
-      return `<polygon points="${starPoints({ ...layout, cx })}" fill="${layout.fill}" stroke="#a96f13" stroke-width="0.6"/>`;
-    }).join("\n    ")}
-  </g>`;
-};
-
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 const dataUrlToBuffer = (dataUrl = "") => {
   const match = String(dataUrl).match(/^data:([\w/+.-]+);base64,(.+)$/);
@@ -384,124 +346,54 @@ const prepareLogoImage = async (logoDataUrl, layout) => {
   }
 };
 
-const logoFrameMarkup = ({ x, y, width, height, cx, cy }) => {
-  const radius = 9;
-  const midLeft = x - 8;
-  const midRight = x + width + 8;
-  const midY = cy;
-  const topY = y - 5;
-  const bottomY = y + height + 5;
-
-  return `<g>
-    <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${radius}" fill="${CERT_PAPER}" stroke="${CERT_GOLD}" stroke-width="1.6"/>
-    <rect x="${(x + 3).toFixed(2)}" y="${(y + 3).toFixed(2)}" width="${(width - 6).toFixed(2)}" height="${(height - 6).toFixed(2)}" rx="${radius - 2}" fill="none" stroke="${CERT_NAVY}" stroke-width="0.8"/>
-    <rect x="${(x + 5.5).toFixed(2)}" y="${(y + 5.5).toFixed(2)}" width="${(width - 11).toFixed(2)}" height="${(height - 11).toFixed(2)}" rx="${radius - 4}" fill="none" stroke="${CERT_GOLD}" stroke-width="0.8"/>
-    <path d="M ${midLeft.toFixed(2)} ${midY.toFixed(2)} h -9 m 9 0 c -5 -4 -5 -9 0 -13 m 0 13 c -5 4 -5 9 0 13" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
-    <path d="M ${midRight.toFixed(2)} ${midY.toFixed(2)} h 9 m -9 0 c 5 -4 5 -9 0 -13 m 0 13 c 5 4 5 9 0 13" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
-    <path d="M ${(cx - 18).toFixed(2)} ${topY.toFixed(2)} h 12 l 6 -5 l 6 5 h 12" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
-    <path d="M ${(cx - 18).toFixed(2)} ${bottomY.toFixed(2)} h 12 l 6 5 l 6 -5 h 12" fill="none" stroke="${CERT_GOLD}" stroke-width="1"/>
-  </g>`;
-};
-
-const trustLogoFrameMarkup = ({ x, y, width, height, cx, cy }) => {
-  const radius = 4;
-  const corner = 10;
-  const left = x.toFixed(2);
-  const top = y.toFixed(2);
-  const right = (x + width).toFixed(2);
-  const bottom = (y + height).toFixed(2);
-
-  return `<g>
-    <rect x="${left}" y="${top}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${radius}" fill="${CERT_PAPER}" stroke="${CERT_GOLD}" stroke-width="1.2"/>
-    <rect x="${(x + 3).toFixed(2)}" y="${(y + 3).toFixed(2)}" width="${(width - 6).toFixed(2)}" height="${(height - 6).toFixed(2)}" rx="${radius}" fill="none" stroke="${CERT_GOLD}" stroke-width="0.7"/>
-    <path d="M ${left} ${(y + corner).toFixed(2)} v -${corner} h ${corner} M ${(x + width - corner).toFixed(2)} ${top} h ${corner} v ${corner} M ${right} ${(y + height - corner).toFixed(2)} v ${corner} h -${corner} M ${(x + corner).toFixed(2)} ${bottom} h -${corner} v -${corner}" fill="none" stroke="${CERT_GOLD}" stroke-width="1.4"/>
-    <path d="M ${(x - 9).toFixed(2)} ${cy.toFixed(2)} c 6 -4 6 -10 0 -14 m 0 14 c 6 4 6 10 0 14 M ${(x + width + 9).toFixed(2)} ${cy.toFixed(2)} c -6 -4 -6 -10 0 -14 m 0 14 c -6 4 -6 10 0 14" fill="none" stroke="${CERT_GOLD}" stroke-width="0.9"/>
-    <path d="M ${(cx - 15).toFixed(2)} ${(y - 4).toFixed(2)} h 9 l 6 -4 l 6 4 h 9 M ${(cx - 15).toFixed(2)} ${(y + height + 4).toFixed(2)} h 9 l 6 4 l 6 -4 h 9" fill="none" stroke="${CERT_GOLD}" stroke-width="0.9"/>
-  </g>`;
-};
-
 const businessLogoMarkup = async (business = {}, layout) => {
   const logo = await prepareLogoImage(await resolveBusinessLogoDataUrl(business), layout);
-  const drawWidth = logo?.drawWidth || Math.min(layout.maxLogoWidth, 44);
-  const drawHeight = logo?.drawHeight || Math.min(layout.maxLogoHeight, 44);
-  const frameWidth = clamp(drawWidth + layout.paddingX * 2, layout.minFrameWidth, layout.maxFrameWidth);
-  const frameHeight = clamp(drawHeight + layout.paddingY * 2, layout.minFrameHeight, layout.maxFrameHeight);
-  const frameX = layout.cx - frameWidth / 2;
-  const frameY = layout.cy - frameHeight / 2;
-  const logoX = layout.cx - drawWidth / 2;
-  const logoY = layout.cy - drawHeight / 2;
 
-  const fallbackInitial = escapeXml(
-    String(business.businessName || business.name || "M").trim().charAt(0).toUpperCase() || "M",
-  );
+  // A business without a logo still needs something in the slot, or the paper
+  // reads as a printing fault. Their initial, set in the certificate's own face,
+  // sitting on the same baseline a full-height logo would occupy.
+  if (!logo) {
+    const initial = escapeXml(
+      String(business.businessName || business.name || "M").trim().charAt(0).toUpperCase() || "M",
+    );
+    return `<text x="${layout.cx}" y="${(layout.top + 62).toFixed(2)}" text-anchor="middle" font-family="${TEXT_FONT_FAMILY}" font-size="64" font-weight="600" fill="${CERT_NAVY}">${initial}</text>`;
+  }
 
-  const frameSvg = layout.frameStyle === "trust"
-    ? trustLogoFrameMarkup({ x: frameX, y: frameY, width: frameWidth, height: frameHeight, cx: layout.cx, cy: layout.cy })
-    : logoFrameMarkup({ x: frameX, y: frameY, width: frameWidth, height: frameHeight, cx: layout.cx, cy: layout.cy });
+  const x = layout.cx - logo.drawWidth / 2;
 
-  return `${frameSvg}
-  ${logo
-    ? `<image href="${escapeXml(logo.dataUrl)}" x="${logoX.toFixed(2)}" y="${logoY.toFixed(2)}" width="${drawWidth.toFixed(2)}" height="${drawHeight.toFixed(2)}" preserveAspectRatio="xMidYMid meet"/>`
-    : `<text x="${layout.cx}" y="${(layout.cy + 14).toFixed(2)}" text-anchor="middle" font-family="${TEXT_FONT_FAMILY}" font-size="40" font-weight="800" fill="${CERT_NAVY}">${fallbackInitial}</text>`}`;
+  return `<image href="${escapeXml(logo.dataUrl)}" x="${x.toFixed(2)}" y="${layout.top.toFixed(2)}" width="${logo.drawWidth.toFixed(2)}" height="${logo.drawHeight.toFixed(2)}" preserveAspectRatio="xMidYMid meet"/>`;
 };
 
 // ---- main builder ------------------------------------------------------------
 
 export const buildCertificateSvg = async (business = {}, type = "verified") => {
-  const isTrust = type === "trust";
-  const layout = CERTIFICATE_LAYOUTS[isTrust ? "trust" : "verified"];
-  const plate = PLATES[isTrust ? "trust" : "verified"];
+  const layout = CERTIFICATE_LAYOUT;
+  const plate = PLATES[type === "trust" ? "trust" : "verified"];
 
   const rawBusinessName = business.businessName || business.name || "Business";
-  const rawLocation = business.location || business.globalAddress || "Business location verified by MassClick";
-  const category = (business.category || "").trim();
-  const categoryLabel = (category || (isTrust ? "TRUSTED BUSINESS" : "VERIFIED BUSINESS")).toUpperCase();
-  const certNo = `MC-${isTrust ? "TRUST" : "VER"}-${(getBusinessId(business) || "000000").slice(-6).toUpperCase()}`;
-  const issuedDate = formatCertificateDate(business.certificates?.generatedAt || new Date());
+  const rawLocation = business.globalAddress || business.location || "Tamil Nadu, India";
 
   const nameBlock = await fitTextBlock(rawBusinessName, layout.businessName);
-  const categoryBlock = await fitTextBlock(categoryLabel, layout.category);
   const locationBlock = await fitTextBlock(rawLocation, layout.location);
-  const starsSvg = starsMarkup(layout.stars);
+  const { nameCy, locationCy } = stackCentres(nameBlock, locationBlock, layout);
   const logoSvg = await businessLogoMarkup(business, layout.businessLogo);
-  const footerBlock = await fitTextBlock(
-    `Certificate No. ${certNo}  |  Issued ${issuedDate}`,
-    layout.footer,
-  );
-
-  const qr = layout.qr;
-  const qrSvg = await qrMarkup({
-    url: buildCertificateVerifyUrl(business),
-    x: qr.x,
-    y: qr.y,
-    size: qr.size,
-    color: CERT_NAVY,
-  });
 
   // Without a plate the fields would render on transparency; a plain card keeps
   // the certificate legible and makes the missing asset obvious.
   const background = plate
     ? `<image href="${escapeXml(plate)}" x="0" y="0" width="${CERT_WIDTH}" height="${CERT_HEIGHT}" preserveAspectRatio="xMidYMid slice"/>`
     : `<rect width="${CERT_WIDTH}" height="${CERT_HEIGHT}" fill="#fffdf7"/>
-  <rect x="18" y="18" width="${CERT_WIDTH - 36}" height="${CERT_HEIGHT - 36}" fill="none" stroke="${CERT_GOLD}" stroke-width="4"/>`;
+  <rect x="18" y="18" width="${CERT_WIDTH - 36}" height="${CERT_HEIGHT - 36}" fill="none" stroke="#c38a22" stroke-width="4"/>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${CERT_WIDTH}" height="${CERT_HEIGHT}" viewBox="0 0 ${CERT_WIDTH} ${CERT_HEIGHT}">
   ${background}
 
-  ${starsSvg}
-
   ${logoSvg}
 
-  ${textBlockMarkup({ ...layout.businessName, ...nameBlock })}
+  ${textBlockMarkup({ ...layout.businessName, ...nameBlock, cy: nameCy })}
 
-  ${textBlockMarkup({ ...layout.category, ...categoryBlock })}
-
-  ${textBlockMarkup({ ...layout.location, ...locationBlock })}
-
-  ${qrSvg}
-
-  ${textBlockMarkup({ ...layout.footer, ...footerBlock })}
+  ${textBlockMarkup({ ...layout.location, ...locationBlock, cy: locationCy })}
 </svg>`;
 };
 
