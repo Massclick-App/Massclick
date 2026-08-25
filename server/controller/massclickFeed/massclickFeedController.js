@@ -13,6 +13,8 @@ import {
   toggleMassclickFeedSave,
   recordMassclickFeedView,
   recordMassclickFeedEnquiry,
+  updateMassclickFeedStory,
+  deleteMassclickFeedStory,
 } from "../../helper/massclickFeed/massclickFeedHelper.js";
 
 const getActor = (req) => req.authActor || req.authUser || req.user || {};
@@ -110,6 +112,22 @@ export const deleteMassclickFeedPostAction = async (req, res) => {
     res.send({ success: true, post });
   } catch (error) {
     console.error("deleteMassclickFeedPostAction error:", error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const updateMassclickFeedStoryAction = async (req, res) => {
+  try {
+    res.send({ success: true, post: await updateMassclickFeedStory(req.params.id, req.body, getActor(req)) });
+  } catch (error) {
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const deleteMassclickFeedStoryAction = async (req, res) => {
+  try {
+    res.send({ success: true, post: await deleteMassclickFeedStory(req.params.id, getActor(req)) });
+  } catch (error) {
     res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };

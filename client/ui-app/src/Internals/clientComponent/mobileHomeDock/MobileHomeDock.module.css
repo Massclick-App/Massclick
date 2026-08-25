@@ -1,6 +1,6 @@
 .dock { display: none; }
 
-@media (max-width: 1199px) {
+@media (max-width: 720px) {
   .dock {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 1500;
     height: calc(70px + env(safe-area-inset-bottom));
@@ -23,6 +23,9 @@
   }
   .primaryIcon svg { width: 28px; height: 28px; }
   .dockItem:focus-visible { outline: 2px solid #ff8a00; outline-offset: 1px; border-radius: 8px; }
+  .spotlightDock { grid-template-columns: repeat(6, minmax(0, 1fr)); height: calc(66px + env(safe-area-inset-bottom)); padding-inline: max(3px,env(safe-area-inset-left)); }
+  .spotlightDock .dockItem { min-height: 54px; font-size: clamp(.5rem,2.15vw,.66rem); }
+  .spotlightDock .dockItem>svg { width: 20px; height: 20px; }
 }
 
 @media (max-width: 359px) {

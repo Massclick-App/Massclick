@@ -14,6 +14,8 @@ import {
   toggleMassclickFeedSaveAction,
   recordMassclickFeedViewAction,
   recordMassclickFeedEnquiryAction,
+  updateMassclickFeedStoryAction,
+  deleteMassclickFeedStoryAction,
 } from "../controller/massclickFeed/massclickFeedController.js";
 
 const router = express.Router();
@@ -29,6 +31,8 @@ router.post("/api/massclick-feed/posts/:id/enquiry", requireAuthPolicy("massclic
 router.get("/api/massclick-feed/follows", requireAuthPolicy("massclick-feed.interact"), listMassclickFeedFollowsAction);
 router.get("/api/massclick-feed/businesses", requireAuthPolicy("massclick-feed.list"), listMassclickFeedBusinessesAction);
 router.put("/api/massclick-feed/follows/:businessId", requireAuthPolicy("massclick-feed.interact"), setMassclickFeedFollowAction);
+router.patch("/api/massclick-feed/stories/:id", requireAuthPolicy("massclick-feed.create"), updateMassclickFeedStoryAction);
+router.delete("/api/massclick-feed/stories/:id", requireAuthPolicy("massclick-feed.create"), deleteMassclickFeedStoryAction);
 router.patch("/api/massclick-feed/posts/:id/status", requireAdminAuth(), updateMassclickFeedStatusAction);
 router.delete("/api/massclick-feed/posts/:id", requireAdminAuth(), deleteMassclickFeedPostAction);
 

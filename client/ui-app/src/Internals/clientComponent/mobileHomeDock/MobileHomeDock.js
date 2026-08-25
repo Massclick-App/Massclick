@@ -5,6 +5,11 @@ import DynamicFeedRoundedIcon from "@mui/icons-material/DynamicFeedRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import AddCircleOutlineRoundedIcon from "@mui/icons-material/AddCircleOutlineRounded";
+import EventNoteRoundedIcon from "@mui/icons-material/EventNoteRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import PermMediaRoundedIcon from "@mui/icons-material/PermMediaRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import styles from "./MobileHomeDock.module.css";
 
@@ -13,6 +18,7 @@ const cx = createScopedClassNames(styles);
 const MobileHomeDock = ({ isLoggedIn, onRequireLogin }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const isSpotlightSurface = pathname === "/user_feed" || pathname.startsWith("/user_spotlight/");
   const openProtected = (path) => isLoggedIn ? navigate(path) : onRequireLogin?.();
 
   const isActive = (tab) => {
@@ -23,6 +29,17 @@ const MobileHomeDock = ({ isLoggedIn, onRequireLogin }) => {
     if (tab === "editBusiness") return pathname === "/user_edit-profile";
     return false;
   };
+
+  if (isSpotlightSurface) return (
+    <nav className={cx("dock", "spotlightDock")} aria-label="Spotlight mobile navigation">
+      <button type="button" className={cx("dockItem", pathname==="/user_feed"&&"active")} onClick={()=>openProtected("/user_feed")}><DynamicFeedRoundedIcon/><span>Feed</span></button>
+      <button type="button" className={cx("dockItem", pathname.includes("/create")&&"active")} onClick={()=>openProtected("/user_spotlight/create")}><AddCircleOutlineRoundedIcon/><span>Create</span></button>
+      <button type="button" className={cx("dockItem", pathname.includes("/calendar")&&"active")} onClick={()=>openProtected("/user_spotlight/calendar")}><EventNoteRoundedIcon/><span>Planner</span></button>
+      <button type="button" className={cx("dockItem", pathname.includes("/posts")&&"active")} onClick={()=>openProtected("/user_spotlight/posts")}><ArticleRoundedIcon/><span>Posts</span></button>
+      <button type="button" className={cx("dockItem", pathname.includes("/media")&&"active")} onClick={()=>openProtected("/user_spotlight/media")}><PermMediaRoundedIcon/><span>Media</span></button>
+      <button type="button" className={cx("dockItem", pathname.includes("/settings")&&"active")} onClick={()=>openProtected("/user_spotlight/settings")}><SettingsRoundedIcon/><span>Settings</span></button>
+    </nav>
+  );
 
   return (
     <nav className={cx("dock")} aria-label="Mobile primary navigation">

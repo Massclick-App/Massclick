@@ -43,6 +43,14 @@ const massclickFeedPostSchema = new Schema({
   title: { type: String, trim: true, maxlength: 120, default: "" },
   text: { type: String, trim: true, maxlength: 1200, default: "" },
   postType: { type: String, default: "update" },
+  storyStyle: {
+    background: { type: String, default: "#1746a2" },
+    textColor: { type: String, default: "#ffffff" },
+    font: { type: String, enum: ["modern", "classic", "strong", "playful"], default: "modern" },
+    align: { type: String, enum: ["left", "center", "right"], default: "center" },
+    musicTitle: { type: String, trim: true, maxlength: 80, default: "" },
+    musicArtist: { type: String, trim: true, maxlength: 80, default: "" },
+  },
   callToAction: { type: String, default: "" },
   callToActions: {
     type: [{ action: String, label: String, value: String }],

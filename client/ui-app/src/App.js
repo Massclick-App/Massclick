@@ -299,9 +299,8 @@ function AppRoutes({
           <Route path="/user_spotlight/calendar" element={<SpotlightWorkspacePage mode="calendar" />} />
           <Route path="/user_spotlight/create" element={<SpotlightCreatePage />} />
           <Route path="/user_spotlight/media" element={<SpotlightWorkspacePage mode="media" />} />
-          <Route path="/user_spotlight/campaigns" element={<SpotlightWorkspacePage mode="campaigns" />} />
-          <Route path="/user_spotlight/leads" element={<SpotlightWorkspacePage mode="leads" />} />
-          <Route path="/user_spotlight/reports" element={<SpotlightWorkspacePage mode="reports" />} />
+          <Route path="/user_spotlight/posts" element={<SpotlightWorkspacePage mode="posts" />} />
+          <Route path="/user_spotlight/settings" element={<SpotlightWorkspacePage mode="settings" />} />
           <Route path="/user_favorites" element={<UserFavoritesPage />} />
           <Route path="/user_rewards" element={<UserRewardsPage />} />
           <Route path="/user_customer-service" element={<UserCustomerServicePage />} />

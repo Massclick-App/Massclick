@@ -15,7 +15,7 @@ import CampaignIcon from "@mui/icons-material/Campaign";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import { Home, PlusCircle, LayoutGrid, Send, Users, BarChart3, CalendarDays, Image as Picture, FileText, Crown, Eye, UserRound, Newspaper, Heart, MessageCircle, Share2, Bookmark, SlidersHorizontal, Tag, BriefcaseBusiness, Play, BellRing, X, ChevronLeft, ChevronRight, MapPin, Star, Clock3, Phone, MessageSquareText } from "lucide-react";
+import { Home, PlusCircle, LayoutGrid, Send, BarChart3, CalendarDays, Image as Picture, Crown, Eye, UserRound, Newspaper, Heart, MessageCircle, Share2, Bookmark, SlidersHorizontal, Tag, BriefcaseBusiness, Play, BellRing, X, ChevronLeft, ChevronRight, MapPin, Star, Clock3, Phone, MessageSquareText, Settings } from "lucide-react";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
@@ -32,6 +32,8 @@ import {
   recordMassclickFeedView,
   recordMassclickFeedEnquiry,
   getMassclickFeedBusinesses,
+  updateMassclickFeedStory,
+  deleteMassclickFeedStory,
 } from "../../../../redux/actions/massclickFeedAction.js";
 import styles from "./MassclickFeedPage.module.css";
 
@@ -186,10 +188,8 @@ const FILTER_POST_TYPES = {
 };
 
 const replicaMenu = [
-  [Home, "Spotlight Feed"], [PlusCircle, "Create Post"], [LayoutGrid, "Planner"],
-  [Send, "Campaigns"], [UserRound, "Leads"], [Users, "Audience"],
-  [BarChart3, "Insights"], [CalendarDays, "Calendar"], [Newspaper, "My Posts"],
-  [Bookmark, "Saved"], [Picture, "Media Library"], [FileText, "Reports"],
+  [Home, "Spotlight Feed"], [PlusCircle, "Create Post"], [LayoutGrid, "Planner Overview"],
+  [Newspaper, "My Posts"], [Picture, "Media Library"], [Settings, "Settings"],
 ];
 
 const ReplicaPost = ({ post, index, onLike, onShare, onComment, onOpen, onSave, onEnquire, onFollow, onProfile }) => {
@@ -278,22 +278,47 @@ function BusinessFriendModal({ business, onClose, onFollow }) {
   return <div className={cx("profile-backdrop")} role="presentation" onMouseDown={onClose}><section className={cx("profile-modal","friend-preview-modal")} role="dialog" aria-modal="true" aria-labelledby="friend-preview-title" onMouseDown={(event)=>event.stopPropagation()}><button className={cx("profile-close")} type="button" onClick={onClose} aria-label="Close business preview"><X/></button><header><div className={cx("profile-avatar")}>{business.businessLogoUrl ? <img src={business.businessLogoUrl} alt=""/> : initials}</div><div><small>Business profile</small><h2 id="friend-preview-title">{business.businessName}</h2><p>{[business.businessCategory,business.businessLocation].filter(Boolean).join(" · ") || "Local business on MassClick"}</p></div></header><div className={cx("profile-stats")}><span><strong>{business.followersCount || 0}</strong><small>Followers</small></span><span><strong>{business.postsCount || 0}</strong><small>Spotlight Posts</small></span><span><strong>{business.averageRating ? Number(business.averageRating).toFixed(1) : "New"}</strong><small>Rating</small></span></div><div className={cx("profile-details")}><h3>Basic business details</h3><p><BriefcaseBusiness/><span><small>Category</small><strong>{business.businessCategory || "Local business"}</strong></span></p><p><MapPin/><span><small>Location</small><strong>{business.businessLocation || "Location not provided"}</strong></span></p><p><UserRound/><span><small>MassClick connection</small><strong>{business.isFollowing ? "You are following this business" : "Available to follow"}</strong></span></p></div><footer className={cx("friend-preview-actions")}><button type="button" className={business.isFollowing ? cx("following") : ""} onClick={()=>onFollow(business.businessId,business.isFollowing)}>{business.isFollowing ? "✓ Following" : "+ Follow Business"}</button><button type="button" onClick={()=>navigate(profilePath)}>View Full Profile →</button><small>The full profile opens as a separate business details page.</small></footer></section></div>;
 }
 
-const SpotlightReplica = ({ posts, businesses, businessPage, businessTotal, businessHasMore, businessLoading, loadBusinessPage, searchBusinesses, filteredPosts, activeFilter, setActiveFilter, openComposer, moveToSection, totalViews, totalEngagements, totalLeads, handleLike, handleShare, handleComment, handleSave, handleEnquire, handleFollow, openPost }) => {
+const storyDefaults = { text: "", background: "#1746a2", textColor: "#ffffff", font: "modern", align: "center", musicTitle: "", musicArtist: "", mediaFiles: [] };
+const storyBackgrounds = ["#1746a2", "#7028e4", "#d52761", "#e85d04", "#087f5b", "#101828"];
+
+function StoryEditor({ initialStory, busy, error, onClose, onPublish }) {
+  const [draft, setDraft] = useState(() => initialStory ? { ...storyDefaults, text: initialStory.text || "", ...initialStory.storyStyle } : storyDefaults);
+  const [preview, setPreview] = useState(initialStory?.mediaItems?.[0]?.mediaUrl || "");
+  const [previewType, setPreviewType] = useState(initialStory?.mediaItems?.[0]?.mediaType || "");
+  const selectMedia = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || (!file.type.startsWith("image/") && !file.type.startsWith("video/")) || file.size > 45 * 1024 * 1024) return;
+    const mediaFile = await readFileAsDataUrl(file);
+    setPreview(mediaFile); setPreviewType(file.type.startsWith("video/") ? "video" : "image");
+    setDraft((value) => ({ ...value, mediaFiles: [{ mediaFile, fileName: file.name, fileType: file.type, fileSize: file.size }] }));
+  };
+  const publish = () => onPublish({ text: draft.text, mediaFiles: draft.mediaFiles, postType: "story", expireAfterDays: 1, storyStyle: { background: draft.background, textColor: draft.textColor, font: draft.font, align: draft.align, musicTitle: draft.musicTitle, musicArtist: draft.musicArtist } });
+  return <div className={cx("story-editor-backdrop")} role="presentation" onMouseDown={onClose}><section className={cx("story-editor")} role="dialog" aria-modal="true" aria-labelledby="story-editor-title" onMouseDown={(event)=>event.stopPropagation()}>
+    <header><div><small>Visible for 24 hours</small><h2 id="story-editor-title">{initialStory ? "Edit your story" : "Create your story"}</h2></div><button type="button" onClick={onClose} aria-label="Close"><X/></button></header>
+    <div className={cx("story-editor-layout")}><div className={cx("story-canvas")} style={{background:draft.background,color:draft.textColor,textAlign:draft.align}}>{preview && (previewType === "video" ? <video src={preview} controls playsInline/> : <img src={preview} alt="Story preview"/>)}<strong className={cx(`story-font-${draft.font}`)}>{draft.text || "Your story text"}</strong>{(draft.musicTitle || draft.musicArtist) && <span>♫ {draft.musicTitle || "Music"}{draft.musicArtist ? ` · ${draft.musicArtist}` : ""}</span>}</div>
+    <div className={cx("story-controls")}><label>Story text<textarea maxLength={1200} value={draft.text} onChange={(event)=>setDraft({...draft,text:event.target.value})} placeholder="Share an update, offer or moment…"/><small>{draft.text.length}/1200</small></label>{!initialStory && <label className={cx("story-upload")}>Photo or video<input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" onChange={selectMedia}/><span><Picture/> Choose media</span></label>}<fieldset><legend>Background</legend><div className={cx("story-swatches")}>{storyBackgrounds.map((color)=><button key={color} type="button" aria-label={`Use ${color}`} aria-pressed={draft.background===color} style={{background:color}} onClick={()=>setDraft({...draft,background:color})}/>)}</div></fieldset>
+    <div className={cx("story-control-row")}><label>Text color<input type="color" value={draft.textColor} onChange={(event)=>setDraft({...draft,textColor:event.target.value})}/></label><label>Font<select value={draft.font} onChange={(event)=>setDraft({...draft,font:event.target.value})}><option value="modern">Modern</option><option value="classic">Classic</option><option value="strong">Strong</option><option value="playful">Playful</option></select></label><label>Align<select value={draft.align} onChange={(event)=>setDraft({...draft,align:event.target.value})}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label></div><div className={cx("story-music-fields")}><label>Music title<input maxLength={80} value={draft.musicTitle} onChange={(event)=>setDraft({...draft,musicTitle:event.target.value})} placeholder="Licensed track title"/></label><label>Artist<input maxLength={80} value={draft.musicArtist} onChange={(event)=>setDraft({...draft,musicArtist:event.target.value})} placeholder="Artist name"/></label></div><p className={cx("story-editor-note")}>Music is attribution metadata; playback needs a licensed music provider.</p>{error && <p className={cx("story-editor-error")} role="alert">{error}</p>}<footer><button type="button" onClick={onClose}>Cancel</button><button type="button" disabled={busy || (!draft.text.trim() && !draft.mediaFiles.length && !preview)} onClick={publish}>{busy ? "Saving…" : initialStory ? "Save changes" : "Share story"}</button></footer></div></div>
+  </section></div>;
+}
+
+const SpotlightReplica = ({ posts, currentUser, canStory, businesses, businessPage, businessTotal, businessHasMore, businessLoading, loadBusinessPage, searchBusinesses, filteredPosts, activeFilter, setActiveFilter, openComposer, moveToSection, totalViews, totalEngagements, totalLeads, handleLike, handleShare, handleComment, handleSave, handleEnquire, handleFollow, openPost, createStory, editStory, removeStory }) => {
   const [selectedStory, setSelectedStory] = useState(null);
   const [profilePostId, setProfilePostId] = useState(null);
   const [selectedBusinessId, setSelectedBusinessId] = useState(null);
   const [savedOnly, setSavedOnly] = useState(false);
   const [businessSearch, setBusinessSearch] = useState("");
+  const [storyEditor, setStoryEditor] = useState(null);
+  const [storyBusy, setStoryBusy] = useState(false);
+  const [storyError, setStoryError] = useState("");
+  const [storyClock, setStoryClock] = useState(Date.now());
   const businessSearchReady = useRef(false);
   const savedCount = posts.filter((post) => post.savedByMe).length;
   const displayPosts = (savedOnly ? filteredPosts.filter((post) => post.savedByMe) : filteredPosts).slice(0, savedOnly ? 50 : 4);
-  const storyNames = ["Your Story", "Niraali Institutions", "Prem's Sports Academy", "Sri Amman Catering", "Trichy Tours & Travels", "MassClick Updates"];
-  const stories = storyNames.map((name, index) => {
-    const post = posts[index % Math.max(posts.length, 1)] || displayPosts[index % displayPosts.length];
-    const image = post?.mediaItems?.find((item) => item.mediaType === "image" && item.mediaUrl)?.mediaUrl;
-    return { name, post, image, accent: ["blue","rose","violet","amber","teal","orange"][index] };
-  });
+  const currentUserId = String(currentUser?._id || currentUser?.id || currentUser?.userId || currentUser?.subjectId || "");
+  const stories = posts.filter((post) => post.postType === "story" && post.status === "active" && !post.isDeleted && storyClock - new Date(post.createdAt).getTime() < 86400000).map((post) => ({ name: post.businessName || "MassClick user", post, image: post.mediaItems?.[0]?.mediaUrl || "", mediaType: post.mediaItems?.[0]?.mediaType || "", mine: Boolean(post.ownedByMe) || (Boolean(currentUserId) && String(post.ownerUserId) === currentUserId) }));
   const showStory = (index) => setSelectedStory(Math.max(0, Math.min(stories.length - 1, index)));
+  const submitStory = async (payload) => { setStoryBusy(true); setStoryError(""); try { if (storyEditor) await editStory(storyEditor._id,payload); else await createStory(payload); setStoryEditor(null); } catch (error) { setStoryError(error?.response?.data?.message || error?.message || "Story could not be saved."); } finally { setStoryBusy(false); } };
+  const removeSelectedStory = async (story) => { if (!window.confirm("Delete this story?")) return; setStoryBusy(true); try { await removeStory(story._id); setSelectedStory(null); } catch (error) { setStoryError(error?.response?.data?.message || "Story could not be deleted."); } finally { setStoryBusy(false); } };
   const trendingTags = Object.entries(posts.flatMap((post) => post.hashtags || []).reduce((counts, tag) => ({ ...counts, [tag]: (counts[tag] || 0) + 1 }), {})).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const visibleBusinesses = businesses;
   useEffect(() => {
@@ -303,11 +328,20 @@ const SpotlightReplica = ({ posts, businesses, businessPage, businessTotal, busi
     // Search only when the text changes; the callback intentionally uses the latest parent request handler.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSearch]);
+  useEffect(() => {
+    if (selectedStory === null) return undefined;
+    const timer = window.setTimeout(() => setSelectedStory(null), 30000);
+    return () => window.clearTimeout(timer);
+  }, [selectedStory]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setStoryClock(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
   const types = [[Tag,"Offer / Discount"],[Newspaper,"Update / News"],[CalendarDays,"Event"],[LayoutGrid,"Product"],[BellRing,"Service"],[Send,"Announcement"],[BriefcaseBusiness,"Job / Hiring"],[BarChart3,"Poll / Survey"],[Play,"Video Post"]];
   return <><StickySearchBar/><main className={cx("replica-page")}>
     <aside className={cx("replica-sidebar")}><nav>{replicaMenu.map(([Icon,label], index) => <button key={label} type="button" className={(label === "Saved" ? savedOnly : index === 0 && !savedOnly) ? cx("active") : ""} onClick={label === "Create Post" ? openComposer : label === "Saved" ? ()=>setSavedOnly(true) : () => { setSavedOnly(false); moveToSection(label); }}><Icon size={19}/><span>{label}</span>{label === "Saved" && <b className={cx("saved-count")}>{savedCount}</b>}</button>)}</nav><section><Crown/><h3>Go Premium</h3><p>Unlock advanced tools, analytics and more to grow your business.</p><button type="button">Upgrade Now →</button></section></aside>
     <div className={cx("replica-center")}>
-      <section className={cx("replica-stories")}><header><h2>Stories & Status</h2><button type="button" onClick={openComposer}>Create status</button></header><div><button type="button" onClick={openComposer}><span className={cx("story-ring","story-add")}>+</span><small>Add Story</small></button>{stories.map((story,index) => <button type="button" key={story.name} onClick={()=>showStory(index)}><span className={cx("story-ring",`story-${story.accent}`)}>{story.image ? <img src={story.image} alt=""/> : <b>{story.name.split(/\s+/).map(word=>word[0]).slice(0,2).join("")}</b>}<i>●</i></span><small>{story.name}</small></button>)}</div></section>
+      <section className={cx("replica-stories")}><header><h2>Stories & Status</h2>{canStory && <button type="button" onClick={()=>setStoryEditor(false)}>Create status</button>}</header><div>{canStory && <button type="button" onClick={()=>setStoryEditor(false)}><span className={cx("story-ring","story-add")}>+</span><small>Add Story</small></button>}{stories.map((story,index) => <button type="button" key={story.post._id} onClick={()=>showStory(index)}><span className={cx("story-ring")}>{story.image && story.mediaType === "image" ? <img src={story.image} alt=""/> : <b>{story.name.split(/\s+/).map(word=>word[0]).slice(0,2).join("")}</b>}<i/></span><small>{story.mine ? "Your Story" : story.name}</small></button>)}{!canStory && !stories.length && <p className={cx("replica-muted")}>No active stories right now.</p>}</div></section>
       <section className={cx("replica-composer")}><span className={cx("replica-avatar")}>MC</span><button type="button" onClick={openComposer}>What’s on your mind today? <span>☺</span></button><div>{[[Picture,"Photo / Video"],[Tag,"Offer / Discount"],[CalendarDays,"Event"],[BarChart3,"Poll / Survey"]].map(([Icon,label])=><button type="button" key={label} onClick={openComposer}><Icon size={17}/>{label}</button>)}</div></section>
       {savedOnly && <section className={cx("saved-heading")}><div><Bookmark fill="currentColor"/><span><strong>Saved Posts</strong><small>{savedCount} saved item{savedCount === 1 ? "" : "s"} · posts, posters, videos and documents</small></span></div><button type="button" onClick={()=>setSavedOnly(false)}>Back to Feed</button></section>}
       <div className={cx("replica-filters")} id="spotlight-posts">{["All Posts","Offers","Updates","Events","Products","Services","Jobs"].map(label => { const filter = label === "All Posts" ? "All" : label; return <button type="button" key={label} className={activeFilter === filter ? cx("active") : ""} onClick={()=>setActiveFilter(filter)}>{label}</button>})}<button type="button" aria-label="More filters"><SlidersHorizontal size={18}/></button></div>
@@ -322,12 +356,13 @@ const SpotlightReplica = ({ posts, businesses, businessPage, businessTotal, busi
     </aside>
     <button className={cx("replica-fab")} type="button" onClick={openComposer} aria-label="Create Spotlight post">✎</button>
     {selectedStory !== null && <div className={cx("status-backdrop")} role="presentation" onMouseDown={()=>setSelectedStory(null)}><section className={cx("status-viewer")} role="dialog" aria-modal="true" aria-label={`${stories[selectedStory].name} status`} onMouseDown={(event)=>event.stopPropagation()}>
-      <div className={cx("status-progress")}>{stories.map((_,index)=><i key={index} className={index <= selectedStory ? cx("seen") : ""}/>)}</div>
-      <header><span className={cx("status-avatar")}>{stories[selectedStory].name.charAt(0)}</span><div><strong>{stories[selectedStory].name}</strong><small>Today · {selectedStory + 2}:15 PM</small></div><button type="button" onClick={()=>setSelectedStory(null)} aria-label="Close status"><X/></button></header>
-      <div className={cx("status-content",`status-${stories[selectedStory].accent}`)}>{stories[selectedStory].image ? <img src={stories[selectedStory].image} alt={stories[selectedStory].name}/> : <div><span>SPOTLIGHT</span><strong>{stories[selectedStory].post?.title || stories[selectedStory].post?.text || "Discover what’s new near you today."}</strong><small>Tap through local offers, updates and moments.</small></div>}</div>
+      <div className={cx("status-progress")} style={{gridTemplateColumns:`repeat(${stories.length},1fr)`}}>{stories.map((story,index)=><i key={story.post._id} className={index < selectedStory ? cx("seen") : index === selectedStory ? cx("playing") : ""}/>)}</div>
+      <header><span className={cx("status-avatar")}>{stories[selectedStory].name.charAt(0)}</span><div><strong>{stories[selectedStory].mine ? "Your Story" : stories[selectedStory].name}</strong><small>{new window.Intl.DateTimeFormat(undefined,{hour:"numeric",minute:"2-digit"}).format(new Date(stories[selectedStory].post.createdAt))}</small></div>{stories[selectedStory].mine && <><button type="button" onClick={()=>{setStoryEditor(stories[selectedStory].post);setSelectedStory(null);}}>Edit</button><button type="button" disabled={storyBusy} onClick={()=>removeSelectedStory(stories[selectedStory].post)} aria-label="Delete story"><DeleteOutlineIcon/></button></>}<button type="button" onClick={()=>setSelectedStory(null)} aria-label="Close status"><X/></button></header>
+      <div className={cx("status-content")} style={{background:stories[selectedStory].post.storyStyle?.background,color:stories[selectedStory].post.storyStyle?.textColor,textAlign:stories[selectedStory].post.storyStyle?.align}}>{stories[selectedStory].image ? (stories[selectedStory].mediaType === "video" ? <video src={stories[selectedStory].image} autoPlay controls playsInline/> : <img src={stories[selectedStory].image} alt={stories[selectedStory].name}/>) : null}<div className={cx(`story-font-${stories[selectedStory].post.storyStyle?.font || "modern"}`)}><strong>{stories[selectedStory].post.text}</strong>{stories[selectedStory].post.storyStyle?.musicTitle && <small>♫ {stories[selectedStory].post.storyStyle.musicTitle}{stories[selectedStory].post.storyStyle.musicArtist ? ` · ${stories[selectedStory].post.storyStyle.musicArtist}` : ""}</small>}</div></div>
       <button className={cx("status-prev")} type="button" disabled={selectedStory === 0} onClick={()=>showStory(selectedStory - 1)} aria-label="Previous status"><ChevronLeft/></button><button className={cx("status-next")} type="button" disabled={selectedStory === stories.length - 1} onClick={()=>showStory(selectedStory + 1)} aria-label="Next status"><ChevronRight/></button>
       <footer><input placeholder="Reply to this status…"/><button type="button" aria-label="Like status"><Heart/></button><button type="button" aria-label="Share status"><Send/></button></footer>
     </section></div>}
+    {storyEditor !== null && <StoryEditor initialStory={storyEditor || null} busy={storyBusy} error={storyError} onClose={()=>{setStoryEditor(null);setStoryError("");}} onPublish={submitStory}/>}
     {profilePostId && (() => { const profilePost = posts.find((item) => item._id === profilePostId); return profilePost ? <BusinessProfileModal post={profilePost} posts={posts} onClose={()=>setProfilePostId(null)} onFollow={handleFollow}/> : null; })()}
     {selectedBusinessId && (() => { const selectedBusiness = businesses.find((item)=>String(item.businessId)===String(selectedBusinessId)); return selectedBusiness ? <BusinessFriendModal business={selectedBusiness} onClose={()=>setSelectedBusinessId(null)} onFollow={handleFollow}/> : null; })()}
   </main><Footer/></>;
@@ -697,7 +732,7 @@ export default function MassclickFeedPage() {
       return businesses;
     }, new Map()).values(),
   );
-  const filteredPosts = posts.filter((post) => matchesFeedFilter(post, activeFilter) && (!businessFilter || post.businessName === businessFilter));
+  const filteredPosts = posts.filter((post) => post.postType !== "story" && matchesFeedFilter(post, activeFilter) && (!businessFilter || post.businessName === businessFilter));
   const selectedPost = posts.find((post) => post._id === selectedPostId) || null;
 
   const openDataView = (title, value, description, options = {}) => setDataView({ title, value, description, ...options });
@@ -830,7 +865,7 @@ export default function MassclickFeedPage() {
 
   const moveToSection = (name) => {
     setActiveCommandTab(name);
-    const route = { Planner: "/user_spotlight/calendar", Calendar: "/user_spotlight/calendar", Campaigns: "/user_spotlight/campaigns", Leads: "/user_spotlight/leads", Media: "/user_spotlight/media", Reports: "/user_spotlight/reports", Performance: "/user_spotlight/reports", Insights: "/user_spotlight/reports" }[name];
+    const route = { "Spotlight Feed": "/user_feed", "Planner Overview": "/user_spotlight/calendar", Planner: "/user_spotlight/calendar", "My Posts": "/user_spotlight/posts", Media: "/user_spotlight/media", "Media Library": "/user_spotlight/media", Settings: "/user_spotlight/settings" }[name];
     if (route) {
       navigate(route);
       return;
@@ -852,7 +887,7 @@ export default function MassclickFeedPage() {
   };
 
   const runTool = (title) => {
-    const route = { "Post Scheduler": "/user_spotlight/calendar", "Media Library": "/user_spotlight/media", "Ad Boost": "/user_spotlight/campaigns", "Leads Inbox": "/user_spotlight/leads", "Post Reports": "/user_spotlight/reports" }[title];
+    const route = { "Post Scheduler": "/user_spotlight/calendar", "Media Library": "/user_spotlight/media" }[title];
     if (route) navigate(route); else openComposer();
   };
 
@@ -891,6 +926,8 @@ export default function MassclickFeedPage() {
 
   return <SpotlightReplica
     posts={posts}
+    currentUser={currentUser}
+    canStory={Boolean(currentUser?._id || currentUser?.id || currentUser?.userId || currentUser?.subjectId)}
     businesses={suggestedBusinesses}
     businessPage={businessPage}
     businessTotal={businessTotal}
@@ -913,6 +950,9 @@ export default function MassclickFeedPage() {
     handleEnquire={(postId) => dispatch(recordMassclickFeedEnquiry(postId))}
     handleFollow={(businessId, isFollowing) => toggleFollow(businessId, isFollowing)}
     openPost={(post) => { dispatch(recordMassclickFeedView(post._id)); setSelectedPostId(post._id); }}
+    createStory={(payload) => dispatch(createMassclickFeedPost(payload))}
+    editStory={(postId,payload) => dispatch(updateMassclickFeedStory(postId,payload))}
+    removeStory={(postId) => dispatch(deleteMassclickFeedStory(postId))}
   />;
 
   // eslint-disable-next-line no-unreachable
@@ -922,7 +962,7 @@ export default function MassclickFeedPage() {
       <main className={cx("feed-page")}>
         <aside className={cx("command-rail")} aria-label="Spotlight command navigation">
           <button className={cx("command-rail-active")} type="button"><i>✦</i><span>Spotlight</span></button>
-          {[["⊕","Create"],["▣","My Posts"],["□","Calendar"],["◁","Campaigns"],["♙","Leads"],["▧","Media"],["▥","Reports"]].map(([icon,label]) => <button type="button" key={label} onClick={label === "Create" ? openComposer : () => moveToSection(label)}><i>{icon}</i><span>{label}</span>{label === "Leads" && totalLeads > 0 && <b>{formatCompactNumber(totalLeads)}</b>}</button>)}
+          {[["⌂","Spotlight Feed"],["⊕","Create"],["□","Planner Overview"],["▣","My Posts"],["▧","Media Library"],["⚙","Settings"]].map(([icon,label]) => <button type="button" key={label} onClick={label === "Create" ? openComposer : () => moveToSection(label)}><i>{icon}</i><span>{label}</span></button>)}
           <span className={cx("command-rail-spacer")} />
           <Link to="/user_dashboard"><i>⚙</i><span>Settings</span></Link><Link to="/user-customer-service"><i>?</i><span>Help</span></Link>
         </aside>
@@ -935,7 +975,7 @@ export default function MassclickFeedPage() {
             </div>
           </div>
           <nav className={cx("command-tabs")} aria-label="Command center sections">
-            {['Feed','Planner','Campaigns','Performance','Leads','Audience','Insights'].map((tab) => <button type="button" onClick={() => moveToSection(tab)} className={activeCommandTab === tab ? cx("command-tab-active") : undefined} key={tab}>{tab}</button>)}
+            {['Feed','Planner Overview','My Posts','Media Library','Settings'].map((tab) => <button type="button" onClick={() => moveToSection(tab)} className={activeCommandTab === tab ? cx("command-tab-active") : undefined} key={tab}>{tab}</button>)}
           </nav>
           <button className={cx("command-date")} type="button">{new Intl.DateTimeFormat(undefined, { weekday: "short", day: "2-digit", month: "short", year: "numeric" }).format(new Date())} · Calendar</button>
         </div>

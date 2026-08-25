@@ -1,40 +1,45 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { Home, PlusCircle, LayoutGrid, Newspaper, Images, Settings, Search, MoreVertical, Eye, Upload, UserRound, Bell, ShieldCheck, CreditCard, Plug, LockKeyhole } from "lucide-react";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import { getMassclickFeedPosts } from "../../../../redux/actions/massclickFeedAction.js";
 import styles from "./SpotlightWorkspacePage.module.css";
 import PlannerDashboard from "./PlannerDashboard";
 
-const isCampaign = (post) => /announcement|campaign|offer|event|launch|sale/i.test(`${post.title || ""} ${post.text || ""}`) || post.offerStartsAt || post.offerEndsAt;
-const modes = {
-  calendar: ["Content Calendar", "Posts organized by their real publication date"],
-  media: ["Media Library", "Every image and video attached to your Spotlight posts"],
-  campaigns: ["Campaigns", "Real offers, announcements, events and promotional posts"],
-  leads: ["Leads Inbox", "Lead activity reported by your Spotlight posts"],
-  reports: ["Post Reports", "Performance calculated from current Spotlight records"],
-};
+const workspaceNav=[[Home,"Spotlight Feed","/user_feed"],[PlusCircle,"Create Post","/user_spotlight/create"],[LayoutGrid,"Planner Overview","/user_spotlight/calendar"],[Newspaper,"My Posts","/user_spotlight/posts"],[Images,"Media Library","/user_spotlight/media"],[Settings,"Settings","/user_spotlight/settings"]];
+const getUser=()=>{try{return JSON.parse(localStorage.getItem("authUser")||"{}")||{}}catch{return {}}};
+const idOf=value=>String(value?._id||value?.id||value||"");
+const format=n=>Number(n||0).toLocaleString();
+const Empty=({children})=><div className={styles.empty}>{children}</div>;
+function Shell({active,children}){return <><StickySearchBar/><main className={styles.page}><aside className={styles.workspaceSidebar}><nav>{workspaceNav.map(([Icon,label,to])=><Link className={label===active?styles.sidebarActive:""} to={to} key={label}><Icon/><span>{label}</span></Link>)}</nav></aside><section className={styles.workspace}>{children}</section></main></>}
 
-export default function SpotlightWorkspacePage({ mode }) {
-  const dispatch = useDispatch();
-  const { posts = [], loading, error } = useSelector((state) => state.massclickFeed || {});
-  useEffect(() => { dispatch(getMassclickFeedPosts({ pageSize: 50 })).catch(() => {}); }, [dispatch]);
-  const [title, subtitle] = modes[mode] || modes.reports;
-  const media = posts.flatMap((post) => (post.mediaItems || []).map((item) => ({ ...item, post })));
-  const engagements = (post) => (post.likesCount || post.likes?.length || 0) + (post.commentsCount || post.comments?.length || 0) + (post.sharesCount || 0);
-  const grouped = posts.reduce((map, post) => { const key = new Date(post.createdAt).toLocaleDateString(); (map[key] ||= []).push(post); return map; }, {});
-  const campaigns = posts.filter(isCampaign);
-  const leads = posts.flatMap((post) => Array.isArray(post.leads) ? post.leads.map((lead) => ({ ...lead, post })) : []);
-  if (mode === "calendar") return <><StickySearchBar/><PlannerDashboard posts={posts} loading={loading}/></>;
-  return <><StickySearchBar/><main className={styles.page}>
-    <header><div><Link to="/user_feed">← Spotlight Feed</Link><h1>{title}</h1><p>{subtitle}</p></div><Link className={styles.primary} to="/user_feed">Create Spotlight</Link></header>
-    <nav>{Object.entries(modes).map(([key,[label]]) => <Link className={mode === key ? styles.active : ""} to={`/user_spotlight/${key}`} key={key}>{label}</Link>)}</nav>
-    {error && !loading ? <div className={styles.errorState}><strong>Unable to load Spotlight records</strong><p>{error.message || "The server could not complete this request."}</p><button type="button" onClick={() => dispatch(getMassclickFeedPosts({ pageSize: 50 })).catch(() => {})}>Try again</button></div> : loading ? <div className={styles.empty}>Loading current records…</div> : <>
-      {mode === "media" && <section className={styles.mediaGrid}>{media.length ? media.map((item,index) => <article key={`${item.mediaKey}-${index}`}>{item.mediaType === "video" ? <video controls src={item.mediaUrl}/> : <img src={item.mediaUrl} alt={item.fileName || item.post.title || "Spotlight media"}/>}<div><strong>{item.post.title || item.post.businessName}</strong><small>{item.fileName || item.mediaType}</small></div></article>) : <div className={styles.empty}>No media has been uploaded to Spotlight posts yet.</div>}</section>}
-      {mode === "calendar" && <section className={styles.calendar}>{Object.keys(grouped).length ? Object.entries(grouped).map(([date,items]) => <article key={date}><time>{date}</time><div>{items.map((post) => <Link to={`/user_feed?post=${post._id}`} key={post._id}><strong>{post.title || post.businessName}</strong><small>{post.businessCategory || "Spotlight post"}</small></Link>)}</div></article>) : <div className={styles.empty}>No posts are available for the calendar.</div>}</section>}
-      {mode === "campaigns" && <section className={styles.list}>{campaigns.length ? campaigns.map((post) => <article key={post._id}><div><strong>{post.title || post.businessName}</strong><p>{post.text || "No description provided."}</p></div><span>{post.offerEndsAt ? `Ends ${new Date(post.offerEndsAt).toLocaleDateString()}` : "Published"}</span></article>) : <div className={styles.empty}>No campaign, offer, event or announcement posts exist yet.</div>}</section>}
-      {mode === "leads" && <section className={styles.list}>{leads.length ? leads.map((lead,index) => <article key={lead._id || index}><div><strong>{lead.name || lead.title || "Lead"}</strong><p>{lead.message || lead.contact || "Lead details available"}</p></div><span>{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : ""}</span></article>) : <div className={styles.empty}>No Spotlight lead records have been reported by the API yet.</div>}</section>}
-      {mode === "reports" && <section className={styles.reportGrid}>{posts.length ? posts.map((post) => <article key={post._id}><strong>{post.title || post.businessName}</strong><dl><div><dt>Likes</dt><dd>{post.likesCount || post.likes?.length || 0}</dd></div><div><dt>Comments</dt><dd>{post.commentsCount || post.comments?.length || 0}</dd></div><div><dt>Shares</dt><dd>{post.sharesCount || 0}</dd></div><div><dt>Total engagement</dt><dd>{engagements(post)}</dd></div></dl></article>) : <div className={styles.empty}>No posts are available to report.</div>}</section>}
-    </>}
-  </main></>;
+function MyPosts({posts,loading,error}){
+ const navigate=useNavigate(),[tab,setTab]=useState("All Posts"),[query,setQuery]=useState("");
+ const user=getUser(),uid=idOf(user.userId||user._id||user.id),owned=posts.filter(post=>post.isOwner||Boolean(uid&&idOf(post.ownerUserId)===uid));
+ const shown=owned.filter(post=>(tab==="All Posts"||String(post.status||"active").toLowerCase()===tab.toLowerCase())&&`${post.title||""} ${post.text||""}`.toLowerCase().includes(query.toLowerCase()));
+ return <Shell active="My Posts"><header className={styles.managerHead}><div><h1>My Posts</h1><p>Manage, edit and track all your Spotlight posts.</p></div><Link className={styles.primary} to="/user_spotlight/create">+ Create Post</Link></header><section className={styles.managerCard}><nav className={styles.managerTabs}>{["All Posts","Active","Scheduled","Draft","Expired"].map(x=><button className={tab===x?styles.selected:""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</nav><div className={styles.managerFilters}><label><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search posts..."/></label><select><option>All Types</option></select><select><option>This Month</option></select></div><div className={styles.managerTable}><table><thead><tr><th>Post</th><th>Type</th><th>Status</th><th>Views</th><th>Engagement</th><th>Date</th><th>Actions</th></tr></thead><tbody>{loading?<tr><td colSpan="7"><Empty>Loading posts…</Empty></td></tr>:error?<tr><td colSpan="7"><Empty>Unable to load posts.</Empty></td></tr>:!shown.length?<tr><td colSpan="7"><Empty>No posts available.</Empty></td></tr>:shown.map(post=>{const engagement=(post.likesCount??post.likes?.length??0)+(post.commentsCount??post.comments?.length??0)+(post.sharesCount??0);return <tr key={post._id}><td><div className={styles.postThumb}>{post.mediaItems?.[0]?.mediaUrl?<img src={post.mediaItems[0].mediaUrl} alt=""/>:<Newspaper/>}</div><span><strong>{post.title||post.text||"Untitled post"}</strong><small>{post.businessName||"Spotlight"}</small></span></td><td><em>{post.postType||"Update"}</em></td><td><b className={styles.status}>{post.status||"active"}</b></td><td>{format(post.viewsCount)}</td><td>{format(engagement)}</td><td>{post.createdAt?new Date(post.createdAt).toLocaleDateString():"—"}</td><td><button onClick={()=>navigate(`/user_feed?post=${post._id}`)} aria-label="Open post"><Eye/></button><button aria-label="More actions"><MoreVertical/></button></td></tr>})}</tbody></table></div><footer>Showing {shown.length} of {owned.length} posts</footer></section></Shell>
+}
+
+function MediaLibrary({posts,loading,error}){
+ const navigate=useNavigate(),[tab,setTab]=useState("All Files"),[query,setQuery]=useState("");
+ const user=getUser(),uid=idOf(user.userId||user._id||user.id);
+ const media=useMemo(()=>posts.filter(post=>post.isOwner||Boolean(uid&&idOf(post.ownerUserId)===uid)).flatMap(post=>(post.mediaItems||[]).map((item,index)=>({...item,post,index}))),[posts,uid]);
+ const shown=media.filter(item=>(tab==="All Files"||tab==="Images"&&item.mediaType==="image"||tab==="Videos"&&item.mediaType==="video"||tab==="Documents"&&!['image','video'].includes(item.mediaType))&&`${item.fileName||""} ${item.post.title||""}`.toLowerCase().includes(query.toLowerCase()));
+ return <Shell active="Media Library"><header className={styles.managerHead}><div><h1>Media Library</h1><p>Search and manage all images, videos and documents from your posts.</p></div><button className={styles.primary} onClick={()=>navigate("/user_spotlight/create")}><Upload/> Upload New</button></header><section className={styles.managerCard}><nav className={styles.managerTabs}>{["All Files","Images","Videos","Documents"].map(x=><button className={tab===x?styles.selected:""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</nav><div className={styles.managerFilters}><label><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search media..."/></label><select><option>All Types</option></select></div>{loading?<Empty>Loading media…</Empty>:error?<Empty>Unable to load media.</Empty>:!shown.length?<Empty>No media files available.</Empty>:<section className={styles.libraryGrid}>{shown.map((item,i)=><article key={`${item.mediaKey||item.fileName}-${i}`} onClick={()=>navigate(`/user_feed?post=${item.post._id}`)}>{item.mediaType==="video"?<video src={item.mediaUrl} controls onClick={e=>e.stopPropagation()}/>:item.mediaType==="image"?<img src={item.mediaUrl} alt={item.fileName||item.post.title||"Post media"}/>:<div className={styles.document}><Images/><b>{item.fileName?.split(".").pop()?.toUpperCase()||"FILE"}</b></div>}<footer><strong>{item.fileName||item.post.title||"Media file"}</strong><small>{item.post.title||item.post.businessName}</small></footer></article>)}</section>}<footer>Showing {shown.length} of {media.length} files</footer></section></Shell>
+}
+
+function SpotlightSettings(){
+ const navigate=useNavigate(),user=getUser(),[section,setSection]=useState("Profile Settings"),[notice,setNotice]=useState(()=>localStorage.getItem("spotlightNotifications")!=="off");
+ const sections=[[UserRound,"Profile Settings"],[Newspaper,"Business Profile"],[Bell,"Notifications"],[ShieldCheck,"Account & Security"],[LockKeyhole,"Roles & Permissions"],[CreditCard,"Billing & Subscription"],[Plug,"Integrations"]];
+ return <Shell active="Settings"><header className={styles.managerHead}><div><h1>Settings</h1><p>Manage your account, preferences and integrations.</p></div></header><section className={styles.settingsCard}><aside>{sections.map(([Icon,label])=><button className={section===label?styles.settingActive:""} onClick={()=>setSection(label)} key={label}><Icon/>{label}</button>)}</aside><div className={styles.settingsForm}><h2>{section}</h2>{section==="Profile Settings"?<><div className={styles.profileRow}><span>{(user.userName||user.name||user.businessName||"U").charAt(0)}</span><div><strong>{user.userName||user.name||user.businessName||"User"}</strong><small>MassClick profile</small></div><button onClick={()=>navigate("/user_edit-profile")}>Change Photo</button></div><label>Full Name<input readOnly value={user.userName||user.name||""}/></label><label>Email Address<input readOnly value={user.email||user.emailAddress||""}/></label><label>Phone Number<input readOnly value={user.phoneNumber||user.mobileNumber||user.contact||""}/></label><label>Language<select defaultValue="English"><option>English</option></select></label><label>Time Zone<select defaultValue="Asia/Kolkata"><option value="Asia/Kolkata">GMT +05:30 India Standard Time</option></select></label><footer><button onClick={()=>navigate("/user_edit-profile")}>Edit Profile</button></footer></>:section==="Notifications"?<><div className={styles.preference}><span><strong>Spotlight notifications</strong><small>Receive updates about posts and activity.</small></span><button className={notice?styles.toggleOn:""} onClick={()=>setNotice(v=>!v)}><i/></button></div><footer><button onClick={()=>localStorage.setItem("spotlightNotifications",notice?"on":"off")}>Save Preference</button></footer></>:<Empty>{section} is managed from your main MassClick account settings.</Empty>}</div></section></Shell>
+}
+
+export default function SpotlightWorkspacePage({mode}){
+ const dispatch=useDispatch(),{posts=[],loading,error}=useSelector(state=>state.massclickFeed||{});
+ useEffect(()=>{if(mode!=="settings")dispatch(getMassclickFeedPosts({pageSize:50})).catch(()=>{})},[dispatch,mode]);
+ if(mode==="calendar")return <><StickySearchBar/><PlannerDashboard posts={posts} loading={loading}/></>;
+ if(mode==="posts")return <MyPosts posts={posts} loading={loading} error={error}/>;
+ if(mode==="settings")return <SpotlightSettings/>;
+ return <MediaLibrary posts={posts} loading={loading} error={error}/>;
 }

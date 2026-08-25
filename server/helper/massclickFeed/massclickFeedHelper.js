@@ -17,6 +17,9 @@ const MAX_IMAGE_SIZE = 45 * 1024 * 1024;
 const MAX_IMAGES = 4;
 const { ObjectId } = mongoose.Types;
 const ALLOWED_ACTIONS = new Set(["call", "whatsapp", "book", "shop", "learn", "direction"]);
+const STORY_FONTS = new Set(["modern", "classic", "strong", "playful"]);
+const STORY_ALIGNS = new Set(["left", "center", "right"]);
+const SAFE_HEX = /^#[0-9a-f]{6}$/i;
 
 const escapeRegExp = (value = "") =>
   value.toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -53,11 +56,14 @@ const normalizePost = (post = {}, actorId = "") => {
     savedByMe: actorId
       ? savedBy.some((userId) => String(userId) === String(actorId))
       : false,
+    ownedByMe: actorId
+      ? String(post.ownerUserId || "") === String(actorId)
+      : false,
     comments,
   };
 };
 
-const getCustomerBusiness = async (actor = {}, requestedBusinessId = "") => {
+const getCustomerBusiness = async (actor = {}, requestedBusinessId = "", allowPersonalStory = false) => {
   const actorId = getActorId(actor);
   if (!actorId) throw new Error("Login required");
 
@@ -92,7 +98,7 @@ const getCustomerBusiness = async (actor = {}, requestedBusinessId = "") => {
     business?.paymentConcept?.paymentStatus === "paid"
   );
 
-  if (!customer.businessPeople && !isPaidBusiness) {
+  if (!allowPersonalStory && !customer.businessPeople && !isPaidBusiness) {
     throw new Error("Only business people or paid business accounts can post");
   }
 
@@ -134,6 +140,15 @@ const validatePostPayload = (data = {}) => {
   });
 };
 
+const sanitizeStoryStyle = (style = {}) => ({
+  background: SAFE_HEX.test(style.background || "") ? style.background : "#1746a2",
+  textColor: SAFE_HEX.test(style.textColor || "") ? style.textColor : "#ffffff",
+  font: STORY_FONTS.has(style.font) ? style.font : "modern",
+  align: STORY_ALIGNS.has(style.align) ? style.align : "center",
+  musicTitle: String(style.musicTitle || "").trim().slice(0, 80),
+  musicArtist: String(style.musicArtist || "").trim().slice(0, 80),
+});
+
 const uploadFeedImages = async (files = [], postId) =>
   Promise.all(
     files.map(async (file) => {
@@ -161,7 +176,7 @@ export const createMassclickFeedPost = async (data = {}, actor = {}) => {
   validatePostPayload(data);
 
   const actorId = getActorId(actor);
-  const result = await getCustomerBusiness(actor, data.businessId);
+  const result = await getCustomerBusiness(actor, data.businessId, data.postType === "story");
   const customer = result.customer || {};
   const business = result.business || null;
 
@@ -181,6 +196,7 @@ export const createMassclickFeedPost = async (data = {}, actor = {}) => {
     title: data.title || "",
     text: data.text || "",
     postType: data.postType || "update",
+    storyStyle: sanitizeStoryStyle(data.storyStyle),
     callToAction: data.callToAction || "",
     callToActions: Array.isArray(data.callToActions)
       ? data.callToActions.slice(0, 3).map((item) => ({ action: String(item.action || ""), label: String(item.label || ""), value: String(item.value || "") }))
@@ -189,7 +205,7 @@ export const createMassclickFeedPost = async (data = {}, actor = {}) => {
     audience: Array.isArray(data.audience) ? data.audience : [],
     radiusKm: Number(data.radiusKm) || 5,
     scheduledAt: data.scheduledAt || null,
-    expireAfterDays: data.expireAfterDays ? Number(data.expireAfterDays) : null,
+    expireAfterDays: data.postType === "story" ? 1 : data.expireAfterDays ? Number(data.expireAfterDays) : null,
     pinPost: data.pinPost === true,
     allowComments: data.allowComments !== false,
     showShareButton: data.showShareButton !== false,
@@ -213,6 +229,15 @@ export const listMassclickFeedPosts = async ({
   includeInactive = false,
 } = {}) => {
   const query = { isDeleted: false };
+
+  // Stories are ephemeral. Enforce expiry on the server so stale records can
+  // never reappear because of a client clock or cached UI state.
+  query.$and = [{
+    $or: [
+      { postType: { $ne: "story" } },
+      { postType: "story", createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    ],
+  }];
 
   if (!includeInactive) query.status = "active";
   if (includeInactive && status !== "all") query.status = status;
@@ -444,4 +469,32 @@ export const deleteMassclickFeedPost = async (postId, actor = {}) => {
 
   if (!updatedPost) throw new Error("Post not found");
   return normalizePost(updatedPost, getActorId(actor));
+};
+
+export const updateMassclickFeedStory = async (postId, data = {}, actor = {}) => {
+  if (!ObjectId.isValid(postId)) throw new Error("Invalid story ID");
+  const actorId = getActorId(actor);
+  if (!actorId) throw new Error("Login required");
+  const story = await massclickFeedPostModel.findOne({ _id: postId, postType: "story", isDeleted: false });
+  if (!story) throw new Error("Story not found");
+  if (String(story.ownerUserId) !== String(actorId) && actor.actorType !== "admin") throw new Error("You can only edit your own story");
+  story.text = String(data.text ?? story.text).trim().slice(0, 1200);
+  story.storyStyle = sanitizeStoryStyle(data.storyStyle || story.storyStyle);
+  story.updatedAt = new Date();
+  await story.save();
+  return normalizePost(story.toObject(), actorId);
+};
+
+export const deleteMassclickFeedStory = async (postId, actor = {}) => {
+  if (!ObjectId.isValid(postId)) throw new Error("Invalid story ID");
+  const actorId = getActorId(actor);
+  if (!actorId) throw new Error("Login required");
+  const story = await massclickFeedPostModel.findOne({ _id: postId, postType: "story", isDeleted: false });
+  if (!story) throw new Error("Story not found");
+  if (String(story.ownerUserId) !== String(actorId) && actor.actorType !== "admin") throw new Error("You can only delete your own story");
+  story.isDeleted = true;
+  story.status = "hidden";
+  story.updatedAt = new Date();
+  await story.save();
+  return normalizePost(story.toObject(), actorId);
 };
