@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
+import { computePublicLocationSlugs } from "./locationSlug.js";
 
 const slugify = (str) =>
   str.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/^-+|-+$/g, "");
@@ -89,9 +90,16 @@ export const viewAllMasterLocation = async ({
   pageSize,
   search,
   status,
+  reviewStatus,
+  importSource,
+  origin,
   level,
   district,
+  zone,
+  ward,
+  locality,
   pincode,
+  pincodeStatus,
   sortBy,
   sortOrder,
 }) => {
@@ -100,9 +108,33 @@ export const viewAllMasterLocation = async ({
 
   if (status === "active") query.isActive = true;
   if (status === "inactive") query.isActive = false;
+  // Lets the admin pull up just the bulk-imported backlog ("pending") rather
+  // than every inactive doc, which would also include deleted ones.
+  if (reviewStatus && reviewStatus !== "all") query.reviewStatus = reviewStatus;
+  if (importSource && importSource !== "all") query.importSource = importSource;
+  if (origin === "google") query.importSource = { $regex: "^gmaps", $options: "i" };
+  if (origin === "non-google") {
+    andConditions.push({
+      $or: [
+        { importSource: { $exists: false } },
+        { importSource: null },
+        { importSource: "" },
+        { importSource: { $not: /^gmaps/i } },
+      ],
+    });
+  }
   if (level && level !== "all") query.level = level;
   if (district && district.trim() !== "") {
     query.district = { $regex: `^${escapeRegex(district.trim())}$`, $options: "i" };
+  }
+  if (zone && zone.trim() !== "") {
+    query.zone = { $regex: `^${escapeRegex(zone.trim())}$`, $options: "i" };
+  }
+  if (ward && ward.trim() !== "") {
+    query.ward = { $regex: `^${escapeRegex(ward.trim())}$`, $options: "i" };
+  }
+  if (locality && locality.trim() !== "") {
+    query.locality = { $regex: `^${escapeRegex(locality.trim())}$`, $options: "i" };
   }
 
   if (search && search.trim() !== "") {
@@ -126,9 +158,38 @@ export const viewAllMasterLocation = async ({
     ] });
   }
 
+  if (pincodeStatus === "with") {
+    andConditions.push({ $or: [
+      { pincode: { $nin: [null, ""] } },
+      { pincodes: { $exists: true, $ne: [] } },
+    ] });
+  }
+  if (pincodeStatus === "without") {
+    andConditions.push({
+      $and: [
+        { $or: [{ pincode: { $exists: false } }, { pincode: null }, { pincode: "" }] },
+        { $or: [{ pincodes: { $exists: false } }, { pincodes: { $size: 0 } }] },
+      ],
+    });
+  }
+
   if (andConditions.length) query.$and = andConditions;
 
-  const sortQuery = sortBy ? { [sortBy]: sortOrder } : { slug: 1 };
+  const sortableFields = new Set([
+    "district",
+    "zone",
+    "ward",
+    "locality",
+    "level",
+    "pincode",
+    "reviewStatus",
+    "importSource",
+    "slug",
+    "hierarchyPath",
+    "createdAt",
+    "updatedAt",
+  ]);
+  const sortQuery = sortBy && sortableFields.has(sortBy) ? { [sortBy]: sortOrder } : { slug: 1 };
 
   const total = await masterLocationModel.countDocuments(query);
 
@@ -146,12 +207,34 @@ export const viewAllMasterLocation = async ({
 // powers the admin form's cascading autocomplete so a new entry's Zone/Ward
 // text matches an existing doc's spelling exactly instead of silently
 // forking the hierarchy (a Zone/Ward field is plain text, not a reference).
-const DISTINCT_FIELDS = ["district", "zone", "ward", "locality"];
+const DISTINCT_FIELDS = ["district", "zone", "ward", "locality", "importSource"];
 
-export const listDistinctMasterLocationValues = async ({ field, district, zone, ward }) => {
+export const listDistinctMasterLocationValues = async ({
+  field,
+  district,
+  zone,
+  ward,
+  status = "active",
+  reviewStatus = "all",
+  importSource = "all",
+  origin = "all",
+}) => {
   if (!DISTINCT_FIELDS.includes(field)) throw new Error("Invalid field");
 
-  const query = { isActive: true, [field]: { $ne: null } };
+  const query = { [field]: { $nin: [null, ""] } };
+  if (status === "active") query.isActive = true;
+  if (status === "inactive") query.isActive = false;
+  if (reviewStatus && reviewStatus !== "all") query.reviewStatus = reviewStatus;
+  if (importSource && importSource !== "all" && field !== "importSource") query.importSource = importSource;
+  if (origin === "google") query.importSource = { $regex: "^gmaps", $options: "i" };
+  if (origin === "non-google") {
+    query.$or = [
+      { importSource: { $exists: false } },
+      { importSource: null },
+      { importSource: "" },
+      { importSource: { $not: /^gmaps/i } },
+    ];
+  }
   if (district && district.trim()) query.district = { $regex: `^${escapeRegex(district.trim())}$`, $options: "i" };
   if (zone && zone.trim()) query.zone = { $regex: `^${escapeRegex(zone.trim())}$`, $options: "i" };
   if (ward && ward.trim()) query.ward = { $regex: `^${escapeRegex(ward.trim())}$`, $options: "i" };
@@ -265,9 +348,111 @@ export const deleteMasterLocation = async (id) => {
 
   const deleted = await masterLocationModel.findByIdAndUpdate(
     id,
-    { isActive: false, updatedAt: new Date() },
+    { isActive: false, reviewStatus: "rejected", updatedAt: new Date() },
     { new: true }
   );
   if (!deleted) throw new Error("Location not found");
+  // an active sibling disappeared, so the qualified/unqualified public slugs
+  // of the remaining ones may change
+  await refreshPublicLocationSlugs(deleted.district);
   return deleted;
+};
+
+/**
+ * Recompute publicLocationSlug for every ACTIVE doc in a district.
+ *
+ * publicLocationSlug cannot be derived one document at a time: when two
+ * places in a district share a bare name, each has to be qualified by its
+ * parent ("anna-nagar-ariyamangalam"), which is only knowable by looking at
+ * all siblings together. Any change to which docs are active therefore
+ * invalidates the whole district's slugs, so enable, disable and delete all
+ * call this.
+ */
+export const refreshPublicLocationSlugs = async (district) => {
+  if (!district) return 0;
+
+  const docs = await masterLocationModel
+    .find({ district, isActive: true })
+    .lean();
+
+  const districtUrlSlugByName = new Map();
+  for (const d of docs) {
+    if (d.level === "district" && d.urlAlias) {
+      districtUrlSlugByName.set(d.district, d.urlAlias);
+    }
+  }
+
+  const computed = computePublicLocationSlugs(docs, districtUrlSlugByName);
+
+  const ops = [];
+  for (const doc of docs) {
+    const next = computed.get(String(doc._id)) || "";
+    if (next !== (doc.publicLocationSlug || "")) {
+      ops.push({
+        updateOne: {
+          filter: { _id: doc._id },
+          update: { $set: { publicLocationSlug: next, updatedAt: new Date() } },
+        },
+      });
+    }
+  }
+  if (ops.length) await masterLocationModel.bulkWrite(ops, { ordered: false });
+  return ops.length;
+};
+
+/**
+ * Enable or disable a location.
+ *
+ * isActive is the gate every public read path already filters on, so flipping
+ * it is what actually takes a location in or out of search, URLs and
+ * sitemaps. reviewStatus records WHY it is in that state, which isActive
+ * alone cannot express — deleteMasterLocation() also sets isActive: false.
+ */
+export const setMasterLocationActive = async (id, isActive) => {
+  if (!ObjectId.isValid(id)) throw new Error("Invalid location ID");
+
+  const location = await masterLocationModel.findByIdAndUpdate(
+    id,
+    {
+      isActive: Boolean(isActive),
+      reviewStatus: isActive ? "approved" : "pending",
+      updatedAt: new Date(),
+    },
+    { new: true }
+  );
+  if (!location) throw new Error("Location not found");
+
+  const slugsUpdated = await refreshPublicLocationSlugs(location.district);
+  return { location, slugsUpdated };
+};
+
+/**
+ * Enable or disable many locations at once, for working through a review
+ * queue. Slugs are recomputed once per affected district at the end rather
+ * than per document.
+ */
+export const setManyMasterLocationsActive = async (ids = [], isActive) => {
+  const valid = ids.filter((id) => ObjectId.isValid(id));
+  if (!valid.length) throw new Error("No valid location IDs supplied");
+
+  const targets = await masterLocationModel
+    .find({ _id: { $in: valid } }, { district: 1 })
+    .lean();
+
+  const result = await masterLocationModel.updateMany(
+    { _id: { $in: valid } },
+    {
+      $set: {
+        isActive: Boolean(isActive),
+        reviewStatus: isActive ? "approved" : "pending",
+        updatedAt: new Date(),
+      },
+    }
+  );
+
+  let slugsUpdated = 0;
+  for (const district of new Set(targets.map((t) => t.district).filter(Boolean))) {
+    slugsUpdated += await refreshPublicLocationSlugs(district);
+  }
+  return { matched: result.matchedCount, modified: result.modifiedCount, slugsUpdated };
 };

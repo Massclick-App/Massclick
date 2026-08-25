@@ -8,6 +8,8 @@ import {
     listDistinctMasterLocationValuesAction,
     updateMasterLocationAction,
     deleteMasterLocationAction,
+    toggleMasterLocationAction,
+    bulkToggleMasterLocationAction,
     resolveRouteLocationAction
 } from "../controller/location/masterLocationController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
@@ -20,6 +22,10 @@ router.get('/api/masterlocation/viewall', oauthAuthentication, viewAllMasterLoca
 router.get('/api/masterlocation/distinct-values', oauthAuthentication, listDistinctMasterLocationValuesAction);
 router.put('/api/masterlocation/update/:id', oauthAuthentication, updateMasterLocationAction);
 router.delete('/api/masterlocation/delete/:id', oauthAuthentication, deleteMasterLocationAction);
+// Enable/disable a location without deleting it. Bulk variant is for working
+// through the backlog of imported locations awaiting review.
+router.patch('/api/masterlocation/toggle/:id', oauthAuthentication, toggleMasterLocationAction);
+router.patch('/api/masterlocation/bulk-toggle', oauthAuthentication, bulkToggleMasterLocationAction);
 // Public: resolve search text ("kk nagar", "manaparai") to location docs/slugs
 router.get('/api/masterlocation/search', searchMasterLocationAction);
 // Public: district-prefixed URL scheme's ambiguous-segment classifier —

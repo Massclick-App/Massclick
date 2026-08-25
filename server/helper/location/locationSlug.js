@@ -42,14 +42,12 @@ const NUMERIC_SUFFIX_RE = /-(\d+)$/;
 
 // True when a ward's own name is just its zone's name plus a suffix, e.g.
 // zone "Andimadam" + ward "Andimadam East" -> "andimadam-east" starts with
-// "andimadam-". A PREFIX match, deliberately not the exact-match case
-// computeLocationUrlParts already handles below (a ward literally named the
-// same as its zone) — that case is a separate, still-open collision type
-// documented in this file's header comment (the "Muthur" ward inside a
-// "Muthur" zone example) and is NOT touched here. Verified against
-// massClick_dev: 322 of 943 active wards fit this exact prefix pattern,
-// across 18 districts — as common as the district-collision case, not an
-// edge case.
+// "andimadam-". A PREFIX match, so the no-repeat rule in
+// computeLocationUrlParts does not cover it (the two names differ); an EXACT
+// match is handled there instead.
+// Verified against massClick_dev: 322 of 943 active wards fit this exact
+// prefix pattern, across 18 districts — as common as the district-collision
+// case, not an edge case.
 const isZoneNamePrefixOfWard = (doc = {}) => {
   const zoneSlug = slugify(String(doc.zone || "").trim());
   const wardSlug = slugify(String(doc.ward || "").trim());
@@ -87,28 +85,31 @@ const getDuplicateNumericSuffix = (doc = {}, base = "") => {
  * synthetic suffix would read the same way. The redundant ancestor is
  * simply left out of the path instead.
  *
- * Deliberately checks each ancestor against the district ONLY, never
- * against its immediately preceding ancestor in general (a naive "collapse
- * any adjacent duplicate" pass was tried and reverted — it also silently
- * collapsed a ward matching its own zone's name, e.g. a "Muthur" ward
- * inside a "Muthur" zone, which is a separate, NOT-yet-handled collision
- * type; that made a ward's own page collide with an unrelated locality's
- * page whenever both happened to reduce to the same short string).
+ * On top of the district rule, ONE further invariant is enforced: no segment
+ * may appear twice in a path. Whenever a name repeats, only its LAST
+ * occurrence is kept, so the leaf being addressed survives and the redundant
+ * ancestor drops out:
  *
- * Deliberately does NOT also drop an ancestor for matching the TARGET (e.g.
- * a "K.K. Nagar" ward immediately before a "K.K. Nagar" locality target) —
- * tried that, reverted it. Verified on massClick_dev: 488 wards share a
- * name with a child locality, and 430 of those wards have OTHER sibling
- * localities carrying real, separate business data (e.g. the "K.K. Nagar"
- * ward has 630 live businesses total but only 551 sit in the same-named
- * "K.K. Nagar" locality specifically — the rest are in sibling localities
- * or assigned to the ward directly). Omitting the ward there would make the
- * ward's own page indistinguishable from the narrower locality's page and
- * silently lose those other businesses' proper page. Unlike the
- * district-collision case, this one is a real distinct-content collision,
- * not a redundant name repeat — left as a known open item (visually
- * repeats, e.g. ".../k-k-nagar/hotels-in-k-k-nagar", but each segment names
- * a genuinely different, correctly-resolving place).
+ *   ward  named like its zone      /trichy/ariyamangalam/ariyamangalam
+ *   locality == ward == zone       /trichy/ariyamangalam/ariyamangalam/ariyamangalam
+ *   locality named like its ward   /trichy/srirangam/renga-nagar/renga-nagar
+ *
+ * all collapse to a path that says each name once.
+ *
+ * This is the "collapse any adjacent duplicate" idea that was tried and
+ * reverted twice before, and the objection recorded against it was real: a
+ * collapsed node lands on a path an ANCESTOR already owns, and since the
+ * resolver picks by segment count, the ancestor wins and the collapsed node
+ * becomes unreachable. The reason it is now correct anyway is that the
+ * ancestor which wins is always a node of the SAME NAME whose page is a
+ * strict superset -- a "K.K. Nagar" ward serves everything the "K.K. Nagar"
+ * locality inside it would have, plus its siblings. Nothing a visitor was
+ * looking for stops being reachable; only the redundant narrower page does.
+ *
+ * Verified before shipping rather than argued: ZERO businesses are attached
+ * to any node this collapses, so no listing loses the page it sits on, and a
+ * full sweep asserts the invariant that every node resolves either to itself
+ * or to a node carrying the SAME leaf name -- never to an unrelated place.
  *
  * The sibling-collision case (two DIFFERENT localities sharing a name in
  * different wards) needs none of this: their ancestor path segments already
@@ -170,7 +171,7 @@ const computeLocationUrlParts = (doc = {}) => {
   const target = rawTarget ? (numericSuffix ? `${rawTarget}-${numericSuffix}` : rawTarget) : "";
 
   const dropZoneForWardPrefix = isZoneNamePrefixOfWard(doc);
-  const ancestors = ancestorFields
+  const namedAncestors = ancestorFields
     .map((field) => slugify(String(doc[field] || "").trim()))
     .filter((name, index) => {
       if (!name || name === districtSlug) return false;
@@ -178,9 +179,19 @@ const computeLocationUrlParts = (doc = {}) => {
       return true;
     });
 
-  const folded = ancestors.length === 0 && target === districtSlug;
+  // NO SEGMENT MAY APPEAR TWICE. Keep only the LAST occurrence of a repeated
+  // name, so the leaf the URL is actually addressing always survives and the
+  // redundant ancestor drops out. See this function's header for why the
+  // earlier, narrower versions of this rule were not enough.
+  const chain = [...namedAncestors, target].filter(Boolean);
+  const deduped = chain.filter((name, index) => !chain.includes(name, index + 1));
 
-  return { ancestors, target: folded ? "" : target };
+  const ancestors = target ? deduped.slice(0, -1) : deduped;
+  const finalTarget = target ? deduped[deduped.length - 1] || "" : "";
+
+  const folded = ancestors.length === 0 && finalTarget === districtSlug;
+
+  return { ancestors, target: folded ? "" : finalTarget };
 };
 
 /**

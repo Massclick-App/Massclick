@@ -68,6 +68,17 @@ export default function masterLocationReducer(state = initialState, action) {
       };
 
     case EDIT_MASTER_LOCATION_SUCCESS:
+      // A bulk toggle has no single updated document to patch in, so it
+      // dispatches without a payload and relies on the caller refetching.
+      // Guard here, or mapping over the list would throw on `null._id` and
+      // the thunk would swallow it as a failed request.
+      if (!action.payload?._id) {
+        return {
+          ...state,
+          loading: false,
+          error: null,
+        };
+      }
       return {
         ...state,
         loading: false,

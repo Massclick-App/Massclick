@@ -84,6 +84,9 @@ const CustomizedTable = ({
   };
 
   const handleSort = columnId => {
+    const column = columns.find(c => c.id === columnId);
+    if (column?.sortable === false) return;
+
     setPage(0);
     setSortConfig(prev => {
       if (prev.orderBy === columnId) {
@@ -180,10 +183,14 @@ const CustomizedTable = ({
           <TableHead>
             <TableRow className={cx("custom-header-row")}>
               {columns.map(col => (
-                <TableCell key={col.id} className={cx("custom-header-cell")} onClick={() => handleSort(col.id)}>
+                <TableCell
+                  key={col.id}
+                  className={cx("custom-header-cell")}
+                  onClick={() => handleSort(col.id)}
+                >
                   <span className={cx("header-content")}>
                     {col.label}
-                    {renderSortIndicator(col.id)}
+                    {col.sortable === false ? null : renderSortIndicator(col.id)}
                   </span>
                 </TableCell>
               ))}

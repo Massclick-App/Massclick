@@ -227,6 +227,45 @@ export const resolveLocationPathWithinDistrict = async (districtDoc, locationPat
   return pickCandidate(allCandidates);
 };
 
+/**
+ * Resolves a location path, tolerating SUPERSEDED longer forms of a URL that
+ * used to repeat a name locationSlug.js no longer emits.
+ *
+ * Two rules there retired live paths on massClick_dev, and both leave indexed
+ * URLs behind that a bare miss would 404:
+ *
+ *   isWardNameSameAsZone  1,538 localities lost a redundant zone segment
+ *                         ("/andanallur/andanallur/mukkompu" -> "/andanallur/mukkompu")
+ *   foldsIntoZonePage       231 wards and 184 localities lost their page
+ *                         entirely ("/ariyamangalam/ariyamangalam" and
+ *                         "/ariyamangalam/ariyamangalam/ariyamangalam" both
+ *                         now belong to the "/ariyamangalam" zone page)
+ *
+ * Collapsing runs of consecutive identical segments and retrying covers both,
+ * since every retired form differs from its replacement only by a repeat.
+ *
+ * The exact path is ALWAYS tried first, so a legitimately repeating path — a
+ * locality matching only its ward, which is deliberately never folded — keeps
+ * resolving directly and never reaches this fallback. Any level is accepted
+ * from the retry, because a folded node's replacement is its ZONE.
+ */
+const dedupeAdjacentSegments = (segments = []) =>
+  segments.filter((segment, index) => index === 0 || segment !== segments[index - 1]);
+
+const resolveLocationPathAllowingLegacyDuplicateZone = async (districtDoc, parts = []) => {
+  const direct = await resolveLocationPathWithinDistrict(districtDoc, parts);
+  if (direct) return { locationDoc: direct, canonicalize: false };
+
+  const segments = pathSegments(parts);
+  const deduped = dedupeAdjacentSegments(segments);
+  if (deduped.length !== segments.length) {
+    const shortened = await resolveLocationPathWithinDistrict(districtDoc, deduped);
+    if (shortened) return { locationDoc: shortened, canonicalize: true };
+  }
+
+  return { locationDoc: null, canonicalize: false };
+};
+
 export const classifyLocationRouteSegments = async ({ districtDoc, segments = [] } = {}) => {
   const parts = pathSegments(segments).slice(0, 3);
   if (!districtDoc) return { type: "unknown", attemptedText: parts.join("/") };
@@ -236,7 +275,7 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
   const categoryInLocation = await splitLocationCategorySegment(lastSegment);
 
   if (categoryInLocation) {
-    const locationDoc = await resolveLocationPathWithinDistrict(
+    const { locationDoc, canonicalize } = await resolveLocationPathAllowingLegacyDuplicateZone(
       districtDoc,
       [...parts.slice(0, -1), categoryInLocation.locationSlug],
     );
@@ -246,6 +285,7 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
         type: "location",
         locationDoc,
         categorySlug: categoryInLocation.categorySlug,
+        ...(canonicalize ? { canonicalize: true } : {}),
       };
     }
 
@@ -274,9 +314,14 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
     };
   }
 
-  const locationDoc = await resolveLocationPathWithinDistrict(districtDoc, parts);
+  const { locationDoc, canonicalize: landingCanonicalize } =
+    await resolveLocationPathAllowingLegacyDuplicateZone(districtDoc, parts);
   if (locationDoc) {
-    return { type: "locationLanding", locationDoc };
+    return {
+      type: "locationLanding",
+      locationDoc,
+      ...(landingCanonicalize ? { canonicalize: true } : {}),
+    };
   }
 
   if (parts.length >= 2 && (await isKnownCategorySlug(parts[parts.length - 1]))) {

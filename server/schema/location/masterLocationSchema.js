@@ -139,9 +139,37 @@ const masterLocationSchema = new mongoose.Schema({
         },
     },
 
+    // The public gate. Every public read path filters on isActive: true, so
+    // this doubles as the enable/disable switch: a disabled location stays in
+    // the collection but disappears from search, URLs and sitemaps.
     isActive: {
         type: Boolean,
         default: true,
+        index: true,
+    },
+
+    // Why a document is in its current isActive state. isActive alone cannot
+    // say that, because deleteMasterLocation() also sets isActive: false —
+    // without this field a bulk-imported location awaiting review would be
+    // indistinguishable from one an admin deliberately removed.
+    //   approved — reviewed (or pre-existing) and live
+    //   pending  — bulk-imported, not yet checked by a human, disabled
+    //   rejected — reviewed and turned down; kept so it is not re-imported
+    // Defaults to "approved" so every document that predates this field
+    // keeps its existing meaning.
+    reviewStatus: {
+        type: String,
+        enum: ["approved", "pending", "rejected"],
+        default: "approved",
+        index: true,
+    },
+
+    // Where a bulk-imported document came from (e.g. "census", "osm",
+    // "gmaps"). Empty for hand-created entries. Kept so a whole import batch
+    // can be reviewed, filtered or rolled back by provenance.
+    importSource: {
+        type: String,
+        default: "",
         index: true,
     },
 
