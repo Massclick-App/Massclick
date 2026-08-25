@@ -478,7 +478,8 @@ export const logSearchActivity = (
       );
 
     } catch (error) {
-      }
+      // Search logging is non-critical; failed logs should not block results.
+    }
   };
 
 export const sendEnquiryLead = (payload) => async (dispatch) => {
@@ -559,10 +560,11 @@ export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => asy
   const page = Math.max(1, Number(options.page) || 1);
   const limit = Math.min(25, Math.max(1, Number(options.limit) || 10));
   const append = Boolean(options.append);
+  const context = String(options.context || "default");
 
   dispatch({
     type: SUGGESTION_BUSINESS_REQUEST,
-    meta: { append, query: search, page, limit }
+    meta: { append, query: search, page, limit, context }
   });
 
   if (search.length < 2) {
@@ -577,7 +579,7 @@ export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => asy
     dispatch({
       type: SUGGESTION_BUSINESS_SUCCESS,
       payload: emptyPayload,
-      meta: { append: false, query: search, page: 1, limit }
+      meta: { append: false, query: search, page: 1, limit, context }
     });
     return emptyPayload;
   }
@@ -615,7 +617,7 @@ export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => asy
     dispatch({
       type: SUGGESTION_BUSINESS_SUCCESS,
       payload: normalized,
-      meta: { append, query: search, page, limit }
+      meta: { append, query: search, page, limit, context }
     });
 
     return normalized;
@@ -623,7 +625,7 @@ export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => asy
     dispatch({
       type: SUGGESTION_BUSINESS_FAILURE,
       payload: error.response?.data || error.message,
-      meta: { append, query: search, page, limit }
+      meta: { append, query: search, page, limit, context }
     });
   }
 };

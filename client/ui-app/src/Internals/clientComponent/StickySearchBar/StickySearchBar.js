@@ -11,14 +11,11 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import {
   getAllSearchLogs,
   getBackendSuggestions,
-  logSearchActivity,
-  performSearch
 } from "../../../redux/actions/businessListAction";
 import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
-import { logUserSearch } from "../../../redux/actions/otpAction";
-import { selectBackendSuggestions, selectBackendSuggestionsMeta, selectSearchLogs } from "../../../redux/selectors";
-import { shouldSendSearch } from "../../../utils/searchLock";
-import { createDistrictSlug, getEffectiveSearchLocation, navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { selectSearchLogs } from "../../../redux/selectors";
+import { createDistrictSlug } from "../../../utils/searchResultNavigation";
+import { submitSearchIntent } from "../../../utils/searchIntent";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import { useDrawer } from "../Drawer/drawerContext";
@@ -30,6 +27,22 @@ const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const WEB_VIEW_MEDIA_QUERY = "(min-width: 769px)";
 const isMongoObjectId = value => /^[a-f\d]{24}$/i.test(String(value || "").trim());
 const LEVEL_DEPTH = { district: 0, zone: 1, ward: 2, locality: 3 };
+
+const isMainNavCurrentlyVisible = () => {
+  if (typeof document === "undefined" || typeof window === "undefined") return false;
+  const mainNav = document.querySelector("[data-main-nav='true']");
+  if (!mainNav) return false;
+
+  const style = window.getComputedStyle(mainNav);
+  const rect = mainNav.getBoundingClientRect();
+  return (
+    style.display !== "none" &&
+    style.visibility !== "hidden" &&
+    rect.height > 0 &&
+    rect.bottom > 0 &&
+    rect.top < window.innerHeight
+  );
+};
 
 const AddBusinessModel = lazy(() =>
   import(/* webpackChunkName: "otp-modal" */ "../AddBusinessModel")
@@ -87,6 +100,7 @@ const StickySearchBar = ({
   setCategoryName: propSetCategoryName,
   committedLocationName,
   committedSearchTerm,
+  hideWhenMainNavVisible = true,
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -104,6 +118,7 @@ const StickySearchBar = ({
   const [debouncedLocation, setDebouncedLocation] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authVersion, setAuthVersion] = useState(0);
+  const [mainNavVisible, setMainNavVisible] = useState(() => hideWhenMainNavVisible && isMainNavCurrentlyVisible());
   const isWebView = useMediaQuery(WEB_VIEW_MEDIA_QUERY, true);
   // Canonical masterlocations slug of a VERIFIED LOCATIONS pick. Cleared the
   // moment the user types/picks free text - mirrors heroSection's behavior
@@ -115,13 +130,9 @@ const StickySearchBar = ({
   const searchTerm = propSearchTerm ?? internalSearchTerm;
   const setSearchTerm = propSetSearchTerm ?? setInternalSearchTerm;
   const searchLogs = useSelector(selectSearchLogs);
-  const backendSuggestions = useSelector(selectBackendSuggestions);
-  const {
-    loading: backendSuggestionsLoading,
-    hasMore: backendSuggestionsHasMore,
-    page: backendSuggestionsPage,
-    query: backendSuggestionsQuery
-  } = useSelector(selectBackendSuggestionsMeta);
+  const suggestionContexts = useSelector(state => state.businessListReducer?.backendSuggestionContexts || {});
+  const searchSuggestionState = suggestionContexts.search || { items: [], loading: false, hasMore: false, page: 0, query: "" };
+  const locationSuggestionState = suggestionContexts.location || { items: [], loading: false, hasMore: false, page: 0, query: "" };
   const { locationSearchResults = [] } = useSelector(state => state.masterLocationReducer) || {};
   const refreshedAuthUser = useSelector(state => state.otp?.viewResponse);
   let storedAuthUser = {};
@@ -141,21 +152,30 @@ const StickySearchBar = ({
 
   const requestSuggestions = (query, {
     page = 1,
-    append = false
+    append = false,
+    context = "search"
   } = {}) => dispatch(getBackendSuggestions({
     search: query,
     page,
     limit: SUGGESTION_PAGE_SIZE,
-    append
+    append,
+    context
   }));
 
-  const maybeLoadMoreSuggestions = query => {
+  const maybeLoadMoreSuggestions = (query, {
+    loading = searchSuggestionState.loading,
+    hasMore = searchSuggestionState.hasMore,
+    page = searchSuggestionState.page,
+    currentQuery = searchSuggestionState.query,
+    context = "search",
+  } = {}) => {
     const normalizedQuery = String(query || "").trim();
-    if (!normalizedQuery || backendSuggestionsLoading || !backendSuggestionsHasMore) return;
-    if (backendSuggestionsQuery !== normalizedQuery) return;
+    if (!normalizedQuery || loading || !hasMore) return;
+    if (currentQuery !== normalizedQuery) return;
     requestSuggestions(normalizedQuery, {
-      page: backendSuggestionsPage + 1,
-      append: true
+      page: page + 1,
+      append: true,
+      context,
     });
   };
 
@@ -217,7 +237,8 @@ const StickySearchBar = ({
       search: debouncedSearch.trim(),
       page: 1,
       limit: SUGGESTION_PAGE_SIZE,
-      append: false
+      append: false,
+      context: "search"
     }));
   }, [debouncedSearch, dispatch, isCategoryDropdownOpen]);
 
@@ -227,7 +248,8 @@ const StickySearchBar = ({
       search: debouncedLocation.trim(),
       page: 1,
       limit: SUGGESTION_PAGE_SIZE,
-      append: false
+      append: false,
+      context: "location"
     }));
     dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
   }, [debouncedLocation, dispatch, isSelectingLocation]);
@@ -244,7 +266,29 @@ const StickySearchBar = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!hideWhenMainNavVisible) {
+      setMainNavVisible(false);
+      return undefined;
+    }
+
+    const checkMainNav = () => setMainNavVisible(isMainNavCurrentlyVisible());
+
+    checkMainNav();
+    window.addEventListener("scroll", checkMainNav, { passive: true });
+    window.addEventListener("resize", checkMainNav);
+    const observer = new MutationObserver(checkMainNav);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      window.removeEventListener("scroll", checkMainNav);
+      window.removeEventListener("resize", checkMainNav);
+      observer.disconnect();
+    };
+  }, [hideWhenMainNavVisible]);
+
   const suggestionCategories = (() => {
+    const backendSuggestions = searchSuggestionState.items || [];
     if (!backendSuggestions.length) return [];
     const seen = new Set();
     const list = [];
@@ -265,6 +309,7 @@ const StickySearchBar = ({
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? String(log.categoryName).trim() : "").filter(value => value && !isMongoObjectId(value)))];
 
   const parsedLocationSuggestions = (() => {
+    const backendSuggestions = locationSuggestionState.items || [];
     if (!backendSuggestions.length) return [];
     const seen = new Set();
     const list = [];
@@ -293,13 +338,14 @@ const StickySearchBar = ({
   const handleLocationChange = (loc) => {
     const chosen = typeof loc === "string" ? loc : (loc?.name || String(loc));
     setLocationName(chosen);
+    localStorage.setItem("selectedLocation", chosen);
     // Verified picks carry the canonical slug; legacy text suggestions
     // don't and clear any previous one - shared with heroSection.
     const slug = typeof loc === "object" && loc?.slug ? loc.slug : "";
     const publicLocationSlug = typeof loc === "object" && loc?.publicLocationSlug ? loc.publicLocationSlug : "";
     const publicLocationPath = typeof loc === "object" && loc?.publicLocationPath ? loc.publicLocationPath : "";
-    const districtName = typeof loc === "object" && loc?.districtName ? loc.districtName : "";
-    const districtSlug = typeof loc === "object" && loc?.districtSlug ? loc.districtSlug : "";
+    const districtName = typeof loc === "object" && loc?.districtName ? loc.districtName : chosen;
+    const districtSlug = typeof loc === "object" && loc?.districtSlug ? loc.districtSlug : createDistrictSlug(districtName);
     setMasterLocationSlug(slug);
     if (slug) localStorage.setItem("selectedLocationSlug", slug);
     else localStorage.removeItem("selectedLocationSlug");
@@ -336,78 +382,29 @@ const StickySearchBar = ({
     handleSearch(undefined, chosen);
   };
 
-  const handleSearch = async (event, selectedTerm, selectedLocation, selectedLocationSlug) => {
-    event?.preventDefault?.();
-    const searchInput = (selectedTerm ?? searchTerm).trim();
-    const location = ((selectedLocation ?? locationName) || DEFAULT_LOCATION).trim();
-    const locationSlug = selectedLocationSlug ?? masterLocationSlug;
+  const handleSearch = (event, selectedTerm, selectedLocation, selectedLocationSlug) => {
+    const result = submitSearchIntent({
+      event,
+      searchTerm: selectedTerm ?? searchTerm,
+      locationName: selectedLocation ?? locationName,
+      defaultLocation: DEFAULT_LOCATION,
+      masterLocationSlug,
+      selectedLocationSlug,
+      navigate,
+      dispatch,
+      setLocationName,
+      setCategoryName: propSetCategoryName,
+    });
 
-    if (!searchInput) {
+    if (!result.submitted) {
       setIsCategoryDropdownOpen(true);
       searchInputRef.current?.focus();
       return;
     }
 
-    if (!locationName?.trim()) {
-      setLocationName(location);
-    }
-
-    propSetCategoryName?.(searchInput);
     setIsCategoryDropdownOpen(false);
     setIsSelectingLocation(false);
     setIsFocused(false);
-
-    const response = await dispatch(performSearch(searchInput, location));
-    const results = response?.payload || [];
-    const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
-    const userId = authUser?._id;
-    const userDetails = {
-      userName: authUser?.userName,
-      mobileNumber1: authUser?.mobileNumber1,
-      mobileNumber2: authUser?.mobileNumber2,
-      email: authUser?.email
-    };
-    const logLocation = location || "Global";
-    const logValue = searchInput || "All Categories";
-
-    if (userId && searchInput) {
-      dispatch(logUserSearch(userId, searchInput, logLocation, logValue));
-    }
-
-    const key = `${logValue}-${location}-${userDetails.mobileNumber1}`;
-    const logSent = shouldSendSearch(key);
-
-    if (logSent) {
-      const matchedBusinessIds = Array.isArray(results?.results)
-        ? results.results.map(business => business?._id).filter(Boolean)
-        : Array.isArray(results)
-          ? results.map(business => business?._id).filter(Boolean)
-          : [];
-
-      dispatch(
-        logSearchActivity(
-          "",
-          location,
-          userDetails,
-          searchInput,
-          false,
-          matchedBusinessIds
-        )
-      );
-    }
-
-    navigateToSearchResult({
-      searchTerm: searchInput,
-      location,
-      masterLocationSlug: locationSlug,
-      ...getEffectiveSearchLocation(),
-      navigate,
-      dispatch,
-      isKnownCategory: false,
-      results,
-      logAlreadySent: logSent,
-      userDetails
-    });
   };
 
   const goHome = () => navigate("/");
@@ -416,7 +413,7 @@ const StickySearchBar = ({
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
-  if (!isScrolled) return null;
+  if (!isScrolled || (hideWhenMainNavVisible && mainNavVisible)) return null;
 
   // Web view layout
   if (isWebView) {
@@ -450,7 +447,9 @@ const StickySearchBar = ({
                 placeholder="Enter location..."
                 value={locationName}
                 onChange={(e) => {
-                  setLocationName(e.target.value);
+                  const value = e.target.value;
+                  setLocationName(value);
+                  localStorage.setItem("selectedLocation", value);
                   setMasterLocationSlug("");
                   localStorage.removeItem("selectedLocationSlug");
                   localStorage.removeItem("selectedPublicLocationSlug");
@@ -474,9 +473,15 @@ const StickySearchBar = ({
                   label: "LOCATIONS",
                   options: parsedLocationSuggestions,
                   onSelect: handleLocationChange,
-                  onReachEnd: () => maybeLoadMoreSuggestions(locationName.trim()),
-                  hasMore: backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim(),
-                  isLoadingMore: backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()
+                  onReachEnd: () => maybeLoadMoreSuggestions(locationName.trim(), {
+                    loading: locationSuggestionState.loading,
+                    hasMore: locationSuggestionState.hasMore,
+                    page: locationSuggestionState.page,
+                    currentQuery: locationSuggestionState.query,
+                    context: "location"
+                  }),
+                  hasMore: locationSuggestionState.hasMore && locationSuggestionState.query === locationName.trim(),
+                  isLoadingMore: locationSuggestionState.loading && locationSuggestionState.query === locationName.trim()
                 }]} />
               )}
             </div>
@@ -510,9 +515,9 @@ const StickySearchBar = ({
                   label="SUGGESTIONS"
                   options={suggestionCategories}
                   onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())}
-                  hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()}
+                  hasMore={searchSuggestionState.hasMore && searchSuggestionState.query === searchTerm.trim()}
                   onSelect={handleSelectCategory}
-                  isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()}
+                  isLoadingMore={searchSuggestionState.loading && searchSuggestionState.query === searchTerm.trim()}
                 />
               )}
             </div>
@@ -658,7 +663,7 @@ const StickySearchBar = ({
           label: "LOCATIONS",
           options: parsedLocationSuggestions,
           onSelect: handleLocationChange,
-          isLoadingMore: backendSuggestionsLoading
+          isLoadingMore: locationSuggestionState.loading
         }]} />
       )}
 
@@ -667,7 +672,7 @@ const StickySearchBar = ({
           label="SUGGESTIONS"
           options={suggestionCategories}
           onSelect={handleSelectCategory}
-          isLoadingMore={backendSuggestionsLoading}
+          isLoadingMore={searchSuggestionState.loading}
         />
       )}
     </div>

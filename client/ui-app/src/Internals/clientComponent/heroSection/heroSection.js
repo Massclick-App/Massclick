@@ -11,7 +11,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { getBackendSuggestions } from "../../../redux/actions/businessListAction";
 import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
 import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
-import { createDistrictSlug, getEffectiveSearchLocation, navigateToSearchResult } from "../../../utils/searchResultNavigation";
+import { createDistrictSlug } from "../../../utils/searchResultNavigation";
+import { parseVoiceSearchTranscript, submitSearchIntent } from "../../../utils/searchIntent";
 import { detectDistrict } from "../../../redux/actions/locationAction";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import {
@@ -38,15 +39,6 @@ const DEFAULT_LOCATION = "Tiruchirappalli";
 const SUGGESTION_PAGE_SIZE = 20;
 const MASTER_LOCATION_SUGGESTION_LIMIT = 25;
 const isObjectId = s => /^[a-f\d]{24}$/i.test(String(s || "").trim());
-const getAuthUserDetails = () => {
-  const authUser = JSON.parse(localStorage.getItem("authUser") || "{}");
-  return {
-    userName: authUser?.userName,
-    mobileNumber1: authUser?.mobileNumber1,
-    mobileNumber2: authUser?.mobileNumber2,
-    email: authUser?.email
-  };
-};
 const HeroSection = React.memo(({
   searchTerm,
   setSearchTerm,
@@ -80,8 +72,23 @@ const HeroSection = React.memo(({
     backendSuggestionsLoading = false,
     backendSuggestionsHasMore = false,
     backendSuggestionsPage = 0,
-    backendSuggestionsQuery = ""
+    backendSuggestionsQuery = "",
+    backendSuggestionContexts = {}
   } = businessState;
+  const searchSuggestionState = backendSuggestionContexts.search || {
+    items: backendSuggestions,
+    loading: backendSuggestionsLoading,
+    hasMore: backendSuggestionsHasMore,
+    page: backendSuggestionsPage,
+    query: backendSuggestionsQuery,
+  };
+  const locationSuggestionState = backendSuggestionContexts.location || {
+    items: backendSuggestions,
+    loading: backendSuggestionsLoading,
+    hasMore: backendSuggestionsHasMore,
+    page: backendSuggestionsPage,
+    query: backendSuggestionsQuery,
+  };
   useEffect(() => {
     if (publicCounterSettings) return undefined;
 
@@ -121,20 +128,29 @@ const HeroSection = React.memo(({
   }, [dispatch, publicCounterSettings]);
   const requestSuggestions = (query, {
     page = 1,
-    append = false
+    append = false,
+    context = "search"
   } = {}) => dispatch(getBackendSuggestions({
     search: query,
     page,
     limit: SUGGESTION_PAGE_SIZE,
-    append
+    append,
+    context
   }));
-  const maybeLoadMoreSuggestions = query => {
+  const maybeLoadMoreSuggestions = (query, {
+    loading = searchSuggestionState.loading,
+    hasMore = searchSuggestionState.hasMore,
+    page = searchSuggestionState.page,
+    currentQuery = searchSuggestionState.query,
+    context = "search",
+  } = {}) => {
     const normalizedQuery = String(query || "").trim();
-    if (!normalizedQuery || backendSuggestionsLoading || !backendSuggestionsHasMore) return;
-    if (backendSuggestionsQuery !== normalizedQuery) return;
+    if (!normalizedQuery || loading || !hasMore) return;
+    if (currentQuery !== normalizedQuery) return;
     requestSuggestions(normalizedQuery, {
-      page: backendSuggestionsPage + 1,
-      append: true
+      page: page + 1,
+      append: true,
+      context,
     });
   };
   const recognitionRef = useRef(null);
@@ -221,7 +237,8 @@ const HeroSection = React.memo(({
       search: debouncedSearch.trim(),
       page: 1,
       limit: SUGGESTION_PAGE_SIZE,
-      append: false
+      append: false,
+      context: "search"
     }));
   }, [debouncedSearch, dispatch, isDropdownOpen]);
   useEffect(() => {
@@ -234,16 +251,18 @@ const HeroSection = React.memo(({
       search: debouncedLocation.trim(),
       page: 1,
       limit: SUGGESTION_PAGE_SIZE,
-      append: false
+      append: false,
+      context: "location"
     }));
     dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
   }, [debouncedLocation, dispatch, showLocationDropdown]);
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? log.categoryName.trim() : "").filter(name => name && !isObjectId(name)))];
   const suggestionCategories = (() => {
-    if (!Array.isArray(backendSuggestions) || backendSuggestions.length === 0) return [];
+    const suggestions = searchSuggestionState.items;
+    if (!Array.isArray(suggestions) || suggestions.length === 0) return [];
     const seen = new Set();
     const list = [];
-    backendSuggestions.forEach(item => {
+    suggestions.forEach(item => {
       const val = item.category || item.categoryName || item.name;
       if (!val) return;
       const text = String(val).trim();
@@ -257,10 +276,11 @@ const HeroSection = React.memo(({
     return list;
   })();
   const parsedLocationSuggestions = (() => {
-    if (!Array.isArray(backendSuggestions) || backendSuggestions.length === 0) return [];
+    const suggestions = locationSuggestionState.items;
+    if (!Array.isArray(suggestions) || suggestions.length === 0) return [];
     const seen = new Set();
     const list = [];
-    backendSuggestions.forEach(item => {
+    suggestions.forEach(item => {
       const locFields = [item.location, item.locationDetails, item.street, item.plotNumber, item.pincode];
       locFields.forEach(loc => {
         if (!loc) return;
@@ -318,59 +338,19 @@ const HeroSection = React.memo(({
     const legacyOnly = parsedLocationSuggestions.filter(text => !seen.has(String(text).trim().toLowerCase()));
     return [...masterLocationSuggestions, ...legacyOnly];
   })();
-  const parseVoiceQuery = text => {
-    const lower = text.toLowerCase().trim();
-    let category = "";
-    let location = "";
-    const inMatch = lower.match(/(.+)\s+in\s+(.+)/);
-    const nearMatch = lower.match(/(.+)\s+near\s+(.+)/);
-    const nearMeMatch = lower.match(/near me\s+(.+)/);
-    if (inMatch) {
-      category = inMatch[1].trim();
-      location = inMatch[2].trim();
-    } else if (nearMatch) {
-      category = nearMatch[1].trim();
-      location = nearMatch[2].trim();
-    } else if (nearMeMatch) {
-      category = nearMeMatch[1].trim();
-    } else {
-      category = lower;
-    }
-    category = category.replace("near me", "").replace("near", "").replace("in", "").trim();
-    return {
-      category,
-      location
-    };
-  };
   const handleSearch = async (e, selectedTerm) => {
-    e?.preventDefault?.();
-    const normalize = (text = "") => text.toLowerCase().trim().replace(/&/g, " and ").replace(/[-_]/g, " ").replace(/\s+/g, " ");
-    let term = normalize(selectedTerm ?? searchTerm);
-    let location = normalize(locationName);
-
-    // 🔹 Remove location from term
-    if (location && term.includes(location)) {
-      term = term.replace(new RegExp(`\\b${location}\\b`, "gi"), "").trim();
-    }
-    const stopWords = ["location", "near", "in", "around", "nearby"];
-    let words = term.split(" ").filter(Boolean);
-
-    // 🔹 Remove stopwords
-    words = words.filter(word => !stopWords.includes(word));
-    const cleanedTerm = words.join(" ");
-    // Use centralized navigation with normalized data
-    navigateToSearchResult({
-      searchTerm: cleanedTerm,
-      location: location,
+    const result = submitSearchIntent({
+      event: e,
+      searchTerm: selectedTerm ?? searchTerm,
+      locationName,
+      defaultLocation: DEFAULT_LOCATION,
       masterLocationSlug,
-      ...getEffectiveSearchLocation(),
       navigate,
       dispatch,
-      isKnownCategory: false,
-      // User typed search - use flexible term search
-      logAlreadySent: false,
-      userDetails: getAuthUserDetails()
+      setLocationName,
+      setCategoryName,
     });
+    if (!result.submitted) setIsDropdownOpen(true);
   };
   const handleVoiceSearch = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -400,7 +380,7 @@ const HeroSection = React.memo(({
       const transcript = event.results[0][0].transcript;
       setSearchTerm(transcript);
       setShowVoiceModal(false);
-      const parsed = parseVoiceQuery(transcript);
+      const parsed = parseVoiceSearchTranscript(transcript);
       if (parsed.category) {
         setSearchTerm(parsed.category);
         setCategoryName(parsed.category);
@@ -499,7 +479,13 @@ const HeroSection = React.memo(({
               });
               setShowLocationDropdown(false);
             };
-            return <DeferredCategoryDropdown id="location-suggestions" label="LOCATION SUGGESTIONS" options={combinedLocationOptions} onSelect={selectLocation} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === locationName.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === locationName.trim()} />;
+            return <DeferredCategoryDropdown id="location-suggestions" label="LOCATION SUGGESTIONS" options={combinedLocationOptions} onSelect={selectLocation} onReachEnd={() => maybeLoadMoreSuggestions(locationName.trim(), {
+              loading: locationSuggestionState.loading,
+              hasMore: locationSuggestionState.hasMore,
+              page: locationSuggestionState.page,
+              currentQuery: locationSuggestionState.query,
+              context: "location"
+            })} hasMore={locationSuggestionState.hasMore && locationSuggestionState.query === locationName.trim()} isLoadingMore={locationSuggestionState.loading && locationSuggestionState.query === locationName.trim()} />;
           })()}
           </div>
 
@@ -523,7 +509,7 @@ const HeroSection = React.memo(({
             handleSearch(undefined, chosen);
           }} />}
 
-            {isDropdownOpen && searchTerm.trim().length >= 2 && <DeferredCategoryDropdown id="business-suggestions" label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={backendSuggestionsHasMore && backendSuggestionsQuery === searchTerm.trim()} isLoadingMore={backendSuggestionsLoading && backendSuggestionsQuery === searchTerm.trim()} onSelect={val => {
+            {isDropdownOpen && searchTerm.trim().length >= 2 && <DeferredCategoryDropdown id="business-suggestions" label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={searchSuggestionState.hasMore && searchSuggestionState.query === searchTerm.trim()} isLoadingMore={searchSuggestionState.loading && searchSuggestionState.query === searchTerm.trim()} onSelect={val => {
             const chosen = typeof val === "string" ? val : String(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);

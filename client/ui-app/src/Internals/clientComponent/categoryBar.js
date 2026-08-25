@@ -157,7 +157,7 @@ const CategoryBar = () => {
   };
   
   const goHome = () => navigate("/");
-  return <header className={cx("categoryBarContainer")}>
+  return <header className={cx("categoryBarContainer")} data-main-nav="true">
     <div className={cx("categoryBarContent")}>
 
       <div className={cx("logoGroup")}>

@@ -39,6 +39,19 @@ import {
   QR_DOWNLOAD_FAILURE,
 } from '../actions/userActionTypes';
 
+const emptySuggestionContext = {
+  items: [],
+  loading: false,
+  hasMore: false,
+  page: 0,
+  limit: 10,
+  total: 0,
+  query: "",
+};
+
+const getSuggestionContext = (state, context) =>
+  state.backendSuggestionContexts?.[context] || emptySuggestionContext;
+
 const initialState = {
   businessList: [],
   total: 0,
@@ -59,6 +72,7 @@ const initialState = {
   backendSuggestionsLimit: 10,
   backendSuggestionsTotal: 0,
   backendSuggestionsQuery: "",
+  backendSuggestionContexts: {},
   backendSearchResults: [],
 
   searchLogs: [],
@@ -481,23 +495,51 @@ export default function businessListReducer(state = initialState, action) {
       };
 
     case SUGGESTION_BUSINESS_REQUEST:
-      return {
-        ...state,
-        backendSuggestionsLoading: true,
-        ...(action.meta?.append
-          ? {}
-          : {
-              backendSuggestions: [],
-              backendSuggestionsHasMore: false,
-              backendSuggestionsPage: 0,
-              backendSuggestionsTotal: 0,
-              backendSuggestionsQuery: action.meta?.query || "",
-              backendSuggestionsLimit: action.meta?.limit || state.backendSuggestionsLimit,
-            }),
-      };
+      {
+        const context = action.meta?.context || "default";
+        const currentContext = getSuggestionContext(state, context);
+        const nextContext = {
+          ...currentContext,
+          loading: true,
+          ...(action.meta?.append
+            ? {}
+            : {
+                items: [],
+                hasMore: false,
+                page: 0,
+                total: 0,
+                query: action.meta?.query || "",
+                limit: action.meta?.limit || currentContext.limit,
+              }),
+        };
+        return {
+          ...state,
+          backendSuggestionContexts: {
+            ...state.backendSuggestionContexts,
+            [context]: nextContext,
+          },
+          ...(context === "default"
+            ? {
+                backendSuggestionsLoading: true,
+                ...(action.meta?.append
+                  ? {}
+                  : {
+                      backendSuggestions: [],
+                      backendSuggestionsHasMore: false,
+                      backendSuggestionsPage: 0,
+                      backendSuggestionsTotal: 0,
+                      backendSuggestionsQuery: action.meta?.query || "",
+                      backendSuggestionsLimit: action.meta?.limit || state.backendSuggestionsLimit,
+                    }),
+              }
+            : {}),
+        };
+      }
 
     case SUGGESTION_BUSINESS_SUCCESS:
       {
+        const context = action.meta?.context || "default";
+        const currentContext = getSuggestionContext(state, context);
         const items = Array.isArray(action.payload)
           ? action.payload
           : Array.isArray(action.payload?.items)
@@ -505,7 +547,7 @@ export default function businessListReducer(state = initialState, action) {
             : [];
         const append = Boolean(action.meta?.append);
         const merged = append
-          ? [...state.backendSuggestions, ...items].filter((item, index, list) => {
+          ? [...currentContext.items, ...items].filter((item, index, list) => {
               const key = [
                 item?.category,
                 item?.businessName,
@@ -521,43 +563,85 @@ export default function businessListReducer(state = initialState, action) {
               }) === index;
             })
           : items;
+        const nextContext = {
+          loading: false,
+          items: merged,
+          hasMore: Array.isArray(action.payload)
+            ? false
+            : Boolean(action.payload?.hasMore),
+          page: Array.isArray(action.payload)
+            ? (items.length ? 1 : 0)
+            : Number(action.payload?.page) || 0,
+          limit: Array.isArray(action.payload)
+            ? items.length
+            : Number(action.payload?.limit) || currentContext.limit,
+          total: Array.isArray(action.payload)
+            ? items.length
+            : Number(action.payload?.total) || 0,
+          query: Array.isArray(action.payload)
+            ? (action.meta?.query || "")
+            : String(action.payload?.query || action.meta?.query || ""),
+        };
 
         return {
           ...state,
-          backendSuggestionsLoading: false,
-          backendSuggestions: merged,
-          backendSuggestionsHasMore: Array.isArray(action.payload)
-            ? false
-            : Boolean(action.payload?.hasMore),
-          backendSuggestionsPage: Array.isArray(action.payload)
-            ? (items.length ? 1 : 0)
-            : Number(action.payload?.page) || 0,
-          backendSuggestionsLimit: Array.isArray(action.payload)
-            ? items.length
-            : Number(action.payload?.limit) || state.backendSuggestionsLimit,
-          backendSuggestionsTotal: Array.isArray(action.payload)
-            ? items.length
-            : Number(action.payload?.total) || 0,
-          backendSuggestionsQuery: Array.isArray(action.payload)
-            ? (action.meta?.query || "")
-            : String(action.payload?.query || action.meta?.query || ""),
+          backendSuggestionContexts: {
+            ...state.backendSuggestionContexts,
+            [context]: nextContext,
+          },
+          ...(context === "default"
+            ? {
+                backendSuggestionsLoading: false,
+                backendSuggestions: merged,
+                backendSuggestionsHasMore: nextContext.hasMore,
+                backendSuggestionsPage: nextContext.page,
+                backendSuggestionsLimit: nextContext.limit,
+                backendSuggestionsTotal: nextContext.total,
+                backendSuggestionsQuery: nextContext.query,
+              }
+            : {}),
         };
       }
 
     case SUGGESTION_BUSINESS_FAILURE:
-      return {
-        ...state,
-        backendSuggestionsLoading: false,
-        ...(action.meta?.append
-          ? {}
-          : {
-              backendSuggestions: [],
-              backendSuggestionsHasMore: false,
-              backendSuggestionsPage: 0,
-              backendSuggestionsTotal: 0,
-              backendSuggestionsQuery: action.meta?.query || "",
-            }),
-      };
+      {
+        const context = action.meta?.context || "default";
+        const currentContext = getSuggestionContext(state, context);
+        const nextContext = {
+          ...currentContext,
+          loading: false,
+          ...(action.meta?.append
+            ? {}
+            : {
+                items: [],
+                hasMore: false,
+                page: 0,
+                total: 0,
+                query: action.meta?.query || "",
+              }),
+        };
+        return {
+          ...state,
+          backendSuggestionContexts: {
+            ...state.backendSuggestionContexts,
+            [context]: nextContext,
+          },
+          ...(context === "default"
+            ? {
+                backendSuggestionsLoading: false,
+                ...(action.meta?.append
+                  ? {}
+                  : {
+                      backendSuggestions: [],
+                      backendSuggestionsHasMore: false,
+                      backendSuggestionsPage: 0,
+                      backendSuggestionsTotal: 0,
+                      backendSuggestionsQuery: action.meta?.query || "",
+                    }),
+              }
+            : {}),
+        };
+      }
 
     case SEARCH_BUSINESS_REQUEST:
       return { ...state, loading: true };
