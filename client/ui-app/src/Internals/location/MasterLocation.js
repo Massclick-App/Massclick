@@ -3,19 +3,33 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllMasterLocation, createMasterLocation, editMasterLocation, deleteMasterLocation, getMasterLocationFieldOptions, toggleMasterLocation, bulkToggleMasterLocation } from "../../redux/actions/masterLocationAction.js";
 import styles from "./masterLocation.module.css";
-import { Box, Button, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Autocomplete, TextField, Switch, Tooltip, Checkbox, Alert } from "@mui/material";
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { CheckCircle2, Eye, FilterX, ListChecks, PauseCircle, RotateCcw, SearchCheck } from "lucide-react";
+import { Box, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Autocomplete, TextField, Switch, Tooltip, Checkbox, Alert, IconButton, Menu, MenuItem, ListItemIcon } from "@mui/material";
+import { CheckCircle2, Eye, FilterX, ListChecks, MoreVertical, PauseCircle, Pencil, RotateCcw, SearchCheck, SlidersHorizontal, Trash2 } from "lucide-react";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 
 const cx = createScopedClassNames(styles);
 
-const LEVEL_COLORS = {
-  district: "error",
-  zone: "warning",
-  ward: "info",
-  locality: "success"
+// Soft badge tones (tinted background + same-hue text) rather than MUI's
+// outlined chips, so the table reads as one quiet system instead of a row of
+// competing borders.
+const Badge = ({ tone = "neutral", children }) => (
+  <span className={cx(`master-location-badge master-location-badge-${tone}`)}>
+    {children}
+  </span>
+);
+
+const LEVEL_TONES = {
+  district: "red",
+  zone: "amber",
+  ward: "blue",
+  locality: "green"
+};
+
+const SOURCE_TONES = {
+  Google: "amber",
+  Imported: "blue",
+  Manual: "neutral"
 };
 
 const TRICHY_DISTRICT = "Tiruchirappalli";
@@ -84,31 +98,38 @@ const formatImportSource = (value) => {
     .join(" ");
 };
 
+const describeError = (error) => {
+  const payload = error?.response?.data || error?.message || error;
+  if (!payload) return "Something went wrong.";
+  if (typeof payload === "string") return payload;
+  return payload.message || "Something went wrong.";
+};
+
 const getLocationStatus = (row) => {
   if (row.isActive) {
     return {
       label: "Live",
-      color: "success",
+      tone: "green",
       tooltip: "Visible in public search."
     };
   }
   if (row.reviewStatus === "pending") {
     return {
       label: "Needs review",
-      color: "warning",
+      tone: "amber",
       tooltip: "Imported but not approved yet."
     };
   }
   if (row.reviewStatus === "rejected") {
     return {
       label: "Rejected",
-      color: "default",
+      tone: "red",
       tooltip: "Hidden because it was rejected or deleted."
     };
   }
   return {
     label: "Hidden",
-    color: "default",
+    tone: "neutral",
     tooltip: "Hidden from public search."
   };
 };
@@ -185,13 +206,24 @@ export default function MasterLocation() {
   const [tableKey, setTableKey] = useState(0); // Reset pagination when filters change
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkMessage, setBulkMessage] = useState("");
+  // One feedback line for both single-row and bulk toggles. Toggling can make
+  // a row vanish (the Review mode only lists off rows), so the reviewer needs
+  // to be told what happened — and a failed toggle must not be silent.
+  const [actionMessage, setActionMessage] = useState(null);
 
   const [filterZoneOptions, setFilterZoneOptions] = useState([]);
 
   // Ids currently mid-toggle, so a row's switch can be disabled while its
   // request is in flight instead of letting it be clicked repeatedly.
   const [togglingIds, setTogglingIds] = useState([]);
+
+  // Filters stay collapsed by default — the quick-mode tabs cover the common
+  // cases, and the active-filter chips below stay visible either way, so the
+  // page never looks filter-heavy.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [rowMenu, setRowMenu] = useState({ anchorEl: null, row: null });
+
+  const closeRowMenu = () => setRowMenu({ anchorEl: null, row: null });
 
   const getListOptions = (options = {}) => ({
     ...options,
@@ -285,7 +317,7 @@ export default function MasterLocation() {
   useEffect(() => {
     setTableKey(prev => prev + 1);
     setSelectedIds([]);
-    setBulkMessage("");
+    setActionMessage(null);
   }, [
     filterDistrict,
     filterZone,
@@ -316,27 +348,48 @@ export default function MasterLocation() {
 
   const handleToggleActive = (row, nextActive) => {
     setTogglingIds(prev => [...prev, row.id]);
+    setActionMessage(null);
     dispatch(toggleMasterLocation(row.id, nextActive))
       .then(() => {
+        setActionMessage({
+          severity: "success",
+          text: nextActive
+            ? `${row.name} is approved and live.`
+            : `${row.name} is hidden and back in the review queue.`
+        });
         // Refetch rather than patching locally: enabling a location can
         // change other rows' public URL slugs, since siblings sharing a name
         // get qualified against each other.
         setTableRefreshKey(prev => prev + 1);
       })
-      .catch(() => {})
+      .catch((error) => {
+        setActionMessage({
+          severity: "error",
+          text: `Could not update ${row.name}. ${describeError(error)}`
+        });
+      })
       .finally(() => setTogglingIds(prev => prev.filter(id => id !== row.id)));
   };
 
   const handleBulkToggle = (nextActive) => {
     if (!selectedIds.length) return;
-    setBulkMessage("");
+    const count = selectedIds.length;
+    setActionMessage(null);
     dispatch(bulkToggleMasterLocation(selectedIds, nextActive))
       .then((result) => {
-        setBulkMessage(`${result.modified || 0} location(s) ${nextActive ? "approved and made live" : "moved back to pending"}.`);
+        setActionMessage({
+          severity: "success",
+          text: `${result?.modified ?? count} location(s) ${nextActive ? "approved and made live" : "moved back to pending"}.`
+        });
         setSelectedIds([]);
         setTableRefreshKey(prev => prev + 1);
       })
-      .catch(() => {});
+      .catch((error) => {
+        setActionMessage({
+          severity: "error",
+          text: `Could not update the ${count} selected location(s). ${describeError(error)}`
+        });
+      });
   };
 
   const handleChange = e => {
@@ -454,7 +507,6 @@ export default function MasterLocation() {
   const selectedOnPage = currentPageIds.filter(id => selectedIds.includes(id));
   const allCurrentPageSelected = currentPageIds.length > 0 && selectedOnPage.length === currentPageIds.length;
   const someCurrentPageSelected = selectedOnPage.length > 0 && !allCurrentPageSelected;
-  const selectedRows = rows.filter(row => selectedIds.includes(row.id));
 
   const toggleSelectedRow = (id, checked) => {
     setSelectedIds(prev => {
@@ -518,7 +570,7 @@ export default function MasterLocation() {
     id: "level",
     label: "Level",
     renderCell: (value) => (
-      <Chip label={value} size="small" color={LEVEL_COLORS[value] || "default"} variant="outlined" />
+      <Badge tone={LEVEL_TONES[value] || "neutral"}>{value}</Badge>
     )
   }, {
     id: "pincode",
@@ -527,12 +579,7 @@ export default function MasterLocation() {
     id: "importSource",
     label: "Source",
     renderCell: (value, row) => (
-      <Chip
-        label={row.sourceLabel}
-        size="small"
-        color={row.sourceOrigin === "Google" ? "warning" : row.sourceOrigin === "Imported" ? "info" : "default"}
-        variant="outlined"
-      />
+      <Badge tone={SOURCE_TONES[row.sourceOrigin] || "neutral"}>{row.sourceLabel}</Badge>
     )
   }, {
     id: "status",
@@ -543,12 +590,9 @@ export default function MasterLocation() {
       return (
         <div className={cx("master-location-status-cell")}>
           <Tooltip title={status.tooltip}>
-            <Chip
-              label={status.label}
-              size="small"
-              color={status.color}
-              variant="outlined"
-            />
+            <span>
+              <Badge tone={status.tone}>{status.label}</Badge>
+            </span>
           </Tooltip>
           <Tooltip title={row.isActive ? "Switch off to hide it." : "Switch on to approve and make it live."}>
             <span>
@@ -577,10 +621,13 @@ export default function MasterLocation() {
     label: "Action",
     sortable: false,
     renderCell: (_, row) => (
-      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
-        <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
-        <DeleteOutlined onClick={() => handleDeleteClick(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
-      </Box>
+      <IconButton
+        size="small"
+        aria-label={`Actions for ${row.name}`}
+        onClick={(event) => setRowMenu({ anchorEl: event.currentTarget, row })}
+      >
+        <MoreVertical size={16} />
+      </IconButton>
     )
   }];
 
@@ -688,10 +735,18 @@ export default function MasterLocation() {
   );
 
   return <div className={cx("master-location-page")}>
-      <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Master Location" listLabel="Master Locations" listCount={total || rows.length} />
+      <header className={cx("master-location-header")}>
+          <div>
+              <h1 className={cx("master-location-page-title")}>Master Locations</h1>
+              <p className={cx("master-location-page-subtitle")}>
+                  Manage and review all location records in the system.
+              </p>
+          </div>
+          <AdminViewTabs activeView={activeView} onChange={setActiveView} isEditing={Boolean(editingId)} createLabel="Master Location" listLabel="Master Locations" listCount={total || rows.length} />
+      </header>
 
       {activeView === "form" && (
-      <div className={cx("master-location-card master-location-form-section")}>
+      <div className={cx("master-location-card")}>
           <h2 className={cx("master-location-card-title")}>
               {editingId ? "Edit Master Location" : "Add New Master Location"}
           </h2>
@@ -753,59 +808,78 @@ export default function MasterLocation() {
       )}
 
       {activeView === "list" && (
-      <div className={cx("master-location-card master-location-form-section")}>
-          <Typography variant="h6" gutterBottom sx={{ textAlign: "center" }}>
-              Master Location Table
-          </Typography>
+      <>
+      <div className={cx("master-location-card master-location-mode-card")}>
+          <div className={cx("master-location-mode-row")} role="tablist" aria-label="Location review modes">
+            {WORK_MODES.map(mode => {
+              const ModeIcon = mode.icon;
+              const isActive = activeWorkModeId === mode.id;
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={cx(`master-location-mode-button ${isActive ? "master-location-mode-button-active" : ""}`)}
+                  onClick={() => applyFilterPreset(mode.filters)}
+                >
+                  <ModeIcon size={15} />
+                  <span>{mode.label}</span>
+                </button>
+              );
+            })}
+          </div>
+      </div>
 
+      <div className={cx("master-location-card master-location-toolbar-card")}>
           <div className={cx("master-location-toolbar")}>
-            <div className={cx("master-location-mode-row")}>
-              {WORK_MODES.map(mode => {
-                const ModeIcon = mode.icon;
-                return (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    className={cx(`master-location-mode-button ${activeWorkModeId === mode.id ? "master-location-mode-button-active" : ""}`)}
-                    onClick={() => applyFilterPreset(mode.filters)}
-                  >
-                    <ModeIcon size={16} />
-                    <span>{mode.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
             <div className={cx("master-location-toolbar-row")}>
-              <Chip
-                label={`${selectedIds.length} selected`}
-                color={selectedIds.length ? "primary" : "default"}
-                variant="outlined"
-              />
+              <button
+                type="button"
+                className={cx(`master-location-filter-toggle ${filtersOpen ? "master-location-filter-toggle-open" : ""}`)}
+                onClick={() => setFiltersOpen(open => !open)}
+                aria-expanded={filtersOpen}
+              >
+                <SlidersHorizontal size={15} />
+                <span>Filters</span>
+                {activeFilterChips.length > 0 && (
+                  <span className={cx("master-location-filter-badge")}>{activeFilterChips.length}</span>
+                )}
+              </button>
               <Button
+                size="small"
+                variant="text"
+                startIcon={<FilterX size={15} />}
+                onClick={clearFilters}
+              >
+                Clear all
+              </Button>
+
+              <div className={cx("master-location-toolbar-spacer")} />
+
+              <span className={cx("master-location-selected-count")}>
+                {selectedIds.length} selected
+              </span>
+              <Button
+                size="small"
                 variant="contained"
                 color="success"
-                startIcon={<CheckCircle2 size={16} />}
+                disableElevation
+                startIcon={<CheckCircle2 size={15} />}
                 disabled={!selectedIds.length || loading}
                 onClick={() => handleBulkToggle(true)}
               >
                 Approve
               </Button>
               <Button
+                size="small"
                 variant="outlined"
                 color="warning"
-                startIcon={<RotateCcw size={16} />}
+                startIcon={<RotateCcw size={15} />}
                 disabled={!selectedIds.length || loading}
                 onClick={() => handleBulkToggle(false)}
               >
                 Hold
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<FilterX size={16} />}
-                onClick={clearFilters}
-              >
-                Clear
               </Button>
             </div>
 
@@ -823,6 +897,7 @@ export default function MasterLocation() {
               </div>
             )}
 
+            {filtersOpen && (
             <div className={cx("master-location-filter-grid")}>
               {renderFilterAutocomplete({
                 label: "District",
@@ -882,18 +957,19 @@ export default function MasterLocation() {
                 ]
               })}
             </div>
+            )}
 
-            {bulkMessage && (
-              <Alert severity="success" className={cx("master-location-alert")}>
-                {bulkMessage}
+            {actionMessage && (
+              <Alert
+                severity={actionMessage.severity}
+                className={cx("master-location-alert")}
+                onClose={() => setActionMessage(null)}
+              >
+                {actionMessage.text}
               </Alert>
             )}
           </div>
-
-          <Typography variant="body2" sx={{ marginBottom: "12px", color: "#6b7280" }}>
-            Showing {rows.length} of {total} locations
-            {selectedRows.length ? ` · ${selectedRows.length} selected on this page` : ""}
-          </Typography>
+      </div>
 
           <Box sx={{ width: "100%" }}>
               <CustomizedTable
@@ -914,8 +990,38 @@ export default function MasterLocation() {
                 }}
               />
           </Box>
-      </div>
+      </>
       )}
+
+      <Menu
+          anchorEl={rowMenu.anchorEl}
+          open={Boolean(rowMenu.anchorEl)}
+          onClose={closeRowMenu}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+          <MenuItem
+            onClick={() => {
+              const row = rowMenu.row;
+              closeRowMenu();
+              if (row) handleEdit(row);
+            }}
+          >
+              <ListItemIcon><Pencil size={16} /></ListItemIcon>
+              Edit
+          </MenuItem>
+          <MenuItem
+            sx={{ color: "#b91c1c" }}
+            onClick={() => {
+              const row = rowMenu.row;
+              closeRowMenu();
+              if (row) handleDeleteClick(row);
+            }}
+          >
+              <ListItemIcon><Trash2 size={16} color="#b91c1c" /></ListItemIcon>
+              Delete
+          </MenuItem>
+      </Menu>
 
       <Dialog open={deleteDialogOpen} onClose={cancelDelete}>
           <DialogTitle>Confirm Delete</DialogTitle>

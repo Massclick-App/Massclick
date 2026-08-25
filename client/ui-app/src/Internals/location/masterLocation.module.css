@@ -11,13 +11,46 @@
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
+.master-location-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 4px 20px;
+}
+
+.master-location-page-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.master-location-page-subtitle {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
 .master-location-card {
   background-color: #ffffff;
   padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
   border: 1px solid #e5e7eb;
-  margin-bottom: 30px;
+  margin-bottom: 16px;
+}
+
+/* Tab strip and toolbar are chrome, not content — they get tighter padding
+   than the form card so the three stacked cards read as one control surface. */
+.master-location-mode-card {
+  padding: 0 8px;
+  overflow: hidden;
+}
+
+.master-location-toolbar-card {
+  padding: 16px 18px;
 }
 
 .master-location-card-title {
@@ -69,12 +102,7 @@
 .master-location-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 16px;
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  gap: 14px;
 }
 
 .master-location-toolbar-row {
@@ -84,36 +112,94 @@
   gap: 10px;
 }
 
-.master-location-mode-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.master-location-toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.master-location-mode-button {
-  min-height: 38px;
+.master-location-selected-count {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.master-location-filter-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
   background-color: #ffffff;
-  color: #374151;
-  font-size: 0.875rem;
-  font-weight: 700;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.master-location-filter-toggle:hover {
+  border-color: #ff8c00;
+  color: #b45309;
+}
+
+.master-location-filter-toggle-open {
+  border-color: #ff8c00;
+  background-color: #fff7ed;
+  color: #b45309;
+}
+
+.master-location-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background-color: #ff8c00;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.master-location-mode-row {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.master-location-mode-row::-webkit-scrollbar {
+  display: none;
+}
+
+.master-location-mode-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background-color: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .master-location-mode-button:hover {
-  border-color: #ff8c00;
-  color: #9a5600;
+  color: #0f172a;
 }
 
 .master-location-mode-button-active {
-  border-color: #ff8c00;
-  background-color: #fff7ed;
-  color: #9a5600;
+  border-bottom-color: #ff8c00;
+  color: #b45309;
 }
 
 .master-location-chip-row {
@@ -124,8 +210,10 @@
 
 .master-location-filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eef1f5;
 }
 
 .master-location-filter-field {
@@ -135,8 +223,8 @@
 .master-location-filter-label {
   display: block;
   margin-bottom: 6px;
-  color: #4b5563;
-  font-size: 0.875rem;
+  color: #475569;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
@@ -145,11 +233,11 @@
   width: 100%;
   min-height: 40px;
   padding: 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
   background-color: #ffffff;
-  color: #111827;
-  font-size: 0.875rem;
+  color: #0f172a;
+  font-size: 0.85rem;
 }
 
 .master-location-filter-select:focus,
@@ -160,6 +248,51 @@
 
 .master-location-alert {
   width: 100%;
+}
+
+/* Soft badges: tinted ground, same-hue text, hairline edge. Quieter than a
+   row of outlined chips, which is what makes a dense table readable. */
+.master-location-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.master-location-badge-neutral {
+  border-color: #e5e7eb;
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.master-location-badge-green {
+  border-color: #a7f3d0;
+  background-color: #ecfdf5;
+  color: #047857;
+}
+
+.master-location-badge-amber {
+  border-color: #fde68a;
+  background-color: #fffbeb;
+  color: #b45309;
+}
+
+.master-location-badge-blue {
+  border-color: #bfdbfe;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.master-location-badge-red {
+  border-color: #fecaca;
+  background-color: #fef2f2;
+  color: #b91c1c;
 }
 
 .master-location-name-cell {
@@ -182,8 +315,8 @@
 .master-location-status-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 150px;
+  gap: 10px;
+  min-width: 160px;
 }
 
 .master-location-full-place-cell {
@@ -191,8 +324,8 @@
   min-width: 260px;
   max-width: 460px;
   overflow: hidden;
-  color: #111827;
-  font-size: 0.84rem;
+  color: #64748b;
+  font-size: 0.78rem;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -265,6 +398,20 @@
 @media (max-width: 600px) {
   .master-location-page {
     padding: 0 10px;
+  }
+
+  .master-location-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px 2px 16px;
+  }
+
+  .master-location-page-title {
+    font-size: 1.35rem;
+  }
+
+  .master-location-toolbar-card {
+    padding: 14px;
   }
 
   .master-location-card {
