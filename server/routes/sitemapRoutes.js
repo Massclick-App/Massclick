@@ -410,7 +410,15 @@ const getAncestorDocsForLocation = ({ districtDoc, locationDoc, docsByKey }) => 
 };
 
 const upsertSitemapPage = (pages, entry) => {
-  const key = `${entry.locationDoc.level}:${entry.locationPath || "district"}/${entry.categoryPath}`;
+  // Keyed by the URL this entry actually emits, NOT by the doc behind it.
+  // locationSlug.js's no-repeat rule lets a node collapse onto a path its
+  // same-named ancestor already owns (a "Renga Nagar" locality onto its
+  // "Renga Nagar" ward), so two docs of DIFFERENT levels can legitimately
+  // share one path. Keying by level as well used to emit both, which put the
+  // identical <loc> in the sitemap twice — 718 duplicate entries across 536
+  // paths on massClick_dev. Merging them here is right: the counts add up and
+  // the newest lastmod wins, which is what the merged page actually serves.
+  const key = `${entry.locationPath || "district"}/${entry.categoryPath}`;
   const existing = pages.get(key);
   if (existing) {
     const existingLastmod = new Date(existing.lastmod || 0).getTime();

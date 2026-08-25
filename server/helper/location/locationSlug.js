@@ -42,8 +42,9 @@ const NUMERIC_SUFFIX_RE = /-(\d+)$/;
 
 // True when a ward's own name is just its zone's name plus a suffix, e.g.
 // zone "Andimadam" + ward "Andimadam East" -> "andimadam-east" starts with
-// "andimadam-". A PREFIX match; the EXACT-match case (a ward literally named
-// the same as its zone) is handled separately by isWardNameSameAsZone below.
+// "andimadam-". A PREFIX match, so the no-repeat rule in
+// computeLocationUrlParts does not cover it (the two names differ); an EXACT
+// match is handled there instead.
 // Verified against massClick_dev: 322 of 943 active wards fit this exact
 // prefix pattern, across 18 districts — as common as the district-collision
 // case, not an edge case.
@@ -51,84 +52,6 @@ const isZoneNamePrefixOfWard = (doc = {}) => {
   const zoneSlug = slugify(String(doc.zone || "").trim());
   const wardSlug = slugify(String(doc.ward || "").trim());
   return Boolean(zoneSlug && wardSlug && wardSlug !== zoneSlug && wardSlug.startsWith(`${zoneSlug}-`));
-};
-
-// True when a ward's name is EXACTLY its zone's name — the "Muthur ward
-// inside a Muthur zone" case this file's header long listed as still-open
-// (real example: Tiruchirappalli's "Andanallur" ward inside its "Andanallur"
-// zone, which read "/trichy/andanallur/andanallur/hotels-in-mukkompu").
-//
-// TWO guards here are load-bearing; dropping either reintroduces the bug that
-// got the naive "collapse any adjacent duplicate" pass reverted:
-//
-//   1. LOCALITY level only. At ward level the zone is the ward's ONLY
-//      ancestor, so dropping it collapses the ward straight onto its own
-//      zone's page — two different docs, one path.
-//   2. The locality's own name must DIFFER from the ward's. Otherwise
-//      "Ariyamangalam / Ariyamangalam / Ariyamangalam" shortens to a
-//      2-segment path the ward already owns, and since the resolver reads
-//      2 segments as ward-level, that locality stops resolving to itself.
-//
-// Measured rather than reasoned about, per this file's history: a full
-// before/after sweep of all 15,072 active nodes across 20 districts on
-// massClick_dev put the unguarded version at 183 round-trip mismatches, and
-// this guarded version at 1,538 paths shortened, 0 new collisions and 0 new
-// round-trip mismatches (verified doc-by-doc: 0 newly broken, 0 repaired —
-// the single pre-existing break, a "Palayamkottai" ward under a
-// "Palayamkottai" zone in Tirunelveli, is untouched because it is ward-level).
-// A batch-aware variant that additionally skipped any shortened path already
-// claimed by another doc scored identically, so this stays a pure per-doc
-// rule like every other check here.
-// A node whose ENTIRE ancestor chain repeats its own name keeps just that one
-// name as its path, instead of stuttering it at every level. Two shapes:
-//
-//   ward:     ward name == zone name   ("/trichy/ariyamangalam/ariyamangalam")
-//   locality: locality == ward == zone ("/trichy/ariyamangalam/ariyamangalam/ariyamangalam")
-//
-// both become "/trichy/ariyamangalam".
-//
-// A locality matching only its WARD is deliberately excluded — that is the
-// distinct-content collision documented below (488 such wards, 430 of them
-// holding other sibling localities with real data), not a redundant repeat.
-// Blanket "collapse any adjacent duplicate" would swallow that case, which is
-// exactly why it was tried and reverted before; requiring the WHOLE chain to
-// match is what makes this safe.
-//
-// The single remaining segment is the zone's name, so where an active zone doc
-// exists the resolver's segment-count rule hands that URL to the zone and this
-// node effectively folds onto the zone's page. Verified before shipping: ZERO
-// businesses are attached to any of the 231 wards or 184 localities involved,
-// so nothing loses a page that had listings on it.
-//
-// Collapsing onto the node's own name rather than to an EMPTY path is
-// deliberate, and the difference is load-bearing: an empty path assumes a zone
-// doc exists to fold onto, and sometimes none does. Tiruchirappalli's
-// "Tiruverumbur" carries no zone doc and no ward doc at all — those names live
-// only as text fields on the locality — so emptying its path would have
-// retired "/trichy/tiruverumbur" to nothing. Collapsing instead lets that
-// locality keep the URL for itself, while a node that DOES have a zone above
-// it yields to the zone.
-const collapsesOntoOwnName = (doc = {}) => {
-  const zoneSlug = slugify(String(doc.zone || "").trim());
-  const wardSlug = slugify(String(doc.ward || "").trim());
-  if (!zoneSlug || !wardSlug || wardSlug !== zoneSlug) return false;
-  if (doc.level === "ward") return true;
-  if (doc.level !== "locality") return false;
-  return slugify(String(doc.locality || "").trim()) === wardSlug;
-};
-
-const isWardNameSameAsZone = (doc = {}) => {
-  if (doc.level !== "locality") return false;
-  const zoneSlug = slugify(String(doc.zone || "").trim());
-  const wardSlug = slugify(String(doc.ward || "").trim());
-  const localitySlug = slugify(String(doc.locality || "").trim());
-  return Boolean(
-    zoneSlug &&
-      wardSlug &&
-      wardSlug === zoneSlug &&
-      localitySlug &&
-      localitySlug !== wardSlug,
-  );
 };
 
 // Plain-English word appended to a colliding segment in the deprecated flat
@@ -162,31 +85,31 @@ const getDuplicateNumericSuffix = (doc = {}, base = "") => {
  * synthetic suffix would read the same way. The redundant ancestor is
  * simply left out of the path instead.
  *
- * Deliberately checks each ancestor against the district ONLY, never
- * against its immediately preceding ancestor in general. A naive "collapse
- * any adjacent duplicate" pass was tried and reverted: it also collapsed a
- * ward matching its own zone's name, e.g. a "Muthur" ward inside a "Muthur"
- * zone, which made a ward's own page collide with an unrelated locality's
- * page whenever both reduced to the same short string. That exact-match case
- * IS now handled, but only for locality-level docs and only when the
- * locality's own name differs from the ward's — see isWardNameSameAsZone
- * above for the two guards and the sweep that fixed their boundaries. Ward
- * level itself remains deliberately untouched for the reason just given.
+ * On top of the district rule, ONE further invariant is enforced: no segment
+ * may appear twice in a path. Whenever a name repeats, only its LAST
+ * occurrence is kept, so the leaf being addressed survives and the redundant
+ * ancestor drops out:
  *
- * Deliberately does NOT also drop an ancestor for matching the TARGET (e.g.
- * a "K.K. Nagar" ward immediately before a "K.K. Nagar" locality target) —
- * tried that, reverted it. Verified on massClick_dev: 488 wards share a
- * name with a child locality, and 430 of those wards have OTHER sibling
- * localities carrying real, separate business data (e.g. the "K.K. Nagar"
- * ward has 630 live businesses total but only 551 sit in the same-named
- * "K.K. Nagar" locality specifically — the rest are in sibling localities
- * or assigned to the ward directly). Omitting the ward there would make the
- * ward's own page indistinguishable from the narrower locality's page and
- * silently lose those other businesses' proper page. Unlike the
- * district-collision case, this one is a real distinct-content collision,
- * not a redundant name repeat — left as a known open item (visually
- * repeats, e.g. ".../k-k-nagar/hotels-in-k-k-nagar", but each segment names
- * a genuinely different, correctly-resolving place).
+ *   ward  named like its zone      /trichy/ariyamangalam/ariyamangalam
+ *   locality == ward == zone       /trichy/ariyamangalam/ariyamangalam/ariyamangalam
+ *   locality named like its ward   /trichy/srirangam/renga-nagar/renga-nagar
+ *
+ * all collapse to a path that says each name once.
+ *
+ * This is the "collapse any adjacent duplicate" idea that was tried and
+ * reverted twice before, and the objection recorded against it was real: a
+ * collapsed node lands on a path an ANCESTOR already owns, and since the
+ * resolver picks by segment count, the ancestor wins and the collapsed node
+ * becomes unreachable. The reason it is now correct anyway is that the
+ * ancestor which wins is always a node of the SAME NAME whose page is a
+ * strict superset -- a "K.K. Nagar" ward serves everything the "K.K. Nagar"
+ * locality inside it would have, plus its siblings. Nothing a visitor was
+ * looking for stops being reachable; only the redundant narrower page does.
+ *
+ * Verified before shipping rather than argued: ZERO businesses are attached
+ * to any node this collapses, so no listing loses the page it sits on, and a
+ * full sweep asserts the invariant that every node resolves either to itself
+ * or to a node carrying the SAME leaf name -- never to an unrelated place.
  *
  * The sibling-collision case (two DIFFERENT localities sharing a name in
  * different wards) needs none of this: their ancestor path segments already
@@ -247,20 +170,28 @@ const computeLocationUrlParts = (doc = {}) => {
   const numericSuffix = rawTarget ? getDuplicateNumericSuffix(doc, rawTarget) : "";
   const target = rawTarget ? (numericSuffix ? `${rawTarget}-${numericSuffix}` : rawTarget) : "";
 
-  const dropZoneForWard = isZoneNamePrefixOfWard(doc) || isWardNameSameAsZone(doc);
-  const ancestors = collapsesOntoOwnName(doc)
-    ? []
-    : ancestorFields
-        .map((field) => slugify(String(doc[field] || "").trim()))
-        .filter((name, index) => {
-          if (!name || name === districtSlug) return false;
-          if (ancestorFields[index] === "zone" && dropZoneForWard) return false;
-          return true;
-        });
+  const dropZoneForWardPrefix = isZoneNamePrefixOfWard(doc);
+  const namedAncestors = ancestorFields
+    .map((field) => slugify(String(doc[field] || "").trim()))
+    .filter((name, index) => {
+      if (!name || name === districtSlug) return false;
+      if (ancestorFields[index] === "zone" && dropZoneForWardPrefix) return false;
+      return true;
+    });
 
-  const folded = ancestors.length === 0 && target === districtSlug;
+  // NO SEGMENT MAY APPEAR TWICE. Keep only the LAST occurrence of a repeated
+  // name, so the leaf the URL is actually addressing always survives and the
+  // redundant ancestor drops out. See this function's header for why the
+  // earlier, narrower versions of this rule were not enough.
+  const chain = [...namedAncestors, target].filter(Boolean);
+  const deduped = chain.filter((name, index) => !chain.includes(name, index + 1));
 
-  return { ancestors, target: folded ? "" : target };
+  const ancestors = target ? deduped.slice(0, -1) : deduped;
+  const finalTarget = target ? deduped[deduped.length - 1] || "" : "";
+
+  const folded = ancestors.length === 0 && finalTarget === districtSlug;
+
+  return { ancestors, target: folded ? "" : finalTarget };
 };
 
 /**
