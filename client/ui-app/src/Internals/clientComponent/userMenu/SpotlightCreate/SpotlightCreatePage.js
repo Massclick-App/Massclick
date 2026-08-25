@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import { createMassclickFeedPost } from "../../../../redux/actions/massclickFeedAction.js";
 import styles from "./SpotlightCreatePage.module.css";
-import { Sparkles, PlusCircle, Images, CalendarDays, Send, UserRound, FileText, Settings, Tag, Newspaper, Calendar, Box, Cog, Megaphone, BriefcaseBusiness, BarChart3, Play, UploadCloud, Heart, MessageSquareText, Share2, Bookmark, Lightbulb, Eye, ArrowLeft } from "lucide-react";
+import { Sparkles, Home, PlusCircle, Images, CalendarDays, Send, UserRound, Users, FileText, LayoutGrid, Tag, Newspaper, Calendar, Box, Cog, Megaphone, BriefcaseBusiness, BarChart3, Play, UploadCloud, Heart, MessageSquareText, Share2, Bookmark, Lightbulb, Eye, ArrowLeft } from "lucide-react";
 
 const types = [["offer","Offer / Discount"],["update","Update / News"],["event","Event"],["product","Product"],["service","Service"],["announcement","Announcement"],["job","Job / Hiring"],["poll","Poll / Survey"],["video","Video Post"]];
 const audiences = ["Local Customers","New Customers","Students","Families","Business Owners","Fitness Enthusiasts"];
@@ -14,7 +14,7 @@ const MAX_FILE_SIZE = 45 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg","image/png","image/webp","video/mp4","video/quicktime","application/pdf","text/plain","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","application/vnd.ms-powerpoint","application/vnd.openxmlformats-officedocument.presentationml.presentation"];
 const readFile = (file) => new Promise((resolve,reject) => { const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=reject; reader.readAsDataURL(file); });
 
-const createNav = [[Sparkles,"Spotlight","/user_feed"],[PlusCircle,"Create Post","/user_spotlight/create"],[Newspaper,"My Posts","/user_feed"],[CalendarDays,"Calendar","/user_spotlight/calendar"],[Send,"Campaigns","/user_spotlight/campaigns"],[UserRound,"Leads","/user_spotlight/leads"],[Images,"Media Library","/user_spotlight/media"],[FileText,"Reports","/user_spotlight/reports"],[Settings,"Settings","/user_dashboard"]];
+const createNav = [[Home,"Spotlight Feed","/user_feed"],[PlusCircle,"Create Post","/user_spotlight/create"],[LayoutGrid,"Planner","/user_spotlight/calendar"],[Send,"Campaigns","/user_spotlight/campaigns"],[UserRound,"Leads","/user_spotlight/leads"],[Users,"Audience","/user_spotlight/leads"],[BarChart3,"Insights","/user_spotlight/reports"],[CalendarDays,"Calendar","/user_spotlight/calendar"],[Newspaper,"My Posts","/user_feed"],[Bookmark,"Saved","/user_feed"],[Images,"Media Library","/user_spotlight/media"],[FileText,"Reports","/user_spotlight/reports"]];
 const typeIcons = { offer:Tag, update:Newspaper, event:Calendar, product:Box, service:Cog, announcement:Megaphone, job:BriefcaseBusiness, poll:BarChart3, video:Play };
 
 function CreateSpotlightReference({form,update,previews,inputRef,addFiles,removeFile,tag,setTag,addTag,user,loading,publish,saveDraft,message,onBack}){

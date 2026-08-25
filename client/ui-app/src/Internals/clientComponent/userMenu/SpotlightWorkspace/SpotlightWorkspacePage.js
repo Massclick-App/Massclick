@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import { getMassclickFeedPosts } from "../../../../redux/actions/massclickFeedAction.js";
 import styles from "./SpotlightWorkspacePage.module.css";
+import PlannerDashboard from "./PlannerDashboard";
 
 const isCampaign = (post) => /announcement|campaign|offer|event|launch|sale/i.test(`${post.title || ""} ${post.text || ""}`) || post.offerStartsAt || post.offerEndsAt;
 const modes = {
@@ -24,6 +25,7 @@ export default function SpotlightWorkspacePage({ mode }) {
   const grouped = posts.reduce((map, post) => { const key = new Date(post.createdAt).toLocaleDateString(); (map[key] ||= []).push(post); return map; }, {});
   const campaigns = posts.filter(isCampaign);
   const leads = posts.flatMap((post) => Array.isArray(post.leads) ? post.leads.map((lead) => ({ ...lead, post })) : []);
+  if (mode === "calendar") return <><StickySearchBar/><PlannerDashboard posts={posts} loading={loading}/></>;
   return <><StickySearchBar/><main className={styles.page}>
     <header><div><Link to="/user_feed">← Spotlight Feed</Link><h1>{title}</h1><p>{subtitle}</p></div><Link className={styles.primary} to="/user_feed">Create Spotlight</Link></header>
     <nav>{Object.entries(modes).map(([key,[label]]) => <Link className={mode === key ? styles.active : ""} to={`/user_spotlight/${key}`} key={key}>{label}</Link>)}</nav>

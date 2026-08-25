@@ -1,4 +1,5 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 import LetterheadPage from "./LetterheadPage";
 import QuotationPage from "./QuotationPage";
 import VoucherPage from "./VoucherPage";
@@ -13,7 +14,8 @@ const pageByType = {
 };
 
 export default function MarketingMaterialsPage() {
-  const searchParams = new URLSearchParams(window.location.search);
+  const { search } = useLocation();
+  const searchParams = new URLSearchParams(search);
   const type = searchParams.get("type") || "";
   const Page = pageByType[type] || MarketingMaterialsOverview;
 
