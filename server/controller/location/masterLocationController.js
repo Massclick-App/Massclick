@@ -5,7 +5,9 @@ import {
     searchMasterLocation,
     listDistinctMasterLocationValues,
     updateMasterLocation,
-    deleteMasterLocation
+    deleteMasterLocation,
+    setMasterLocationActive,
+    setManyMasterLocationsActive
 } from "../../helper/location/masterLocationHelper.js";
 import {
     resolveDistrictBySlug,
@@ -47,9 +49,16 @@ export const viewAllMasterLocationAction = async (req, res) => {
 
         const search = req.query.search || "";
         const status = req.query.status || "all";
+        const reviewStatus = req.query.reviewStatus || "all";
+        const importSource = req.query.importSource || "all";
+        const origin = req.query.origin || "all";
         const level = req.query.level || "all";
         const district = req.query.district || "";
+        const zone = req.query.zone || "";
+        const ward = req.query.ward || "";
+        const locality = req.query.locality || "";
         const pincode = req.query.pincode || "";
+        const pincodeStatus = req.query.pincodeStatus || "all";
         const sortBy = req.query.sortBy || null;
         const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
 
@@ -58,9 +67,16 @@ export const viewAllMasterLocationAction = async (req, res) => {
             pageSize,
             search,
             status,
+            reviewStatus,
+            importSource,
+            origin,
             level,
             district,
+            zone,
+            ward,
+            locality,
             pincode,
+            pincodeStatus,
             sortBy,
             sortOrder
         });
@@ -100,8 +116,17 @@ export const searchMasterLocationAction = async (req, res) => {
 // (and zone/ward) picked so far, for a cascading autocomplete.
 export const listDistinctMasterLocationValuesAction = async (req, res) => {
     try {
-        const { field, district, zone, ward } = req.query;
-        const values = await listDistinctMasterLocationValues({ field, district, zone, ward });
+        const { field, district, zone, ward, status, reviewStatus, importSource, origin } = req.query;
+        const values = await listDistinctMasterLocationValues({
+            field,
+            district,
+            zone,
+            ward,
+            status,
+            reviewStatus,
+            importSource,
+            origin
+        });
         res.send({ data: values });
     } catch (error) {
         console.error(error);
@@ -123,6 +148,47 @@ export const deleteMasterLocationAction = async (req, res) => {
     try {
         const location = await deleteMasterLocation(req.params.id);
         res.send({ message: "Location deleted successfully", location });
+    } catch (error) {
+        console.error(error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
+    }
+};
+
+// Enable/disable one location. isActive is what every public read path
+// filters on, so this is what puts a location into or out of search.
+export const toggleMasterLocationAction = async (req, res) => {
+    try {
+        const { isActive } = req.body;
+        if (typeof isActive !== "boolean") {
+            return res.status(BAD_REQUEST.code).send({ message: "isActive must be true or false" });
+        }
+        const { location, slugsUpdated } = await setMasterLocationActive(req.params.id, isActive);
+        res.send({
+            message: `Location ${isActive ? "enabled" : "disabled"} successfully`,
+            location,
+            slugsUpdated
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
+    }
+};
+
+// Bulk enable/disable, for working through the imported review queue.
+export const bulkToggleMasterLocationAction = async (req, res) => {
+    try {
+        const { ids, isActive } = req.body;
+        if (!Array.isArray(ids) || !ids.length) {
+            return res.status(BAD_REQUEST.code).send({ message: "ids must be a non-empty array" });
+        }
+        if (typeof isActive !== "boolean") {
+            return res.status(BAD_REQUEST.code).send({ message: "isActive must be true or false" });
+        }
+        const result = await setManyMasterLocationsActive(ids, isActive);
+        res.send({
+            message: `${result.modified} location(s) ${isActive ? "enabled" : "disabled"}`,
+            ...result
+        });
     } catch (error) {
         console.error(error);
         return res.status(BAD_REQUEST.code).send({ message: error.message });

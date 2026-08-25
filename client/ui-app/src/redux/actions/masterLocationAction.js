@@ -28,9 +28,16 @@ export const getAllMasterLocation =
         const {
           search = "",
           status = "all",
+          reviewStatus = "all",
+          importSource = "all",
+          origin = "all",
           level = "all",
           district = "",
+          zone = "",
+          ward = "",
+          locality = "",
           pincode = "",
+          pincodeStatus = "all",
           sortBy = "",
           sortOrder = ""
         } = options;
@@ -40,9 +47,16 @@ export const getAllMasterLocation =
           pageSize: String(pageSize),
           search,
           status,
+          reviewStatus,
+          importSource,
+          origin,
           level,
           district,
+          zone,
+          ward,
+          locality,
           pincode,
+          pincodeStatus,
           sortBy,
           sortOrder
         });
@@ -133,10 +147,28 @@ export const searchMasterLocations = (text, limit = 12) => async (dispatch) => {
 // Admin form helper: existing Zone/Ward/Locality values for the district
 // (and zone/ward) picked so far, for the create/edit form's cascading
 // autocomplete. Not stored in redux — the form owns this as local state.
-export const getMasterLocationFieldOptions = ({ field, district = "", zone = "", ward = "" }) => async (dispatch) => {
+export const getMasterLocationFieldOptions = ({
+  field,
+  district = "",
+  zone = "",
+  ward = "",
+  status = "active",
+  reviewStatus = "all",
+  importSource = "all",
+  origin = "all"
+}) => async (dispatch) => {
   try {
     const token = await getValidToken(dispatch);
-    const params = new URLSearchParams({ field, district, zone, ward });
+    const params = new URLSearchParams({
+      field,
+      district,
+      zone,
+      ward,
+      status,
+      reviewStatus,
+      importSource,
+      origin
+    });
     const response = await axiosInstance.get(
       `${API_URL}/masterlocation/distinct-values?${params.toString()}`,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -144,6 +176,52 @@ export const getMasterLocationFieldOptions = ({ field, district = "", zone = "",
     return response.data?.data || [];
   } catch (error) {
     return [];
+  }
+};
+
+// Enable/disable a location without deleting it. isActive is what the public
+// side filters on, so this is what puts a location into or out of search.
+// Deliberately not routed through editMasterLocation: that recomputes slug,
+// hierarchyPath and keywords from the hierarchy fields, which is unnecessary
+// work and unnecessary risk when only a flag is changing.
+export const toggleMasterLocation = (id, isActive) => async (dispatch) => {
+  dispatch({ type: EDIT_MASTER_LOCATION_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+    const { data } = await axiosInstance.patch(
+      `${API_URL}/masterlocation/toggle/${id}`,
+      { isActive },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    dispatch({ type: EDIT_MASTER_LOCATION_SUCCESS, payload: data.location });
+    return data;
+  } catch (error) {
+    dispatch({
+      type: EDIT_MASTER_LOCATION_FAILURE,
+      payload: error.response?.data || error.message,
+    });
+    throw error;
+  }
+};
+
+// Enable/disable many at once, for working through the imported backlog.
+export const bulkToggleMasterLocation = (ids, isActive) => async (dispatch) => {
+  dispatch({ type: EDIT_MASTER_LOCATION_REQUEST });
+  try {
+    const token = await getValidToken(dispatch);
+    const { data } = await axiosInstance.patch(
+      `${API_URL}/masterlocation/bulk-toggle`,
+      { ids, isActive },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    dispatch({ type: EDIT_MASTER_LOCATION_SUCCESS, payload: null });
+    return data;
+  } catch (error) {
+    dispatch({
+      type: EDIT_MASTER_LOCATION_FAILURE,
+      payload: error.response?.data || error.message,
+    });
+    throw error;
   }
 };
 

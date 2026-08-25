@@ -14,15 +14,10 @@
 .master-location-card {
   background-color: #ffffff;
   padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   border: 1px solid #e5e7eb;
   margin-bottom: 30px;
-  transition: box-shadow 0.3s ease;
-}
-
-.master-location-card:hover {
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
 }
 
 .master-location-card-title {
@@ -69,6 +64,138 @@
   font-size: 0.85rem;
   margin-top: 16px;
   font-weight: 500;
+}
+
+.master-location-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.master-location-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.master-location-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.master-location-mode-button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.master-location-mode-button:hover {
+  border-color: #ff8c00;
+  color: #9a5600;
+}
+
+.master-location-mode-button-active {
+  border-color: #ff8c00;
+  background-color: #fff7ed;
+  color: #9a5600;
+}
+
+.master-location-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.master-location-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.master-location-filter-field {
+  min-width: 0;
+}
+
+.master-location-filter-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #4b5563;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.master-location-filter-select,
+.master-location-filter-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #111827;
+  font-size: 0.875rem;
+}
+
+.master-location-filter-select:focus,
+.master-location-filter-input:focus {
+  outline: 2px solid rgba(255, 140, 0, 0.28);
+  border-color: #ff8c00;
+}
+
+.master-location-alert {
+  width: 100%;
+}
+
+.master-location-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 180px;
+}
+
+.master-location-name-cell span {
+  max-width: 260px;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.master-location-status-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.master-location-full-place-cell {
+  display: inline-block;
+  min-width: 260px;
+  max-width: 460px;
+  overflow: hidden;
+  color: #111827;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .master-location-actions-section {
