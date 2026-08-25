@@ -895,24 +895,31 @@ export const mainSearchController = async (req, res) => {
     const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     // ── Category resolution ───────────────────────────────────────────────────
-    // Fast keyword/regex match against category names & keywords. If nothing
-    // matches, the term is left as-is and used for full-text search below.
+    // Resolve category intent for both free-text searches and category-shaped
+    // route params. A URL like /budget-hotels-in-mukkompu can arrive as
+    // category="budget hotels"; that should still resolve to Hotels with
+    // "budget" kept as a ranking modifier instead of becoming an exact filter.
     let categoryModifierTokens = [];
-    if (!category && term) {
-      const resolvedIntent = await resolveCategoryIntent(term, escapeRegex);
+    const applyCategoryIntent = (resolvedIntent, { clearTerm = false, sourceLabel = "category" } = {}) => {
       if (resolvedIntent?.category) {
         category = resolvedIntent.category;
         categoryModifierTokens = categoryIntentMeaningfulTokens(resolvedIntent.remainingTerm)
           .slice(0, 5);
         console.log(
-          `[Search] category via ${resolvedIntent.confidence} intent: "${resolvedIntent.category}" remaining:"${resolvedIntent.remainingTerm || ""}"`,
+          `[Search] ${sourceLabel} via ${resolvedIntent.confidence} intent: "${resolvedIntent.category}" remaining:"${resolvedIntent.remainingTerm || ""}"`,
         );
-        // The category match stays as the filter. Any leftover words are used
-        // as ranking signals below, not as a hard filter, so searches like
-        // "budget hotel" still return hotels even when few listings mention
-        // "budget" explicitly.
-        term = "";
-      } else {
+        if (clearTerm) term = "";
+        return true;
+      }
+      return false;
+    };
+
+    if (category) {
+      const resolvedIntent = await resolveCategoryIntent(category, escapeRegex);
+      applyCategoryIntent(resolvedIntent, { sourceLabel: "category param" });
+    } else if (term) {
+      const resolvedIntent = await resolveCategoryIntent(term, escapeRegex);
+      if (!applyCategoryIntent(resolvedIntent, { clearTerm: true, sourceLabel: "category" })) {
         console.log(`[Search] no category resolved — falling back to text search for "${term}"`);
       }
     }
