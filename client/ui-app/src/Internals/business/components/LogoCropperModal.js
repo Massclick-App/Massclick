@@ -79,8 +79,11 @@ const LogoCropperModal = ({
                 alert("Error processing image");
               }
             },
-            "image/jpeg",
-            0.95
+            // PNG, not JPEG: logos are routinely uploaded with a transparent
+            // background, and JPEG has no alpha channel — exporting this canvas
+            // as JPEG composites every transparent pixel to black, which then
+            // shows up as a black box behind the logo on the certificate.
+            "image/png"
           );
         } catch (err) {
           alert("Error processing image");
