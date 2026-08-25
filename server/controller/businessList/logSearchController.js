@@ -223,10 +223,13 @@ export const logSearchAction = async (req, res) => {
     }
 
     if (!finalCategoryName) {
-      const resolvedCategory = await resolveCategoryIntent(
+      const resolvedCategoryIntent = await resolveCategoryIntent(
         cleanSearchText,
         escapeRegex
       );
+      const resolvedCategory = typeof resolvedCategoryIntent === "string"
+        ? resolvedCategoryIntent
+        : resolvedCategoryIntent?.category;
 
       if (resolvedCategory) {
         finalCategoryName = resolvedCategory;

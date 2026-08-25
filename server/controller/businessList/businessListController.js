@@ -563,6 +563,9 @@ const categoryIntentNormalize = (text = "") =>
 const categoryIntentTokens = (text = "") =>
   categoryIntentNormalize(text).split(" ").filter(Boolean);
 
+const categoryIntentMeaningfulTokens = (text = "") =>
+  categoryIntentTokens(text).filter((token) => !categoryIntentStopWords.has(token));
+
 const hasCategoryIntentToken = (text = "", token = "") => {
   const tokens = categoryIntentTokens(text);
   if (tokens.includes(token)) return true;
@@ -577,7 +580,7 @@ const hasCategoryIntentToken = (text = "", token = "") => {
 const scoreCategoryIntent = (candidate, rawTerm) => {
   const query = categoryIntentNormalize(rawTerm);
   const allTokens = categoryIntentTokens(query);
-  const meaningfulTokens = allTokens.filter((token) => !categoryIntentStopWords.has(token));
+  const meaningfulTokens = categoryIntentMeaningfulTokens(query);
   const requiredTokens = meaningfulTokens.length > 0 ? meaningfulTokens : allTokens;
 
   if (requiredTokens.length === 0) return 0;
@@ -619,9 +622,7 @@ const scoreCategoryIntent = (candidate, rawTerm) => {
 };
 
 const scorePartialCategoryIntent = (candidate, rawTerm) => {
-  const queryTokens = categoryIntentTokens(rawTerm).filter(
-    (token) => !categoryIntentStopWords.has(token)
-  );
+  const queryTokens = categoryIntentMeaningfulTokens(rawTerm);
   if (queryTokens.length < 2) return 0;
 
   const categoryText = categoryIntentNormalize(candidate.category);
@@ -639,7 +640,13 @@ const scorePartialCategoryIntent = (candidate, rawTerm) => {
   const minimumMatches = queryTokens.length <= 3
     ? 2
     : Math.max(3, Math.ceil(queryTokens.length * 0.6));
-  if (matchedTokens.length < minimumMatches) return 0;
+  if (matchedTokens.length < minimumMatches) {
+    const strongSingleCategoryToken =
+      matchedTokens.length === 1 &&
+      matchedTokens[0].length >= 4 &&
+      hasCategoryIntentToken(categoryText, matchedTokens[0]);
+    if (!strongSingleCategoryToken) return 0;
+  }
 
   let score = matchedTokens.length * 100;
   score += (matchedTokens.length / queryTokens.length) * 200;
@@ -661,6 +668,36 @@ const scorePartialCategoryIntent = (candidate, rawTerm) => {
   return score;
 };
 
+const getCategoryIntentSearchableText = (candidate = {}) => {
+  const categoryText = categoryIntentNormalize(candidate.category);
+  const descriptionText = categoryIntentNormalize(candidate.description);
+  const keywordTexts = (Array.isArray(candidate.keywords) ? candidate.keywords : [])
+    .map((keyword) => categoryIntentNormalize(keyword));
+  return [categoryText, descriptionText, ...keywordTexts].join(" ");
+};
+
+const getCategoryIntentRemainingTerm = (candidate = {}, rawTerm = "") => {
+  const searchableText = getCategoryIntentSearchableText(candidate);
+  const remainingTokens = categoryIntentMeaningfulTokens(rawTerm).filter(
+    (token) => !hasCategoryIntentToken(searchableText, token)
+  );
+  return remainingTokens.join(" ");
+};
+
+const categoryIntentConfidence = (score, source) => {
+  if (source === "exact") return "high";
+  if (source === "strict" && score >= 160) return "high";
+  return "medium";
+};
+
+const buildCategoryIntentResult = ({ candidate, score, source, term }) => ({
+  category: candidate.category,
+  confidence: categoryIntentConfidence(score, source),
+  score,
+  source,
+  remainingTerm: getCategoryIntentRemainingTerm(candidate, term),
+});
+
 export const resolveCategoryIntent = async (term, escapeRegex) => {
   const exactPattern = `^${escapeRegex(term)}$`;
   const exactMatch = await categoryModel.findOne(
@@ -671,14 +708,19 @@ export const resolveCategoryIntent = async (term, escapeRegex) => {
       ],
       isActive: true
     },
-    { category: 1 }
+    { category: 1, keywords: 1, description: 1 }
   );
 
-  if (exactMatch) return exactMatch.category;
+  if (exactMatch) {
+    return buildCategoryIntentResult({
+      candidate: exactMatch,
+      score: 1000,
+      source: "exact",
+      term,
+    });
+  }
 
-  const requiredTokens = categoryIntentTokens(term).filter(
-    (token) => !categoryIntentStopWords.has(token)
-  );
+  const requiredTokens = categoryIntentMeaningfulTokens(term);
 
   if (requiredTokens.length === 0) return "";
 
@@ -697,23 +739,37 @@ export const resolveCategoryIntent = async (term, escapeRegex) => {
 
   const strictMatch = candidates
     .map((candidate) => ({
-      category: candidate.category,
+      candidate,
       score: scoreCategoryIntent(candidate, term),
     }))
-    .filter((candidate) => candidate.score > 0)
+    .filter((result) => result.score > 0)
     .sort((a, b) => b.score - a.score)[0];
 
-  if (strictMatch?.category) return strictMatch.category;
+  if (strictMatch?.candidate?.category) {
+    return buildCategoryIntentResult({
+      candidate: strictMatch.candidate,
+      score: strictMatch.score,
+      source: "strict",
+      term,
+    });
+  }
 
   const partialMatch = candidates
     .map((candidate) => ({
-      category: candidate.category,
+      candidate,
       score: scorePartialCategoryIntent(candidate, term),
     }))
-    .filter((candidate) => candidate.score > 0)
+    .filter((result) => result.score > 0)
     .sort((a, b) => b.score - a.score)[0];
 
-  return partialMatch?.category || "";
+  return partialMatch?.candidate?.category
+    ? buildCategoryIntentResult({
+        candidate: partialMatch.candidate,
+        score: partialMatch.score,
+        source: "partial",
+        term,
+      })
+    : "";
 };
 
 export const getEnhancedSuggestionsController = async (req, res) => {
@@ -841,11 +897,20 @@ export const mainSearchController = async (req, res) => {
     // ── Category resolution ───────────────────────────────────────────────────
     // Fast keyword/regex match against category names & keywords. If nothing
     // matches, the term is left as-is and used for full-text search below.
+    let categoryModifierTokens = [];
     if (!category && term) {
-      const keywordMatch = await resolveCategoryIntent(term, escapeRegex);
-      if (keywordMatch) {
-        console.log(`[Search] category via keyword match: "${keywordMatch}" (term cleared)`);
-        category = keywordMatch;
+      const resolvedIntent = await resolveCategoryIntent(term, escapeRegex);
+      if (resolvedIntent?.category) {
+        category = resolvedIntent.category;
+        categoryModifierTokens = categoryIntentMeaningfulTokens(resolvedIntent.remainingTerm)
+          .slice(0, 5);
+        console.log(
+          `[Search] category via ${resolvedIntent.confidence} intent: "${resolvedIntent.category}" remaining:"${resolvedIntent.remainingTerm || ""}"`,
+        );
+        // The category match stays as the filter. Any leftover words are used
+        // as ranking signals below, not as a hard filter, so searches like
+        // "budget hotel" still return hotels even when few listings mention
+        // "budget" explicitly.
         term = "";
       } else {
         console.log(`[Search] no category resolved — falling back to text search for "${term}"`);
@@ -1148,6 +1213,35 @@ export const mainSearchController = async (req, res) => {
       { $addFields: { _distanceSort: { $ifNull: ["$distance", 999999] } } }
     ] : [];
 
+    const keywordTextExpression = {
+      $reduce: {
+        input: { $ifNull: ["$keywords", []] },
+        initialValue: "",
+        in: { $concat: ["$$value", " ", "$$this"] },
+      },
+    };
+    const categoryModifierScoreParts = categoryModifierTokens.map((token) => {
+      const regex = `(^|[^a-z0-9])${escapeRegex(token)}([^a-z0-9]|$)`;
+      return {
+        $cond: [
+          {
+            $or: [
+              { $regexMatch: { input: { $ifNull: ["$businessName", ""] }, regex, options: "i" } },
+              { $regexMatch: { input: { $ifNull: ["$category", ""] }, regex, options: "i" } },
+              { $regexMatch: { input: keywordTextExpression, regex, options: "i" } },
+              { $regexMatch: { input: { $ifNull: ["$seoTitle", ""] }, regex, options: "i" } },
+              { $regexMatch: { input: { $ifNull: ["$seoDescription", ""] }, regex, options: "i" } },
+              { $regexMatch: { input: { $ifNull: ["$description", ""] }, regex, options: "i" } },
+              { $regexMatch: { input: { $ifNull: ["$businessDetails", ""] }, regex, options: "i" } },
+              { $regexMatch: { input: { $ifNull: ["$globalAddress", ""] }, regex, options: "i" } },
+            ],
+          },
+          1,
+          0,
+        ],
+      };
+    });
+
     const runAggregation = async (matchQueryForRun) => {
     const pipeline = [
       { $match: matchQueryForRun },
@@ -1216,7 +1310,10 @@ export const mainSearchController = async (req, res) => {
               0,
               1
             ]
-          }
+          },
+          categoryModifierScore: categoryModifierScoreParts.length
+            ? { $sum: categoryModifierScoreParts }
+            : 0,
         }
       },
       ...(Number.isFinite(minRatingValue) && minRatingValue > 0 ? [
@@ -1232,6 +1329,7 @@ export const mainSearchController = async (req, res) => {
               "badges.priorityScore": -1,
               ...(term ? { textScore: -1 } : {}),
               categoryPriority: 1,
+              categoryModifierScore: -1,
               locationPriority: 1,
               paidDate: -1,
               createdAt: -1,
@@ -1285,6 +1383,7 @@ export const mainSearchController = async (req, res) => {
           verifiedPriority: 0,
           categoryPriority: 0,
           locationPriority: 0,
+          categoryModifierScore: 0,
           textScore: 0,
           _distanceSort: 0,
         },
