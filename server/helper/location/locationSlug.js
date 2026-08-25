@@ -42,18 +42,55 @@ const NUMERIC_SUFFIX_RE = /-(\d+)$/;
 
 // True when a ward's own name is just its zone's name plus a suffix, e.g.
 // zone "Andimadam" + ward "Andimadam East" -> "andimadam-east" starts with
-// "andimadam-". A PREFIX match, deliberately not the exact-match case
-// computeLocationUrlParts already handles below (a ward literally named the
-// same as its zone) — that case is a separate, still-open collision type
-// documented in this file's header comment (the "Muthur" ward inside a
-// "Muthur" zone example) and is NOT touched here. Verified against
-// massClick_dev: 322 of 943 active wards fit this exact prefix pattern,
-// across 18 districts — as common as the district-collision case, not an
-// edge case.
+// "andimadam-". A PREFIX match; the EXACT-match case (a ward literally named
+// the same as its zone) is handled separately by isWardNameSameAsZone below.
+// Verified against massClick_dev: 322 of 943 active wards fit this exact
+// prefix pattern, across 18 districts — as common as the district-collision
+// case, not an edge case.
 const isZoneNamePrefixOfWard = (doc = {}) => {
   const zoneSlug = slugify(String(doc.zone || "").trim());
   const wardSlug = slugify(String(doc.ward || "").trim());
   return Boolean(zoneSlug && wardSlug && wardSlug !== zoneSlug && wardSlug.startsWith(`${zoneSlug}-`));
+};
+
+// True when a ward's name is EXACTLY its zone's name — the "Muthur ward
+// inside a Muthur zone" case this file's header long listed as still-open
+// (real example: Tiruchirappalli's "Andanallur" ward inside its "Andanallur"
+// zone, which read "/trichy/andanallur/andanallur/hotels-in-mukkompu").
+//
+// TWO guards here are load-bearing; dropping either reintroduces the bug that
+// got the naive "collapse any adjacent duplicate" pass reverted:
+//
+//   1. LOCALITY level only. At ward level the zone is the ward's ONLY
+//      ancestor, so dropping it collapses the ward straight onto its own
+//      zone's page — two different docs, one path.
+//   2. The locality's own name must DIFFER from the ward's. Otherwise
+//      "Ariyamangalam / Ariyamangalam / Ariyamangalam" shortens to a
+//      2-segment path the ward already owns, and since the resolver reads
+//      2 segments as ward-level, that locality stops resolving to itself.
+//
+// Measured rather than reasoned about, per this file's history: a full
+// before/after sweep of all 15,072 active nodes across 20 districts on
+// massClick_dev put the unguarded version at 183 round-trip mismatches, and
+// this guarded version at 1,538 paths shortened, 0 new collisions and 0 new
+// round-trip mismatches (verified doc-by-doc: 0 newly broken, 0 repaired —
+// the single pre-existing break, a "Palayamkottai" ward under a
+// "Palayamkottai" zone in Tirunelveli, is untouched because it is ward-level).
+// A batch-aware variant that additionally skipped any shortened path already
+// claimed by another doc scored identically, so this stays a pure per-doc
+// rule like every other check here.
+const isWardNameSameAsZone = (doc = {}) => {
+  if (doc.level !== "locality") return false;
+  const zoneSlug = slugify(String(doc.zone || "").trim());
+  const wardSlug = slugify(String(doc.ward || "").trim());
+  const localitySlug = slugify(String(doc.locality || "").trim());
+  return Boolean(
+    zoneSlug &&
+      wardSlug &&
+      wardSlug === zoneSlug &&
+      localitySlug &&
+      localitySlug !== wardSlug,
+  );
 };
 
 // Plain-English word appended to a colliding segment in the deprecated flat
@@ -88,12 +125,15 @@ const getDuplicateNumericSuffix = (doc = {}, base = "") => {
  * simply left out of the path instead.
  *
  * Deliberately checks each ancestor against the district ONLY, never
- * against its immediately preceding ancestor in general (a naive "collapse
- * any adjacent duplicate" pass was tried and reverted — it also silently
- * collapsed a ward matching its own zone's name, e.g. a "Muthur" ward
- * inside a "Muthur" zone, which is a separate, NOT-yet-handled collision
- * type; that made a ward's own page collide with an unrelated locality's
- * page whenever both happened to reduce to the same short string).
+ * against its immediately preceding ancestor in general. A naive "collapse
+ * any adjacent duplicate" pass was tried and reverted: it also collapsed a
+ * ward matching its own zone's name, e.g. a "Muthur" ward inside a "Muthur"
+ * zone, which made a ward's own page collide with an unrelated locality's
+ * page whenever both reduced to the same short string. That exact-match case
+ * IS now handled, but only for locality-level docs and only when the
+ * locality's own name differs from the ward's — see isWardNameSameAsZone
+ * above for the two guards and the sweep that fixed their boundaries. Ward
+ * level itself remains deliberately untouched for the reason just given.
  *
  * Deliberately does NOT also drop an ancestor for matching the TARGET (e.g.
  * a "K.K. Nagar" ward immediately before a "K.K. Nagar" locality target) —
@@ -169,12 +209,12 @@ const computeLocationUrlParts = (doc = {}) => {
   const numericSuffix = rawTarget ? getDuplicateNumericSuffix(doc, rawTarget) : "";
   const target = rawTarget ? (numericSuffix ? `${rawTarget}-${numericSuffix}` : rawTarget) : "";
 
-  const dropZoneForWardPrefix = isZoneNamePrefixOfWard(doc);
+  const dropZoneForWard = isZoneNamePrefixOfWard(doc) || isWardNameSameAsZone(doc);
   const ancestors = ancestorFields
     .map((field) => slugify(String(doc[field] || "").trim()))
     .filter((name, index) => {
       if (!name || name === districtSlug) return false;
-      if (ancestorFields[index] === "zone" && dropZoneForWardPrefix) return false;
+      if (ancestorFields[index] === "zone" && dropZoneForWard) return false;
       return true;
     });
 
