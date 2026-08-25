@@ -228,31 +228,39 @@ export const resolveLocationPathWithinDistrict = async (districtDoc, locationPat
 };
 
 /**
- * Resolves a location path, tolerating the SUPERSEDED longer form of a URL
- * whose ward name exactly matched its zone name.
+ * Resolves a location path, tolerating SUPERSEDED longer forms of a URL that
+ * used to repeat a name locationSlug.js no longer emits.
  *
- * locationSlug.js's isWardNameSameAsZone now emits one segment where it used
- * to emit two ("/andanallur/andanallur/mukkompu" -> "/andanallur/mukkompu"),
- * which retired 1,538 previously-live paths on massClick_dev. Those are
- * indexed, so a bare miss would 404 them. The exact path is always tried
- * FIRST — the localities deliberately left un-shortened (locality name equal
- * to its ward's, e.g. Ariyamangalam/Ariyamangalam/Ariyamangalam) still carry
- * three segments legitimately and must keep resolving directly.
+ * Two rules there retired live paths on massClick_dev, and both leave indexed
+ * URLs behind that a bare miss would 404:
  *
- * Only a LOCALITY hit is accepted from the shortened retry: a ward or zone
- * answering here would mean the leading duplicate was never a redundant zone
- * in the first place.
+ *   isWardNameSameAsZone  1,538 localities lost a redundant zone segment
+ *                         ("/andanallur/andanallur/mukkompu" -> "/andanallur/mukkompu")
+ *   foldsIntoZonePage       231 wards and 184 localities lost their page
+ *                         entirely ("/ariyamangalam/ariyamangalam" and
+ *                         "/ariyamangalam/ariyamangalam/ariyamangalam" both
+ *                         now belong to the "/ariyamangalam" zone page)
+ *
+ * Collapsing runs of consecutive identical segments and retrying covers both,
+ * since every retired form differs from its replacement only by a repeat.
+ *
+ * The exact path is ALWAYS tried first, so a legitimately repeating path — a
+ * locality matching only its ward, which is deliberately never folded — keeps
+ * resolving directly and never reaches this fallback. Any level is accepted
+ * from the retry, because a folded node's replacement is its ZONE.
  */
+const dedupeAdjacentSegments = (segments = []) =>
+  segments.filter((segment, index) => index === 0 || segment !== segments[index - 1]);
+
 const resolveLocationPathAllowingLegacyDuplicateZone = async (districtDoc, parts = []) => {
   const direct = await resolveLocationPathWithinDistrict(districtDoc, parts);
   if (direct) return { locationDoc: direct, canonicalize: false };
 
   const segments = pathSegments(parts);
-  if (segments.length === 3 && segments[0] && segments[0] === segments[1]) {
-    const shortened = await resolveLocationPathWithinDistrict(districtDoc, segments.slice(1));
-    if (shortened && shortened.level === "locality") {
-      return { locationDoc: shortened, canonicalize: true };
-    }
+  const deduped = dedupeAdjacentSegments(segments);
+  if (deduped.length !== segments.length) {
+    const shortened = await resolveLocationPathWithinDistrict(districtDoc, deduped);
+    if (shortened) return { locationDoc: shortened, canonicalize: true };
   }
 
   return { locationDoc: null, canonicalize: false };

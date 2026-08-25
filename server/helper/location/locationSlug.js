@@ -79,6 +79,44 @@ const isZoneNamePrefixOfWard = (doc = {}) => {
 // A batch-aware variant that additionally skipped any shortened path already
 // claimed by another doc scored identically, so this stays a pure per-doc
 // rule like every other check here.
+// A node whose ENTIRE ancestor chain repeats its own name keeps just that one
+// name as its path, instead of stuttering it at every level. Two shapes:
+//
+//   ward:     ward name == zone name   ("/trichy/ariyamangalam/ariyamangalam")
+//   locality: locality == ward == zone ("/trichy/ariyamangalam/ariyamangalam/ariyamangalam")
+//
+// both become "/trichy/ariyamangalam".
+//
+// A locality matching only its WARD is deliberately excluded — that is the
+// distinct-content collision documented below (488 such wards, 430 of them
+// holding other sibling localities with real data), not a redundant repeat.
+// Blanket "collapse any adjacent duplicate" would swallow that case, which is
+// exactly why it was tried and reverted before; requiring the WHOLE chain to
+// match is what makes this safe.
+//
+// The single remaining segment is the zone's name, so where an active zone doc
+// exists the resolver's segment-count rule hands that URL to the zone and this
+// node effectively folds onto the zone's page. Verified before shipping: ZERO
+// businesses are attached to any of the 231 wards or 184 localities involved,
+// so nothing loses a page that had listings on it.
+//
+// Collapsing onto the node's own name rather than to an EMPTY path is
+// deliberate, and the difference is load-bearing: an empty path assumes a zone
+// doc exists to fold onto, and sometimes none does. Tiruchirappalli's
+// "Tiruverumbur" carries no zone doc and no ward doc at all — those names live
+// only as text fields on the locality — so emptying its path would have
+// retired "/trichy/tiruverumbur" to nothing. Collapsing instead lets that
+// locality keep the URL for itself, while a node that DOES have a zone above
+// it yields to the zone.
+const collapsesOntoOwnName = (doc = {}) => {
+  const zoneSlug = slugify(String(doc.zone || "").trim());
+  const wardSlug = slugify(String(doc.ward || "").trim());
+  if (!zoneSlug || !wardSlug || wardSlug !== zoneSlug) return false;
+  if (doc.level === "ward") return true;
+  if (doc.level !== "locality") return false;
+  return slugify(String(doc.locality || "").trim()) === wardSlug;
+};
+
 const isWardNameSameAsZone = (doc = {}) => {
   if (doc.level !== "locality") return false;
   const zoneSlug = slugify(String(doc.zone || "").trim());
@@ -210,13 +248,15 @@ const computeLocationUrlParts = (doc = {}) => {
   const target = rawTarget ? (numericSuffix ? `${rawTarget}-${numericSuffix}` : rawTarget) : "";
 
   const dropZoneForWard = isZoneNamePrefixOfWard(doc) || isWardNameSameAsZone(doc);
-  const ancestors = ancestorFields
-    .map((field) => slugify(String(doc[field] || "").trim()))
-    .filter((name, index) => {
-      if (!name || name === districtSlug) return false;
-      if (ancestorFields[index] === "zone" && dropZoneForWard) return false;
-      return true;
-    });
+  const ancestors = collapsesOntoOwnName(doc)
+    ? []
+    : ancestorFields
+        .map((field) => slugify(String(doc[field] || "").trim()))
+        .filter((name, index) => {
+          if (!name || name === districtSlug) return false;
+          if (ancestorFields[index] === "zone" && dropZoneForWard) return false;
+          return true;
+        });
 
   const folded = ancestors.length === 0 && target === districtSlug;
 
