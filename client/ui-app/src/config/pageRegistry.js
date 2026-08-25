@@ -2,6 +2,7 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/analytics-overview', label: 'Analytics Overview' },
   { path: '/dashboard/site-analytics', label: 'Site Analytics' },
   { path: '/dashboard/app-analytics', label: 'App Analytics' },
+  { path: '/dashboard/business-person-report', label: 'Business Person Reports' },
   { path: '/dashboard/data-analytics', label: 'Category Coverage' },
   { path: '/dashboard/ga4-analytics', label: 'Google Analytics 4' },
   { path: '/dashboard/gsc-analytics', label: 'Google Search Console' },

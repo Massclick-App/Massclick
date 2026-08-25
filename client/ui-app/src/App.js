@@ -102,6 +102,7 @@ const AdminDataAnalytics = lazy(() => import(/* webpackChunkName: "admin-data-an
 const UnifiedAnalytics = lazy(() => import(/* webpackChunkName: "admin-unified-analytics" */ './components/unifiedAnalytics/UnifiedAnalytics.js'));
 const SiteAnalytics = lazy(() => import(/* webpackChunkName: "admin-site-analytics" */ './components/siteAnalytics/SiteAnalytics.js'));
 const AppAnalytics = lazy(() => import(/* webpackChunkName: "admin-app-analytics" */ './components/siteAnalytics/AppAnalytics.js'));
+const BusinessPersonReport = lazy(() => import(/* webpackChunkName: "admin-business-person-report" */ './Internals/businessPersonReport/BusinessPersonReport.js'));
 
 const MRPDatas = lazy(() => import(/* webpackChunkName: "admin-mrp" */ './Internals/MRPDATA/mrpData.js'));
 const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './Internals/FCMMarketing/FCMMarketing.js'));
@@ -366,6 +367,7 @@ function AppRoutes({
                 <Route path="analytics-overview" element={<UnifiedAnalytics />} />
                 <Route path="site-analytics" element={<SiteAnalytics />} />
                 <Route path="app-analytics" element={<AppAnalytics />} />
+                <Route path="business-person-report" element={<BusinessPersonReport />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="search-requests" element={<SearchRequestsAdmin />} />
                 <Route path="rewards" element={<RewardAdmin />} />

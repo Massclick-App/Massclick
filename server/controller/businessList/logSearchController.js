@@ -1198,7 +1198,7 @@ export const sendBusinessInfoToCustomer = async (req, res) => {
           location: business.location,
         },
         [business],
-        { sourceType: "business_detail_info", customerListSendMode: "single" }
+        { sourceType: "business_detail_info", customerListSendMode: "single", businessId: business._id, businessName: business.businessName }
       );
       whatsappSent = true;
     }

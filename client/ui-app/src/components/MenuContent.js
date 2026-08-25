@@ -47,6 +47,7 @@ import RequestQuoteIcon from "@mui/icons-material/RequestQuoteOutlined";
 import FolderCopyIcon from "@mui/icons-material/FolderCopyOutlined";
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeedOutlined";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
+import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 import { fetchChatUnreadCount, getAdminChatToken } from "../services/chatService";
 import { connectSocket } from "../services/socketService";
 import { getAuthSnapshot } from "../auth/authStore.js";
@@ -126,6 +127,7 @@ const MENU_SECTIONS = [
       { text: "Analytics Overview", icon: AnalyticsRoundedIcon, path: "/dashboard/analytics-overview" },
       { text: "Site Analytics", icon: QueryStatsRoundedIcon, path: "/dashboard/site-analytics" },
       { text: "App Analytics", icon: PhoneIphoneRoundedIcon, path: "/dashboard/app-analytics" },
+      { text: "Business Reports", icon: AssessmentRoundedIcon, path: "/dashboard/business-person-report" },
       { text: "Category Coverage", icon: CategoryIcon, path: "/dashboard/data-analytics" },
       { text: "Google Analytics 4", icon: WebRoundedIcon, path: "/dashboard/ga4-analytics" },
       { text: "Google Search Console", icon: QueryStatsRoundedIcon, path: "/dashboard/gsc-analytics" },
