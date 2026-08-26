@@ -164,6 +164,9 @@ export const getDistrictLabel = (business = {}) =>
   clean(business?.masterLocation?.district) || "";
 
 const DEFAULT_MAX_LENGTH = 60;
+// A search card shows the area, not the doorstep: the last two parts only.
+const CARD_SEGMENT_LIMIT = 2;
+const CONTAINS_DIGIT = /\d/;
 const ELLIPSIS = "…";
 
 /**
@@ -210,31 +213,33 @@ export const formatBusinessAddress = (business = {}, options = {}) => {
     (segment) => segment !== searched || belongsToHierarchy(searched),
   );
 
-  const tailText = tailSegments.join(", ");
   const streetDetail = formatStreetDetail(business);
 
-  if (!streetDetail) return tailText;
-  if (!tailText) return truncateSegments(streetDetail.split(", "), maxLength);
+  // Street segments the tail is about to state anyway: 29% of stored streets
+  // already end with the locality and 35% carry the district somewhere.
+  const streetSegments = (streetDetail ? streetDetail.split(", ") : []).filter(
+    (segment) =>
+      !tailSegments.some((tailSegment) => sameSegment(tailSegment, segment)) &&
+      // A card names an area, not a doorstep. Door and plot numbers, floor
+      // numbers and plus-codes are noise at this size and are dropped outright
+      // — the full address including them is on the detail page. Only street
+      // detail is filtered this way; locality and district come from the
+      // resolved hierarchy and are kept whatever they contain.
+      !CONTAINS_DIGIT.test(segment),
+  );
 
-  // 29% of stored streets already end with the locality and 35% carry the
-  // district somewhere — the tail is about to say both, so drop any street
-  // segment the tail already covers rather than printing it twice.
-  const streetSegments = streetDetail
-    .split(", ")
-    .filter((segment) => !tailSegments.some((tailSegment) => sameSegment(tailSegment, segment)));
+  // Only the last two parts are shown: the area and the district. Everything
+  // more specific is detail the reader cannot use from a result list, and
+  // keeping it made cards ragged and pushed the locality out of view.
+  const kept = [...streetSegments, ...tailSegments].slice(-CARD_SEGMENT_LIMIT);
 
-  if (streetSegments.length === 0) return tailText;
+  // Last resort. A handful of records hold nothing but a door number and the
+  // legacy free-text `location` — filtering the number away would leave the
+  // card with no location at all, which is worse than a coarse one. This is
+  // the only place `location` is read, and only when there is no alternative.
+  if (kept.length === 0) return clean(business?.location);
 
-  const separator = ", ";
-  const budget = maxLength - tailText.length - separator.length;
-
-  // No room for any street detail — the tail alone is already at or over
-  // budget. Show it in full rather than mangling the only useful part.
-  if (budget <= ELLIPSIS.length) return tailText;
-
-  const head = truncateSegments(streetSegments, budget);
-
-  return head ? `${head}${separator}${tailText}` : tailText;
+  return truncateSegments(kept, maxLength);
 };
 
 // Fit street segments into a character budget by dropping them from the RIGHT.

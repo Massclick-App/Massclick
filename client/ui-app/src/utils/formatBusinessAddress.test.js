@@ -78,75 +78,82 @@ describe("formatStreetDetail", () => {
 });
 
 describe("formatBusinessAddress", () => {
-  it("replaces the bare district label with a real address", () => {
-    expect(formatBusinessAddress(hexahub)).toBe("42, Mullai Nagar, K.K. Nagar, Tiruchirappalli");
+  it("shows the area and district, not the doorstep", () => {
+    expect(formatBusinessAddress(hexahub)).toBe("K.K. Nagar, Tiruchirappalli");
+  });
+
+  it("never prints a door, plot, floor or plus-code number", () => {
+    expect(formatBusinessAddress({
+      plotNumber: "No 343",
+      street: "1st Floor, Near Bus Stand",
+      masterLocation: { district: "Tiruchirappalli", locality: "Manapparai" },
+    })).toBe("Manapparai, Tiruchirappalli");
+
+    expect(formatBusinessAddress({
+      plotNumber: "9X6M+C48",
+      street: "Mendonsa Colony",
+      masterLocation: { district: "Dindigul" },
+    })).toBe("Mendonsa Colony, Dindigul");
+  });
+
+  it("shows at most two parts", () => {
+    const result = formatBusinessAddress({
+      plotNumber: "12",
+      street: "Cheran Street, Wireless Rd, Thendral Nagar",
+      masterLocation: { district: "Tiruchirappalli", locality: "K.K. Nagar" },
+    });
+    expect(result.split(", ")).toHaveLength(2);
+    expect(result).toBe("K.K. Nagar, Tiruchirappalli");
   });
 
   it("stays within the character budget", () => {
     expect(formatBusinessAddress(hexahub).length).toBeLessThanOrEqual(60);
   });
 
-  it("keeps the tail intact and trims street detail from the right", () => {
-    const long = {
-      plotNumber: "No.19/201",
-      street:
-        "V.V.V Mahal, 2nd Floor, Ponnagar Extension, Near Vvv Theatre, Trichy Dindugal Road, Ponnagar",
-      masterLocation: { district: "Tiruchirappalli", locality: "Ponmalai" },
-    };
-    const result = formatBusinessAddress(long);
-    expect(result.length).toBeLessThanOrEqual(60);
-    expect(result.endsWith("Ponmalai, Tiruchirappalli")).toBe(true);
+  it("falls back to street detail when only the district is resolved", () => {
+    expect(
+      formatBusinessAddress({
+        plotNumber: "No 21/1",
+        street: "Opposite to SBI Bank",
+        masterLocation: { district: "Tiruchirappalli" },
+      }),
+    ).toBe("Opposite to SBI Bank, Tiruchirappalli");
   });
 
   it("omits a searched location outside the business hierarchy", () => {
     expect(formatBusinessAddress(hexahub, { searchedLocation: "palpannai junction" })).toBe(
-      "42, Mullai Nagar, K.K. Nagar, Tiruchirappalli",
+      "K.K. Nagar, Tiruchirappalli",
     );
   });
 
   it("does not repeat a searched location that is already the locality", () => {
     expect(formatBusinessAddress(hexahub, { searchedLocation: "KK Nagar" })).toBe(
-      "42, Mullai Nagar, K.K. Nagar, Tiruchirappalli",
+      "K.K. Nagar, Tiruchirappalli",
     );
   });
 
-  it("inserts a searched location that sits between locality and district", () => {
+  it("keeps the two broadest parts when a searched location is inserted", () => {
     const business = {
       plotNumber: "12",
       street: "Mullai Nagar",
       masterLocation: {
         district: "Tiruchirappalli",
-        zone: "K. Abishekapuram",
         ward: "K.K. Nagar",
         locality: "Thendral Nagar",
       },
     };
-    // Budget raised so this pins the ordering rule, not the truncation rule.
-    expect(formatBusinessAddress(business, { searchedLocation: "K.K. Nagar", maxLength: 80 })).toBe(
-      "12, Mullai Nagar, Thendral Nagar, K.K. Nagar, Tiruchirappalli",
+    expect(formatBusinessAddress(business, { searchedLocation: "K.K. Nagar" })).toBe(
+      "K.K. Nagar, Tiruchirappalli",
     );
-  });
-
-  it("drops a street segment the tail already states", () => {
-    expect(
-      formatBusinessAddress({
-        street: "2nd Cross, Anna Nagar, Tennur, Tiruchirappalli",
-        masterLocation: { district: "Tiruchirappalli", locality: "Tennur" },
-      }),
-    ).toBe("2nd Cross, Anna Nagar, Tennur, Tiruchirappalli");
-  });
-
-  it("keeps the door number and drops broad area names when over budget", () => {
-    expect(formatBusinessAddress(hexahub)).toMatch(/^42, /);
   });
 
   it("does not print the district twice when it resolved only that far", () => {
     expect(
       formatBusinessAddress({
-        street: "Asha Towers, 4th Floor",
+        street: "Asha Towers",
         masterLocation: { district: "Tiruchirappalli", resolvedLevel: "district" },
       }),
-    ).toBe("Asha Towers, 4th Floor, Tiruchirappalli");
+    ).toBe("Asha Towers, Tiruchirappalli");
   });
 
   it("falls back to the tail alone when no street is stored", () => {
@@ -159,10 +166,29 @@ describe("formatBusinessAddress", () => {
     expect(formatBusinessAddress({ street: "-", plotNumber: "-", masterLocation: null })).toBe("");
   });
 
-  it("never uses the free-text location field", () => {
+  it("prefers real street detail over the free-text location field", () => {
     expect(formatBusinessAddress({ street: "Main Rd", location: "Trichy", masterLocation: null })).toBe(
       "Main Rd",
     );
+  });
+
+  it("falls back to the legacy location only when nothing else survives", () => {
+    // Door number filtered away, no street, no resolved hierarchy — without
+    // this the card would show no location at all.
+    expect(
+      formatBusinessAddress({ plotNumber: "918", street: "", location: "Devakottai", masterLocation: null }),
+    ).toBe("Devakottai");
+  });
+
+  it("keeps a locality whose real name contains a number", () => {
+    // "Thillai Nagar 5th Cross" is the locality's actual name, not a door
+    // number: the digit filter applies to street detail only.
+    expect(
+      formatBusinessAddress({
+        street: "5th Cross Rd E, near SRINIVAS HOSPITAL",
+        masterLocation: { district: "Tiruchirappalli", locality: "Thillai Nagar 5th Cross" },
+      }),
+    ).toBe("Thillai Nagar 5th Cross, Tiruchirappalli");
   });
 });
 
