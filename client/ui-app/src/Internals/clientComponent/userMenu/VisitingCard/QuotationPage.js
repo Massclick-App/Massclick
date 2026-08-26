@@ -13,6 +13,7 @@ import { findBusinessByMobile } from "../../../../redux/actions/businessListActi
 import { getAllCategory } from "../../../../redux/actions/categoryAction";
 import BusinessDocumentsNav from "./BusinessDocumentsNav";
 import { getBusinessLogo, imageToDataUrl } from "./documentImageUtils";
+import { formatFullBusinessAddress } from "../../../../utils/formatBusinessAddress";
 import styles from "./VisitingCardPage.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -85,8 +86,12 @@ const uniqueValues = (values = []) =>
     }) === index;
   });
 
+// Printed on a customer-facing quotation, so it goes through the same
+// formatter the site renders with: the raw fields duplicate the plot number
+// whenever the street already starts with it, and end on the free-text
+// `location` label rather than the resolved locality.
 const getBusinessAddress = (business = {}) =>
-  compact(business.plotNumber, business.street, business.pincode, business.location) ||
+  formatFullBusinessAddress(business) ||
   compact(business.globalAddress, business.location) ||
   "Tamil Nadu";
 

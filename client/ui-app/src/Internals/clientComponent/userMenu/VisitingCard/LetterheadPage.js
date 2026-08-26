@@ -10,6 +10,7 @@ import Footer from "../../footer/footer";
 import { findBusinessByMobile } from "../../../../redux/actions/businessListAction";
 import BusinessDocumentsNav from "./BusinessDocumentsNav";
 import { getBusinessLogo, imageToDataUrl } from "./documentImageUtils";
+import { formatFullBusinessAddress } from "../../../../utils/formatBusinessAddress";
 import styles from "./VisitingCardPage.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -84,16 +85,12 @@ const limitText = (value = "", max = 80) => {
   return text.length > max ? `${text.slice(0, max - 1).trim()}...` : text;
 };
 
-const getBusinessAddress = (business = {}) => {
-  const structuredAddress = compact(
-    business.plotNumber,
-    business.street,
-    business.pincode,
-    business.location
-  );
-
-  return structuredAddress || compact(business.globalAddress, business.location) || "Tamil Nadu";
-};
+// See QuotationPage: the letterhead prints the same address and must not
+// disagree with what the site shows.
+const getBusinessAddress = (business = {}) =>
+  formatFullBusinessAddress(business) ||
+  compact(business.globalAddress, business.location) ||
+  "Tamil Nadu";
 
 const getBusinessProfile = (business = {}, storedUser = {}) => {
   const phones = uniqueValues(
