@@ -793,9 +793,58 @@ const categoryIntentConfidence = (score, source) => {
   return "medium";
 };
 
+const getCategoryIntentSuggestionTerm = (candidate = {}, rawTerm = "") => {
+  const normalizedRawTerm = categoryIntentNormalize(rawTerm);
+  const queryTokens = categoryIntentMeaningfulTokens(rawTerm);
+  if (!normalizedRawTerm || queryTokens.length === 0) return "";
+
+  const phraseSources = [
+    { value: candidate.category, priority: 30 },
+    { value: candidate.subcategory, priority: 20 },
+    ...(Array.isArray(candidate.keywords)
+      ? candidate.keywords.map((keyword) => ({ value: keyword, priority: 40 }))
+      : []),
+  ];
+
+  const scoredPhrases = phraseSources
+    .map(({ value, priority }) => {
+      const phrase = String(value || "").trim();
+      const normalizedPhrase = categoryIntentNormalize(phrase);
+      const phraseTokens = categoryIntentTokens(phrase);
+      if (!phrase || !normalizedPhrase || phraseTokens.length === 0) return null;
+
+      const matchedTokenCount = queryTokens.filter((queryToken) =>
+        phraseTokens.some((phraseToken) =>
+          hasCategoryIntentToken(normalizedPhrase, queryToken) ||
+          (queryToken.length >= 3 && phraseToken.startsWith(queryToken))
+        )
+      ).length;
+
+      if (matchedTokenCount === 0) return null;
+
+      let score = priority + (matchedTokenCount * 100);
+      if (matchedTokenCount === queryTokens.length) score += 120;
+      if (normalizedPhrase === normalizedRawTerm) score += 400;
+      if (normalizedPhrase.startsWith(normalizedRawTerm)) score += 260;
+      if (normalizedPhrase.includes(normalizedRawTerm)) score += 180;
+
+      return {
+        phrase,
+        tokenCount: phraseTokens.length,
+        score,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || a.tokenCount - b.tokenCount || a.phrase.length - b.phrase.length);
+
+  return scoredPhrases[0]?.phrase || candidate.category || "";
+};
+
 const buildCategoryIntentResult = ({ candidate, score, source, term, correctedTerm = "" }) => {
   const queryInfo = getCategoryIntentQueryInfo(term);
-  const correctedQuery = correctedTerm || queryInfo.correctedQuery;
+  const correctedQuery = correctedTerm
+    ? getCategoryIntentSuggestionTerm(candidate, correctedTerm) || correctedTerm
+    : queryInfo.correctedQuery;
   return {
     category: candidate.category,
     confidence: categoryIntentConfidence(score, source),
