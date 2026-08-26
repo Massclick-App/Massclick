@@ -51,6 +51,17 @@ describe("formatStreetDetail", () => {
     ).toBe("Morais City New Street, Ponmalai Patti, Trichy");
   });
 
+  it("removes the state left behind once the pincode is stripped", () => {
+    // "Tamil Nadu 620007" arrives as a single segment and only looks like the
+    // state after its digits are removed.
+    expect(
+      formatStreetDetail({
+        street: "42, Mullai Nagar, Thendral Nagar, Tiruchirappalli, Tamil Nadu 620007",
+        pincode: "620007",
+      }),
+    ).toBe("42, Mullai Nagar, Thendral Nagar, Tiruchirappalli");
+  });
+
   it("removes trailing commas and stray whitespace", () => {
     expect(formatStreetDetail({ street: "Naadi Muthu Nagar,Near Gandhi garden, " })).toBe(
       "Naadi Muthu Nagar, Near Gandhi garden",
@@ -239,34 +250,84 @@ describe("formatExperience", () => {
 });
 
 describe("getAddressWarnings", () => {
+  const messagesFor = (business, field) =>
+    getAddressWarnings(business)
+      .filter((w) => w.field === field)
+      .map((w) => w.message);
+
+  const linked = { locationId: "abc", district: "Tiruchirappalli", locality: "K.K. Nagar" };
+
+  it("flags a missing verified location, the thing the card depends on", () => {
+    expect(messagesFor({ street: "Mullai Nagar", pincode: "620007" }, "masterLocation")).toEqual([
+      expect.stringContaining("No verified location linked"),
+    ]);
+    expect(messagesFor({ street: "Mullai Nagar", pincode: "620007", masterLocation: linked }, "masterLocation")).toEqual([]);
+  });
+
   it("flags a street that repeats the plot number", () => {
-    expect(getAddressWarnings(hexahub)).toEqual(
-      expect.arrayContaining([expect.stringContaining("plot number")]),
+    expect(messagesFor(hexahub, "street")).toEqual(
+      expect.arrayContaining([expect.stringContaining("repeats the plot number")]),
     );
   });
 
-  it("flags pasted state and pincode text", () => {
-    const warnings = getAddressWarnings({
-      street: "Morais City New Street, Trichy-620007, Tamil Nadu",
-      pincode: "620007",
-    });
-    expect(warnings).toEqual(
+  it("flags pasted state, country and pincode text", () => {
+    const messages = messagesFor(
+      { street: "Morais City New Street, Trichy-620007, Tamil Nadu", pincode: "620007", masterLocation: linked },
+      "street",
+    );
+    expect(messages).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("state or country"),
-        expect.stringContaining("pincode"),
+        expect.stringContaining("state and country"),
+        expect.stringContaining("Remove the pincode"),
       ]),
     );
   });
 
-  it("stays quiet on a clean record", () => {
+  it("flags a district repeated in the street", () => {
+    expect(
+      messagesFor({ street: "2nd Cross, Anna Nagar, Tiruchirappalli", pincode: "620018", masterLocation: linked }, "street"),
+    ).toEqual(expect.arrayContaining([expect.stringContaining("Tiruchirappalli")]));
+  });
+
+  it("flags a full address pasted into the plot number field", () => {
+    expect(
+      messagesFor({ plotNumber: "12, Mullai Nagar, Thendral Nagar", street: "X", pincode: "620007", masterLocation: linked }, "plotNumber"),
+    ).toEqual([expect.stringContaining("full address")]);
+  });
+
+  it("requires a six-digit pincode", () => {
+    expect(messagesFor({ street: "X", masterLocation: linked }, "pincode")).toEqual([
+      expect.stringContaining("required"),
+    ]);
+    expect(messagesFor({ street: "X", pincode: "62000", masterLocation: linked }, "pincode")).toEqual([
+      expect.stringContaining("exactly 6 digits"),
+    ]);
+  });
+
+  it("flags non-numeric experience while it is being typed", () => {
+    expect(messagesFor({ street: "X", pincode: "620007", experience: "++", masterLocation: linked }, "experience")).toEqual([
+      expect.stringContaining("number of years"),
+    ]);
+    expect(messagesFor({ street: "X", pincode: "620007", experience: "12", masterLocation: linked }, "experience")).toEqual([]);
+  });
+
+  it("stays completely quiet on a clean record", () => {
     expect(
       getAddressWarnings({
         plotNumber: "12",
         street: "Mullai Nagar",
         pincode: "620007",
-        masterLocation: { district: "Tiruchirappalli" },
+        experience: "12",
+        masterLocation: linked,
       }),
     ).toEqual([]);
+  });
+
+  it("returns a level with every message so the form can style it", () => {
+    for (const warning of getAddressWarnings({})) {
+      expect(["error", "warn", "info"]).toContain(warning.level);
+      expect(typeof warning.field).toBe("string");
+    }
   });
 });
 

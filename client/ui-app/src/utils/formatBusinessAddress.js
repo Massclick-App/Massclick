@@ -59,6 +59,8 @@ const flatten = (value) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
 
+const escapeRegExp = (value) => String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const sameSegment = (a, b) => {
   const fa = flatten(a);
   const fb = flatten(b);
@@ -100,13 +102,18 @@ const isNoiseSegment = (segment, pincode) => {
 
 // Strip the "…, Tiruchirappalli, Tamil Nadu 620007" tail that gets pasted in
 // from Google's formatted_address, plus any bare pincode left inline.
-const stripPostalNoise = (segments, pincode) => {
-  const kept = segments.filter((segment) => !isNoiseSegment(segment, pincode));
-  return kept.map((segment) =>
-    // "Trichy-620007" -> "Trichy": the pincode is glued to the town with a dash.
-    clean(segment.replace(/[-–—]\s*\d{6}\b/g, "").replace(/\b\d{6}\b/g, "")),
-  ).filter(Boolean);
-};
+const stripPostalNoise = (segments, pincode) =>
+  segments
+    // Remove the pincode FIRST, then test for noise. Order matters: the
+    // pasted Google tail arrives as one segment, "Tamil Nadu 620007", which
+    // only looks like the state once its digits are gone. Filtering first
+    // left a bare "Tamil Nadu" behind.
+    .map((segment) =>
+      // "Trichy-620007" -> "Trichy": the pincode is glued to the town with a dash.
+      clean(segment.replace(/[-–—]\s*\d{6}\b/g, "").replace(/\b\d{6}\b/g, "")),
+    )
+    .filter(Boolean)
+    .filter((segment) => !isNoiseSegment(segment, pincode));
 
 /**
  * The street-level part of the address: plot number plus street, with the
@@ -355,28 +362,65 @@ export const stripLeadingPlotFromStreet = (plotNumber, street) => {
 export const getAddressWarnings = (business = {}) => {
   const warnings = [];
   const street = String(business?.street ?? "");
+  const cleanStreet = clean(street);
   const plot = clean(business?.plotNumber);
   const pincode = clean(business?.pincode);
   const district = getDistrictLabel(business);
+  const add = (field, level, message) => warnings.push({ field, level, message });
+
+  // The single highest-value check. Without a linked location the card cannot
+  // name the locality, which is most of what a search result shows.
+  if (!business?.masterLocation?.locationId && !getLocalityLabel(business)) {
+    add(
+      "masterLocation",
+      "error",
+      "No verified location linked. Search for the area above — without it the listing cannot show which locality it is in.",
+    );
+  }
+
+  if (!cleanStreet) {
+    add("street", "error", "Street is empty. Add the street, area or a nearby landmark.");
+  }
 
   if (plot && sameSegment(splitSegments(street)[0], plot)) {
-    warnings.push("Street starts with the plot number again — remove it from the street.");
+    add("street", "warn", "The street repeats the plot number. Remove it here — it has its own field.");
   }
-  if (/tamil\s*nadu|\bindia\b/i.test(street)) {
-    warnings.push("Street contains the state or country — leave those out.");
+  if (/tamil\s*nadu|india/i.test(street)) {
+    add("street", "warn", "Remove the state and country. Only the street and area belong here.");
   }
   if (pincode && street.includes(pincode)) {
-    warnings.push("Street contains the pincode — it has its own field.");
+    add("street", "warn", "Remove the pincode from the street — it has its own field.");
   }
-  if (district && new RegExp(`\\b${district.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(street)) {
-    warnings.push(`Street repeats the district (${district}) — it is added automatically.`);
+  if (
+    district &&
+    new RegExp(`\\b${escapeRegExp(district)}\\b`, "i").test(street)
+  ) {
+    add("street", "warn", `Remove "${district}" — the district is added automatically.`);
   }
-  if (/^\s|[\s,]$/.test(street)) {
-    warnings.push("Street has stray spaces or a trailing comma.");
+  if (street !== cleanStreet && cleanStreet) {
+    add("street", "info", "Stray spaces or commas will be tidied up when you move on.");
   }
-  if (pincode && !/^\d{6}$/.test(pincode)) {
-    warnings.push("Pincode should be exactly 6 digits.");
+  if (cleanStreet.length > 120) {
+    add("street", "warn", "This is very long. Keep the street, area and one landmark; drop the rest.");
+  }
+
+  // A plot number is a door or shop number. Several commas means a whole
+  // address was pasted into the wrong field.
+  if (plot && plot.split(",").length > 2) {
+    add("plotNumber", "warn", "This looks like a full address. Keep only the door, shop or plot number.");
+  }
+
+  if (!pincode) {
+    add("pincode", "error", "Pincode is required.");
+  } else if (!/^\d{6}$/.test(pincode)) {
+    add("pincode", "error", "Pincode must be exactly 6 digits.");
+  }
+
+  const experienceRaw = String(business?.experience ?? "").trim();
+  if (experienceRaw && formatExperience(experienceRaw) === null) {
+    add("experience", "warn", "Enter a number of years, or leave this blank. Text here is not shown.");
   }
 
   return warnings;
 };
+

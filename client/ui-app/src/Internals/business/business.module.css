@@ -1738,10 +1738,28 @@ textarea[readonly],
   line-height: 1.4;
 }
 
-/* Live echo of what the search-result card will render for this business. */
+/* Live echo of what the site will render for this business, on both surfaces. */
+.address-preview-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.address-preview-label {
+  flex: 0 0 auto;
+  min-width: 132px;
+  color: #6b7280;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .address-preview {
-  margin: 6px 0 0;
-  padding: 10px 12px;
+  flex: 1 1 220px;
+  margin: 0;
+  padding: 8px 12px;
   border-radius: 8px;
   background: #f4f6f8;
   border-left: 3px solid #ff8c00;
@@ -1751,12 +1769,24 @@ textarea[readonly],
   word-break: break-word;
 }
 
-.address-preview-warnings {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  color: #b45309;
-  font-size: 0.8rem;
+/* Per-field guidance, rendered under the input it refers to. */
+.address-hints {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 0.78rem;
   line-height: 1.5;
+}
+
+.address-hint-error {
+  color: #b91c1c;
+}
+
+.address-hint-warn {
+  color: #b45309;
+}
+
+.address-hint-info {
+  color: #6b7280;
 }
 
 /* --- FIELD VARIANTS --- */
