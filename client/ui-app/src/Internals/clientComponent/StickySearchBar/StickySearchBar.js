@@ -16,6 +16,7 @@ import { searchMasterLocations } from "../../../redux/actions/masterLocationActi
 import { selectSearchLogs } from "../../../redux/selectors";
 import { createDistrictSlug } from "../../../utils/searchResultNavigation";
 import { submitSearchIntent } from "../../../utils/searchIntent";
+import { getCorrectionSuggestionOption, getSearchSuggestionValue } from "../../../utils/searchSuggestionIntent";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import { useDrawer } from "../Drawer/drawerContext";
@@ -289,9 +290,14 @@ const StickySearchBar = ({
 
   const suggestionCategories = (() => {
     const backendSuggestions = searchSuggestionState.items || [];
-    if (!backendSuggestions.length) return [];
+    const correctionOption = getCorrectionSuggestionOption(searchSuggestionState.searchIntent);
+    if (!backendSuggestions.length && !correctionOption) return [];
     const seen = new Set();
     const list = [];
+    if (correctionOption) {
+      seen.add(correctionOption.value.toLowerCase());
+      list.push(correctionOption);
+    }
     backendSuggestions.forEach(item => {
       const val = item.category;
       if (!val) return;
@@ -375,7 +381,7 @@ const StickySearchBar = ({
   };
 
   const handleSelectCategory = (val) => {
-    const chosen = typeof val === "string" ? val : String(val);
+    const chosen = getSearchSuggestionValue(val);
     setSearchTerm(chosen);
     propSetCategoryName?.(chosen);
     setIsCategoryDropdownOpen(false);

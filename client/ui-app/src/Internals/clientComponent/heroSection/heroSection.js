@@ -13,6 +13,7 @@ import { searchMasterLocations } from "../../../redux/actions/masterLocationActi
 import { fetchPublicUserCounter } from "../../../redux/actions/publicUserCounterAction.js";
 import { createDistrictSlug } from "../../../utils/searchResultNavigation";
 import { parseVoiceSearchTranscript, submitSearchIntent } from "../../../utils/searchIntent";
+import { getCorrectionSuggestionOption, getSearchSuggestionValue } from "../../../utils/searchSuggestionIntent";
 import { detectDistrict } from "../../../redux/actions/locationAction";
 import { scheduleIdleCallback } from "../../../utils/scheduleIdleCallback.js";
 import {
@@ -259,10 +260,15 @@ const HeroSection = React.memo(({
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? log.categoryName.trim() : "").filter(name => name && !isObjectId(name)))];
   const suggestionCategories = (() => {
     const suggestions = searchSuggestionState.items;
-    if (!Array.isArray(suggestions) || suggestions.length === 0) return [];
+    const correctionOption = getCorrectionSuggestionOption(searchSuggestionState.searchIntent);
+    if ((!Array.isArray(suggestions) || suggestions.length === 0) && !correctionOption) return [];
     const seen = new Set();
     const list = [];
-    suggestions.forEach(item => {
+    if (correctionOption) {
+      seen.add(correctionOption.value.toLowerCase());
+      list.push(correctionOption);
+    }
+    (suggestions || []).forEach(item => {
       const val = item.category || item.categoryName || item.name;
       if (!val) return;
       const text = String(val).trim();
@@ -502,7 +508,7 @@ const HeroSection = React.memo(({
           }} />
 
             {isDropdownOpen && searchTerm.trim().length < 2 && <DeferredCategoryDropdown id="business-suggestions" label="RECENT SEARCHES" options={recentSearchOptions} onSelect={val => {
-            const chosen = typeof val === "string" ? val : String(val);
+            const chosen = getSearchSuggestionValue(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
             setIsDropdownOpen(false);
@@ -510,7 +516,7 @@ const HeroSection = React.memo(({
           }} />}
 
             {isDropdownOpen && searchTerm.trim().length >= 2 && <DeferredCategoryDropdown id="business-suggestions" label="SUGGESTIONS" options={suggestionCategories} onReachEnd={() => maybeLoadMoreSuggestions(searchTerm.trim())} hasMore={searchSuggestionState.hasMore && searchSuggestionState.query === searchTerm.trim()} isLoadingMore={searchSuggestionState.loading && searchSuggestionState.query === searchTerm.trim()} onSelect={val => {
-            const chosen = typeof val === "string" ? val : String(val);
+            const chosen = getSearchSuggestionValue(val);
             setSearchTerm(chosen);
             if (setCategoryName) setCategoryName(chosen);
             setIsDropdownOpen(false);

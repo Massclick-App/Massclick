@@ -255,7 +255,15 @@ export const getSuggestionsController = async (req, res) => {
       });
     }
 
-    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const resolvedIntent = await resolveCategoryIntent(search, escapeRegex);
+    const searchIntent = buildSearchIntent({
+      originalQuery: search,
+      resolvedIntent,
+      searchMode: "suggestion",
+    });
+    const suggestionSearch = searchIntent.correctedQuery || search;
+    const escapedSearch = escapeRegex(suggestionSearch);
     const startsWithPattern = `^${escapedSearch}`;
     const containsPattern = escapedSearch;
 
@@ -423,7 +431,8 @@ export const getSuggestionsController = async (req, res) => {
       page,
       limit,
       hasMore: skip + items.length < total,
-      query: search
+      query: search,
+      searchIntent
     });
 
   } catch (err) {
@@ -551,14 +560,108 @@ const categoryIntentStopWords = new Set([
   "to",
 ]);
 
-const categoryIntentNormalize = (text = "") =>
+const categoryIntentBaseNormalize = (text = "") =>
   String(text)
     .toLowerCase()
     .trim()
     .replace(/&/g, " and ")
     .replace(/[-_]/g, " ")
     .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .trim();
+
+const categoryIntentNormalize = (text = "") => categoryIntentBaseNormalize(text);
+
+const getCategoryIntentQueryInfo = (term = "") => {
+  const normalizedQuery = categoryIntentBaseNormalize(term);
+  const correctedQuery = categoryIntentNormalize(term);
+  return {
+    normalizedQuery,
+    correctedQuery,
+    correctionApplied: Boolean(normalizedQuery && correctedQuery && normalizedQuery !== correctedQuery),
+  };
+};
+
+const editDistance = (left = "", right = "") => {
+  const a = String(left);
+  const b = String(right);
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  const current = Array(b.length + 1).fill(0);
+
+  for (let i = 1; i <= a.length; i += 1) {
+    current[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + cost,
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+
+  return previous[b.length];
+};
+
+const getCategoryVocabularyTokens = (candidates = []) => {
+  const tokens = new Set();
+  for (const candidate of candidates) {
+    [
+      candidate.category,
+      candidate.subcategory,
+      ...(Array.isArray(candidate.keywords) ? candidate.keywords : []),
+    ].filter(Boolean).forEach((value) => {
+      categoryIntentTokens(value).forEach((token) => {
+        if (!categoryIntentStopWords.has(token) && token.length >= 4) {
+          tokens.add(token);
+        }
+      });
+    });
+  }
+  return [...tokens];
+};
+
+const getFuzzyCategoryIntentTerm = (term = "", candidates = []) => {
+  const rawTokens = categoryIntentBaseNormalize(term).split(" ").filter(Boolean);
+  const vocabulary = getCategoryVocabularyTokens(candidates);
+  if (rawTokens.length === 0 || vocabulary.length === 0) return "";
+
+  let changed = false;
+  const correctedTokens = rawTokens.map((rawToken) => {
+    if (categoryIntentStopWords.has(rawToken) || rawToken.length < 5) return rawToken;
+    if (vocabulary.includes(rawToken)) return rawToken;
+
+    const maxDistance = rawToken.length >= 8 ? 2 : 1;
+    let best = null;
+    let secondDistance = Infinity;
+
+    for (const candidateToken of vocabulary) {
+      if (Math.abs(candidateToken.length - rawToken.length) > maxDistance) continue;
+      if (candidateToken[0] !== rawToken[0]) continue;
+      const distance = editDistance(rawToken, candidateToken);
+      if (distance < (best?.distance ?? Infinity)) {
+        secondDistance = best?.distance ?? Infinity;
+        best = { token: candidateToken, distance };
+      } else if (distance < secondDistance) {
+        secondDistance = distance;
+      }
+    }
+
+    if (best && best.distance <= maxDistance && secondDistance > best.distance) {
+      changed = true;
+      return best.token;
+    }
+
+    return rawToken;
+  });
+
+  return changed ? correctedTokens.join(" ") : "";
+};
 
 const categoryIntentTokens = (text = "") =>
   categoryIntentNormalize(text).split(" ").filter(Boolean);
@@ -690,15 +793,54 @@ const categoryIntentConfidence = (score, source) => {
   return "medium";
 };
 
-const buildCategoryIntentResult = ({ candidate, score, source, term }) => ({
-  category: candidate.category,
-  confidence: categoryIntentConfidence(score, source),
-  score,
-  source,
-  remainingTerm: getCategoryIntentRemainingTerm(candidate, term),
-});
+const buildCategoryIntentResult = ({ candidate, score, source, term, correctedTerm = "" }) => {
+  const queryInfo = getCategoryIntentQueryInfo(term);
+  const correctedQuery = correctedTerm || queryInfo.correctedQuery;
+  return {
+    category: candidate.category,
+    confidence: categoryIntentConfidence(score, source),
+    score,
+    source,
+    normalizedQuery: queryInfo.normalizedQuery,
+    correctedQuery,
+    correctionApplied: Boolean(queryInfo.normalizedQuery && correctedQuery && queryInfo.normalizedQuery !== correctedQuery),
+    remainingTerm: getCategoryIntentRemainingTerm(candidate, correctedQuery || term),
+  };
+};
 
-export const resolveCategoryIntent = async (term, escapeRegex) => {
+const buildSearchIntent = ({
+  originalQuery = "",
+  resolvedIntent = null,
+  resolvedCategory = "",
+  searchMode = "text",
+  textSearchTerm = "",
+  shouldShowSuggestion = false,
+} = {}) => {
+  const queryInfo = resolvedIntent || getCategoryIntentQueryInfo(originalQuery);
+  const finalCategory = resolvedCategory || resolvedIntent?.category || "";
+  const correctionApplied = Boolean(queryInfo.correctionApplied);
+  return {
+    originalQuery: String(originalQuery || "").trim(),
+    normalizedQuery: queryInfo.normalizedQuery || categoryIntentBaseNormalize(originalQuery),
+    correctedQuery: queryInfo.correctedQuery || categoryIntentNormalize(originalQuery),
+    textSearchTerm,
+    resolvedCategory: finalCategory || null,
+    correctionApplied,
+    correctionConfidence: correctionApplied ? (resolvedIntent?.confidence || "medium") : "",
+    confidence: resolvedIntent?.confidence || "",
+    source: resolvedIntent?.source || "",
+    searchMode,
+    shouldShowNotice: Boolean(correctionApplied && finalCategory && searchMode !== "suggestion"),
+    shouldShowSuggestion: Boolean(
+      (shouldShowSuggestion || searchMode === "suggestion") &&
+      correctionApplied &&
+      queryInfo.correctedQuery
+    ),
+  };
+};
+
+export const resolveCategoryIntent = async (term, escapeRegex, options = {}) => {
+  const { allowFuzzy = true } = options;
   const exactPattern = `^${escapeRegex(term)}$`;
   const exactMatch = await categoryModel.findOne(
     {
@@ -762,14 +904,49 @@ export const resolveCategoryIntent = async (term, escapeRegex) => {
     .filter((result) => result.score > 0)
     .sort((a, b) => b.score - a.score)[0];
 
-  return partialMatch?.candidate?.category
-    ? buildCategoryIntentResult({
+  if (partialMatch?.candidate?.category) {
+    return buildCategoryIntentResult({
         candidate: partialMatch.candidate,
         score: partialMatch.score,
         source: "partial",
         term,
-      })
-    : "";
+    });
+  }
+
+  if (!allowFuzzy) return "";
+
+  const fuzzyCandidates = candidates.length
+    ? candidates
+    : await categoryModel.find(
+        { isActive: true },
+        { category: 1, subcategory: 1, keywords: 1, description: 1 },
+      ).limit(1000);
+  const fuzzyTerm = getFuzzyCategoryIntentTerm(term, fuzzyCandidates);
+
+  if (fuzzyTerm && fuzzyTerm !== categoryIntentBaseNormalize(term)) {
+    const fuzzyMatch = fuzzyCandidates
+      .map((candidate) => ({
+        candidate,
+        score: Math.max(
+          scoreCategoryIntent(candidate, fuzzyTerm),
+          scorePartialCategoryIntent(candidate, fuzzyTerm),
+        ),
+      }))
+      .filter((result) => result.score > 0)
+      .sort((a, b) => b.score - a.score)[0];
+
+    if (fuzzyMatch?.candidate?.category) {
+      return buildCategoryIntentResult({
+        candidate: fuzzyMatch.candidate,
+        score: fuzzyMatch.score,
+        source: "fuzzy",
+        term,
+        correctedTerm: fuzzyTerm,
+      });
+    }
+  }
+
+  return "";
 };
 
 export const getEnhancedSuggestionsController = async (req, res) => {
@@ -857,6 +1034,8 @@ export const getEnhancedSuggestionsController = async (req, res) => {
 export const mainSearchController = async (req, res) => {
   try {
     let { term = "", location = "", category = "", district = "" } = req.query;
+    const originalTermParam = String(term || "").trim();
+    const originalCategoryParam = String(category || "").trim();
     // Preserved pre-normalize: resolveRouteLocation needs the URL-shaped
     // segment ("srirangam"), not the free-text-normalized form used for
     // regex fallback matching further down (which turns hyphens into spaces
@@ -900,11 +1079,19 @@ export const mainSearchController = async (req, res) => {
     // category="budget hotels"; that should still resolve to Hotels with
     // "budget" kept as a ranking modifier instead of becoming an exact filter.
     let categoryModifierTokens = [];
+    let searchIntent = null;
+    let resolvedCategoryForResponse = null;
     const applyCategoryIntent = (resolvedIntent, { clearTerm = false, sourceLabel = "category" } = {}) => {
       if (resolvedIntent?.category) {
         category = resolvedIntent.category;
+        resolvedCategoryForResponse = resolvedIntent.category;
         categoryModifierTokens = categoryIntentMeaningfulTokens(resolvedIntent.remainingTerm)
           .slice(0, 5);
+        searchIntent = buildSearchIntent({
+          originalQuery: sourceLabel === "category param" ? originalCategoryParam : originalTermParam,
+          resolvedIntent,
+          searchMode: "category",
+        });
         console.log(
           `[Search] ${sourceLabel} via ${resolvedIntent.confidence} intent: "${resolvedIntent.category}" remaining:"${resolvedIntent.remainingTerm || ""}"`,
         );
@@ -915,10 +1102,10 @@ export const mainSearchController = async (req, res) => {
     };
 
     if (category) {
-      const resolvedIntent = await resolveCategoryIntent(category, escapeRegex);
+      const resolvedIntent = await resolveCategoryIntent(category, escapeRegex, { allowFuzzy: false });
       applyCategoryIntent(resolvedIntent, { sourceLabel: "category param" });
     } else if (term) {
-      const resolvedIntent = await resolveCategoryIntent(term, escapeRegex);
+      const resolvedIntent = await resolveCategoryIntent(term, escapeRegex, { allowFuzzy: false });
       if (!applyCategoryIntent(resolvedIntent, { clearTerm: true, sourceLabel: "category" })) {
         console.log(`[Search] no category resolved — falling back to text search for "${term}"`);
       }
@@ -1096,9 +1283,30 @@ export const mainSearchController = async (req, res) => {
       });
     }
 
-    // Text search
+    let textSearchTerm = "";
+
+    // Text search. Generic words such as "service" and "near" are useful
+    // for understanding category intent, but dangerous as a raw fallback:
+    // one useful word plus one generic word must not become "every business
+    // containing the generic word".
     if (term) {
-      matchQuery.$text = { $search: term };
+      textSearchTerm = categoryIntentMeaningfulTokens(term).join(" ");
+      if (textSearchTerm) {
+        if (textSearchTerm !== term) {
+          console.log(`[Search] text fallback cleaned "${term}" -> "${textSearchTerm}"`);
+        }
+        matchQuery.$text = { $search: textSearchTerm };
+      } else {
+        matchQuery.$and.push({ _id: null });
+        console.log(`[Search] ignored generic-only text fallback for "${term}"`);
+      }
+      if (!searchIntent) {
+        searchIntent = buildSearchIntent({
+          originalQuery: originalTermParam,
+          searchMode: textSearchTerm ? "text" : "blocked-generic",
+          textSearchTerm,
+        });
+      }
     }
 
     // Category-specific filters
@@ -1252,7 +1460,7 @@ export const mainSearchController = async (req, res) => {
     const runAggregation = async (matchQueryForRun) => {
     const pipeline = [
       { $match: matchQueryForRun },
-      ...(term ? [{ $addFields: { textScore: { $meta: "textScore" } } }] : []),
+      ...(textSearchTerm ? [{ $addFields: { textScore: { $meta: "textScore" } } }] : []),
       {
         $lookup: {
           from: "businessreviews",
@@ -1331,13 +1539,13 @@ export const mainSearchController = async (req, res) => {
         $sort: useNearestSort
           ? { _distanceSort: 1, amountPaid: -1, createdAt: -1 }
           : (useCustomSort || {
-              paidPriority: 1,
-              verifiedPriority: 1,
-              "badges.priorityScore": -1,
-              ...(term ? { textScore: -1 } : {}),
+              ...(textSearchTerm ? { textScore: -1 } : {}),
               categoryPriority: 1,
               categoryModifierScore: -1,
               locationPriority: 1,
+              paidPriority: 1,
+              verifiedPriority: 1,
+              "badges.priorityScore": -1,
               paidDate: -1,
               createdAt: -1,
               _id: 1
@@ -1419,6 +1627,22 @@ export const mainSearchController = async (req, res) => {
 
     let { results, total } = await runAggregation(matchQuery);
     console.log(`[Search] → ${results.length} results (total:${total} hasMore:${page * pageSize < total}) resolvedCategory:"${category || ""}" in ${Date.now() - t0}ms`);
+
+    const originalSearchQuery = originalTermParam || originalCategoryParam;
+    if (total === 0 && originalSearchQuery && !searchIntent?.shouldShowNotice) {
+      const suggestedIntent = await resolveCategoryIntent(originalSearchQuery, escapeRegex, { allowFuzzy: true });
+      if (suggestedIntent?.category && suggestedIntent.correctionApplied) {
+        searchIntent = buildSearchIntent({
+          originalQuery: originalSearchQuery,
+          resolvedIntent: suggestedIntent,
+          searchMode: "suggestion",
+          shouldShowSuggestion: true,
+        });
+        console.log(
+          `[Search] zero-result suggestion for "${originalSearchQuery}" -> "${suggestedIntent.correctedQuery}" (${suggestedIntent.category})`,
+        );
+      }
+    }
 
     // ── Nearby-pincode top-up ─────────────────────────────────────────────────────
     // A location search that comes up thin (< MIN_RESULTS) widens to include
@@ -1565,7 +1789,17 @@ export const mainSearchController = async (req, res) => {
       }
     });
 
-    res.send({ results, total, page, pageSize, hasMore: page * pageSize < total, resolvedCategory: category || null, isNearbySearch, fallbackTier });
+    res.send({
+      results,
+      total,
+      page,
+      pageSize,
+      hasMore: page * pageSize < total,
+      resolvedCategory: resolvedCategoryForResponse || (category && total > 0 ? category : null),
+      searchIntent,
+      isNearbySearch,
+      fallbackTier,
+    });
 
   } catch (err) {
     console.error(err);

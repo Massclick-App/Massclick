@@ -55,6 +55,7 @@ import useMediaQuery from "../../../hooks/useMediaQuery.js";
 import useRenderNearViewport from "../../../hooks/useRenderNearViewport.js";
 import { trackSearch } from "../../../utils/webTracker.js";
 import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../utils/breadcrumbs";
+import { submitSearchIntent } from "../../../utils/searchIntent";
 
 const Footer = lazy(() =>
   import(/* webpackChunkName: "public-footer" */ "../footer/footer.js")
@@ -279,7 +280,7 @@ const SearchResultListSkeleton = ({ viewMode = "list" }) => {
 };
 
 const SearchResults = React.memo(
-  ({ initialResults, initialTotal, initialHasMore, routeContext = null } = {}) => {
+  ({ initialResults, initialTotal, initialHasMore, initialSearchIntent, routeContext = null } = {}) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const urlParams = useParams();
@@ -505,6 +506,7 @@ const SearchResults = React.memo(
     const [activeFilters, setActiveFilters] = useState({});
     const [filterConfig, setFilterConfig] = useState([]);
     const [resolvedCategory, setResolvedCategory] = useState(null);
+    const [searchIntent, setSearchIntent] = useState(initialSearchIntent || null);
     const effectiveCategory =
       isLocationListing ? null : resolvedCategory || (isKnownCategory ? normalizedSearchTerm : null);
     const [sortBy, setSortBy] = useState("relevant");
@@ -584,9 +586,10 @@ const SearchResults = React.memo(
       setHasMore(false);
       setNearbyResults([]);
       setResolvedCategory(null);
+      setSearchIntent(initialSearchIntent || null);
       setInitialSearchResolved(Boolean(safeStateResults));
       loadingPagesRef.current.clear();
-    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults, initialSearchIntent]);
 
     // Reset pagination when filters or sort change (but not the search term itself)
     useEffect(() => {
@@ -705,6 +708,7 @@ const SearchResults = React.memo(
         !stateAppliedRef.current
       ) {
         setResults(safeStateResults);
+        setSearchIntent(initialSearchIntent || null);
         const resolvedTotal = typeof initialTotal === "number"
           ? initialTotal
           : safeStateResults.length;
@@ -745,6 +749,7 @@ const SearchResults = React.memo(
         setTotalResults(normalized.total || 0);
         setHasMore(normalized.hasMore || false);
         setResolvedCategory(normalized.resolvedCategory || null);
+        setSearchIntent(normalized.searchIntent || null);
         setCurrentPage(1);
         setInitialSearchResolved(true);
         trackResolvedSearch(normalized.total || 0);
@@ -764,6 +769,7 @@ const SearchResults = React.memo(
       buildSearchParams,
       initialHasMore,
       initialResults,
+      initialSearchIntent,
       initialTotal,
       trackResolvedSearch,
     ]);
@@ -810,6 +816,7 @@ const SearchResults = React.memo(
         setTotalResults(normalized.total || 0);
         setHasMore(normalized.hasMore || false);
         setResolvedCategory(normalized.resolvedCategory || null);
+        setSearchIntent(normalized.searchIntent || null);
         setCurrentPage(1);
         setInitialSearchResolved(true);
         loadingPagesRef.current.clear();
@@ -1050,6 +1057,22 @@ const SearchResults = React.memo(
       dispatch(performSearch(normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams(1)));
     }, [dispatch, normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams]);
 
+    const handleSearchIntentSuggestion = useCallback(() => {
+      const correctedQuery = String(searchIntent?.correctedQuery || "").trim();
+      if (!correctedQuery) return;
+
+      submitSearchIntent({
+        searchTerm: correctedQuery,
+        locationName: locationInput || locationText,
+        defaultLocation: DEFAULT_LOCATION,
+        navigate,
+        dispatch,
+        setLocationName: setLocationInput,
+        setCategoryName: setSearchInput,
+        isKnownCategory: false,
+      });
+    }, [dispatch, locationInput, locationText, navigate, searchIntent?.correctedQuery]);
+
     if (categoryMismatchTarget) {
       return null;
     }
@@ -1087,6 +1110,16 @@ const SearchResults = React.memo(
     const pageDescription = isLocationListing
       ? `Discover trusted businesses in ${locationText}. Compare ratings, reviews and contact details to find the best near you.`
       : `Discover trusted ${searchText} in ${locationText}. Compare ratings, reviews and contact details to find the best near you.`;
+    const showSearchIntentNotice =
+      !isLocationListing &&
+      searchIntent?.shouldShowNotice &&
+      searchIntent?.originalQuery &&
+      searchIntent?.resolvedCategory;
+    const showSearchIntentSuggestion =
+      !isLocationListing &&
+      searchIntent?.shouldShowSuggestion &&
+      searchIntent?.originalQuery &&
+      searchIntent?.correctedQuery;
     const fallbackSeo = {
       title: isLocationListing
         ? `Businesses in ${locationText} | Local Business Listings | Massclick`
@@ -1211,6 +1244,29 @@ const SearchResults = React.memo(
                 <h2 className={cx("results-subheading")}>
                   {pageDescription}
                 </h2>
+                {showSearchIntentNotice && (
+                  <div className={cx("search-intent-notice")} role="status">
+                    <span>
+                      Showing results for <strong>{searchIntent.resolvedCategory}</strong>
+                    </span>
+                    <small>You searched for {searchIntent.originalQuery}</small>
+                  </div>
+                )}
+                {showSearchIntentSuggestion && (
+                  <div className={cx("search-intent-notice")} role="status">
+                    <span>
+                      No exact match for <strong>{searchIntent.originalQuery}</strong>
+                    </span>
+                    <small>Did you mean {searchIntent.correctedQuery}?</small>
+                    <button
+                      type="button"
+                      className={cx("search-intent-action")}
+                      onClick={handleSearchIntentSuggestion}
+                    >
+                      Search
+                    </button>
+                  </div>
+                )}
                 {effectiveCategory && (
                   <CategoryPublicCounterBadge category={effectiveCategory} />
                 )}

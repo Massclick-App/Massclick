@@ -138,6 +138,38 @@ const masterLocationSchema = new mongoose.Schema({
             default: [0, 0],
         },
     },
+    coordinatesMeta: {
+        source: {
+            type: String,
+            enum: ["", "google-geocode", "derived-from-children", "manual"],
+            default: "",
+        },
+        confidence: {
+            type: String,
+            enum: ["", "high", "medium", "low"],
+            default: "",
+        },
+        query: {
+            type: String,
+            default: "",
+        },
+        formattedAddress: {
+            type: String,
+            default: "",
+        },
+        placeId: {
+            type: String,
+            default: "",
+        },
+        derivedFromCount: {
+            type: Number,
+            default: 0,
+        },
+        updatedAt: {
+            type: Date,
+            default: null,
+        },
+    },
 
     // The public gate. Every public read path filters on isActive: true, so
     // this doubles as the enable/disable switch: a disabled location stays in

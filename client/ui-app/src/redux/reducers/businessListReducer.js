@@ -47,6 +47,7 @@ const emptySuggestionContext = {
   limit: 10,
   total: 0,
   query: "",
+  searchIntent: null,
 };
 
 const getSuggestionContext = (state, context) =>
@@ -510,6 +511,7 @@ export default function businessListReducer(state = initialState, action) {
                 total: 0,
                 query: action.meta?.query || "",
                 limit: action.meta?.limit || currentContext.limit,
+                searchIntent: null,
               }),
         };
         return {
@@ -581,6 +583,9 @@ export default function businessListReducer(state = initialState, action) {
           query: Array.isArray(action.payload)
             ? (action.meta?.query || "")
             : String(action.payload?.query || action.meta?.query || ""),
+          searchIntent: Array.isArray(action.payload)
+            ? null
+            : action.payload?.searchIntent || null,
         };
 
         return {
@@ -618,6 +623,7 @@ export default function businessListReducer(state = initialState, action) {
                 page: 0,
                 total: 0,
                 query: action.meta?.query || "",
+                searchIntent: null,
               }),
         };
         return {

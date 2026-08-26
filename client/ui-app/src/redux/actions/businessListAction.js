@@ -603,7 +603,8 @@ export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => asy
           limit,
           total: raw.length,
           hasMore: raw.length >= limit,
-          query: search
+          query: search,
+          searchIntent: null
         }
       : {
           items: Array.isArray(raw?.items) ? raw.items : [],
@@ -611,7 +612,8 @@ export const getBackendSuggestions = (searchOrOptions, extraOptions = {}) => asy
           limit: Number(raw?.limit) || limit,
           total: Number(raw?.total) || 0,
           hasMore: Boolean(raw?.hasMore),
-          query: String(raw?.query || search)
+          query: String(raw?.query || search),
+          searchIntent: raw?.searchIntent || null
         };
 
     dispatch({
@@ -650,8 +652,8 @@ export const backendMainSearch = (term, location, category, extraParams = {}) =>
     const raw = response.data;
     const isLegacy = Array.isArray(raw);
     const normalized = isLegacy
-      ? { results: raw, total: raw.length, page: 1, pageSize: raw.length, hasMore: false, resolvedCategory: null }
-      : { results: raw.results || [], total: raw.total || 0, page: raw.page || 1, pageSize: raw.pageSize || 20, hasMore: raw.hasMore || false, resolvedCategory: raw.resolvedCategory || null };
+      ? { results: raw, total: raw.length, page: 1, pageSize: raw.length, hasMore: false, resolvedCategory: null, searchIntent: null }
+      : { results: raw.results || [], total: raw.total || 0, page: raw.page || 1, pageSize: raw.pageSize || 20, hasMore: raw.hasMore || false, resolvedCategory: raw.resolvedCategory || null, searchIntent: raw.searchIntent || null };
 
     dispatch({ type: SEARCH_BUSINESS_SUCCESS, payload: normalized.results });
 
@@ -662,7 +664,7 @@ export const backendMainSearch = (term, location, category, extraParams = {}) =>
       type: SEARCH_BUSINESS_FAILURE,
       payload: error.response?.data || error.message,
     });
-    return { payload: { results: [], total: 0, page: 1, pageSize: 20, hasMore: false, resolvedCategory: null } };
+    return { payload: { results: [], total: 0, page: 1, pageSize: 20, hasMore: false, resolvedCategory: null, searchIntent: null } };
   }
 };
 

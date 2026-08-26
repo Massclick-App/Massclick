@@ -11,6 +11,7 @@ const getOptionLabel = option => {
   if (typeof option === "string") return option;
   if (!option || typeof option !== "object") return "";
   return String(
+    option.label ||
     option.category ||
     option.categoryName ||
     option.businessName ||
