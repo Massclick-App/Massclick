@@ -24,6 +24,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import styles from "./SearchResult.module.css";
 import StickySearchBar from "../StickySearchBar/StickySearchBar";
 import CardDesign from "../cards/cards.js";
+import { formatBusinessAddress } from "../../../utils/formatBusinessAddress.js";
 import SeoMeta from "../seo/seoMeta.js";
 import Breadcrumbs from "../Breadcrumbs/Breadcrumbs.js";
 import {
@@ -1409,7 +1410,15 @@ const SearchResults = React.memo(
                                   : null
                               }
                               reviews={totalRatings}
-                              address={business.location}
+                              // `business.location` is a free-text district
+                              // label ("Trichy"), not the business's own
+                              // address — every card showed the same string.
+                              // The formatter builds a real address and ends it
+                              // with the searched locality, so the result reads
+                              // as local to what was asked for.
+                              address={formatBusinessAddress(business, {
+                                searchedLocation: locationText,
+                              })}
                               experience={business.experience}
                               category={business.category}
                               price={
@@ -1511,7 +1520,9 @@ const SearchResults = React.memo(
                                       : null
                                   }
                                   reviews={b.totalReviews || 0}
-                                  address={b.location}
+                                  address={formatBusinessAddress(b, {
+                                    searchedLocation: locationText,
+                                  })}
                                   experience={b.experience}
                                   category={b.category}
                                   price={

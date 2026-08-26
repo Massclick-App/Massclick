@@ -8,6 +8,11 @@ import BusinessFormSection from "./BusinessFormSection";
 import styles from "../business.module.css";
 import { getAllUsersClient } from "../../../redux/actions/userClientAction";
 import { searchMasterLocations } from "../../../redux/actions/masterLocationAction";
+import {
+  formatBusinessAddress,
+  getAddressWarnings,
+  normalizeAddressField,
+} from "../../../utils/formatBusinessAddress";
 
 const getMasterLocationLabel = (option) => {
   if (!option || typeof option !== "object") return "";
@@ -174,6 +179,31 @@ const BusinessFormStep0 = ({
   );
 
   const fieldClass = (...extra) => cx("form-input-group", "field-card", ...extra);
+
+  // Tidy an address field when the operator leaves it: trailing commas, stray
+  // spaces and pasted placeholders are the bulk of what makes stored addresses
+  // unusable, and they are all obvious to fix at the moment of entry.
+  const handleAddressBlur = (event) => {
+    const { name, value } = event.target;
+    const normalized = normalizeAddressField(value);
+    if (normalized === value) return;
+    setFormData((prev) => ({ ...prev, [name]: normalized }));
+  };
+
+  // Years in business is a count, not free text. Anything non-numeric typed
+  // here previously reached the card and rendered as "+++ yrs experience".
+  const handleExperienceBlur = (event) => {
+    const digits = String(event.target.value || "").replace(/\D/g, "");
+    const years = digits ? String(Math.min(Number.parseInt(digits, 10), 200)) : "";
+    if (years === event.target.value) return;
+    setFormData((prev) => ({ ...prev, experience: years }));
+  };
+
+  // What the search-result card will actually render for this business, using
+  // the exact function the card uses. Showing it live is what teaches the
+  // format — a rule in a helper note gets skimmed, a wrong preview does not.
+  const addressPreview = formatBusinessAddress(formData);
+  const addressWarnings = getAddressWarnings(formData);
   const paymentConcept = normalizePaymentConcept
     ? normalizePaymentConcept(formData.paymentConcept)
     : formData.paymentConcept;
@@ -301,17 +331,34 @@ const BusinessFormStep0 = ({
         </small>
       </div>
 
+      <div className={fieldClass("field-span-full", "field-surface")}>
+        <label className="form-input-label">Address preview (as shown on search results)</label>
+        <p className={cx("address-preview")}>
+          {addressPreview || "Fill in the street and location to see the preview."}
+        </p>
+        {addressWarnings.length > 0 && (
+          <ul className={cx("address-preview-warnings")}>
+            {addressWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className={cx("section-grid", "section-grid-2")}>
         <div className={fieldClass()}>
           <label htmlFor="plotNumber" className="form-input-label">Plot Number</label>
-          <input type="text" id="plotNumber" name="plotNumber" className={`form-text-input ${fieldErrors.plotNumber ? "error" : ""}`} value={formData.plotNumber} onChange={handleChange} />
+          <input type="text" id="plotNumber" name="plotNumber" className={`form-text-input ${fieldErrors.plotNumber ? "error" : ""}`} value={formData.plotNumber} onChange={handleChange} onBlur={handleAddressBlur} placeholder="Door / shop / plot number only" />
           {renderFieldError("plotNumber")}
         </div>
 
         <div className={fieldClass()}>
           <label htmlFor="street" className="form-input-label">Street</label>
-          <input type="text" id="street" name="street" className={`form-text-input ${fieldErrors.street ? "error" : ""}`} value={formData.street} onChange={handleChange} placeholder="Enter street address" />
+          <input type="text" id="street" name="street" className={`form-text-input ${fieldErrors.street ? "error" : ""}`} value={formData.street} onChange={handleChange} onBlur={handleAddressBlur} placeholder="Street, area and landmark" />
           {renderFieldError("street")}
+          <small className={cx("helper-note")}>
+            Street only — leave out the door number, district, pincode and state. Those are added automatically.
+          </small>
         </div>
 
         <div className={fieldClass()}>
@@ -462,8 +509,11 @@ const BusinessFormStep0 = ({
 
         <div className={fieldClass("field-span-4")}>
           <label htmlFor="experience" className="form-input-label">Experience (Years)</label>
-          <input type="text" id="experience" name="experience" className={`form-text-input ${fieldErrors.experience ? "error" : ""}`} value={formData.experience} onChange={handleChange} />
+          <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} id="experience" name="experience" className={`form-text-input ${fieldErrors.experience ? "error" : ""}`} value={formData.experience} onChange={handleChange} onBlur={handleExperienceBlur} placeholder="Number of years, e.g. 12" />
           {renderFieldError("experience")}
+          <small className={cx("helper-note")}>
+            Digits only — the "+ years experience" wording is added by the site. Leave blank if unknown.
+          </small>
         </div>
       </div>
     </>

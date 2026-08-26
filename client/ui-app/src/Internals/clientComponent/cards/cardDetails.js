@@ -54,6 +54,7 @@ import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "../../../utils/bre
 import OTPLoginModal from "../AddBusinessModel.js";
 import PopularCategoriesLink from "../popularCategories/popularCategories.js";
 import massClickLogo from "../../../assets/mclogo.webp";
+import { formatFullBusinessAddress, formatStreetDetail, formatExperience, getLocalityLabel } from "../../../utils/formatBusinessAddress.js";
 const cx = createScopedClassNames(styles);
 const toSlug = (text = "") => String(text).toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 const SimpleModal = ({
@@ -283,8 +284,11 @@ const BusinessDetail = React.memo(() => {
   const bannerIndex = mainImage ? Math.max(galleryImageSrcs.indexOf(mainImage), 0) : 0;
   const website = business.website;
   const formattedWebsite = website && website.startsWith("http") ? website : `https://${website}`;
-  const addressParts = [business.plotNumber, business.street, business.location].filter(Boolean);
-  const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : "Address not available";
+  // Joining the raw fields printed the plot number twice whenever the street
+  // already began with it ("42, 42, Mullai Nagar, …") and ended on the
+  // free-text `location` label rather than the resolved locality.
+  const fullAddress = formatFullBusinessAddress(business) || "Address not available";
+  const displayExperience = formatExperience(business.experience);
   const loadedReviewRatings = loadedReviews
     .map(review => Number(review.rating))
     .filter(value => Number.isFinite(value) && value > 0);
@@ -321,7 +325,7 @@ const BusinessDetail = React.memo(() => {
     if (!business.openingHours) return [];
     return business.openingHours.slice().sort((a, b) => daysOfWeek.indexOf(a.day) - daysOfWeek.indexOf(b.day));
   };
-  const quickFactsRaw = [fullAddress, getTodayHours(), business.experience ? `${business.experience}+ Years in Business` : null, business.restaurantOptions || null];
+  const quickFactsRaw = [fullAddress, getTodayHours(), displayExperience ? `${displayExperience}+ Years in Business` : null, business.restaurantOptions || null];
   const quickFacts = quickFactsRaw.filter(Boolean);
   const isVerified = !!business.verification?.isVerified;
   const certificateType = business.verification?.certificateType || business.verification?.verificationType;
@@ -361,7 +365,7 @@ const BusinessDetail = React.memo(() => {
     isVerified ? "Verified" : null,
     isTrusted ? "Trust Certificate" : null,
     getTodayHours(),
-    business.experience ? `${business.experience}+ years experience` : null
+    displayExperience ? `${displayExperience}+ years experience` : null
   ].filter(Boolean);
   const rawKeywords = Array.isArray(business.keywords) ? business.keywords : typeof business.keywords === "string" ? business.keywords.split(",") : [];
   const businessKeywords = Array.from(new Set(rawKeywords.map(keyword => String(keyword).trim()).filter(Boolean)));
@@ -779,8 +783,11 @@ const BusinessDetail = React.memo(() => {
     email: business.email,
     website: business.website,
     address: {
-      street: [business.plotNumber, business.street].filter(Boolean).join(", "),
-      locality: business.location,
+      // Same cleaning as the visible address: structured data that disagrees
+      // with the page is worse than none, and the raw join duplicated the plot
+      // number into Google's index.
+      street: formatStreetDetail(business),
+      locality: getLocalityLabel(business) || business.location,
       postalCode: business.pincode,
       country: "IN"
     },
@@ -1099,7 +1106,7 @@ const BusinessDetail = React.memo(() => {
                   __html: normalizeOverviewHtml(overviewHtml)
                 }} />
                 <div className={cx("business-CardDetails-v2Metrics")}>
-                  <div><strong>{business.experience ? `${business.experience}+` : "New"}</strong><span>Years in Business</span></div>
+                  <div><strong>{displayExperience ? `${displayExperience}+` : "New"}</strong><span>Years in Business</span></div>
                   <div><strong>Active</strong><span>Business Listing</span></div>
                   <div><strong>{displayedAverageRating}<StarIcon /></strong><span>Customer Rating</span></div>
                   <div><strong>{isVerified ? "100%" : "Listed"}</strong><span>{isVerified ? "Verified Business" : "MassClick Business"}</span></div>
@@ -1121,7 +1128,7 @@ const BusinessDetail = React.memo(() => {
                       Experience
                     </span>
                     <span className={cx("business-CardDetails-infoValue")}>
-                      {business.experience ? `${business.experience}+ Years` : "N/A"}
+                      {displayExperience ? `${displayExperience}+ Years` : "N/A"}
                     </span>
                   </div>
                   <div className={cx("business-CardDetails-infoItem")}>
@@ -1370,7 +1377,7 @@ const BusinessDetail = React.memo(() => {
                 <div><EmailIcon /><dt>Email</dt><dd>{business.email || "Not provided"}</dd></div>
                 <div><LanguageIcon /><dt>Website</dt><dd>{website ? <a href={formattedWebsite} target="_blank" rel="noopener noreferrer">{website}</a> : "Not provided"}</dd></div>
                 <div><AccessTimeIcon /><dt>Established</dt><dd>{business.establishedYear || (business.createdAt ? new Date(business.createdAt).getFullYear() : "Not provided")}</dd></div>
-                <div><SpaIcon /><dt>Experience</dt><dd>{business.experience ? `${business.experience}+ years` : "Not provided"}</dd></div>
+                <div><SpaIcon /><dt>Experience</dt><dd>{displayExperience ? `${displayExperience}+ years` : "Not provided"}</dd></div>
                 <div><LocalOfferIcon /><dt>Category</dt><dd>{business.category || "Local business"}</dd></div>
               </dl>
               {(isVerified || isTrusted) && <div className={cx("business-CardDetails-v2InfoBadge")}><CheckCircleIcon /> MassClick verified business</div>}

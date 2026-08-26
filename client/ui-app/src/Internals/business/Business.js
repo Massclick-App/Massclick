@@ -78,6 +78,19 @@ const SECTION_ALL_FIELDS = {
   searchSeo: ["seoTitle", "seoDescription"],
 };
 const FORCE_BYPASS_BLOCKED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
+
+// Fields the DataGrid projection rewrites for display — blanks become "-" and
+// `location` becomes "ward, district" from the resolved hierarchy. When the
+// edit form is opened these must be read back from the stored document, or the
+// next save persists the display text as real data. Left unchecked this had
+// already written a literal "-" into 8,061 fields across 889 businesses.
+const DISPLAY_PLACEHOLDER_FIELDS = [
+  "clientId", "businessName", "plotNumber", "street", "pincode", "globalAddress",
+  "email", "contact", "contactList", "gstin", "whatsappNumber", "experience",
+  "location", "category", "seoTitle", "seoDescription", "title", "description",
+  "slug", "restaurantOptions", "googleMap", "website", "facebook", "instagram",
+  "youtube", "pinterest", "twitter", "linkedin", "businessDetails",
+];
 const FREE_REQUIRED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
 const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
 const ORANGE_PRIMARY = '#FF8C00';
@@ -2372,7 +2385,21 @@ const BusinessList = React.memo(() => {
     setFormData(nextData);
     updateLiveValidation(nextData, "keywords");
   };
-  const handleEdit = row => {
+  const handleEdit = displayRow => {
+    // Restore the display-only substitutions from the stored document before
+    // the form sees them (see DISPLAY_PLACEHOLDER_FIELDS). Only those fields
+    // are taken from storage — the rest of the projection supplies defaults
+    // the form depends on, such as openingHours and geoLocation.
+    const stored = businessList.find(item => item._id === displayRow._id);
+    const row = stored
+      ? {
+          ...displayRow,
+          ...Object.fromEntries(
+            DISPLAY_PLACEHOLDER_FIELDS.map(field => [field, stored[field] ?? ""]),
+          ),
+        }
+      : displayRow;
+
     setEditMode(true);
     setActiveView("form");
     setEditId(row.id);

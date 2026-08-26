@@ -27,6 +27,7 @@ import {
   isAcceptedBusinessDetailsUrl,
 } from "./businessPublicUrlHelper.js";
 import { PUBLIC_ID_RE } from "./businessUrl.js";
+import { normalizeBusinessWritePayload } from "./normalizeBusinessFields.js";
 
 const BUSINESS_PAYMENT_GST_RATE = 18;
 
@@ -245,6 +246,10 @@ const ensureReviewQrCode = async (business = {}) => {
 
 export const createBusinessList = async (reqBody = {}) => {
   try {
+    // Clean free-text fields before anything reads them, so bulk imports and
+    // API callers land the same tidy values the admin form produces.
+    normalizeBusinessWritePayload(reqBody);
+
     if (!reqBody.businessName && reqBody.name) {
       reqBody.businessName = reqBody.name;
     }
@@ -1062,6 +1067,8 @@ export const updateBusinessList = async (id, data) => {
 
   const business = await businessListModel.findById(id);
   if (!business) throw new Error("Business not found");
+
+  normalizeBusinessWritePayload(data);
 
   if (!data.businessName && data.name) {
     data.businessName = data.name;

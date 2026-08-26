@@ -1738,6 +1738,27 @@ textarea[readonly],
   line-height: 1.4;
 }
 
+/* Live echo of what the search-result card will render for this business. */
+.address-preview {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f4f6f8;
+  border-left: 3px solid #ff8c00;
+  color: #1f2937;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.address-preview-warnings {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #b45309;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
 /* --- FIELD VARIANTS --- */
 .field-compact .text-input,
 .field-compact .select-input {

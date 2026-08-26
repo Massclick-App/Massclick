@@ -20,6 +20,7 @@ import CheckBoxRoundedIcon from "@mui/icons-material/CheckBoxRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "../../../redux/actions/favoriteAction";
 import { trackBusinessClick, trackSearchResultClick } from "../../../utils/webTracker.js";
+import { formatExperience } from "../../../utils/formatBusinessAddress.js";
 import massClickLogo from "../../../assets/mclogo.webp";
 
 const OTPLoginModal = lazy(() =>
@@ -183,6 +184,10 @@ const Cards = ({
     fc => (fc.key === "price" || fc.key === "priceRange") && fc.enabled === false
   );
   const certificateLocation = address || "Business location verified by MassClick";
+  // `experience` is free text and a third of stored values are placeholders
+  // like "++" or "-", which used to render as "+++ yrs experience". null means
+  // nothing usable was stored, so the row is omitted entirely.
+  const displayExperience = formatExperience(experience);
   const businessLogo = logoImage || imageSrc || "";
   const hasTrustCertificate = isTrusted || certificateType === "trust" || isFeatured;
   const savedCertificateUrl = activeCertificate === "trust"
@@ -464,7 +469,7 @@ const Cards = ({
                 <div className={cx("card-info")}>
                   {address && <p className={cx("card-address-inline")}><LocationOnIcon className={cx("icon")} /><span>{address}</span></p>}
                   {category?.toLowerCase().includes("bank") && contactList && <p className={cx("card-ifsc")}>IFSC: {contactList}</p>}
-                  {experience != null && experience !== "" && <p className={cx("card-details")}><WorkHistoryRoundedIcon className={cx("icon")} />{experience}+ yrs experience</p>}
+                  {displayExperience && <p className={cx("card-details")}><WorkHistoryRoundedIcon className={cx("icon")} />{displayExperience}+ yrs experience</p>}
                   {filterBadges.length > 0 && (
                     <div className={cx("filter-badges")}>
                       {filterBadges.map(badge => <span key={badge} className={cx("filter-badge")}>{badge}</span>)}
@@ -503,7 +508,7 @@ const Cards = ({
               <div className={cx("card-info")}>
                 {address && <p className={cx("card-address-inline")}><LocationOnIcon className={cx("icon")} /><span>{address}</span></p>}
                 {category?.toLowerCase().includes("bank") && contactList && <p className={cx("card-ifsc")}>IFSC: {contactList}</p>}
-                {experience != null && experience !== "" && <p className={cx("card-details")}><WorkHistoryRoundedIcon className={cx("icon")} />{experience}+ yrs experience</p>}
+                {displayExperience && <p className={cx("card-details")}><WorkHistoryRoundedIcon className={cx("icon")} />{displayExperience}+ yrs experience</p>}
                 {filterBadges.length > 0 && (() => {
                   const isGrid = viewMode === "grid" || viewMode === "large";
                   const LIMIT = 2;
