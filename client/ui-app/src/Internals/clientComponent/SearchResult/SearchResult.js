@@ -1252,21 +1252,6 @@ const SearchResults = React.memo(
                     <small>You searched for {searchIntent.originalQuery}</small>
                   </div>
                 )}
-                {showSearchIntentSuggestion && (
-                  <div className={cx("search-intent-notice")} role="status">
-                    <span>
-                      No exact match for <strong>{searchIntent.originalQuery}</strong>
-                    </span>
-                    <small>Did you mean {searchIntent.correctedQuery}?</small>
-                    <button
-                      type="button"
-                      className={cx("search-intent-action")}
-                      onClick={handleSearchIntentSuggestion}
-                    >
-                      Search
-                    </button>
-                  </div>
-                )}
                 {effectiveCategory && (
                   <CategoryPublicCounterBadge category={effectiveCategory} />
                 )}
@@ -1410,13 +1395,41 @@ const SearchResults = React.memo(
                   {!showInitialResultsSkeleton &&
                     !loading &&
                     results.length === 0 && (
-                      <Suspense fallback={null}>
-                        <NoResultsRequestForm
-                          category={effectiveCategory || searchText}
-                          location={locationText}
-                          onClearFilters={hasActiveFilters ? handleClearAllFilters : null}
-                        />
-                      </Suspense>
+                      <>
+                        {showSearchIntentSuggestion && (
+                          <div className={cx("search-intent-panel")} role="status">
+                            <div className={cx("search-intent-panel-icon")} aria-hidden="true">
+                              ?
+                            </div>
+                            <div className={cx("search-intent-panel-copy")}>
+                              <span className={cx("search-intent-panel-kicker")}>
+                                Search suggestion
+                              </span>
+                              <h3>
+                                Did you mean <strong>{searchIntent.correctedQuery}</strong>?
+                              </h3>
+                              <p>
+                                No exact match for <strong>{searchIntent.originalQuery}</strong>.
+                                Try the corrected search before sending a request.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              className={cx("search-intent-panel-action")}
+                              onClick={handleSearchIntentSuggestion}
+                            >
+                              Search {searchIntent.correctedQuery}
+                            </button>
+                          </div>
+                        )}
+                        <Suspense fallback={null}>
+                          <NoResultsRequestForm
+                            category={effectiveCategory || searchText}
+                            location={locationText}
+                            onClearFilters={hasActiveFilters ? handleClearAllFilters : null}
+                          />
+                        </Suspense>
+                      </>
                     )}
 
                   {showInitialResultsSkeleton ? (
