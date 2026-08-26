@@ -7,6 +7,7 @@ import {
   formatExperience,
   getLocalityLabel,
   getAddressWarnings,
+  stripLeadingPlotFromStreet,
 } from "./formatBusinessAddress";
 
 const hexahub = {
@@ -240,5 +241,55 @@ describe("getAddressWarnings", () => {
         masterLocation: { district: "Tiruchirappalli" },
       }),
     ).toEqual([]);
+  });
+});
+
+describe("stripLeadingPlotFromStreet", () => {
+  it("removes a plot number repeated at the head of the street", () => {
+    expect(stripLeadingPlotFromStreet("42", "42, Mullai Nagar, Thendral Nagar")).toBe(
+      "Mullai Nagar, Thendral Nagar",
+    );
+  });
+
+  it("matches across punctuation and spacing differences", () => {
+    expect(stripLeadingPlotFromStreet("No.D-41", "No.D-41,7th Cross West")).toBe("7th Cross West");
+    expect(stripLeadingPlotFromStreet("No 34B", "No 34B,Ramakrishna Nagar, Karumandapam")).toBe(
+      "Ramakrishna Nagar, Karumandapam",
+    );
+  });
+
+  it("leaves a plot number that appears mid-street alone", () => {
+    expect(stripLeadingPlotFromStreet("63", "Muthaiya mahal, 63, Wireless Rd, opp")).toBeNull();
+  });
+
+  it("leaves the record alone when stripping would empty the street", () => {
+    const whole = "Vayalur Rd, Srinivase Nagar North, p.o, Puthur, Srinivasa Nagar";
+    expect(stripLeadingPlotFromStreet(whole, whole)).toBeNull();
+  });
+
+  it("leaves the space-separated form alone", () => {
+    // Deliberate: "9/21 MANICKKAPURAM" cannot be told apart from a street name
+    // that legitimately starts with a number, and stripping it mangled real
+    // records ("1st Floor, Phase 1" -> "Floor, Phase 1"). See stripPlotPrefix.
+    expect(stripLeadingPlotFromStreet("9/21", "9/21 MANICKKAPURAM, STREET")).toBeNull();
+    expect(stripLeadingPlotFromStreet("1st", "1st Floor, Phase 1, Dwaraka Nagar")).toBeNull();
+    expect(stripLeadingPlotFromStreet("1", "1st St, Charles Nagar, Palace Nagar")).toBeNull();
+    expect(stripLeadingPlotFromStreet("No 103", "No 103 C, Tamil Sangam Rd")).toBeNull();
+  });
+
+  it("leaves a near-miss plot number alone", () => {
+    // "NO: 42" against "NO: 42-A" is a different door, not a duplicate.
+    expect(stripLeadingPlotFromStreet("NO: 42", "NO: 42-A, Singarathope Street")).toBeNull();
+  });
+
+  it("does nothing without a usable plot number", () => {
+    expect(stripLeadingPlotFromStreet("", "Mullai Nagar")).toBeNull();
+    expect(stripLeadingPlotFromStreet("-", "Mullai Nagar")).toBeNull();
+  });
+
+  it("does not change what the card renders", () => {
+    const before = { plotNumber: "42", street: "42, Mullai Nagar, Thendral Nagar" };
+    const after = { plotNumber: "42", street: stripLeadingPlotFromStreet("42", before.street) };
+    expect(formatStreetDetail(after)).toBe(formatStreetDetail(before));
   });
 });

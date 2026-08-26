@@ -65,6 +65,20 @@ const sameSegment = (a, b) => {
   return fa.length > 0 && fa === fb;
 };
 
+// Is this whole comma segment just the plot number repeated?
+//
+// Only the comma-delimited form is treated as a duplicate. The space-separated
+// form ("9/21 MANICKKAPURAM", "No 103 C") was tried and deliberately rejected:
+// it cannot be told apart from a street whose name legitimately begins with a
+// number. Stripping it turned "1st Floor, Phase 1" into "Floor, Phase 1",
+// "17 street, Kamaraja Puram" into "street, Kamaraja Puram", and orphaned the
+// "C" of a "No 103 C" door number - 22 records, several of them mangled.
+// Those are left for a human to correct.
+//
+// @returns {string|null} "" if the segment is nothing but the plot number,
+//   or null if it should be left alone.
+const stripPlotPrefix = (segment, plot) => (sameSegment(segment, plot) ? "" : null);
+
 const splitSegments = (value) =>
   clean(value)
     .split(",")
@@ -106,11 +120,16 @@ export const formatStreetDetail = (business = {}) => {
   const segments = [...streetSegments];
 
   if (plot) {
-    // Only prepend the plot number when the street does not already open with
-    // it. Anywhere else in the street is left alone — "Muthaiya mahal, 63,
-    // Wireless Rd" is legitimately different from a duplicated prefix.
-    const alreadyLeading = segments.length > 0 && sameSegment(segments[0], plot);
-    if (!alreadyLeading) segments.unshift(plot);
+    // Drop the plot number from the head of the street when it is repeated
+    // there, then prepend it once. Anywhere else in the street is left alone —
+    // "Muthaiya mahal, 63, Wireless Rd" is legitimately different from a
+    // duplicated prefix.
+    const trimmed = segments.length > 0 ? stripPlotPrefix(segments[0], plot) : null;
+    if (trimmed !== null) {
+      if (trimmed === "") segments.shift();
+      else segments[0] = trimmed;
+    }
+    segments.unshift(plot);
   }
 
   return dedupeSegments(segments).join(", ");
@@ -291,6 +310,40 @@ export const formatExperience = (experience) => {
  * cleaned in the browser and one cleaned in the script come out identical.
  */
 export const normalizeAddressField = (value) => clean(value);
+
+/**
+ * Remove a plot number that the street repeats at its head, for STORAGE.
+ *
+ * `formatStreetDetail` already hides this duplication when rendering, but the
+ * two fields still hold it — "42" and "42, Mullai Nagar, Thendral Nagar" — so
+ * anything reading the raw fields sees it. This returns the street with that
+ * leading segment removed.
+ *
+ * Two cases deliberately return null (leave the record alone):
+ *
+ *  - the plot number appears somewhere OTHER than the head. "Muthaiya mahal,
+ *    63, Wireless Rd" with plot "63" is a real address, not a duplication.
+ *  - removing it would empty the street. A handful of records hold an entire
+ *    address in `plotNumber` with `street` set to the same text; deciding which
+ *    field should survive is a judgement call, not a cleanup.
+ *
+ * @returns {string|null} the corrected street, or null when nothing should change
+ */
+export const stripLeadingPlotFromStreet = (plotNumber, street) => {
+  const plot = clean(plotNumber);
+  if (!plot) return null;
+
+  const segments = splitSegments(street);
+  if (segments.length === 0) return null;
+
+  const trimmed = stripPlotPrefix(segments[0], plot);
+  if (trimmed === null) return null;
+
+  const remaining = trimmed === "" ? segments.slice(1) : [trimmed, ...segments.slice(1)];
+  if (remaining.length === 0) return null;
+
+  return remaining.join(", ");
+};
 
 // Exported for the entry form's inline warnings and for the database
 // normalization pass, which reports on the same conditions.
