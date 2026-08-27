@@ -31,6 +31,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 import { createPhonePePayment } from "../../redux/actions/phonePayAction.js";
 import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "../../redux/actions/gmapsLeadsAction";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
@@ -1111,6 +1112,13 @@ const BusinessList = React.memo(() => {
   const [hoveredPaidButtonId, setHoveredPaidButtonId] = useState(null); // Track which paid button is being hovered
   const [markingPaidId, setMarkingPaidId] = useState(null); // Business id currently being marked as paid
   const [postCreatePaidStatus, setPostCreatePaidStatus] = useState("idle");
+  const [invoiceEmailPrompt, setInvoiceEmailPrompt] = useState({
+    open: false,
+    businessId: null,
+    businessName: "",
+    email: "",
+    sending: false
+  }); // Ask before sending the invoice email after marking a business as paid
   const [postCreateBusinessName, setPostCreateBusinessName] = useState("");
   const [stepValidationTriggered, setStepValidationTriggered] = useState({});
   const [sideSuggestion, setSideSuggestion] = useState({
@@ -2787,6 +2795,55 @@ const BusinessList = React.memo(() => {
     }
   };
 
+  const openInvoiceEmailPrompt = source => {
+    if (!source?._id) return;
+    setInvoiceEmailPrompt({
+      open: true,
+      businessId: source._id,
+      businessName: source.businessName || "",
+      email: source.email || "",
+      sending: false
+    });
+  };
+  const closeInvoiceEmailPrompt = () => {
+    setInvoiceEmailPrompt(prev => (prev.sending ? prev : { ...prev, open: false }));
+  };
+  const handleConfirmSendInvoiceEmail = async () => {
+    const { businessId, email } = invoiceEmailPrompt;
+    if (!businessId) return;
+    setInvoiceEmailPrompt(prev => ({ ...prev, sending: true }));
+    try {
+      const token = localStorage.getItem('accessToken');
+      const emailResponse = await axiosInstance.post(
+        `${process.env.REACT_APP_API_URL}/phonepe/send-invoice`,
+        { businessId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (emailResponse.data?.alreadySent) {
+        enqueueSnackbar(`Invoice email already sent to ${email}`, { variant: "info" });
+      } else if (emailResponse.data?.success) {
+        enqueueSnackbar(`Invoice email sent to ${email}`, { variant: "success" });
+      } else {
+        enqueueSnackbar("Invoice email could not be sent", { variant: "warning" });
+      }
+    } catch (emailError) {
+      enqueueSnackbar(`Invoice email error: ${emailError.message}`, { variant: "warning" });
+    } finally {
+      setInvoiceEmailPrompt({
+        open: false,
+        businessId: null,
+        businessName: "",
+        email: "",
+        sending: false
+      });
+    }
+  };
   const markBusinessAsPaidAfterCreate = async (businessId, sourceData) => {
     if (!businessId) {
       return false;
@@ -3417,33 +3474,8 @@ const BusinessList = React.memo(() => {
             payment: [{ amount: row?.subscription?.price || PREMIUM_MEMBERSHIP_BASE_AMOUNT }]
           }));
           enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
-
-          // Send invoice email
-          try {
-            const token = localStorage.getItem('accessToken');
-            const emailResponse = await axiosInstance.post(
-              `${process.env.REACT_APP_API_URL}/phonepe/send-invoice`,
-              { businessId: row._id },
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            if (emailResponse.data?.alreadySent) {
-              enqueueSnackbar(`Invoice email already sent to ${row.email}`, { variant: "info" });
-            } else if (emailResponse.data?.success) {
-              enqueueSnackbar(`Invoice email sent to ${row.email}`, { variant: "info" });
-            } else {
-              enqueueSnackbar(`Invoice email could not be sent`, { variant: "warning" });
-            }
-          } catch (emailError) {
-            enqueueSnackbar(`Invoice email error: ${emailError.message}`, { variant: "warning" });
-          }
-
           dispatch(getAllBusinessList());
+          openInvoiceEmailPrompt(row);
         } catch {
           enqueueSnackbar("Payment failed. Please try again!", { variant: "error" });
         } finally {
@@ -3529,6 +3561,22 @@ const BusinessList = React.memo(() => {
                 fontSize: 18,
                 color: certificateRegeneratingId === row._id ? "#94a3b8" : "#8b5cf6",
                 cursor: certificateRegeneratingId === row._id ? "not-allowed" : "pointer"
+              }}
+            />
+          </Tooltip>
+        )}
+        {Boolean(row.amountPaid) && (
+          <Tooltip title={row.email ? `Send invoice email to ${row.email}` : "No email saved for this business"} arrow>
+            <ForwardToInboxOutlinedIcon
+              onClick={() => {
+                if (row.email) {
+                  openInvoiceEmailPrompt(row);
+                }
+              }}
+              sx={{
+                fontSize: 18,
+                color: row.email ? "#0ea5e9" : "#94a3b8",
+                cursor: row.email ? "pointer" : "not-allowed"
               }}
             />
           </Tooltip>
@@ -4487,9 +4535,17 @@ const BusinessList = React.memo(() => {
     <Dialog
       open={Boolean(detailRow)}
       onClose={() => setDetailRow(null)}
-      maxWidth="sm"
+      maxWidth="lg"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 3, maxHeight: "95vh", bgcolor: "#ffffff" } }}
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          maxHeight: "94vh",
+          width: "100%",
+          maxWidth: "1120px",
+          bgcolor: "#ffffff"
+        }
+      }}
     >
       {detailRow && (() => {
         const row = detailRow;
@@ -4563,25 +4619,6 @@ const BusinessList = React.memo(() => {
             enqueueSnackbar("Download failed", { variant: "error" });
           }
         };
-        const handleMarkPaid = async () => {
-          if (markingPaidId) return;
-          setMarkingPaidId(row._id);
-          try {
-            await dispatch(editBusinessList(row._id, {
-              name: row.businessName, businessName: row.businessName,
-              category: row.category, location: row.location,
-              payment: [{ amount: row?.subscription?.price || PREMIUM_MEMBERSHIP_BASE_AMOUNT }]
-            }));
-            enqueueSnackbar(`${row.businessName} marked as paid`, { variant: "success" });
-            dispatch(getAllBusinessList());
-            setDetailRow(null);
-          } catch {
-            enqueueSnackbar("Payment failed", { variant: "error" });
-          } finally {
-            setMarkingPaidId(null);
-          }
-        };
-
         const SLabel = ({ children }) => (
           <Typography sx={{ fontSize: "0.85rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.2px", color: "#64748b", mb: 1.6, display: "flex", alignItems: "center", gap: 1 }}>
             <Box sx={{ width: "3px", height: "3px", borderRadius: "50%", bgcolor: "#ff8c00" }} />
@@ -4590,16 +4627,23 @@ const BusinessList = React.memo(() => {
         );
         const DRow = ({ label, value }) => (
           !value || value === "-" ? null :
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", py: 1.1, paddingBottom: 1.1 }}>
-            <Typography sx={{ fontSize: "0.92rem", color: "#64748b", fontWeight: 600, flexShrink: 0, mr: 3 }}>{label}</Typography>
-            <Typography sx={{ fontSize: "0.92rem", color: "#0f172a", fontWeight: 600, textAlign: "right", wordBreak: "break-word", maxWidth: "50%" }}>{value}</Typography>
+          <Box sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 3,
+            py: 1.25,
+            "&:not(:last-of-type)": { borderBottom: "1px solid #f1f5f9" }
+          }}>
+            <Typography sx={{ fontSize: "0.92rem", color: "#64748b", fontWeight: 600, flexShrink: 0 }}>{label}</Typography>
+            <Typography sx={{ fontSize: "0.92rem", color: "#0f172a", fontWeight: 600, textAlign: "right", wordBreak: "break-word", lineHeight: 1.6, maxWidth: "62%" }}>{value}</Typography>
           </Box>
         );
 
         return (
           <>
             {/* Business Info Header - Polished */}
-            <Box sx={{ p: 4.5, bgcolor: "#ffffff", borderBottom: "1px solid #e8ecf1" }}>
+            <Box sx={{ px: { xs: 3, md: 4.5 }, py: { xs: 3, md: 3.5 }, bgcolor: "#ffffff", borderBottom: "1px solid #e8ecf1" }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={{ fontWeight: 800, fontSize: "1.55rem", color: "#0f172a", mb: 0.6, letterSpacing: "-0.5px" }}>
@@ -4645,11 +4689,17 @@ const BusinessList = React.memo(() => {
             </Box>
 
             {/* Scrollable Details */}
-            <Box sx={{ maxHeight: 500, overflowY: "auto", p: 0, display: "flex", flexDirection: "column", bgcolor: "#ffffff" }}>
-              <Box sx={{ p: 4.5, display: "flex", flexDirection: "column", gap: 3.5 }}>
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", p: 0, bgcolor: "#f8fafc" }}>
+              <Box sx={{
+                p: { xs: 3, md: 4.5 },
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+                gap: { xs: 2.5, md: 3 },
+                alignItems: "start"
+              }}>
 
                 {/* Contact Section */}
-                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                   <SLabel>Contact Information</SLabel>
                   <DRow label="Email" value={row.email} />
                   <DRow label="Phone" value={row.contact} />
@@ -4658,7 +4708,7 @@ const BusinessList = React.memo(() => {
                 </Box>
 
                 {/* Address Section */}
-                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                   <SLabel>Address Details</SLabel>
                   <DRow label="Location" value={row.location} />
                   <DRow label="Plot / Street" value={[row.plotNumber, row.street].filter(v => v && v !== "-").join(", ") || null} />
@@ -4667,7 +4717,7 @@ const BusinessList = React.memo(() => {
                 </Box>
 
                 {/* Business Info Section */}
-                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                   <SLabel>Business Information</SLabel>
                   <DRow label="Category" value={row.category} />
                   <DRow label="Category Group" value={categoryGroups} />
@@ -4683,7 +4733,7 @@ const BusinessList = React.memo(() => {
 
                 {/* Web & Social Section */}
                 {socialLinks.length > 0 && (
-                  <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                  <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                     <SLabel>Web & Social</SLabel>
                     {socialLinks.map(({ label, value }) => <DRow key={label} label={label} value={value} />)}
                   </Box>
@@ -4691,7 +4741,7 @@ const BusinessList = React.memo(() => {
 
                 {/* SEO Section */}
                 {(row.seoTitle || row.title || row.slug || keywords.length > 0) && (
-                  <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                  <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                     <SLabel>SEO Details</SLabel>
                     <DRow label="Display Title" value={row.title} />
                     <DRow label="SEO Title" value={row.seoTitle} />
@@ -4713,7 +4763,7 @@ const BusinessList = React.memo(() => {
                 )}
 
                 {(row.verification?.isVerified || row.badges?.isTrust || certificateLinks.length > 0) && (
-                  <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                  <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                     <SLabel>Certificates</SLabel>
                     <DRow label="Verified" value={row.verification?.isVerified ? "Active" : null} />
                     <DRow label="Trust" value={row.badges?.isTrust ? "Active" : null} />
@@ -4743,7 +4793,7 @@ const BusinessList = React.memo(() => {
                 )}
 
                 {/* Payment Section */}
-                <Box sx={{ pb: 2.5, borderBottom: "1px solid #e8ecf1" }}>
+                <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                   <SLabel>Payment Status</SLabel>
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1 }}>
                     <Box sx={{
@@ -4754,21 +4804,13 @@ const BusinessList = React.memo(() => {
                     }}>
                       {isPaid ? "? Paid" : "? Pending"}
                     </Box>
-                    {!isPaid && (
-                      <Button size="small" variant="contained" onClick={handleMarkPaid}
-                        disabled={markingPaidId === row._id}
-                        startIcon={markingPaidId === row._id ? <CircularProgress size={15} sx={{ color: "#ffffff" }} /> : null}
-                        sx={{ bgcolor: "#ff8c00", "&:hover": { bgcolor: "#d97800" }, "&.Mui-disabled": { bgcolor: "#ffb866", color: "#ffffff" }, fontSize: "0.9rem", textTransform: "none", py: 0.7, px: 2.5, fontWeight: 600 }}>
-                        {markingPaidId === row._id ? "Processing..." : "Mark as Paid"}
-                      </Button>
-                    )}
                   </Box>
                   {formattedDate && <Typography sx={{ fontSize: "0.85rem", color: "#64748b", mt: 1.2, fontWeight: 500 }}>Paid on {formattedDate}</Typography>}
                 </Box>
 
                 {/* QR Section */}
                 {row.qrImage && (
-                  <Box>
+                  <Box sx={{ p: { xs: 2.5, md: 3 }, bgcolor: "#ffffff", border: "1px solid #e8ecf1", borderRadius: "16px" }}>
                     <SLabel>QR Code</SLabel>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 3, p: 2.5, bgcolor: "#f8f9fa", borderRadius: "12px" }}>
                       <Avatar src={row.qrImage} variant="square" sx={{ width: 90, height: 90, borderRadius: 1.2, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }} />
@@ -4791,9 +4833,9 @@ const BusinessList = React.memo(() => {
                 change. Shown here so a link reported by a customer
                 ("...-ug709i") can be traced back to a business. */}
             <Box sx={{
-              px: 4,
+              px: { xs: 3, md: 4.5 },
               py: 2,
-              bgcolor: "#f8fafc",
+              bgcolor: "#f1f5f9",
               borderTop: "1px solid #e8ecf1",
               display: "flex",
               alignItems: "center",
@@ -4820,11 +4862,12 @@ const BusinessList = React.memo(() => {
 
             {/* Actions Footer - Polished */}
             <Box sx={{
-              p: 4,
+              px: { xs: 3, md: 4.5 },
+              py: 3,
               bgcolor: "#ffffff",
               borderTop: "1px solid #e8ecf1",
               display: "flex",
-              gap: 1.5,
+              gap: 2,
               flexWrap: "wrap"
             }}>
               {livePageUrl && (
@@ -5419,6 +5462,31 @@ const BusinessList = React.memo(() => {
             {loading ? <CircularProgress size={20} color="inherit" /> : "Create Anyway"}
           </Button>
         )}
+      </DialogActions>
+    </Dialog>
+
+    <Dialog open={invoiceEmailPrompt.open} onClose={closeInvoiceEmailPrompt} maxWidth="xs" fullWidth>
+      <DialogTitle>Send invoice email?</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2">
+          <strong>{invoiceEmailPrompt.businessName || "This business"}</strong> is marked as paid.
+          {invoiceEmailPrompt.email
+            ? <> Do you want to send the invoice email to <strong>{invoiceEmailPrompt.email}</strong>?</>
+            : " No email address is saved for this business, so the invoice cannot be emailed."}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={closeInvoiceEmailPrompt} color="secondary" disabled={invoiceEmailPrompt.sending}>
+          Don't send
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleConfirmSendInvoiceEmail}
+          disabled={invoiceEmailPrompt.sending || !invoiceEmailPrompt.email}
+          startIcon={invoiceEmailPrompt.sending ? <CircularProgress size={15} sx={{ color: "#ffffff" }} /> : null}
+        >
+          {invoiceEmailPrompt.sending ? "Sending..." : "Send invoice"}
+        </Button>
       </DialogActions>
     </Dialog>
 
