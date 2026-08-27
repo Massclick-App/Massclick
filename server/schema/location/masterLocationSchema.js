@@ -141,7 +141,15 @@ const masterLocationSchema = new mongoose.Schema({
     coordinatesMeta: {
         source: {
             type: String,
-            enum: ["", "google-geocode", "derived-from-children", "manual"],
+            enum: [
+                "",
+                "google-geocode",
+                "business-derived",
+                "gmaps-leads-derived",
+                "mixed-derived",
+                "derived-from-children",
+                "manual",
+            ],
             default: "",
         },
         confidence: {

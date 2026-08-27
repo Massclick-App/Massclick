@@ -1779,48 +1779,6 @@ export const mainSearchController = async (req, res) => {
         }
       }
 
-      // Geo + pincode still came up thin — widen all the way out to the
-      // resolved location's district.
-      if (total < MIN_RESULTS) {
-        const districtName = resolvedLocation?.district;
-        if (districtName) {
-          const districtKey = normalize(districtName);
-          const districtNames = [
-            ...new Set(
-              [districtKey, ...(districtAliasMap[districtKey] || [])].filter(Boolean),
-            ),
-          ];
-          const originalLocationClause = matchQuery.$and[locationClauseIndex];
-          const districtMatchQuery = { ...matchQuery, $and: [...matchQuery.$and] };
-          districtMatchQuery.$and[locationClauseIndex] = {
-            $or: [
-              originalLocationClause,
-              {
-                $or: [
-                  {
-                    "masterLocation.district": {
-                      $regex: `^${escapeRegex(districtName)}$`,
-                      $options: "i",
-                    },
-                  },
-                  ...districtNames.map((name) => ({
-                    location: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
-                  })),
-                ],
-              },
-            ],
-          };
-
-          console.log(`[Search] still only ${total} result(s) — widening to district "${districtName}"`);
-          const districtResult = await runAggregation(districtMatchQuery);
-          if (districtResult.total > total) {
-            ({ results, total } = districtResult);
-            isNearbySearch = true;
-            fallbackTier = "district";
-            console.log(`[Search] → district-wide fallback found ${districtResult.total} result(s) total`);
-          }
-        }
-      }
     }
 
     // Sign image URLs
