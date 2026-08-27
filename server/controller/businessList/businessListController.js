@@ -18,6 +18,30 @@ import {
   resolveRouteLocation,
 } from "../../helper/location/locationResolver.js";
 import { getLocationUrlPath } from "../../helper/location/locationSlug.js";
+import { getSettings } from "../../helper/systemSettings/settingsService.js";
+
+const DEFAULT_SEARCH_NEARBY_RADIUS_KM = 20;
+const MIN_SEARCH_NEARBY_RADIUS_KM = 1;
+const MAX_SEARCH_NEARBY_RADIUS_KM = 100;
+
+const clampSearchNearbyRadiusKm = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return DEFAULT_SEARCH_NEARBY_RADIUS_KM;
+  return Math.min(
+    MAX_SEARCH_NEARBY_RADIUS_KM,
+    Math.max(MIN_SEARCH_NEARBY_RADIUS_KM, Math.round(number))
+  );
+};
+
+const getSearchNearbyRadiusKm = async () => {
+  try {
+    const settings = await getSettings();
+    return clampSearchNearbyRadiusKm(settings?.search_nearby_radius_km);
+  } catch (error) {
+    console.error("[Search] failed to read nearby radius setting:", error.message);
+    return DEFAULT_SEARCH_NEARBY_RADIUS_KM;
+  }
+};
 
 const attachPublicLocationPaths = (businesses = []) =>
   businesses.map((business) => {
@@ -1704,7 +1728,10 @@ export const mainSearchController = async (req, res) => {
     const MIN_RESULTS = 5;
     let isNearbySearch = false;
     let fallbackTier = null;
+    let nearbySearchRadiusKm = DEFAULT_SEARCH_NEARBY_RADIUS_KM;
     if (total < MIN_RESULTS && locationClauseIndex >= 0) {
+      nearbySearchRadiusKm = await getSearchNearbyRadiusKm();
+      const nearbySearchRadiusMeters = nearbySearchRadiusKm * 1000;
       const triedPincodes = locationSearchScope?.pincodes?.length
         ? locationSearchScope.pincodes
         : (resolvedLocation?.pincode ? [resolvedLocation.pincode] : []);
@@ -1726,7 +1753,7 @@ export const mainSearchController = async (req, res) => {
             coordinates: {
               $nearSphere: {
                 $geometry: { type: "Point", coordinates: originCoordinates },
-                $maxDistance: 20000, // 20km
+                $maxDistance: nearbySearchRadiusMeters,
               },
             },
           })
@@ -1763,7 +1790,7 @@ export const mainSearchController = async (req, res) => {
       }
 
       if (nearbyPincodes.length > 0) {
-        console.log(`[Search] only ${total} result(s) for "${location}" — topping up with ${nearbyPincodes.length} nearby pincode(s)`);
+        console.log(`[Search] only ${total} result(s) for "${location}" — topping up with ${nearbyPincodes.length} nearby pincode(s) within ${nearbySearchRadiusKm}km`);
         const originalLocationClause = matchQuery.$and[locationClauseIndex];
         const widenedMatchQuery = { ...matchQuery, $and: [...matchQuery.$and] };
         widenedMatchQuery.$and[locationClauseIndex] = {
@@ -1806,6 +1833,7 @@ export const mainSearchController = async (req, res) => {
       searchIntent,
       isNearbySearch,
       fallbackTier,
+      nearbySearchRadiusKm,
     });
 
   } catch (err) {

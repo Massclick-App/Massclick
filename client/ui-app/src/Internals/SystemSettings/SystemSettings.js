@@ -136,6 +136,7 @@ const FIELD_HELP = {
   lead_guard_user_dedupe_minutes: "How many minutes duplicate customer leads are suppressed.",
   whatsapp_business_lead_daily_cap: "Maximum WhatsApp lead alerts one business number can receive per day.",
   whatsapp_business_lead_cooldown_minutes: "How many minutes to wait before sending another lead WhatsApp to the same business number.",
+  search_nearby_radius_km: "How far search should look for nearby pincodes when exact location results are too low.",
   redis_enabled: "Controls whether Redis-backed cache behavior is enabled.",
   cache_type: "Select which cache group should be invalidated.",
 };
@@ -241,6 +242,10 @@ const NUMBER_FIELD_RULES = {
   whatsapp_business_lead_cooldown_minutes: {
     min: 0,
     max: 1440
+  },
+  search_nearby_radius_km: {
+    min: 1,
+    max: 100
   }
 };
 const getFieldValidationError = (key, value) => {
@@ -519,8 +524,13 @@ const RATE_LIMIT_FIELDS = [{
   label: "Payment Window (minutes)",
   placeholder: "15"
 }];
+const SEARCH_FIELDS = [{
+  key: "search_nearby_radius_km",
+  label: "Nearby Radius (km)",
+  placeholder: "20"
+}];
 const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled"];
-const ALL_NUMBER_KEYS = [...GUARD_LIMIT_FIELDS.map(field => field.key), ...RATE_LIMIT_FIELDS.map(field => field.key)];
+const ALL_NUMBER_KEYS = [...GUARD_LIMIT_FIELDS.map(field => field.key), ...RATE_LIMIT_FIELDS.map(field => field.key), ...SEARCH_FIELDS.map(field => field.key)];
 const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
 const SETTINGS_SECTIONS = [{
   key: "operations",
@@ -536,6 +546,13 @@ const SETTINGS_SECTIONS = [{
   icon: WhatsAppIcon,
   color: "#22c55e",
   fieldKeys: ["otp_real_enabled", "whatsapp_business_lead_alert", "whatsapp_customer_business_list", "whatsapp_mni_lead_alert", "whatsapp_mni_customer_list", "whatsapp_login_welcome", "whatsapp_customer_business_list_send_mode"]
+}, {
+  key: "search",
+  label: "Search",
+  description: "Fallback radius and result expansion behavior.",
+  icon: DebugIcon,
+  color: "#2563eb",
+  fieldKeys: SEARCH_FIELDS.map(field => field.key)
 }, {
   key: "leadGuards",
   label: "Lead Guards",
@@ -1119,6 +1136,36 @@ export default function SystemSettings() {
                   </select>
                   {validationErrors.whatsapp_customer_business_list_send_mode && <div className={cx("form-error-text")}>{validationErrors.whatsapp_customer_business_list_send_mode}</div>}
                 </div>
+              </div>
+            </div>
+          </div>;
+      case "search":
+        return <div className={cx("compact-card panel-card")}>
+            <div className={cx("compact-card-header")}>
+              <div className={cx("compact-icon")} style={{
+              background: '#2563eb'
+            }}>
+                <DebugIcon />
+              </div>
+              <div className={cx("compact-header-text")}>
+                <div className={cx("compact-title")}>Search Fallback</div>
+                <div className={cx("compact-subtitle")}>Control how far nearby results can expand</div>
+              </div>
+            </div>
+            <div className={cx("section-group")}>
+              <div className={cx("form-grid")}>
+                {SEARCH_FIELDS.map(({
+                key,
+                label,
+                placeholder
+              }) => <div key={key} className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>{label}</span>
+                      <HelpHint text={FIELD_HELP[key]} />
+                    </label>
+                    <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-text-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
+                    {validationErrors[key] && <div className={cx("form-error-text")}>{validationErrors[key]}</div>}
+                  </div>)}
               </div>
             </div>
           </div>;

@@ -38,6 +38,7 @@ export const SYSTEM_SETTINGS_DEFAULTS = {
   whatsapp_business_lead_cooldown_enabled: true,
   whatsapp_business_lead_cooldown_minutes: 45,
   whatsapp_recipient_health_guard_enabled: true,
+  search_nearby_radius_km: 20,
 };
 
 let cache = null;

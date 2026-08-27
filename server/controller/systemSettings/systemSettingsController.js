@@ -4,6 +4,7 @@ import { getIO } from "../../websocket/ioInstance.js";
 import { WS_EVENTS } from "../../websocket/constants.js";
 import { createLogger } from "../../utils/logger.js";
 import { invalidateMaintenanceCache } from "../../middleware/maintenanceModeMiddleware.js";
+import { invalidateSearchCache } from "../../utils/cacheInvalidation.js";
 
 const logger = createLogger("SYSTEM_SETTINGS");
 
@@ -27,6 +28,7 @@ export const getSystemSettingsAction = async (req, res) => {
       logging_enabled: settings.logging_enabled,
       logging_level: settings.logging_level,
       redis_enabled: settings.redis_enabled,
+      search_nearby_radius_km: settings.search_nearby_radius_km,
       android_version: settings.app_android_latest_version,
       ios_version: settings.app_ios_latest_version
     };
@@ -114,6 +116,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       "lead_guard_user_dedupe_minutes",
       "whatsapp_business_lead_daily_cap",
       "whatsapp_business_lead_cooldown_minutes",
+      "search_nearby_radius_km",
     ];
 
     const numberFieldRules = {
@@ -137,6 +140,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       lead_guard_user_dedupe_minutes: { min: 0, max: 1440 },
       whatsapp_business_lead_daily_cap: { min: 0, max: 100 },
       whatsapp_business_lead_cooldown_minutes: { min: 0, max: 1440 },
+      search_nearby_radius_km: { min: 1, max: 100 },
     };
 
     // Validate logging_level enum
@@ -269,6 +273,9 @@ export const updateSystemSettingsAction = async (req, res) => {
 
     invalidateCache();
     invalidateMaintenanceCache();
+    if ("search_nearby_radius_km" in updates) {
+      await invalidateSearchCache();
+    }
 
     if ("app_maintenance_mode" in updates) {
       const isActive = !!updates.app_maintenance_mode;
