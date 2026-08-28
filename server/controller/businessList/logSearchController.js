@@ -102,6 +102,16 @@ const withRetry = async (fn, label, attempts = 3) => {
 
 const escapeRegex = (text = "") => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const maskMobile = (value = "") => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length <= 4) return digits || "none";
+  return `***${digits.slice(-4)}`;
+};
+
+const leadLog = (traceId, message, data = {}) => {
+  console.log(`[LeadFlow:${traceId || "no-trace"}] ${message}`, data);
+};
+
 const getDynamicCategoryRegex = (value = "") => {
   let text = value.toLowerCase().trim();
 
@@ -159,11 +169,22 @@ export const dispatchLeadToBusinesses = async ({
   waSettings = {},
   sendCustomerBusinessList = false,
   customerListBusinesses = businesses,
+  phase = "standard",
+  traceId = "",
 } = {}) => {
   let businessSendSuccess = false;
   let customerSendSuccess = !sendCustomerBusinessList;
   let customerListDisabled = false;
   const notifiedBusinesses = [];
+
+  leadLog(traceId, "dispatch:start", {
+    phase,
+    searchLogId: savedLog?._id?.toString?.() || "",
+    businessesCount: businesses.length,
+    customerListRequested: sendCustomerBusinessList,
+    category: finalCategoryName,
+    location: normalizedLocation,
+  });
 
   const customerMobileRaw = userDetails.mobileNumber1 || leadData.customerMobile || "";
   const customerMobile10 =
@@ -227,6 +248,13 @@ export const dispatchLeadToBusinesses = async ({
         },
       );
       ownerNewLeadMap.set(mobile10, captureResult.modifiedCount > 0);
+      leadLog(traceId, "owner-inbox:capture", {
+        phase,
+        businessId: business._id?.toString?.() || "",
+        businessName: business.businessName,
+        ownerMobile: maskMobile(mobile10),
+        newLead: captureResult.modifiedCount > 0,
+      });
     } catch (err) {
       console.error(
         `[LeadCapture] failed to persist lead for owner ${mobile10}:`,
@@ -277,8 +305,15 @@ export const dispatchLeadToBusinesses = async ({
         ownerUsersMap.set("91" + u.mobileNumber1, activeTokens);
       }
     }
+    leadLog(traceId, "push:owners-found", {
+      phase,
+      ownerMobiles: ownerMobilesForDB.length,
+      ownersWithTokens: ownerUsersMap.size,
+      tokens: [...ownerUsersMap.values()].reduce((sum, tokens) => sum + tokens.length, 0),
+    });
   } else {
     console.log("[FCM] no valid owner mobiles - skipping FCM lookup");
+    leadLog(traceId, "push:no-owner-mobiles", { phase });
   }
 
   const locationLabel =
@@ -327,6 +362,12 @@ export const dispatchLeadToBusinesses = async ({
     for (const cleanMobile of businessMobiles) {
       try {
         if (waSettings.whatsapp_business_lead_alert) {
+          leadLog(traceId, "whatsapp-owner:policy-check", {
+            phase,
+            businessId: business._id?.toString?.() || "",
+            businessName: business.businessName,
+            recipientMobile: maskMobile(cleanMobile),
+          });
           const sendPolicy = await evaluateWhatsAppSend({
             mobile: cleanMobile,
             template: "business_lead_alert_v2",
@@ -355,6 +396,13 @@ export const dispatchLeadToBusinesses = async ({
             console.warn(
               `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`,
             );
+            leadLog(traceId, "whatsapp-owner:skipped", {
+              phase,
+              businessId: business._id?.toString?.() || "",
+              businessName: business.businessName,
+              recipientMobile: maskMobile(cleanMobile),
+              reason: sendPolicy.skipReason,
+            });
             continue;
           }
 
@@ -368,8 +416,15 @@ export const dispatchLeadToBusinesses = async ({
               }),
             `Business WhatsApp ${business.businessName} ${cleanMobile}`,
           );
+          leadLog(traceId, "whatsapp-owner:sent", {
+            phase,
+            businessId: business._id?.toString?.() || "",
+            businessName: business.businessName,
+            recipientMobile: maskMobile(cleanMobile),
+          });
         } else {
           console.warn("[WhatsApp] business lead alert disabled in settings");
+          leadLog(traceId, "whatsapp-owner:disabled", { phase });
           continue;
         }
 
@@ -385,6 +440,13 @@ export const dispatchLeadToBusinesses = async ({
           "Business WhatsApp failed after retries:",
           err.response?.data || err.message,
         );
+        leadLog(traceId, "whatsapp-owner:error", {
+          phase,
+          businessId: business._id?.toString?.() || "",
+          businessName: business.businessName,
+          recipientMobile: maskMobile(cleanMobile),
+          error: err.response?.data || err.message,
+        });
       }
     }
   }
@@ -397,6 +459,11 @@ export const dispatchLeadToBusinesses = async ({
     if (cleanCustomerMobile) {
       try {
         if (waSettings.whatsapp_customer_business_list) {
+          leadLog(traceId, "whatsapp-customer-list:send", {
+            phase,
+            recipientMobile: maskMobile(cleanCustomerMobile),
+            businessesCount: customerListBusinesses.length,
+          });
           await withRetry(
             () =>
               sendBusinessesToCustomer(
@@ -413,11 +480,16 @@ export const dispatchLeadToBusinesses = async ({
               ),
             `Customer WhatsApp ${cleanCustomerMobile}`,
           );
+          leadLog(traceId, "whatsapp-customer-list:sent", {
+            phase,
+            recipientMobile: maskMobile(cleanCustomerMobile),
+          });
         } else {
           console.warn(
             "[WhatsApp] customer business list disabled in settings",
           );
           customerListDisabled = true;
+          leadLog(traceId, "whatsapp-customer-list:disabled", { phase });
         }
 
         if (!customerListDisabled) {
@@ -428,9 +500,25 @@ export const dispatchLeadToBusinesses = async ({
           "Customer WhatsApp failed",
           err.response?.data || err.message,
         );
+        leadLog(traceId, "whatsapp-customer-list:error", {
+          phase,
+          recipientMobile: maskMobile(cleanCustomerMobile),
+          error: err.response?.data || err.message,
+        });
       }
+    } else {
+      leadLog(traceId, "whatsapp-customer-list:no-mobile", { phase });
     }
   }
+
+  leadLog(traceId, "dispatch:done", {
+    phase,
+    businessSendSuccess,
+    customerSendSuccess,
+    customerListDisabled,
+    notifiedBusinessesCount: notifiedBusinesses.length,
+    whatsappUpdated: businessSendSuccess && customerSendSuccess,
+  });
 
   return {
     businessSendSuccess,
@@ -457,10 +545,23 @@ export const logSearchAction = async (req, res) => {
     const leadSettings = await getSettings();
     const rawSearchText = searchedUserText?.trim?.() || "";
 
+    leadLog(reqId, "request:received", {
+      categoryName,
+      location,
+      district,
+      masterLocationSlug,
+      searchedUserText: rawSearchText,
+      isKnownCategory,
+      matchedBusinessIdsCount: Array.isArray(matchedBusinessIds) ? matchedBusinessIds.length : 0,
+      userNamePresent: Boolean(userDetails?.userName),
+      customerMobile: maskMobile(userDetails?.mobileNumber1),
+    });
+
     if (
       leadSettings.lead_guard_search_text_required !== false &&
       !rawSearchText
     ) {
+      leadLog(reqId, "request:blocked-missing-search-text");
       return res.status(400).json({
         success: false,
         message: "Search text is mandatory",
@@ -596,6 +697,11 @@ export const logSearchAction = async (req, res) => {
         });
       }
 
+      leadLog(reqId, "request:anonymous-logged", {
+        recentDuplicate: Boolean(recentAnon),
+        detectedCategory: finalCategoryName,
+        location: normalizedLocation,
+      });
       return res.status(200).json({
         success: true,
         anonymous: true,
@@ -628,6 +734,11 @@ export const logSearchAction = async (req, res) => {
       });
     }
     if (recentLog?.whatsapp) {
+      leadLog(reqId, "request:deduped-recent-whatsapp", {
+        searchLogId: recentLog._id?.toString?.() || "",
+        detectedCategory: finalCategoryName,
+        location: normalizedLocation,
+      });
       return res.status(200).json({
         success: true,
         message: "Lead already sent recently",
@@ -670,6 +781,9 @@ export const logSearchAction = async (req, res) => {
       leadSettings.lead_guard_require_location !== false &&
       normalizedLocation === "global"
     ) {
+      leadLog(reqId, "request:lead-dispatch-blocked-global-location", {
+        searchLogId: savedLog._id?.toString?.() || "",
+      });
       return res.status(200).json({
         success: true,
         leadDispatched: false,
@@ -801,6 +915,10 @@ export const logSearchAction = async (req, res) => {
       businesses = orderedIds
         .map((id) => businessById.get(id))
         .filter(Boolean);
+      leadLog(reqId, "business-match:from-result-ids", {
+        requested: orderedIds.length,
+        found: businesses.length,
+      });
     } else {
       businesses = await businessListModel
         .find(searchMatchQuery, {
@@ -818,9 +936,19 @@ export const logSearchAction = async (req, res) => {
         .sort({ amountPaid: -1, paidDate: -1, averageRating: -1, createdAt: -1 })
         .limit(10)
         .lean();
+      leadLog(reqId, "business-match:from-query", {
+        found: businesses.length,
+        queryHasLocation: normalizedLocation && normalizedLocation !== "global",
+        queryHasDistrict: Boolean(normalizedDistrict),
+        categoryMatchValues: uniqueCategoryMatchValues,
+      });
     }
 
     if (!businesses.length) {
+      leadLog(reqId, "business-match:none", {
+        detectedCategory: finalCategoryName,
+        location: normalizedLocation,
+      });
       return res.status(200).json({
         success: true,
         message: "Lead stored but no businesses found",
@@ -846,6 +974,13 @@ export const logSearchAction = async (req, res) => {
     const premiumBusinesses = businesses.filter((business) => business.premiumBusiness === true);
     const normalBusinesses = businesses.filter((business) => business.premiumBusiness !== true);
 
+    leadLog(reqId, "business-match:split", {
+      total: businesses.length,
+      premium: premiumBusinesses.length,
+      normal: normalBusinesses.length,
+      delayMinutes: nonNegativeInteger(waSettings.premium_lead_delay_minutes, 30),
+    });
+
     if (!premiumBusinesses.length) {
       const dispatchResult = await dispatchLeadToBusinesses({
         businesses,
@@ -856,6 +991,8 @@ export const logSearchAction = async (req, res) => {
         normalizedLocation,
         waSettings,
         sendCustomerBusinessList: true,
+        phase: "standard",
+        traceId: reqId,
       });
 
       if (dispatchResult.customerListDisabled) {
@@ -895,6 +1032,8 @@ export const logSearchAction = async (req, res) => {
       normalizedLocation,
       waSettings,
       sendCustomerBusinessList: false,
+      phase: "premium",
+      traceId: reqId,
     });
 
     let premiumCustomerWhatsappSent = false;
@@ -915,14 +1054,26 @@ export const logSearchAction = async (req, res) => {
           `Premium recommendation WhatsApp ${cleanCustomerMobile}`,
         );
         premiumCustomerWhatsappSent = true;
+        leadLog(reqId, "whatsapp-premium-customer:sent", {
+          recipientMobile: maskMobile(cleanCustomerMobile),
+          premiumBusinessesCount: premiumBusinesses.length,
+          template: "pr_reco",
+        });
       } catch (err) {
         console.error(
           "Premium recommendation WhatsApp failed",
           err.response?.data || err.message,
         );
+        leadLog(reqId, "whatsapp-premium-customer:error", {
+          recipientMobile: maskMobile(cleanCustomerMobile),
+          error: err.response?.data || err.message,
+        });
       }
     } else if (!waSettings.whatsapp_customer_business_list) {
       console.warn("[WhatsApp] premium customer recommendation disabled because customer business list is disabled");
+      leadLog(reqId, "whatsapp-premium-customer:disabled");
+    } else {
+      leadLog(reqId, "whatsapp-premium-customer:no-mobile");
     }
 
     const delayMinutes = nonNegativeInteger(waSettings.premium_lead_delay_minutes, 30);
@@ -941,10 +1092,13 @@ export const logSearchAction = async (req, res) => {
           normalizedLocation,
           waSettings,
           sendCustomerBusinessList: false,
+          phase: "normal_immediate",
+          traceId: reqId,
         });
       } else {
         const delayedJob = await delayedLeadDispatchModel.create({
           searchLogId: savedLog._id,
+          traceId: reqId,
           businessIds: normalBusinesses.map((business) => business._id),
           leadData,
           userDetails: {
@@ -957,7 +1111,15 @@ export const logSearchAction = async (req, res) => {
           status: "scheduled",
         });
         delayedJobId = delayedJob._id;
+        leadLog(reqId, "delayed-normal:scheduled", {
+          delayedJobId: delayedJobId?.toString?.() || "",
+          businessesCount: normalBusinesses.length,
+          dueAt: delayedUntil,
+          delayMinutes,
+        });
       }
+    } else {
+      leadLog(reqId, "delayed-normal:none");
     }
 
     const whatsappUpdated =

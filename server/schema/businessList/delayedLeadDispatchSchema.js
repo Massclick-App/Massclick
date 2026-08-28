@@ -7,6 +7,7 @@ const delayedLeadDispatchSchema = new mongoose.Schema(
       ref: "logsearch",
       required: true,
     },
+    traceId: { type: String, default: "" },
     businessIds: [
       {
         type: mongoose.Schema.Types.ObjectId,

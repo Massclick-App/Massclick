@@ -20,6 +20,10 @@ const BUSINESS_PROJECTION = {
   premiumBusiness: 1,
 };
 
+const schedulerLog = (traceId, message, data = {}) => {
+  console.log(`[DelayedLeadDispatch:${traceId || "no-trace"}] ${message}`, data);
+};
+
 async function processDelayedLeadDispatches() {
   try {
     const now = new Date();
@@ -35,6 +39,10 @@ async function processDelayedLeadDispatches() {
       .sort({ dueAt: 1 })
       .limit(BATCH_LIMIT)
       .lean();
+
+    if (dueJobs.length > 0) {
+      console.log(`[DelayedLeadDispatch] due jobs found: ${dueJobs.length}`);
+    }
 
     for (const job of dueJobs) {
       const claimed = await delayedLeadDispatchModel.findOneAndUpdate(
@@ -53,6 +61,12 @@ async function processDelayedLeadDispatches() {
         { new: true },
       );
       if (!claimed) continue;
+      schedulerLog(claimed.traceId, "job:claimed", {
+        jobId: claimed._id?.toString?.() || "",
+        searchLogId: claimed.searchLogId?.toString?.() || "",
+        attempts: claimed.attempts,
+        businessIdsCount: claimed.businessIds?.length || 0,
+      });
 
       try {
         const orderedIds = (claimed.businessIds || [])
@@ -68,6 +82,12 @@ async function processDelayedLeadDispatches() {
           .map((id) => businessById.get(id))
           .filter(Boolean);
 
+        schedulerLog(claimed.traceId, "job:businesses-loaded", {
+          jobId: claimed._id?.toString?.() || "",
+          requested: orderedIds.length,
+          found: businesses.length,
+        });
+
         const settings = await getSettings();
         await dispatchLeadToBusinesses({
           businesses,
@@ -78,6 +98,8 @@ async function processDelayedLeadDispatches() {
           normalizedLocation: claimed.leadData?.location || "global",
           waSettings: settings,
           sendCustomerBusinessList: false,
+          phase: "delayed",
+          traceId: claimed.traceId || claimed._id?.toString?.() || "",
         });
 
         await delayedLeadDispatchModel.findByIdAndUpdate(claimed._id, {
@@ -89,11 +111,19 @@ async function processDelayedLeadDispatches() {
         console.log(
           `[DelayedLeadDispatch] sent job ${claimed._id} to ${businesses.length} business(es)`,
         );
+        schedulerLog(claimed.traceId, "job:sent", {
+          jobId: claimed._id?.toString?.() || "",
+          businessesCount: businesses.length,
+        });
       } catch (err) {
         console.error(
           `[DelayedLeadDispatch] failed job ${claimed._id}:`,
           err.message,
         );
+        schedulerLog(claimed.traceId, "job:failed", {
+          jobId: claimed._id?.toString?.() || "",
+          error: err.message,
+        });
         await delayedLeadDispatchModel.findByIdAndUpdate(claimed._id, {
           status: "failed",
           lastError: err.message || "Delayed lead dispatch failed",

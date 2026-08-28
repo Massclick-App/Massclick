@@ -803,6 +803,12 @@ export const sendPremiumBusinessesToCustomer = async (
       rows[1] || "-",
       rows[2] || "-",
     ];
+    console.log("[MSG91][PremiumBusinessRecommendation] sending", {
+      recipientMobile: recipientMobile ? `***${recipientMobile.slice(-4)}` : "none",
+      templateName: PREMIUM_RECOMMENDATION_TEMPLATE_NAME,
+      language: PREMIUM_RECOMMENDATION_TEMPLATE_LANGUAGE,
+      rows,
+    });
     const components = values.reduce((acc, value, index) => {
       acc[`body_${index + 1}`] = { type: "text", value };
       return acc;
