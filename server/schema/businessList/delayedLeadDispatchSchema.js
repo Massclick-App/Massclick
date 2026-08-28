@@ -14,6 +14,12 @@ const delayedLeadDispatchSchema = new mongoose.Schema(
         ref: "businesslist",
       },
     ],
+    customerListBusinessIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "businesslist",
+      },
+    ],
     leadData: {
       searchText: { type: String, default: "" },
       searchedUserText: { type: String, default: "" },

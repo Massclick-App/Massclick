@@ -543,6 +543,7 @@ export const logSearchAction = async (req, res) => {
     } = req.body;
     const reqId = Math.random().toString(36).slice(2, 8);
     const leadSettings = await getSettings();
+    const bypassLeadSendGuards = leadSettings.whatsapp_dev_bypass_lead_guards === true;
     const rawSearchText = searchedUserText?.trim?.() || "";
 
     leadLog(reqId, "request:received", {
@@ -667,6 +668,7 @@ export const logSearchAction = async (req, res) => {
       let recentAnon = null;
 
       if (
+        !bypassLeadSendGuards &&
         leadSettings.lead_guard_anonymous_dedupe_enabled !== false &&
         anonymousDedupeMinutes > 0
       ) {
@@ -719,6 +721,7 @@ export const logSearchAction = async (req, res) => {
     let recentLog = null;
 
     if (
+      !bypassLeadSendGuards &&
       leadSettings.lead_guard_user_dedupe_enabled !== false &&
       userDedupeMinutes > 0
     ) {
@@ -1091,7 +1094,8 @@ export const logSearchAction = async (req, res) => {
           finalCategoryName,
           normalizedLocation,
           waSettings,
-          sendCustomerBusinessList: false,
+          sendCustomerBusinessList: true,
+          customerListBusinesses: businesses,
           phase: "normal_immediate",
           traceId: reqId,
         });
@@ -1100,6 +1104,7 @@ export const logSearchAction = async (req, res) => {
           searchLogId: savedLog._id,
           traceId: reqId,
           businessIds: normalBusinesses.map((business) => business._id),
+          customerListBusinessIds: businesses.map((business) => business._id),
           leadData,
           userDetails: {
             userName: userDetails.userName || "",

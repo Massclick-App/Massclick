@@ -385,6 +385,10 @@ export const evaluateWhatsAppSend = async ({
     return { allowed: false, mobile: normalized.mobile, skipReason: adminBlock };
   }
 
+  if (settings.whatsapp_dev_bypass_lead_guards === true) {
+    return { allowed: true, mobile: normalized.mobile, skipReason: "" };
+  }
+
   if (settings.whatsapp_recipient_health_guard_enabled !== false && health?.whatsappInvalid) {
     return { allowed: false, mobile: normalized.mobile, skipReason: "recipient_marked_invalid" };
   }

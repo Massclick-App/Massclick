@@ -74,6 +74,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       "whatsapp_business_lead_duplicate_guard_enabled",
       "whatsapp_business_lead_cooldown_enabled",
       "whatsapp_recipient_health_guard_enabled",
+      "whatsapp_dev_bypass_lead_guards",
       "app_maintenance_mode",
       "logging_enabled",
       "logging_fcm_debug",

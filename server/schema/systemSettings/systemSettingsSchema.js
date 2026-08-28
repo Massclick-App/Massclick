@@ -58,6 +58,7 @@ const systemSettingsSchema = new mongoose.Schema(
     whatsapp_business_lead_cooldown_enabled: { type: Boolean, default: true },
     whatsapp_business_lead_cooldown_minutes: { type: Number, default: 45, min: 0 },
     whatsapp_recipient_health_guard_enabled: { type: Boolean, default: true },
+    whatsapp_dev_bypass_lead_guards: { type: Boolean, default: false },
     premium_lead_delay_minutes: { type: Number, default: 30, min: 0 },
 
     // Search fallback controls

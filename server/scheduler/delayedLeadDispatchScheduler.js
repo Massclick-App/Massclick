@@ -72,8 +72,14 @@ async function processDelayedLeadDispatches() {
         const orderedIds = (claimed.businessIds || [])
           .map((id) => id?.toString?.())
           .filter(Boolean);
+        const customerListIds = (claimed.customerListBusinessIds?.length
+          ? claimed.customerListBusinessIds
+          : claimed.businessIds || [])
+          .map((id) => id?.toString?.())
+          .filter(Boolean);
+        const idsToFetch = [...new Set([...orderedIds, ...customerListIds])];
         const fetchedBusinesses = await businessListModel
-          .find({ _id: { $in: orderedIds } }, BUSINESS_PROJECTION)
+          .find({ _id: { $in: idsToFetch } }, BUSINESS_PROJECTION)
           .lean();
         const businessById = new Map(
           fetchedBusinesses.map((business) => [business._id.toString(), business]),
@@ -81,11 +87,16 @@ async function processDelayedLeadDispatches() {
         const businesses = orderedIds
           .map((id) => businessById.get(id))
           .filter(Boolean);
+        const customerListBusinesses = customerListIds
+          .map((id) => businessById.get(id))
+          .filter(Boolean);
 
         schedulerLog(claimed.traceId, "job:businesses-loaded", {
           jobId: claimed._id?.toString?.() || "",
           requested: orderedIds.length,
           found: businesses.length,
+          customerListRequested: customerListIds.length,
+          customerListFound: customerListBusinesses.length,
         });
 
         const settings = await getSettings();
@@ -97,7 +108,8 @@ async function processDelayedLeadDispatches() {
           finalCategoryName: claimed.leadData?.searchText || "",
           normalizedLocation: claimed.leadData?.location || "global",
           waSettings: settings,
-          sendCustomerBusinessList: false,
+          sendCustomerBusinessList: true,
+          customerListBusinesses,
           phase: "delayed",
           traceId: claimed.traceId || claimed._id?.toString?.() || "",
         });

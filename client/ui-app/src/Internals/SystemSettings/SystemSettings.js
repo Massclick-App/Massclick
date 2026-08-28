@@ -119,6 +119,7 @@ const FIELD_HELP = {
   whatsapp_business_lead_duplicate_guard_enabled: "Stops the same business receiving the same customer/category/location lead again on the same day.",
   whatsapp_business_lead_cooldown_enabled: "Adds a waiting period before the same business number can receive another lead WhatsApp.",
   whatsapp_recipient_health_guard_enabled: "Skips WhatsApp recipients marked invalid or temporarily suppressed after delivery failures.",
+  whatsapp_dev_bypass_lead_guards: "Bypasses repeat-test WhatsApp lead protections for dev testing.",
   logging_enabled: "Master switch for application logging controls.",
   logging_fcm_debug: "Enables extra logs for Firebase push notification delivery.",
   logging_sms_debug: "Enables extra logs for SMS and WhatsApp gateway calls.",
@@ -378,6 +379,10 @@ const TOGGLE_GROUPS = [{
     key: "whatsapp_recipient_health_guard_enabled",
     label: "Recipient Health Guard",
     desc: "Skip invalid/suppressed numbers"
+  }, {
+    key: "whatsapp_dev_bypass_lead_guards",
+    label: "Dev Bypass Guards",
+    desc: "Ignore caps, duplicates, cooldown"
   }]
 }, {
   label: "Logging",
@@ -568,7 +573,7 @@ const SETTINGS_SECTIONS = [{
   description: "Search hygiene, duplicate protection, and send limits.",
   icon: GuardIcon,
   color: "#0ea5e9",
-  fieldKeys: ["lead_guard_search_text_required", "lead_guard_anonymous_dedupe_enabled", "lead_guard_user_dedupe_enabled", "lead_guard_live_business_only", "lead_guard_require_location", "whatsapp_business_lead_daily_cap_enabled", "whatsapp_business_lead_duplicate_guard_enabled", "whatsapp_business_lead_cooldown_enabled", "whatsapp_recipient_health_guard_enabled", ...GUARD_LIMIT_FIELDS.map(field => field.key)]
+  fieldKeys: ["lead_guard_search_text_required", "lead_guard_anonymous_dedupe_enabled", "lead_guard_user_dedupe_enabled", "lead_guard_live_business_only", "lead_guard_require_location", "whatsapp_business_lead_daily_cap_enabled", "whatsapp_business_lead_duplicate_guard_enabled", "whatsapp_business_lead_cooldown_enabled", "whatsapp_recipient_health_guard_enabled", "whatsapp_dev_bypass_lead_guards", ...GUARD_LIMIT_FIELDS.map(field => field.key)]
 }, {
   key: "versions",
   label: "App Releases",
