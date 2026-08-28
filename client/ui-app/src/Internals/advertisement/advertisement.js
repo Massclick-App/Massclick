@@ -670,7 +670,7 @@ export default function AdvertisementPage() {
                   </button>
                   <input ref={appFileInputRef} hidden type="file" accept="image/*" onChange={handleAppBannerImageChange} />
                 </div>
-                {appPreview && <div className={cx("banner-preview mobile-banner-preview")}>
+                {appPreview && <div className={cx("banner-preview app-banner-preview")}>
                     <span>App Preview</span>
                     <img src={appPreview} alt="app preview" />
                   </div>}

@@ -154,6 +154,11 @@
   aspect-ratio: 720 / 240;
 }
 
+.banner-preview.app-banner-preview {
+  width: min(100%, 360px);
+  aspect-ratio: 1080 / 720;
+}
+
 .banner-preview span {
   position: absolute;
   top: 8px;
