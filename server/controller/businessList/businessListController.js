@@ -915,12 +915,17 @@ const buildSearchIntent = ({
 export const resolveCategoryIntent = async (term, escapeRegex, options = {}) => {
   const { allowFuzzy = true } = options;
   const exactPattern = `^${escapeRegex(term)}$`;
-  const exactMatch = await categoryModel.findOne(
+  const exactCategoryMatch = await categoryModel.findOne(
     {
-      $or: [
-        { category: { $regex: exactPattern, $options: "i" } },
-        { keywords: { $regex: exactPattern, $options: "i" } }
-      ],
+      category: { $regex: exactPattern, $options: "i" },
+      isActive: true
+    },
+    { category: 1, keywords: 1, description: 1 }
+  );
+
+  const exactMatch = exactCategoryMatch || await categoryModel.findOne(
+    {
+      keywords: { $regex: exactPattern, $options: "i" },
       isActive: true
     },
     { category: 1, keywords: 1, description: 1 }
