@@ -17,6 +17,13 @@ const logger = createLogger('SMS');
 const MSG91_WHATSAPP_BULK_URL = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
 const MSG91_WHATSAPP_NUMBER = process.env.MSG91_WHATSAPP_SENDER_ID;
 const MSG91_WHATSAPP_NAMESPACE = process.env.MSG91_TEMPLATE_NAMESPACE;
+const PREMIUM_RECOMMENDATION_TEMPLATE_NAME =
+  process.env.MSG91_PREMIUM_RECOMMENDATION_TEMPLATE_NAME || "pr_reco";
+const PREMIUM_RECOMMENDATION_TEMPLATE_LANGUAGE =
+  process.env.MSG91_PREMIUM_RECOMMENDATION_TEMPLATE_LANGUAGE || "en";
+const PREMIUM_RECOMMENDATION_TEMPLATE_NAMESPACE =
+  process.env.MSG91_PREMIUM_RECOMMENDATION_TEMPLATE_NAMESPACE ||
+  "dbc73281_499f_40bf_8efa_4c8f7438ef7e";
 const SEARCH_REQUEST_COMPLETED_TEMPLATE_NAME =
   process.env.MSG91_SEARCH_REQUEST_COMPLETED_TEMPLATE_NAME ||
   "search_request_completed_v1";
@@ -761,6 +768,99 @@ export const sendBusinessesToCustomer = async (
 
     console.error(
       "[MSG91][CustomerBusinessList][ERROR]",
+      error?.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+export const sendPremiumBusinessesToCustomer = async (
+  cleanMobile,
+  lead,
+  businesses,
+  context = {}
+) => {
+  try {
+    const recipientMobile = await getValidMobileOrSkip(cleanMobile, {
+      templateName: PREMIUM_RECOMMENDATION_TEMPLATE_NAME,
+      sourceType: context.sourceType || "premium_customer_recommendation",
+      sourceId: context.sourceId,
+      category: lead.searchText || lead.category || "",
+      location: lead.location || "",
+      customerName: lead.customerName || "",
+      customerMobile: lead.customerMobile || cleanMobile || "",
+    });
+
+    const rows = getCustomerBusinessRows((businesses || []).slice(0, 3), 0)
+      .slice(0, 3)
+      .map((line) => line || "-");
+    const baseValues = getCustomerListBaseValues(lead);
+    const values = [
+      baseValues[0],
+      baseValues[1],
+      baseValues[2],
+      rows[0] || "-",
+      rows[1] || "-",
+      rows[2] || "-",
+    ];
+    const components = values.reduce((acc, value, index) => {
+      acc[`body_${index + 1}`] = { type: "text", value };
+      return acc;
+    }, {});
+
+    const payload = {
+      integrated_number: MSG91_WHATSAPP_NUMBER,
+      content_type: "template",
+      payload: {
+        messaging_product: "whatsapp",
+        type: "template",
+        template: {
+          name: PREMIUM_RECOMMENDATION_TEMPLATE_NAME,
+          language: {
+            code: PREMIUM_RECOMMENDATION_TEMPLATE_LANGUAGE,
+            policy: "deterministic",
+          },
+          namespace: PREMIUM_RECOMMENDATION_TEMPLATE_NAMESPACE,
+          to_and_components: [
+            {
+              to: [recipientMobile],
+              components,
+            },
+          ],
+        },
+      },
+    };
+
+    const auditContext = {
+      ...context,
+      templateName: PREMIUM_RECOMMENDATION_TEMPLATE_NAME,
+      sourceType: context.sourceType || "premium_customer_recommendation",
+      recipientMobile,
+      category: lead.searchText || lead.category || "",
+      location: lead.location || "",
+      customerName: lead.customerName || "",
+      customerMobile: lead.customerMobile || cleanMobile || "",
+    };
+
+    await postWhatsAppTemplate(payload, auditContext);
+    await logger.smsDebug({
+      service: "PremiumBusinessRecommendation",
+      phoneNumber: recipientMobile,
+      message: "Sent premium business recommendation to customer via WhatsApp",
+      provider: "MSG91",
+    });
+
+    return { success: true };
+  } catch (error) {
+    await logger.warn({
+      message: "Failed to send premium business recommendation via WhatsApp",
+      phoneNumber: cleanMobile,
+      error: error.message,
+      provider: "MSG91",
+    });
+
+    console.error(
+      "[MSG91][PremiumBusinessRecommendation][ERROR]",
       error?.response?.data || error.message
     );
     throw error;

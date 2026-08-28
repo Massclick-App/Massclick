@@ -14,6 +14,7 @@ import {
   sendBusinessesToCustomer,
   sendBusinessLead,
   sendEnquiryBusinessLead,
+  sendPremiumBusinessesToCustomer,
 } from "../../helper/msg91/smsGatewayHelper.js";
 import {
   evaluateWhatsAppSend,
@@ -27,6 +28,7 @@ import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
 import { sendBusinessEnquiryEmail, sendCustomerBusinessInfoEmail } from "../../helper/email/emailService.js";
+import delayedLeadDispatchModel from "../../model/businessList/delayedLeadDispatchModel.js";
 
 const districtAliasMap = {
   tiruchirappalli: ["tiruchirappalli", "trichy"],
@@ -145,6 +147,298 @@ const getDynamicCategoryRegex = (value = "") => {
   const uniqueWords = [...new Set(words)];
 
   return new RegExp(`^(${uniqueWords.join("|")})$`, "i");
+};
+
+export const dispatchLeadToBusinesses = async ({
+  businesses = [],
+  userDetails = {},
+  leadData = {},
+  savedLog,
+  finalCategoryName = leadData.searchText || "",
+  normalizedLocation = leadData.location || "global",
+  waSettings = {},
+  sendCustomerBusinessList = false,
+  customerListBusinesses = businesses,
+} = {}) => {
+  let businessSendSuccess = false;
+  let customerSendSuccess = !sendCustomerBusinessList;
+  let customerListDisabled = false;
+  const notifiedBusinesses = [];
+
+  const customerMobileRaw = userDetails.mobileNumber1 || leadData.customerMobile || "";
+  const customerMobile10 =
+    customerMobileRaw.startsWith("91") && customerMobileRaw.length === 12
+      ? customerMobileRaw.slice(2)
+      : customerMobileRaw;
+  const capturedSearchText = (
+    leadData.searchedUserText ||
+    leadData.searchText ||
+    finalCategoryName ||
+    ""
+  ).toLowerCase();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const ownerNewLeadMap = new Map();
+
+  for (const business of businesses) {
+    const ownerMobile = extractIndianMobiles([
+      business.contactList,
+      business.whatsappNumber,
+    ])[0];
+    if (!ownerMobile) continue;
+    const mobile10 =
+      ownerMobile.startsWith("91") && ownerMobile.length === 12
+        ? ownerMobile.slice(2)
+        : ownerMobile;
+    if (ownerNewLeadMap.has(mobile10)) continue;
+    if (mobile10 === customerMobile10) continue;
+
+    try {
+      const captureResult = await userModel.updateOne(
+        {
+          mobileNumber1: mobile10,
+          leadsData: {
+            $not: {
+              $elemMatch: {
+                mobileNumber1: customerMobileRaw,
+                searchedUserText: capturedSearchText,
+                createdAt: { $gte: startOfToday },
+              },
+            },
+          },
+        },
+        {
+          $push: {
+            leadsData: {
+              email: userDetails.email || leadData.email || "",
+              mobileNumber1: customerMobileRaw,
+              mobileNumber2: userDetails.mobileNumber2 || "",
+              searchedUserText: capturedSearchText,
+              time: new Date().toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+              }),
+              userName: userDetails.userName || leadData.customerName || "",
+              isWhatsappSend: false,
+              isReaded: false,
+              createdAt: new Date(),
+              readAt: null,
+            },
+          },
+        },
+      );
+      ownerNewLeadMap.set(mobile10, captureResult.modifiedCount > 0);
+    } catch (err) {
+      console.error(
+        `[LeadCapture] failed to persist lead for owner ${mobile10}:`,
+        err.message,
+      );
+      ownerNewLeadMap.set(mobile10, false);
+    }
+
+    emitToRoom(
+      buildRoom.business(mobile10),
+      WS_EVENTS.LEAD_ANALYTICS_UPDATE,
+      {
+        category: finalCategoryName,
+        location: normalizedLocation,
+        customerName: userDetails.userName || leadData.customerName || "",
+        newLead: ownerNewLeadMap.get(mobile10) === true,
+        ts: new Date().toISOString(),
+      },
+    );
+  }
+
+  const ownerMobiles = businesses
+    .flatMap((b) => extractIndianMobiles([b.contactList, b.whatsappNumber]))
+    .filter(Boolean);
+  const ownerMobilesForDB = ownerMobiles.map((m) =>
+    m.startsWith("91") && m.length === 12 ? m.slice(2) : m,
+  );
+
+  const ownerUsersMap = new Map();
+  if (ownerMobilesForDB.length > 0) {
+    const now = new Date();
+    const ownerUsers = await userModel
+      .find(
+        {
+          mobileNumber1: { $in: ownerMobilesForDB },
+          "fcmTokens.isActive": true,
+        },
+        { mobileNumber1: 1, fcmTokens: 1 },
+      )
+      .lean();
+
+    for (const u of ownerUsers) {
+      const activeTokens = u.fcmTokens.filter(
+        (t) => t.isActive && new Date(t.expiresAt) > now,
+      );
+
+      if (activeTokens.length > 0) {
+        ownerUsersMap.set("91" + u.mobileNumber1, activeTokens);
+      }
+    }
+  } else {
+    console.log("[FCM] no valid owner mobiles - skipping FCM lookup");
+  }
+
+  const locationLabel =
+    normalizedLocation === "global" ? "your area" : normalizedLocation;
+
+  for (const [ownerMobile12, ownerTokens] of ownerUsersMap) {
+    const fcmTitle = "New Lead Alert";
+    const fcmBody = userDetails.userName || leadData.customerName
+      ? `${userDetails.userName || leadData.customerName} is looking for "${finalCategoryName}" in ${locationLabel}. Open the app to respond.`
+      : `Someone searched "${finalCategoryName}" in ${locationLabel}. Check your leads now!`;
+    const fcmData = {
+      type: "lead",
+      category: finalCategoryName,
+      location: normalizedLocation,
+    };
+    for (const tokenObj of ownerTokens) {
+      sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData, {
+        channelId: "massclick_leads",
+      })
+        .then(() =>
+          console.log(`[FCM] lead push sent OK -> ${ownerMobile12}`),
+        )
+        .catch((err) =>
+          console.error(
+            `[FCM] lead push failed -> ${ownerMobile12}:`,
+            err.message,
+          ),
+        );
+    }
+  }
+
+  for (const business of businesses) {
+    const businessMobiles = extractIndianMobiles([
+      business.contactList,
+      business.whatsappNumber,
+    ]);
+
+    if (!businessMobiles.length) {
+      console.warn(
+        "[WhatsApp] no valid business mobile:",
+        business.businessName,
+      );
+      continue;
+    }
+
+    for (const cleanMobile of businessMobiles) {
+      try {
+        if (waSettings.whatsapp_business_lead_alert) {
+          const sendPolicy = await evaluateWhatsAppSend({
+            mobile: cleanMobile,
+            template: "business_lead_alert_v2",
+            sourceType: "search_lead",
+            category: leadData.searchText,
+            location: leadData.location,
+            customerMobile: leadData.customerMobile,
+          });
+
+          if (!sendPolicy.allowed) {
+            await markWhatsAppSkipped(
+              {
+                templateName: "business_lead_alert_v2",
+                sourceType: "search_lead",
+                sourceId: savedLog?._id,
+                recipientMobile: sendPolicy.mobile || cleanMobile,
+                category: leadData.searchText,
+                location: leadData.location,
+                customerName: leadData.customerName,
+                customerMobile: leadData.customerMobile,
+                businessId: business._id,
+                businessName: business.businessName,
+              },
+              sendPolicy.skipReason,
+            );
+            console.warn(
+              `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`,
+            );
+            continue;
+          }
+
+          await withRetry(
+            () =>
+              sendBusinessLead(sendPolicy.mobile, leadData, {
+                sourceType: "search_lead",
+                sourceId: savedLog?._id,
+                businessId: business._id,
+                businessName: business.businessName,
+              }),
+            `Business WhatsApp ${business.businessName} ${cleanMobile}`,
+          );
+        } else {
+          console.warn("[WhatsApp] business lead alert disabled in settings");
+          continue;
+        }
+
+        businessSendSuccess = true;
+        notifiedBusinesses.push({
+          businessName: business.businessName,
+          mobile: cleanMobile,
+        });
+
+        await wait(500);
+      } catch (err) {
+        console.error(
+          "Business WhatsApp failed after retries:",
+          err.response?.data || err.message,
+        );
+      }
+    }
+  }
+
+  if (sendCustomerBusinessList) {
+    const cleanCustomerMobile = extractIndianMobiles(
+      userDetails.mobileNumber1 || leadData.customerMobile,
+    )[0];
+
+    if (cleanCustomerMobile) {
+      try {
+        if (waSettings.whatsapp_customer_business_list) {
+          await withRetry(
+            () =>
+              sendBusinessesToCustomer(
+                cleanCustomerMobile,
+                leadData,
+                customerListBusinesses,
+                {
+                  sourceType: "customer_list",
+                  sourceId: savedLog?._id,
+                  customerListSendMode:
+                    waSettings.whatsapp_customer_business_list_send_mode ||
+                    "split",
+                },
+              ),
+            `Customer WhatsApp ${cleanCustomerMobile}`,
+          );
+        } else {
+          console.warn(
+            "[WhatsApp] customer business list disabled in settings",
+          );
+          customerListDisabled = true;
+        }
+
+        if (!customerListDisabled) {
+          customerSendSuccess = true;
+        }
+      } catch (err) {
+        console.error(
+          "Customer WhatsApp failed",
+          err.response?.data || err.message,
+        );
+      }
+    }
+  }
+
+  return {
+    businessSendSuccess,
+    customerSendSuccess,
+    customerListDisabled,
+    notifiedBusinesses,
+    whatsappUpdated: businessSendSuccess && customerSendSuccess,
+  };
 };
 
 export const logSearchAction = async (req, res) => {
@@ -495,6 +789,7 @@ export const logSearchAction = async (req, res) => {
             street: 1,
             plotNumber: 1,
             averageRating: 1,
+            premiumBusiness: 1,
           }
         )
         .lean();
@@ -518,6 +813,7 @@ export const logSearchAction = async (req, res) => {
           street: 1,
           plotNumber: 1,
           averageRating: 1,
+          premiumBusiness: 1,
         })
         .sort({ amountPaid: -1, paidDate: -1, averageRating: -1, createdAt: -1 })
         .limit(10)
@@ -534,6 +830,7 @@ export const logSearchAction = async (req, res) => {
 
     const leadData = {
       searchText: finalCategoryName,
+      searchedUserText: cleanSearchText || finalCategoryName,
 
       location: normalizedLocation,
 
@@ -546,302 +843,125 @@ export const logSearchAction = async (req, res) => {
 
     const waSettings = leadSettings;
 
-    let businessSendSuccess = false;
+    const premiumBusinesses = businesses.filter((business) => business.premiumBusiness === true);
+    const normalBusinesses = businesses.filter((business) => business.premiumBusiness !== true);
 
-    let customerSendSuccess = false;
+    if (!premiumBusinesses.length) {
+      const dispatchResult = await dispatchLeadToBusinesses({
+        businesses,
+        userDetails,
+        leadData,
+        savedLog,
+        finalCategoryName,
+        normalizedLocation,
+        waSettings,
+        sendCustomerBusinessList: true,
+      });
 
-    const notifiedBusinesses = [];
-
-    // ── Persist the lead into each matched owner's leadsData[] FIRST ──────────
-    // This is intentionally independent of WhatsApp/FCM: whatever happens to
-    // the sends below, the owner's permanent lead inbox already has the lead.
-    // Dedupe: skip if this customer+search was already captured for that owner
-    // today (atomic guard inside the update query). One capture per owner.
-    const customerMobileRaw = userDetails.mobileNumber1 || "";
-    const customerMobile10 =
-      customerMobileRaw.startsWith("91") && customerMobileRaw.length === 12
-        ? customerMobileRaw.slice(2)
-        : customerMobileRaw;
-    const capturedSearchText = cleanSearchText || finalCategoryName;
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    // mobile10 -> true when a brand-new lead was appended by this request
-    const ownerNewLeadMap = new Map();
-
-    for (const business of businesses) {
-      const ownerMobile = extractIndianMobiles([
-        business.contactList,
-        business.whatsappNumber,
-      ])[0];
-      if (!ownerMobile) continue;
-      const mobile10 =
-        ownerMobile.startsWith("91") && ownerMobile.length === 12
-          ? ownerMobile.slice(2)
-          : ownerMobile;
-      if (ownerNewLeadMap.has(mobile10)) continue; // one capture per owner
-      if (mobile10 === customerMobile10) continue; // never self-lead
-
-      try {
-        const captureResult = await userModel.updateOne(
-          {
-            mobileNumber1: mobile10,
-            leadsData: {
-              $not: {
-                $elemMatch: {
-                  mobileNumber1: customerMobileRaw,
-                  searchedUserText: capturedSearchText,
-                  createdAt: { $gte: startOfToday },
-                },
-              },
-            },
-          },
-          {
-            $push: {
-              leadsData: {
-                email: userDetails.email || "",
-                mobileNumber1: customerMobileRaw,
-                mobileNumber2: userDetails.mobileNumber2 || "",
-                searchedUserText: capturedSearchText,
-                time: new Date().toLocaleString("en-IN", {
-                  timeZone: "Asia/Kolkata",
-                }),
-                userName: userDetails.userName || "",
-                isWhatsappSend: false,
-                isReaded: false,
-                createdAt: new Date(),
-                readAt: null,
-              },
-            },
-          },
-        );
-        // modifiedCount 0 = owner has no OTP-user doc OR duplicate for today
-        ownerNewLeadMap.set(mobile10, captureResult.modifiedCount > 0);
-      } catch (err) {
-        console.error(
-          `[LeadCapture] failed to persist lead for owner ${mobile10}:`,
-          err.message,
-        );
-        ownerNewLeadMap.set(mobile10, false);
+      if (dispatchResult.customerListDisabled) {
+        return res.status(202).json({
+          success: true,
+          message: "Lead stored but customer WhatsApp is disabled",
+          detectedCategory: finalCategoryName,
+          totalBusinesses: businesses.length,
+          notifiedBusinesses: dispatchResult.notifiedBusinesses,
+          whatsappUpdated: false,
+        });
       }
 
-      // Emit AFTER persistence so a client-side refetch sees the new lead.
-      emitToRoom(
-        buildRoom.business(mobile10),
-        WS_EVENTS.LEAD_ANALYTICS_UPDATE,
-        {
-          category: finalCategoryName,
-          location: normalizedLocation,
-          customerName: userDetails.userName || "",
-          newLead: ownerNewLeadMap.get(mobile10) === true,
-          ts: new Date().toISOString(),
-        },
+      await searchLogModel.updateOne(
+        { _id: savedLog._id },
+        { whatsapp: dispatchResult.whatsappUpdated },
       );
+
+      return res.status(202).json({
+        success: true,
+        message: dispatchResult.whatsappUpdated
+          ? "Lead stored & WhatsApp sent"
+          : "Lead stored but WhatsApp delivery failed",
+        detectedCategory: finalCategoryName,
+        totalBusinesses: businesses.length,
+        notifiedBusinesses: dispatchResult.notifiedBusinesses,
+        whatsappUpdated: dispatchResult.whatsappUpdated,
+      });
     }
 
-    const ownerMobiles = businesses
-      .flatMap((b) => extractIndianMobiles([b.contactList, b.whatsappNumber]))
-      .filter(Boolean);
+    const premiumDispatchResult = await dispatchLeadToBusinesses({
+      businesses: premiumBusinesses,
+      userDetails,
+      leadData,
+      savedLog,
+      finalCategoryName,
+      normalizedLocation,
+      waSettings,
+      sendCustomerBusinessList: false,
+    });
 
-    // userModel stores mobileNumber1 as 10-digit (no 91 prefix); strip prefix for the DB query
-    const ownerMobilesForDB = ownerMobiles.map((m) =>
-      m.startsWith("91") && m.length === 12 ? m.slice(2) : m,
-    );
-   
-    const ownerUsersMap = new Map();
-    if (ownerMobilesForDB.length > 0) {
-      const now = new Date();
-      const ownerUsers = await userModel
-        .find(
-          {
-            mobileNumber1: { $in: ownerMobilesForDB },
-            "fcmTokens.isActive": true,
-          },
-          { mobileNumber1: 1, fcmTokens: 1 },
-        )
-        .lean();
-      
-      for (const u of ownerUsers) {
-        const activeTokens = u.fcmTokens.filter(
-          (t) => t.isActive && new Date(t.expiresAt) > now,
-        );
-       
-        if (activeTokens.length > 0) {
-          // Key by 12-digit (91-prefixed) to match what the business loop uses
-          ownerUsersMap.set("91" + u.mobileNumber1, activeTokens);
-        }
-      }
-    } else {
-      console.log("[FCM] no valid owner mobiles — skipping FCM lookup");
-    }
-
-    // ── FCM lead alert — fully independent of WhatsApp ─────────────────────────
-    // Deliberately BEFORE the WhatsApp loop and outside its skip/disable logic:
-    // owners must get the in-app push even when WhatsApp is skipped, disabled
-    // in settings, or fails. One push per owner (not per matched business).
-    // "global" is an internal sentinel for "location unresolved", not a place.
-    // The guard above normally stops us reaching here with it, but an operator
-    // can disable that guard — never let the sentinel reach an owner's phone.
-    const locationLabel =
-      normalizedLocation === "global" ? "your area" : normalizedLocation;
-
-    for (const [ownerMobile12, ownerTokens] of ownerUsersMap) {
-      const fcmTitle = "New Lead Alert 🔔";
-      const fcmBody = userDetails.userName
-        ? `${userDetails.userName} is looking for "${finalCategoryName}" in ${locationLabel}. Open the app to respond.`
-        : `Someone searched "${finalCategoryName}" in ${locationLabel}. Check your leads now!`;
-      const fcmData = {
-        type: "lead",
-        category: finalCategoryName,
-        location: normalizedLocation,
-      };
-      for (const tokenObj of ownerTokens) {
-        sendFCMNotification(tokenObj.token, fcmTitle, fcmBody, fcmData, {
-          channelId: "massclick_leads",
-        })
-          .then(() =>
-            console.log(`[FCM] lead push sent OK → ${ownerMobile12}`),
-          )
-          .catch((err) =>
-            console.error(
-              `[FCM] lead push failed → ${ownerMobile12}:`,
-              err.message,
-            ),
-          );
-      }
-    }
-
-    for (const business of businesses) {
-      const businessMobiles = extractIndianMobiles([
-        business.contactList,
-        business.whatsappNumber,
-      ]);
-
-      if (!businessMobiles.length) {
-        console.warn(
-          "[WhatsApp] no valid business mobile:",
-          business.businessName,
-        );
-        continue;
-      }
-
-      for (const cleanMobile of businessMobiles) {
-        try {
-          if (waSettings.whatsapp_business_lead_alert) {
-            const sendPolicy = await evaluateWhatsAppSend({
-              mobile: cleanMobile,
-              template: "business_lead_alert_v2",
-              sourceType: "search_lead",
-              category: leadData.searchText,
-              location: leadData.location,
-              customerMobile: leadData.customerMobile,
-            });
-
-            if (!sendPolicy.allowed) {
-              await markWhatsAppSkipped(
-                {
-                  templateName: "business_lead_alert_v2",
-                  sourceType: "search_lead",
-                  sourceId: savedLog._id,
-                  recipientMobile: sendPolicy.mobile || cleanMobile,
-                  category: leadData.searchText,
-                  location: leadData.location,
-                  customerName: leadData.customerName,
-                  customerMobile: leadData.customerMobile,
-                  businessId: business._id,
-                  businessName: business.businessName,
-                },
-                sendPolicy.skipReason,
-              );
-              console.warn(
-                `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`,
-              );
-              continue;
-            }
-
-            await withRetry(
-              () =>
-                sendBusinessLead(sendPolicy.mobile, leadData, {
-                  sourceType: "search_lead",
-                  sourceId: savedLog._id,
-                  businessId: business._id,
-                  businessName: business.businessName,
-                }),
-              `Business WhatsApp ${business.businessName} ${cleanMobile}`,
-            );
-          } else {
-            console.warn("[WhatsApp] business lead alert disabled in settings");
-            continue;
-          }
-
-          businessSendSuccess = true;
-
-          notifiedBusinesses.push({
-            businessName: business.businessName,
-
-            mobile: cleanMobile,
-          });
-
-          await wait(500);
-        } catch (err) {
-          console.error(
-            "Business WhatsApp failed after retries:",
-
-            err.response?.data || err.message,
-          );
-        }
-
-        // (FCM lead push moved out of this loop — it now fires independently
-        // before the WhatsApp section, so skips/disables here can't block it.)
-      }
-    }
-    const cleanCustomerMobile = extractIndianMobiles(
-      userDetails.mobileNumber1,
-    )[0];
-
-    if (cleanCustomerMobile) {
+    let premiumCustomerWhatsappSent = false;
+    const cleanCustomerMobile = extractIndianMobiles(userDetails.mobileNumber1)[0];
+    if (cleanCustomerMobile && waSettings.whatsapp_customer_business_list) {
       try {
-        if (waSettings.whatsapp_customer_business_list) {
-          await withRetry(
-            () =>
-              sendBusinessesToCustomer(
-                cleanCustomerMobile,
-                leadData,
-                businesses,
-                {
-                  sourceType: "customer_list",
-                  sourceId: savedLog._id,
-                  customerListSendMode:
-                    waSettings.whatsapp_customer_business_list_send_mode ||
-                    "split",
-                },
-              ),
-            `Customer WhatsApp ${cleanCustomerMobile}`,
-          );
-        } else {
-          console.warn(
-            "[WhatsApp] customer business list disabled in settings",
-          );
-          return res.status(202).json({
-            success: true,
-            message: "Lead stored but customer WhatsApp is disabled",
-            detectedCategory: finalCategoryName,
-            totalBusinesses: businesses.length,
-            notifiedBusinesses,
-            whatsappUpdated: false,
-          });
-        }
-
-        customerSendSuccess = true;
+        await withRetry(
+          () =>
+            sendPremiumBusinessesToCustomer(
+              cleanCustomerMobile,
+              leadData,
+              premiumBusinesses,
+              {
+                sourceType: "premium_customer_recommendation",
+                sourceId: savedLog._id,
+              },
+            ),
+          `Premium recommendation WhatsApp ${cleanCustomerMobile}`,
+        );
+        premiumCustomerWhatsappSent = true;
       } catch (err) {
         console.error(
-          "Customer WhatsApp failed",
-
+          "Premium recommendation WhatsApp failed",
           err.response?.data || err.message,
         );
       }
+    } else if (!waSettings.whatsapp_customer_business_list) {
+      console.warn("[WhatsApp] premium customer recommendation disabled because customer business list is disabled");
     }
 
-    const whatsappUpdated = businessSendSuccess && customerSendSuccess;
+    const delayMinutes = nonNegativeInteger(waSettings.premium_lead_delay_minutes, 30);
+    const delayedUntil = new Date(Date.now() + delayMinutes * 60 * 1000);
+    const shouldDelayNormalBusinesses = normalBusinesses.length > 0 && delayMinutes > 0;
+    let delayedJobId = null;
+
+    if (normalBusinesses.length > 0) {
+      if (delayMinutes === 0) {
+        await dispatchLeadToBusinesses({
+          businesses: normalBusinesses,
+          userDetails,
+          leadData,
+          savedLog,
+          finalCategoryName,
+          normalizedLocation,
+          waSettings,
+          sendCustomerBusinessList: false,
+        });
+      } else {
+        const delayedJob = await delayedLeadDispatchModel.create({
+          searchLogId: savedLog._id,
+          businessIds: normalBusinesses.map((business) => business._id),
+          leadData,
+          userDetails: {
+            userName: userDetails.userName || "",
+            mobileNumber1: userDetails.mobileNumber1 || "",
+            mobileNumber2: userDetails.mobileNumber2 || "",
+            email: userDetails.email || "",
+          },
+          dueAt: delayedUntil,
+          status: "scheduled",
+        });
+        delayedJobId = delayedJob._id;
+      }
+    }
+
+    const whatsappUpdated =
+      premiumDispatchResult.businessSendSuccess && premiumCustomerWhatsappSent;
 
     await searchLogModel.updateOne(
       { _id: savedLog._id },
@@ -850,18 +970,22 @@ export const logSearchAction = async (req, res) => {
 
     return res.status(202).json({
       success: true,
-
-      message: whatsappUpdated
-        ? "Lead stored & WhatsApp sent"
-        : "Lead stored but WhatsApp delivery failed",
-
+      message: premiumCustomerWhatsappSent
+        ? shouldDelayNormalBusinesses
+          ? "Premium lead sent; normal business delivery scheduled"
+          : "Premium lead sent"
+        : "Premium lead stored but customer recommendation failed",
       detectedCategory: finalCategoryName,
-
       totalBusinesses: businesses.length,
-
-      notifiedBusinesses,
-
+      notifiedBusinesses: premiumDispatchResult.notifiedBusinesses,
       whatsappUpdated,
+      premiumLeadFirst: true,
+      premiumBusinessesCount: premiumBusinesses.length,
+      delayedBusinessesCount: shouldDelayNormalBusinesses ? normalBusinesses.length : 0,
+      immediateNormalBusinessesCount: delayMinutes === 0 ? normalBusinesses.length : 0,
+      delayedUntil: shouldDelayNormalBusinesses ? delayedUntil : null,
+      delayedJobId,
+      premiumCustomerWhatsappSent,
     });
   } catch (error) {
     console.error("Error logging search:", error);

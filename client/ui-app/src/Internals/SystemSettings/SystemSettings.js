@@ -136,6 +136,7 @@ const FIELD_HELP = {
   lead_guard_user_dedupe_minutes: "How many minutes duplicate customer leads are suppressed.",
   whatsapp_business_lead_daily_cap: "Maximum WhatsApp lead alerts one business number can receive per day.",
   whatsapp_business_lead_cooldown_minutes: "How many minutes to wait before sending another lead WhatsApp to the same business number.",
+  premium_lead_delay_minutes: "How many minutes normal businesses should wait when premium businesses receive the lead first.",
   search_nearby_radius_km: "How far search should look for nearby pincodes when exact location results are too low.",
   redis_enabled: "Controls whether Redis-backed cache behavior is enabled.",
   cache_type: "Select which cache group should be invalidated.",
@@ -240,6 +241,10 @@ const NUMBER_FIELD_RULES = {
     max: 100
   },
   whatsapp_business_lead_cooldown_minutes: {
+    min: 0,
+    max: 1440
+  },
+  premium_lead_delay_minutes: {
     min: 0,
     max: 1440
   },
@@ -458,6 +463,10 @@ const GUARD_LIMIT_FIELDS = [{
   key: "whatsapp_business_lead_cooldown_minutes",
   label: "Recipient Cooldown Minutes",
   placeholder: "45"
+}, {
+  key: "premium_lead_delay_minutes",
+  label: "Premium Lead Delay Minutes",
+  placeholder: "30"
 }];
 const RATE_LIMIT_FIELDS = [{
   key: "rate_limit_api_limit",

@@ -72,6 +72,7 @@ import legalDocumentRoutes from "./routes/legalDocumentRoutes.js";
 import hiringRoutes from "./routes/hiringRoutes.js";
 import rewardRoutes from "./routes/rewardRoutes.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
+import { startDelayedLeadDispatchScheduler } from "./scheduler/delayedLeadDispatchScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 import { startS3CacheHeaderMigrationRecovery } from "./helper/mediaCleanup/s3CacheHeaderMigrationHelper.js";
 
@@ -208,6 +209,7 @@ mongoose.connect(MONGO_URI)
     await initRedis();
     await startS3CacheHeaderMigrationRecovery();
     startFCMScheduler();
+    startDelayedLeadDispatchScheduler();
     startKeywordRankCron();
     await initWsServer(httpServer);
     httpServer.listen(PORT, () => {

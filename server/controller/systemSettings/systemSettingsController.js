@@ -116,6 +116,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       "lead_guard_user_dedupe_minutes",
       "whatsapp_business_lead_daily_cap",
       "whatsapp_business_lead_cooldown_minutes",
+      "premium_lead_delay_minutes",
       "search_nearby_radius_km",
     ];
 
@@ -140,6 +141,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       lead_guard_user_dedupe_minutes: { min: 0, max: 1440 },
       whatsapp_business_lead_daily_cap: { min: 0, max: 100 },
       whatsapp_business_lead_cooldown_minutes: { min: 0, max: 1440 },
+      premium_lead_delay_minutes: { min: 0, max: 1440 },
       search_nearby_radius_km: { min: 1, max: 100 },
     };
 

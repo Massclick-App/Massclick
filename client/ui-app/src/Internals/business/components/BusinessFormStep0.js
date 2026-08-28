@@ -804,6 +804,36 @@ const BusinessFormStep0 = ({
               />
               ✅ Verified
             </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: `1.5px solid ${formData.premiumBusiness ? "#0891b2" : "#e0e0e0"}`,
+                background: formData.premiumBusiness ? "#cffafe" : "#fafafa",
+                cursor: "pointer",
+                userSelect: "none",
+                fontWeight: 600,
+                fontSize: "13px",
+                color: formData.premiumBusiness ? "#0e7490" : "#555",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={!!formData.premiumBusiness}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    premiumBusiness: e.target.checked,
+                  }))
+                }
+                style={{ accentColor: "#0891b2" }}
+              />
+              Premium Lead Business
+            </label>
           </div>
         </div>
 

@@ -2575,7 +2575,7 @@ export const getPendingBusinessAction = async (req, res) => {
 export const updateBusinessBadgesAction = async (req, res) => {
   try {
     const { id } = req.params;
-    const { badges, verification } = req.body;
+    const { badges, verification, premiumBusiness } = req.body;
 
     if (!id) {
       return res.status(400).send({ message: "Business ID is required" });
@@ -2597,7 +2597,8 @@ export const updateBusinessBadgesAction = async (req, res) => {
       id,
       {
         badges: normalizedBadges,
-        verification: verification || {}
+        verification: verification || {},
+        ...(premiumBusiness !== undefined && { premiumBusiness: Boolean(premiumBusiness) }),
       },
       { new: true }
     );

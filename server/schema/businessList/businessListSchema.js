@@ -174,6 +174,7 @@ const businessListSchema = new mongoose.Schema({
   experience: { type: String, default: '' },
   businessesLive: { type: Boolean, default: false },
   amountPaid: { type: Boolean, default: false },
+  premiumBusiness: { type: Boolean, default: false },
   paidDate: { type: Date, default: null },
 
   openingHours: [

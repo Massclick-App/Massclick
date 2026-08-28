@@ -1041,6 +1041,7 @@ const BusinessList = React.memo(() => {
     gstin: "",
     whatsappNumber: "",
     experience: "",
+    premiumBusiness: false,
     location: "",
     masterLocation: null,
     category: "",
@@ -2049,6 +2050,7 @@ const BusinessList = React.memo(() => {
     twitter: normalizeText(data.twitter),
     linkedin: normalizeText(data.linkedin),
     businessDetails: data.businessDetails,
+    premiumBusiness: Boolean(data.premiumBusiness),
     bannerImage: data.bannerImage,
     logoImage: data.logoImage,
     openingHours: Array.isArray(data.openingHours) ? data.openingHours : [],
@@ -2463,6 +2465,7 @@ const BusinessList = React.memo(() => {
       twitter: row.twitter || "",
       linkedin: row.linkedin || "",
       businessDetails: row.businessDetails || "",
+      premiumBusiness: Boolean(row.premiumBusiness),
       openingHours: row.openingHours?.length ? row.openingHours : defaultOpeningHours,
       kycDocuments: row.kycDocuments || [],
       geoLocation: {
@@ -2690,6 +2693,7 @@ const BusinessList = React.memo(() => {
             isTrust: !!(formData.badges?.isTrust || formData.badges?.isTrusted),
           },
           verification: formData.verification,
+          premiumBusiness: Boolean(formData.premiumBusiness),
         };
 
         const updatedBusiness = await dispatch(updateBusinessBadges(editId, payload));
@@ -2703,6 +2707,7 @@ const BusinessList = React.memo(() => {
             ...prev.verification,
             ...(updatedBusiness?.verification || payload.verification),
           },
+          premiumBusiness: Boolean(updatedBusiness?.premiumBusiness ?? payload.premiumBusiness),
         }));
         enqueueSnackbar("Badges & visibility saved successfully!", {
           variant: "success"
@@ -3183,6 +3188,7 @@ const BusinessList = React.memo(() => {
     qrImage: bl.qrCode?.qrImage || null,
     qrDownloads: bl.qrDownloads || [],
     amountPaid: bl.amountPaid || false,
+    premiumBusiness: Boolean(bl.premiumBusiness),
     paidDate: bl.paidDate || null,
     kycDocuments: bl.kycDocuments || [],
     badges: bl.badges || { isFeatured: false, isSponsored: false, isTrending: false, isTrust: false, priorityScore: 0 },
