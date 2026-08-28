@@ -1464,47 +1464,258 @@ export const mainSearchController = async (req, res) => {
     const useCustomSort = customSortMap[sortByParam];
     const useNearestSort = sortByParam === "nearest" && hasGeo;
 
-    // Haversine distance stages — only added when user coordinates are provided.
-    // Business coordinates at [0,0] (default/unset) get distance=null and sort last.
-    const geoStages = hasGeo ? [
-      {
-        $addFields: {
-          distance: {
-            $cond: {
-              if: { $and: [
-                { $eq: [{ $arrayElemAt: ["$geoLocation.coordinates", 0] }, 0] },
-                { $eq: [{ $arrayElemAt: ["$geoLocation.coordinates", 1] }, 0] }
-              ]},
-              then: null,
-              else: {
-                $let: {
-                  vars: {
-                    dLat: { $multiply: [{ $subtract: [{ $arrayElemAt: ["$geoLocation.coordinates", 1] }, lat] }, Math.PI / 180] },
-                    dLng: { $multiply: [{ $subtract: [{ $arrayElemAt: ["$geoLocation.coordinates", 0] }, lng] }, Math.PI / 180] },
-                    lat2R: { $multiply: [{ $arrayElemAt: ["$geoLocation.coordinates", 1] }, Math.PI / 180] },
-                  },
-                  in: {
-                    $multiply: [
-                      2 * 6371,
-                      { $asin: { $sqrt: { $add: [
-                        { $pow: [{ $sin: { $divide: ["$$dLat", 2] } }, 2] },
-                        { $multiply: [
-                          Math.cos(lat * Math.PI / 180),
-                          { $cos: "$$lat2R" },
-                          { $pow: [{ $sin: { $divide: ["$$dLng", 2] } }, 2] }
-                        ]}
-                      ]}}}
-                    ]
-                  }
+    const getPointCoordinates = (point) => {
+      const coordinates = point?.coordinates;
+      if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+      const pointLng = Number(coordinates[0]);
+      const pointLat = Number(coordinates[1]);
+      if (!Number.isFinite(pointLng) || !Number.isFinite(pointLat)) return null;
+      if (pointLng === 0 && pointLat === 0) return null;
+      if (pointLng < 68 || pointLng > 98 || pointLat < 6 || pointLat > 38) return null;
+      return { lng: pointLng, lat: pointLat };
+    };
+
+    const averageCoordinatesForPincode = async ({
+      model,
+      pincode,
+      coordinatesPath,
+      match = {},
+      sourceLabel,
+    }) => {
+      if (!/^\d{6}$/.test(pincode || "")) return null;
+      const [row] = await model.aggregate([
+        {
+          $match: {
+            ...match,
+            pincode,
+            [`${coordinatesPath}.0`]: { $gte: 68, $lte: 98 },
+            [`${coordinatesPath}.1`]: { $gte: 6, $lte: 38 },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            lng: { $avg: { $arrayElemAt: [`$${coordinatesPath}`, 0] } },
+            lat: { $avg: { $arrayElemAt: [`$${coordinatesPath}`, 1] } },
+          },
+        },
+      ]).catch((err) => {
+        console.error(`[Search] ${sourceLabel} pincode origin lookup failed:`, err.message);
+        return [];
+      });
+
+      const point = getPointCoordinates({ coordinates: [row?.lng, row?.lat] });
+      return point ? { ...point, count: row.count, source: sourceLabel } : null;
+    };
+
+    const resolveSearchOrigin = async () => {
+      const exactPoint = getPointCoordinates(resolvedLocation?.coordinates);
+      if (exactPoint) return { ...exactPoint, source: "masterLocation" };
+
+      const pincode = /^\d{6}$/.test(resolvedLocation?.pincode || "")
+        ? resolvedLocation.pincode
+        : null;
+      if (!pincode) return null;
+
+      const masterLocationPoint = await averageCoordinatesForPincode({
+        model: masterLocationModel,
+        pincode,
+        coordinatesPath: "coordinates.coordinates",
+        match: { isActive: true, level: { $in: ["locality", "ward"] } },
+        sourceLabel: "masterLocation-pincode",
+      });
+      if (masterLocationPoint) return masterLocationPoint;
+
+      return averageCoordinatesForPincode({
+        model: businessListModel,
+        pincode,
+        coordinatesPath: "geoLocation.coordinates",
+        match: { businessesLive: true },
+        sourceLabel: "business-pincode",
+      });
+    };
+
+    const coordinateAtExpression = (coordinatesExpression, index) => ({
+      $convert: {
+        input: { $arrayElemAt: [{ $ifNull: [coordinatesExpression, []] }, index] },
+        to: "double",
+        onError: null,
+        onNull: null,
+      },
+    });
+
+    const validPointExpression = (pointLngExpression, pointLatExpression) => ({
+      $and: [
+        { $ne: [pointLngExpression, null] },
+        { $ne: [pointLatExpression, null] },
+        { $not: [{ $and: [{ $eq: [pointLngExpression, 0] }, { $eq: [pointLatExpression, 0] }] }] },
+        { $gte: [pointLngExpression, 68] },
+        { $lte: [pointLngExpression, 98] },
+        { $gte: [pointLatExpression, 6] },
+        { $lte: [pointLatExpression, 38] },
+      ],
+    });
+
+    const distanceExpression = ({ coordinatesExpression, originLat, originLng }) => ({
+      $let: {
+        vars: {
+          pointLng: coordinateAtExpression(coordinatesExpression, 0),
+          pointLat: coordinateAtExpression(coordinatesExpression, 1),
+        },
+        in: {
+          $cond: {
+            if: validPointExpression("$$pointLng", "$$pointLat"),
+            then: {
+              $let: {
+                vars: {
+                  dLat: { $multiply: [{ $subtract: ["$$pointLat", originLat] }, Math.PI / 180] },
+                  dLng: { $multiply: [{ $subtract: ["$$pointLng", originLng] }, Math.PI / 180] },
+                  lat2R: { $multiply: ["$$pointLat", Math.PI / 180] },
+                },
+                in: {
+                  $multiply: [
+                    2 * 6371,
+                    { $asin: { $sqrt: { $add: [
+                      { $pow: [{ $sin: { $divide: ["$$dLat", 2] } }, 2] },
+                      { $multiply: [
+                        Math.cos(originLat * Math.PI / 180),
+                        { $cos: "$$lat2R" },
+                        { $pow: [{ $sin: { $divide: ["$$dLng", 2] } }, 2] }
+                      ]}
+                    ]}}}
+                  ]
                 }
               }
-            }
-          }
-        }
+            },
+            else: null,
+          },
+        },
       },
-      // Sentinel for sort: null distance becomes 999999 so nulls sort last ascending
-      { $addFields: { _distanceSort: { $ifNull: ["$distance", 999999] } } }
+    });
+
+    const buildDistanceStages = ({
+      coordinatesExpression,
+      originLat,
+      originLng,
+      distanceField,
+      sortField,
+    }) => [
+      {
+        $addFields: {
+          [distanceField]: distanceExpression({ coordinatesExpression, originLat, originLng }),
+        },
+      },
+      { $addFields: { [sortField]: { $ifNull: [`$${distanceField}`, 999999] } } }
+    ];
+
+    const resolvedLocationOrigin = await resolveSearchOrigin();
+    const useSearchedLocationSort =
+      sortByParam === "relevant" && Boolean(resolvedLocationOrigin);
+    if (useSearchedLocationSort) {
+      console.log(
+        `[Search] ranking from ${resolvedLocationOrigin.source} origin ${resolvedLocationOrigin.lat},${resolvedLocationOrigin.lng}`,
+      );
+    }
+
+    // Haversine distance from the user's device is included whenever provided
+    // so cards can show it, but it only affects ranking for sortBy=nearest.
+    const geoStages = hasGeo
+      ? buildDistanceStages({
+          coordinatesExpression: "$geoLocation.coordinates",
+          originLat: lat,
+          originLng: lng,
+          distanceField: "distance",
+          sortField: "_distanceSort",
+        })
+      : [];
+
+    const businessGeoLng = coordinateAtExpression("$geoLocation.coordinates", 0);
+    const businessGeoLat = coordinateAtExpression("$geoLocation.coordinates", 1);
+    const rankLocationLng = coordinateAtExpression("$_rankLocationCoordinates", 0);
+    const rankLocationLat = coordinateAtExpression("$_rankLocationCoordinates", 1);
+    const searchedLocationRankStages = useSearchedLocationSort ? [
+      {
+        $lookup: {
+          from: "masterlocations",
+          localField: "masterLocation.locationId",
+          foreignField: "_id",
+          as: "_rankLocation",
+          pipeline: [{
+            $project: {
+              _id: 0,
+              coordinates: 1,
+            },
+          }],
+        },
+      },
+      {
+        $addFields: {
+          _rankLocationCoordinates: {
+            $arrayElemAt: ["$_rankLocation.coordinates.coordinates", 0],
+          },
+        },
+      },
+      {
+        $addFields: {
+          _searchRankCoordinates: {
+            $cond: [
+              validPointExpression(businessGeoLng, businessGeoLat),
+              "$geoLocation.coordinates",
+              {
+                $cond: [
+                  validPointExpression(rankLocationLng, rankLocationLat),
+                  "$_rankLocationCoordinates",
+                  null,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      ...buildDistanceStages({
+        coordinatesExpression: "$_searchRankCoordinates",
+        originLat: resolvedLocationOrigin.lat,
+        originLng: resolvedLocationOrigin.lng,
+        distanceField: "locationDistance",
+        sortField: "_locationDistanceSort",
+      }),
+      {
+        $addFields: {
+          locationDistanceBand: {
+            $switch: {
+              branches: [
+                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 2] }] }, then: 0 },
+                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 5] }] }, then: 1 },
+                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 10] }] }, then: 2 },
+                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 20] }] }, then: 3 },
+              ],
+              default: 4,
+            },
+          },
+        },
+      },
     ] : [];
+
+    const relevantSort = {
+      locationPriority: 1,
+      ...(useSearchedLocationSort ? {
+        locationDistanceBand: 1,
+      } : {}),
+      categoryPriority: 1,
+      categoryModifierScore: -1,
+      ...(textSearchTerm ? { textScore: -1 } : {}),
+      ...(useSearchedLocationSort ? {
+        _locationDistanceSort: 1,
+      } : {}),
+      paidPriority: 1,
+      verifiedPriority: 1,
+      averageRating: -1,
+      "badges.priorityScore": -1,
+      paidDate: -1,
+      createdAt: -1,
+      _id: 1
+    };
 
     const keywordTextExpression = {
       $reduce: {
@@ -1535,7 +1746,7 @@ export const mainSearchController = async (req, res) => {
       };
     });
 
-    const runAggregation = async (matchQueryForRun) => {
+    const runAggregation = async (matchQueryForRun, { nearbyRadiusKm = null } = {}) => {
     const pipeline = [
       { $match: matchQueryForRun },
       ...(textSearchTerm ? [{ $addFields: { textScore: { $meta: "textScore" } } }] : []),
@@ -1612,22 +1823,22 @@ export const mainSearchController = async (req, res) => {
       ...(Number.isFinite(minRatingValue) && minRatingValue > 0 ? [
         { $match: { averageRating: { $gte: minRatingValue } } }
       ] : []),
+      ...searchedLocationRankStages,
+      ...(Number.isFinite(nearbyRadiusKm) && useSearchedLocationSort ? [
+        {
+          $match: {
+            $or: [
+              { locationPriority: 0 },
+              { locationDistance: { $lte: nearbyRadiusKm } },
+            ],
+          },
+        },
+      ] : []),
       ...geoStages,
       {
         $sort: useNearestSort
           ? { _distanceSort: 1, amountPaid: -1, createdAt: -1 }
-          : (useCustomSort || {
-              ...(textSearchTerm ? { textScore: -1 } : {}),
-              categoryPriority: 1,
-              categoryModifierScore: -1,
-              locationPriority: 1,
-              paidPriority: 1,
-              verifiedPriority: 1,
-              "badges.priorityScore": -1,
-              paidDate: -1,
-              createdAt: -1,
-              _id: 1
-            })
+          : (useCustomSort || relevantSort)
       },
       { $skip: skip },
       { $limit: pageSize },
@@ -1668,6 +1879,19 @@ export const mainSearchController = async (req, res) => {
           },
         },
       },
+      ...(useSearchedLocationSort ? [
+        {
+          $addFields: {
+            locationDistance: {
+              $cond: [
+                { $ne: ["$locationDistance", null] },
+                { $round: ["$locationDistance", 2] },
+                null,
+              ],
+            },
+          },
+        },
+      ] : []),
       {
         $project: {
           reviews: 0,
@@ -1679,11 +1903,19 @@ export const mainSearchController = async (req, res) => {
           categoryModifierScore: 0,
           textScore: 0,
           _distanceSort: 0,
+          _rankLocation: 0,
+          _rankLocationCoordinates: 0,
+          _searchRankCoordinates: 0,
+          _locationDistanceSort: 0,
+          locationDistanceBand: 0,
         },
       },
     ];
 
     const usesComputedRatingFilter = Number.isFinite(minRatingValue) && minRatingValue > 0;
+    const usesAggregationCount =
+      usesComputedRatingFilter ||
+      (Number.isFinite(nearbyRadiusKm) && useSearchedLocationSort);
     const totalPipeline = pipeline
       .filter(stage =>
         !Object.prototype.hasOwnProperty.call(stage, "$skip") &&
@@ -1695,11 +1927,11 @@ export const mainSearchController = async (req, res) => {
 
     const [results, totalResult] = await Promise.all([
       businessListModel.aggregate(pipeline).then(attachPublicLocationPaths),
-      usesComputedRatingFilter
+      usesAggregationCount
         ? businessListModel.aggregate(totalPipeline)
         : businessListModel.countDocuments(matchQueryForRun)
     ]);
-    const total = usesComputedRatingFilter ? totalResult[0]?.total || 0 : totalResult;
+    const total = usesAggregationCount ? totalResult[0]?.total || 0 : totalResult;
     return { results, total };
     };
 
@@ -1741,7 +1973,9 @@ export const mainSearchController = async (req, res) => {
         ? locationSearchScope.pincodes
         : (resolvedLocation?.pincode ? [resolvedLocation.pincode] : []);
 
-      const originCoordinates = resolvedLocation?.coordinates?.coordinates;
+      const originCoordinates = resolvedLocationOrigin
+        ? [resolvedLocationOrigin.lng, resolvedLocationOrigin.lat]
+        : null;
       const hasOriginCoordinates =
         Array.isArray(originCoordinates) &&
         originCoordinates.length === 2 &&
@@ -1802,7 +2036,9 @@ export const mainSearchController = async (req, res) => {
           $or: [originalLocationClause, { pincode: { $in: nearbyPincodes } }],
         };
 
-        const widenedResult = await runAggregation(widenedMatchQuery);
+        const widenedResult = await runAggregation(widenedMatchQuery, {
+          nearbyRadiusKm: nearbySearchRadiusKm,
+        });
         if (widenedResult.total > total) {
           ({ results, total } = widenedResult);
           isNearbySearch = true;

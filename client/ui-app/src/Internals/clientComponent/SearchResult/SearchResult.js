@@ -1383,11 +1383,11 @@ const SearchResults = React.memo(
                         <option value="relevant">Relevant</option>
                         <option value="rating">Rating</option>
                         <option value="newest">Latest</option>
-                        {geoStatus !== "granted" && (
-                          <option value="nearest">
-                            Nearest (requires location)
-                          </option>
-                        )}
+                        <option value="nearest">
+                          {geoStatus === "granted"
+                            ? "Nearest"
+                            : "Nearest (requires location)"}
+                        </option>
                       </select>
                     </label>
                   </div>
