@@ -1,6 +1,7 @@
 import { createBusinessList, viewBusinessList, findBusinessBySlug, viewAllBusiness, getDashboardChartsHelper, getPendingBusinessList, findBusinessesByCategory, getDashboardSummaryHelper, getAdminAnalyticsReportHelper, findBusinessByMobile, viewAllBusinessList, viewAllClientBusinessList, updateBusinessList, getTrendingSearches, deleteBusinessList, activeBusinessList, revertBusinessFromPaid } from "../../helper/businessList/businessListHelper.js";
 import { BAD_REQUEST } from "../../errorCodes.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import gmapsLeadsModel from "../../model/gmapsLeads/gmapsLeadsModel.js";
 import { getObjectBufferByKey, getSignedUrlByKey } from "../../s3Uploder.js";
 import { assetUrl } from "../../utils/assetUrl.js";
 import categoryModel from "../../model/category/categoryModel.js";
@@ -1509,9 +1510,129 @@ export const mainSearchController = async (req, res) => {
       return point ? { ...point, count: row.count, source: sourceLabel } : null;
     };
 
+    const compactUnique = (values = []) => [
+      ...new Set(values.map((value) => normalize(value || "")).filter(Boolean)),
+    ];
+
+    const getLocationLeafNames = () => {
+      const levelName = resolvedLocation?.locality ||
+        resolvedLocation?.ward ||
+        resolvedLocation?.zone ||
+        resolvedLocation?.district;
+      return compactUnique([
+        location,
+        levelName,
+        ...(resolvedLocation?.alternateNames || []),
+      ]);
+    };
+
+    const getSearchOriginNameVariants = () => {
+      const names = getLocationLeafNames();
+      const expanded = [];
+      for (const name of names) {
+        expanded.push(name);
+        expanded.push(name.replace(/\btrichy\b/g, "tiruchirappalli"));
+        expanded.push(name.replace(/\btiruchirappalli\b/g, "trichy"));
+        expanded.push(name.replace(/\btiruchchirappalli\b/g, "trichy"));
+      }
+      return compactUnique(expanded);
+    };
+
+    const resolveGmapsLocationOrigin = async () => {
+      const locationNameVariants = getSearchOriginNameVariants();
+      if (!locationNameVariants.length) return null;
+
+      const pincode = /^\d{6}$/.test(resolvedLocation?.pincode || "")
+        ? resolvedLocation.pincode
+        : "";
+      const districtNames = compactUnique([
+        resolvedLocation?.district,
+        ...(districtAliasMap[normalize(resolvedLocation?.district || "")] || []),
+        resolvedLocation?.district === "Tiruchirappalli" ? "Trichy" : "",
+        resolvedLocation?.district === "Tiruchirappalli" ? "Trichirappalli" : "",
+      ]);
+      const locationRegexes = locationNameVariants.map((name) => new RegExp(escapeRegex(name), "i"));
+
+      const candidates = await gmapsLeadsModel
+        .find({
+          "geoLocation.coordinates.0": { $gte: 68, $lte: 98 },
+          "geoLocation.coordinates.1": { $gte: 6, $lte: 38 },
+          $or: locationRegexes.flatMap((regex) => [
+            { name: regex },
+            { formatted_address: regex },
+          ]),
+        }, {
+          name: 1,
+          formatted_address: 1,
+          massclick_location: 1,
+          search_query: 1,
+          google_types: 1,
+          geoLocation: 1,
+        })
+        .limit(40)
+        .lean()
+        .catch((err) => {
+          console.error("[Search] gmaps origin lookup failed:", err.message);
+          return [];
+        });
+
+      const scored = candidates
+        .map((candidate) => {
+          const point = getPointCoordinates(candidate.geoLocation);
+          if (!point) return null;
+
+          const nameText = normalize(candidate.name || "");
+          const addressText = normalize(candidate.formatted_address || "");
+          const contextText = normalize([
+            candidate.formatted_address,
+            candidate.massclick_location,
+            candidate.search_query,
+          ].filter(Boolean).join(" "));
+          const hasDistrictContext = districtNames.length === 0 ||
+            districtNames.some((name) => contextText.includes(name)) ||
+            (pincode && contextText.includes(pincode));
+          if (!hasDistrictContext) return null;
+
+          let score = 0;
+          for (const variant of locationNameVariants) {
+            if (nameText === variant) score = Math.max(score, 110);
+            if (nameText.includes(variant)) score = Math.max(score, 95);
+            if (addressText.includes(variant)) score = Math.max(score, 80);
+          }
+
+          const googleTypes = Array.isArray(candidate.google_types)
+            ? candidate.google_types
+            : [];
+          if (googleTypes.includes("transit_station")) score += 10;
+          if (googleTypes.includes("train_station")) score += 10;
+          if (pincode && addressText.includes(pincode)) score += 5;
+
+          return score >= 80
+            ? {
+                ...point,
+                score,
+                name: candidate.name,
+                source: "gmaps-leads",
+              }
+            : null;
+        })
+        .filter(Boolean)
+        .sort((left, right) => right.score - left.score);
+
+      if (!scored.length) return null;
+      const best = scored[0];
+      console.log(`[Search] gmaps origin candidate "${best.name}" score:${best.score}`);
+      return best;
+    };
+
     const resolveSearchOrigin = async () => {
       const exactPoint = getPointCoordinates(resolvedLocation?.coordinates);
       if (exactPoint) return { ...exactPoint, source: "masterLocation" };
+
+      const gmapsPoint = await resolveGmapsLocationOrigin();
+      if (gmapsPoint) return gmapsPoint;
+
+      if (resolvedLocation?.level === "locality") return null;
 
       const pincode = /^\d{6}$/.test(resolvedLocation?.pincode || "")
         ? resolvedLocation.pincode
@@ -1996,7 +2117,7 @@ export const mainSearchController = async (req, res) => {
               },
             },
           })
-          .limit(25)
+          .limit(500)
           .lean()
           .catch((err) => {
             console.error("[Search] nearby-pincode geo lookup failed:", err.message);
