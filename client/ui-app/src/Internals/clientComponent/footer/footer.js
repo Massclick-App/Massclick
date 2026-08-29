@@ -52,7 +52,7 @@ const Footer = () => {
       <div className={cx("footer-inner")}>
         <div className={cx("footer-section brand-section")}>
           <div className={cx("logo-text")}>
-            Mass<span className={cx("brand-accent")}>click</span>™
+            Mass<span className={cx("brand-accent")}>click</span>®
           </div>
           <p className={cx("logo-tagline")}>
             Discover the best businesses, services, places &amp; offers near
