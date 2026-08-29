@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 
 import businessListModel from "../model/businessList/businessListModel.js";
 import masterLocationModel from "../model/locationModel/masterLocationModel.js";
+import { isPointInDistrict } from "../helper/location/districtBoundary.js";
 
 dotenv.config();
 
@@ -103,6 +104,9 @@ Options:
   --all                         Process every matching missing row. Without this, defaults to 25.
   --limit=<n>                   Process at most n locality geocode candidates.
   --force                       Re-check rows that already have non-zero coordinates.
+                                Never touches human-placed points (coordinatesMeta.lockedAt).
+                                Coordinates outside their own district's bounds are
+                                re-checked by default and do not need this flag.
   --districts=A,B               Scope to district names.
   --levels=locality,ward,...    Default: ${DEFAULT_LEVELS.join(",")}.
   --delay-ms=<n>                Delay between uncached Google calls. Default: ${DELAY_MS}.
@@ -399,7 +403,31 @@ const childLocalitiesFor = (parent, localities) => localities.filter((child) => 
   return false;
 });
 
-const needsCoordinate = (doc) => FORCE || !isRealPoint(doc.coordinates);
+// A human placed this point by hand. Nothing here may overwrite it, --force
+// included: --force exists to re-check machine-derived points, and the manual
+// ones are exactly the points that must survive that. Clear
+// coordinatesMeta.lockedAt to hand a location back to automation.
+const isLocked = (doc) => Boolean(doc?.coordinatesMeta?.lockedAt);
+
+// A point that exists but is provably wrong — outside its own district's
+// published boundary. Previously the only way to reach one of these was
+// --force, which also re-geocodes every good point in scope; so in practice
+// bad coordinates were never fixed at all. They are now in scope by default.
+//
+// Deliberately NOT using the business-derived districtGuards for this: those
+// bounds are computed from the same coordinates being judged, so a bad point
+// widens the box that is supposed to catch it. See districtBoundary.js.
+const isSuspectPoint = (doc) => {
+  if (!isRealPoint(doc.coordinates)) return false;
+  return !isPointInDistrict(doc.district, doc.coordinates.coordinates);
+};
+
+const needsCoordinate = (doc) => {
+  if (isLocked(doc)) return false;
+  if (FORCE) return true;
+  if (!isRealPoint(doc.coordinates)) return true;
+  return isSuspectPoint(doc);
+};
 
 const ensureSnapshot = ({ dbName, uri }) => {
   if (!APPLY) return;
@@ -465,8 +493,19 @@ const run = async () => {
   const cache = loadCache(CACHE_FILE);
   const districtGuards = await buildDistrictGuards();
 
+  // Seed the parent-derivation pool with points we already trust. A suspect
+  // point is deliberately left out: a child sitting in the wrong district must
+  // not pull its parent's centre toward it, whether or not this run happens to
+  // re-geocode that child.
   for (const doc of docs) {
-    if (isRealPoint(doc.coordinates)) plannedCoords.set(coordKey(doc), doc.coordinates.coordinates);
+    if (isRealPoint(doc.coordinates) && !isSuspectPoint(doc)) {
+      plannedCoords.set(coordKey(doc), doc.coordinates.coordinates);
+    }
+  }
+
+  const lockedInScope = scopedDocs.filter((doc) => inLevelScope(doc) && isLocked(doc)).length;
+  if (lockedInScope > 0) {
+    console.log(`Locked (human-placed) locations in scope, left untouched: ${lockedInScope}`);
   }
 
   const localityTargets = scopedDocs

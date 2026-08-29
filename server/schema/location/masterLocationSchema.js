@@ -127,15 +127,22 @@ const masterLocationSchema = new mongoose.Schema({
     // Number of direct children (wards for a zone, localities for a ward)
     childCount: Number,
 
+    // GeoJSON Point, [longitude, latitude]. Both subfields default to
+    // undefined deliberately: a document with no coordinate must carry no
+    // `coordinates` key at all. The previous [0, 0] default was a real,
+    // indexable point in the Gulf of Guinea — it satisfied every "does this
+    // have a coordinate" check while being nowhere near India, so an unset
+    // coordinate was indistinguishable from a valid one and would still be
+    // returned by the 2dsphere index.
     coordinates: {
         type: {
             type: String,
             enum: ["Point"],
-            default: "Point",
+            default: undefined,
         },
         coordinates: {
             type: [Number],
-            default: [0, 0],
+            default: undefined,
         },
     },
     coordinatesMeta: {
@@ -149,6 +156,16 @@ const masterLocationSchema = new mongoose.Schema({
                 "mixed-derived",
                 "derived-from-children",
                 "manual",
+                // Recovered from the enrichment import that created these
+                // documents. The import carried a coordinate per row and
+                // dropped it; these name which upstream dataset it came from.
+                // See scripts/recoverImportCoordinates.js.
+                "gmaps-import",
+                "osm-import",
+                "census-import",
+                // Name-matched against the GeoNames gazetteer, parent-distance
+                // guarded. See scripts/matchGeoNamesCoordinates.js.
+                "geonames-import",
             ],
             default: "",
         },
@@ -176,6 +193,31 @@ const masterLocationSchema = new mongoose.Schema({
         updatedAt: {
             type: Date,
             default: null,
+        },
+
+        // Roughly how far this node extends from its own point, in metres:
+        // the p80 distance of its coordinate-carrying children. A locality is
+        // not a point and a taluk zone is not a neighbourhood — without this,
+        // search ranks a 400m cross street and a 25km taluk with the same
+        // hardcoded distance bands. Null when there are too few children to
+        // measure. See scripts/deriveLocationRadius.js.
+        radiusM: {
+            type: Number,
+            default: null,
+        },
+
+        // Set when a human places this point by hand. A locked coordinate is
+        // never overwritten by the derive/backfill scripts — not even with
+        // --force, which exists to re-check machine-derived points and would
+        // otherwise silently discard manual work. Clearing this field is the
+        // only way to hand a location back to automation.
+        lockedAt: {
+            type: Date,
+            default: null,
+        },
+        verifiedBy: {
+            type: String,
+            default: "",
         },
     },
 

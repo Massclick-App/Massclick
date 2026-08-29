@@ -1507,7 +1507,11 @@ export const mainSearchController = async (req, res) => {
       });
 
       const point = getPointCoordinates({ coordinates: [row?.lng, row?.lat] });
-      return point ? { ...point, count: row.count, source: sourceLabel } : null;
+      // An average over a whole pincode is the broadest origin we will accept.
+      // It is never precise, so it must never get precise bands.
+      return point
+        ? { ...point, count: row.count, source: sourceLabel, confidence: "low", radiusKm: null }
+        : null;
     };
 
     const compactUnique = (values = []) => [
@@ -1613,6 +1617,10 @@ export const mainSearchController = async (req, res) => {
                 score,
                 name: candidate.name,
                 source: "gmaps-leads",
+                // A name match against a business address, not a placed point.
+                // Only an exact name hit earns anything above "low".
+                confidence: score >= 105 ? "medium" : "low",
+                radiusKm: null,
               }
             : null;
         })
@@ -1625,9 +1633,44 @@ export const mainSearchController = async (req, res) => {
       return best;
     };
 
+    // Distance bands, in km, scaled to how big the searched place actually is.
+    //
+    // These were fixed at 2/5/10/20 for every search. Measured on Trichy, ward
+    // radii run from 0.30km (Senthaneerpuram West) to 9.9km and zones reach
+    // 20km+, so a single 2km "very close" band was several times too wide for a
+    // city ward and several times too narrow for a taluk. `coordinatesMeta.radiusM`
+    // (see scripts/deriveLocationRadius.js) is the p80 spread of a node's own
+    // children; the bands are multiples of it, clamped so a bad radius cannot
+    // produce absurd bands.
+    const LEVEL_FALLBACK_RADIUS_KM = { locality: 0.8, ward: 1.5, zone: 8, district: 25 };
+    const buildDistanceBands = (origin) => {
+      const radiusKm = Number.isFinite(origin?.radiusKm) && origin.radiusKm > 0
+        ? origin.radiusKm
+        : (LEVEL_FALLBACK_RADIUS_KM[resolvedLocation?.level] ?? 2);
+      // Clamped hard at both ends. Below 0.5km the bands stop separating
+      // anything in a dense city block; above 6km they stop meaning "near" at
+      // all — Musiri's true radius is 19.8km, and anchoring band 0 there would
+      // make every business in the taluk equally close and throw the distance
+      // signal away. 6km x 8 puts the outermost edge at roughly district width,
+      // which is the right boundary for "everything else".
+      const base = Math.min(Math.max(radiusKm, 0.5), 6);
+      // A low-confidence origin is a guess; tight bands around a guess just
+      // rank confidently wrong. Widen them instead of pretending to precision.
+      const slack = origin?.confidence === "low" ? 2 : 1;
+      return [1, 2, 4, 8].map((multiple) => Number((base * multiple * slack).toFixed(3)));
+    };
+
     const resolveSearchOrigin = async () => {
       const exactPoint = getPointCoordinates(resolvedLocation?.coordinates);
-      if (exactPoint) return { ...exactPoint, source: "masterLocation" };
+      if (exactPoint) {
+        const radiusM = Number(resolvedLocation?.coordinatesMeta?.radiusM);
+        return {
+          ...exactPoint,
+          source: "masterLocation",
+          confidence: resolvedLocation?.coordinatesMeta?.confidence || "",
+          radiusKm: Number.isFinite(radiusM) && radiusM > 0 ? radiusM / 1000 : null,
+        };
+      }
 
       const gmapsPoint = await resolveGmapsLocationOrigin();
       if (gmapsPoint) return gmapsPoint;
@@ -1733,9 +1776,15 @@ export const mainSearchController = async (req, res) => {
     const resolvedLocationOrigin = await resolveSearchOrigin();
     const useSearchedLocationSort =
       sortByParam === "relevant" && Boolean(resolvedLocationOrigin);
+    const distanceBands = useSearchedLocationSort
+      ? buildDistanceBands(resolvedLocationOrigin)
+      : [];
     if (useSearchedLocationSort) {
       console.log(
-        `[Search] ranking from ${resolvedLocationOrigin.source} origin ${resolvedLocationOrigin.lat},${resolvedLocationOrigin.lng}`,
+        `[Search] ranking from ${resolvedLocationOrigin.source} origin ${resolvedLocationOrigin.lat},${resolvedLocationOrigin.lng}` +
+        ` conf=${resolvedLocationOrigin.confidence || "-"}` +
+        ` radius=${resolvedLocationOrigin.radiusKm ? `${resolvedLocationOrigin.radiusKm.toFixed(1)}km` : "-"}` +
+        ` bands=[${distanceBands.join(", ")}]km`,
       );
     }
 
@@ -1805,13 +1854,11 @@ export const mainSearchController = async (req, res) => {
         $addFields: {
           locationDistanceBand: {
             $switch: {
-              branches: [
-                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 2] }] }, then: 0 },
-                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 5] }] }, then: 1 },
-                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 10] }] }, then: 2 },
-                { case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", 20] }] }, then: 3 },
-              ],
-              default: 4,
+              branches: distanceBands.map((limit, index) => ({
+                case: { $and: [{ $ne: ["$locationDistance", null] }, { $lte: ["$locationDistance", limit] }] },
+                then: index,
+              })),
+              default: distanceBands.length,
             },
           },
         },

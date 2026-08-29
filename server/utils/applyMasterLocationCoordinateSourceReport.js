@@ -124,6 +124,13 @@ const parentQuery = (candidate) => {
   throw new Error(`Unsupported parent level: ${candidate.level}`);
 };
 
+// Both update builders below $set the whole coordinatesMeta object, so a
+// locked document reaching updateOne would lose its lock along with its
+// hand-placed coordinate. Check before writing, not after.
+// See coordinatesMeta.lockedAt in schema/location/masterLocationSchema.js.
+const LOCK_PROJECTION = { projection: { _id: 1, "coordinatesMeta.lockedAt": 1 } };
+const isLocked = (doc) => Boolean(doc?.coordinatesMeta?.lockedAt);
+
 const buildLocalityUpdate = (candidate, now) => ({
   $set: {
     coordinates: {
@@ -203,11 +210,13 @@ const main = async () => {
     localityUpdated: 0,
     localitySkippedNoMatch: 0,
     localitySkippedDuplicateMatch: 0,
+    localitySkippedLocked: 0,
     parentMatched: 0,
     parentWouldUpdate: 0,
     parentUpdated: 0,
     parentSkippedNoMatch: 0,
     parentSkippedDuplicateMatch: 0,
+    parentSkippedLocked: 0,
     byTier: {},
   };
 
@@ -216,7 +225,7 @@ const main = async () => {
   for (const candidate of candidates) {
     summary.byTier[candidate.tier] = (summary.byTier[candidate.tier] || 0) + 1;
     const query = { slug: candidate.slug, level: "locality", isActive: { $ne: false } };
-    const matches = await masterlocations.find(query, { projection: { _id: 1 } }).toArray();
+    const matches = await masterlocations.find(query, LOCK_PROJECTION).toArray();
     if (matches.length === 0) {
       summary.localitySkippedNoMatch++;
       problems.push({ type: "locality-no-match", slug: candidate.slug });
@@ -225,6 +234,10 @@ const main = async () => {
     if (matches.length > 1) {
       summary.localitySkippedDuplicateMatch++;
       problems.push({ type: "locality-duplicate-match", slug: candidate.slug, matches: matches.length });
+      continue;
+    }
+    if (isLocked(matches[0])) {
+      summary.localitySkippedLocked++;
       continue;
     }
 
@@ -238,7 +251,7 @@ const main = async () => {
 
   for (const candidate of parentCandidates) {
     const query = parentQuery(candidate);
-    const matches = await masterlocations.find(query, { projection: { _id: 1 } }).toArray();
+    const matches = await masterlocations.find(query, LOCK_PROJECTION).toArray();
     if (matches.length === 0) {
       summary.parentSkippedNoMatch++;
       problems.push({ type: "parent-no-match", candidate });
@@ -247,6 +260,10 @@ const main = async () => {
     if (matches.length > 1) {
       summary.parentSkippedDuplicateMatch++;
       problems.push({ type: "parent-duplicate-match", candidate, matches: matches.length });
+      continue;
+    }
+    if (isLocked(matches[0])) {
+      summary.parentSkippedLocked++;
       continue;
     }
 
