@@ -232,6 +232,7 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
         initialTotal={prefetchedResults?.total}
         initialHasMore={prefetchedResults?.hasMore}
         initialSearchIntent={prefetchedResults?.searchIntent}
+        initialSearchTelemetry={prefetchedResults?.searchTelemetry}
       />
     </Suspense>
   );

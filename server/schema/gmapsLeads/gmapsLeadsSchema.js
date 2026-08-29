@@ -34,4 +34,22 @@ const gmapsLeadsSchema = new mongoose.Schema(
   }
 );
 
+gmapsLeadsSchema.index(
+  {
+    name: "text",
+    formatted_address: "text",
+    massclick_location: "text",
+    search_query: "text",
+  },
+  {
+    name: "gmaps_leads_origin_text_idx",
+    weights: {
+      name: 10,
+      formatted_address: 5,
+      massclick_location: 3,
+      search_query: 2,
+    },
+  },
+);
+
 export default gmapsLeadsSchema;

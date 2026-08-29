@@ -280,7 +280,7 @@ const SearchResultListSkeleton = ({ viewMode = "list" }) => {
 };
 
 const SearchResults = React.memo(
-  ({ initialResults, initialTotal, initialHasMore, initialSearchIntent, routeContext = null } = {}) => {
+  ({ initialResults, initialTotal, initialHasMore, initialSearchIntent, initialSearchTelemetry, routeContext = null } = {}) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const urlParams = useParams();
@@ -310,6 +310,7 @@ const SearchResults = React.memo(
       displayName,
       isKnownCategory,
       results: stateResults,
+      searchTelemetry: stateSearchTelemetry,
       logAlreadySent: stateLogSent,
     } = extractSearchResultData(locationState.state || {}, mergedRouteParams);
     // Verified-location picks search by canonical slug (exact node); free text
@@ -375,6 +376,7 @@ const SearchResults = React.memo(
       : Array.isArray(stateResults)
         ? stateResults
         : null;
+    const initialTelemetry = initialSearchTelemetry || stateSearchTelemetry || null;
     const searchText = isLocationListing ? "Businesses" : displayName;
     const normalizedSearchTerm = isLocationListing ? "" : searchTerm;
     const [searchInput, setSearchInput] = useState(
@@ -507,6 +509,7 @@ const SearchResults = React.memo(
     const [filterConfig, setFilterConfig] = useState([]);
     const [resolvedCategory, setResolvedCategory] = useState(null);
     const [searchIntent, setSearchIntent] = useState(initialSearchIntent || null);
+    const [searchTelemetry, setSearchTelemetry] = useState(initialTelemetry);
     const effectiveCategory =
       isLocationListing ? null : resolvedCategory || (isKnownCategory ? normalizedSearchTerm : null);
     const [sortBy, setSortBy] = useState("relevant");
@@ -587,9 +590,10 @@ const SearchResults = React.memo(
       setNearbyResults([]);
       setResolvedCategory(null);
       setSearchIntent(initialSearchIntent || null);
+      setSearchTelemetry(initialTelemetry);
       setInitialSearchResolved(Boolean(safeStateResults));
       loadingPagesRef.current.clear();
-    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults, initialSearchIntent]);
+    }, [normalizedSearchTerm, locationText, districtSlug, routeLocationPath, routeLocationSlug, safeStateResults, initialSearchIntent, initialTelemetry]);
 
     // Reset pagination when filters or sort change (but not the search term itself)
     useEffect(() => {
@@ -626,6 +630,7 @@ const SearchResults = React.memo(
           normalizedSearchTerm,
           isKnownCategory,
           matchedBusinessIds,
+          searchTelemetry,
         ),
       );
       lastLoggedIdentityRef.current = currentIdentity;
@@ -635,6 +640,7 @@ const SearchResults = React.memo(
       locationText,
       isKnownCategory,
       results,
+      searchTelemetry,
       initialSearchResolved,
     ]);
 
@@ -709,6 +715,7 @@ const SearchResults = React.memo(
       ) {
         setResults(safeStateResults);
         setSearchIntent(initialSearchIntent || null);
+        setSearchTelemetry(initialTelemetry);
         const resolvedTotal = typeof initialTotal === "number"
           ? initialTotal
           : safeStateResults.length;
@@ -750,6 +757,7 @@ const SearchResults = React.memo(
         setHasMore(normalized.hasMore || false);
         setResolvedCategory(normalized.resolvedCategory || null);
         setSearchIntent(normalized.searchIntent || null);
+        setSearchTelemetry(normalized.searchTelemetry || null);
         setCurrentPage(1);
         setInitialSearchResolved(true);
         trackResolvedSearch(normalized.total || 0);
@@ -770,6 +778,7 @@ const SearchResults = React.memo(
       initialHasMore,
       initialResults,
       initialSearchIntent,
+      initialTelemetry,
       initialTotal,
       trackResolvedSearch,
     ]);
@@ -817,6 +826,7 @@ const SearchResults = React.memo(
         setHasMore(normalized.hasMore || false);
         setResolvedCategory(normalized.resolvedCategory || null);
         setSearchIntent(normalized.searchIntent || null);
+        setSearchTelemetry(normalized.searchTelemetry || null);
         setCurrentPage(1);
         setInitialSearchResolved(true);
         loadingPagesRef.current.clear();

@@ -27,6 +27,51 @@ const searchLogSchema = new mongoose.Schema({
         type: String,
         index: true
     },
+    // Search-origin telemetry captured from the result API. `masterLocationSlug`
+    // is the caller's selected slug when available; `resolvedSlug` is the
+    // server node actually used to scope/rank the search.
+    resolvedSlug: {
+        type: String,
+        index: true
+    },
+    resolvedLevel: {
+        type: String,
+        index: true
+    },
+    originSource: {
+        type: String,
+        index: true
+    },
+    originConfidence: {
+        type: String,
+        index: true
+    },
+    originLat: {
+        type: Number,
+        default: null
+    },
+    originLng: {
+        type: Number,
+        default: null
+    },
+    originRadiusKm: {
+        type: Number,
+        default: null
+    },
+    distanceSortUsed: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    distanceBandsKm: {
+        type: [Number],
+        default: []
+    },
+    resultCount: {
+        type: Number,
+        default: 0,
+        index: true
+    },
     userDetails: [
         {
             userName: String,

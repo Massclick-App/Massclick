@@ -296,7 +296,6 @@ export const getEffectiveSearchLocation = (districtFallback = "") => {
  * @param {string} config.searchTerm - The search term or category name
  * @param {string} config.location - Location/district
  * @param {Function} config.navigate - React Router navigate function
- * @param {Function} config.dispatch - Redux dispatch function
  * @param {boolean} config.isKnownCategory - If TRUE: send as category (exact match). If FALSE: send as term (flexible search)
  * @param {Array} config.results - Optional: Pre-fetched results
  * @param {boolean} config.logAlreadySent - Optional: Whether logging was already done
@@ -315,9 +314,9 @@ export const navigateToSearchResult = ({
   // so ambiguous names (two "Puthur"s) hit the exact node the user chose.
   masterLocationSlug = "",
   navigate,
-  dispatch,
   isKnownCategory = false,
   results = null,
+  searchTelemetry = null,
   logAlreadySent = false,
   userDetails = null,
 }) => {
@@ -366,6 +365,7 @@ export const navigateToSearchResult = ({
 
     // Pre-fetched results if available
     ...(results && { results }),
+    ...(searchTelemetry && { searchTelemetry }),
 
     // Logging state
     logAlreadySent,
@@ -406,6 +406,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     displayName,
     category: stateCategory,
     results = null,
+    searchTelemetry = null,
     logAlreadySent = false,
     userDetails = null,
     // Legacy field names for backward compatibility
@@ -530,6 +531,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     displayName: finalSearchTerm, // Keep original for display
     isKnownCategory, // Flag for API call routing
     results: Array.isArray(results) ? results : null,
+    searchTelemetry: searchTelemetry || null,
     logAlreadySent: Boolean(logAlreadySent),
     userDetails: userDetails || null,
   };

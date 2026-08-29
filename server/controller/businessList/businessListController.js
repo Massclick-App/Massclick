@@ -24,6 +24,31 @@ import { getSettings } from "../../helper/systemSettings/settingsService.js";
 const DEFAULT_SEARCH_NEARBY_RADIUS_KM = 20;
 const MIN_SEARCH_NEARBY_RADIUS_KM = 1;
 const MAX_SEARCH_NEARBY_RADIUS_KM = 100;
+const SEARCH_ORIGIN_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const SEARCH_ORIGIN_CACHE_LIMIT = 1000;
+const searchOriginCache = new Map();
+
+const getSearchOriginCache = (key) => {
+  const entry = searchOriginCache.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) {
+    searchOriginCache.delete(key);
+    return undefined;
+  }
+  return entry.value;
+};
+
+const setSearchOriginCache = (key, value) => {
+  if (!key) return;
+  if (searchOriginCache.size >= SEARCH_ORIGIN_CACHE_LIMIT) {
+    const oldestKey = searchOriginCache.keys().next().value;
+    searchOriginCache.delete(oldestKey);
+  }
+  searchOriginCache.set(key, {
+    value,
+    expiresAt: Date.now() + SEARCH_ORIGIN_CACHE_TTL_MS,
+  });
+};
 
 const clampSearchNearbyRadiusKm = (value) => {
   const number = Number(value);
@@ -1412,7 +1437,9 @@ export const mainSearchController = async (req, res) => {
             matchQuery.$and.push({ [`filters.${key}`]: value });
           }
         }
-      } catch (_) {}
+      } catch {
+        // Invalid filter JSON means no dynamic filters are applied.
+      }
     }
 
     // Universal filters
@@ -1549,6 +1576,12 @@ export const mainSearchController = async (req, res) => {
       const pincode = /^\d{6}$/.test(resolvedLocation?.pincode || "")
         ? resolvedLocation.pincode
         : "";
+      const cacheKey = resolvedLocation?.slug
+        ? `slug:${resolvedLocation.slug}`
+        : `free:${locationNameVariants.join("|")}:${pincode}`;
+      const cachedOrigin = getSearchOriginCache(cacheKey);
+      if (cachedOrigin !== undefined) return cachedOrigin;
+
       const districtNames = compactUnique([
         resolvedLocation?.district,
         ...(districtAliasMap[normalize(resolvedLocation?.district || "")] || []),
@@ -1556,29 +1589,62 @@ export const mainSearchController = async (req, res) => {
         resolvedLocation?.district === "Tiruchirappalli" ? "Trichirappalli" : "",
       ]);
       const locationRegexes = locationNameVariants.map((name) => new RegExp(escapeRegex(name), "i"));
+      const originBaseQuery = {
+        "geoLocation.coordinates.0": { $gte: 68, $lte: 98 },
+        "geoLocation.coordinates.1": { $gte: 6, $lte: 38 },
+      };
+      const originProjection = {
+        name: 1,
+        formatted_address: 1,
+        massclick_location: 1,
+        search_query: 1,
+        google_types: 1,
+        geoLocation: 1,
+      };
+      const textSearchQuery = compactUnique([...locationNameVariants, pincode])
+        .join(" ");
 
-      const candidates = await gmapsLeadsModel
-        .find({
-          "geoLocation.coordinates.0": { $gte: 68, $lte: 98 },
-          "geoLocation.coordinates.1": { $gte: 6, $lte: 38 },
+      const findGmapsOriginCandidatesByText = async () => {
+        if (!textSearchQuery) return [];
+        return gmapsLeadsModel
+          .find(
+            {
+              ...originBaseQuery,
+              $text: { $search: textSearchQuery },
+            },
+            {
+              ...originProjection,
+              textScore: { $meta: "textScore" },
+            },
+          )
+          .sort({ textScore: { $meta: "textScore" } })
+          .limit(80)
+          .lean();
+      };
+
+      const findGmapsOriginCandidatesByRegex = async () =>
+        gmapsLeadsModel.find({
+          ...originBaseQuery,
           $or: locationRegexes.flatMap((regex) => [
             { name: regex },
             { formatted_address: regex },
           ]),
-        }, {
-          name: 1,
-          formatted_address: 1,
-          massclick_location: 1,
-          search_query: 1,
-          google_types: 1,
-          geoLocation: 1,
-        })
-        .limit(40)
-        .lean()
+        }, originProjection)
+          .limit(40)
+          .lean();
+
+      let candidates = await findGmapsOriginCandidatesByText()
         .catch((err) => {
-          console.error("[Search] gmaps origin lookup failed:", err.message);
+          console.error("[Search] gmaps origin text lookup failed:", err.message);
           return [];
         });
+      if (!candidates.length) {
+        candidates = await findGmapsOriginCandidatesByRegex()
+          .catch((err) => {
+            console.error("[Search] gmaps origin regex lookup failed:", err.message);
+            return [];
+          });
+      }
 
       const scored = candidates
         .map((candidate) => {
@@ -1627,9 +1693,13 @@ export const mainSearchController = async (req, res) => {
         .filter(Boolean)
         .sort((left, right) => right.score - left.score);
 
-      if (!scored.length) return null;
+      if (!scored.length) {
+        setSearchOriginCache(cacheKey, null);
+        return null;
+      }
       const best = scored[0];
       console.log(`[Search] gmaps origin candidate "${best.name}" score:${best.score}`);
+      setSearchOriginCache(cacheKey, best);
       return best;
     };
 
@@ -1695,7 +1765,7 @@ export const mainSearchController = async (req, res) => {
         model: businessListModel,
         pincode,
         coordinatesPath: "geoLocation.coordinates",
-        match: { businessesLive: true },
+        match: { businessesLive: true, geoLocationPrecision: { $nin: ["outside-district", "invalid"] } },
         sourceLabel: "business-pincode",
       });
     };
@@ -1804,6 +1874,11 @@ export const mainSearchController = async (req, res) => {
     const businessGeoLat = coordinateAtExpression("$geoLocation.coordinates", 1);
     const rankLocationLng = coordinateAtExpression("$_rankLocationCoordinates", 0);
     const rankLocationLat = coordinateAtExpression("$_rankLocationCoordinates", 1);
+    const broadBusinessPrecisions = ["locality", "district", "outside-district", "invalid"];
+    const unusableBusinessPrecisions = ["outside-district", "invalid"];
+    const businessGeoPrecisionExpression = { $ifNull: ["$geoLocationPrecision", "unknown"] };
+    const businessGeoIsBroad = { $in: [businessGeoPrecisionExpression, broadBusinessPrecisions] };
+    const businessGeoIsUnusable = { $in: [businessGeoPrecisionExpression, unusableBusinessPrecisions] };
     const searchedLocationRankStages = useSearchedLocationSort ? [
       {
         $lookup: {
@@ -1830,13 +1905,29 @@ export const mainSearchController = async (req, res) => {
         $addFields: {
           _searchRankCoordinates: {
             $cond: [
-              validPointExpression(businessGeoLng, businessGeoLat),
+              {
+                $and: [
+                  validPointExpression(businessGeoLng, businessGeoLat),
+                  { $not: [businessGeoIsBroad] },
+                ],
+              },
               "$geoLocation.coordinates",
               {
                 $cond: [
                   validPointExpression(rankLocationLng, rankLocationLat),
                   "$_rankLocationCoordinates",
-                  null,
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          validPointExpression(businessGeoLng, businessGeoLat),
+                          { $not: [businessGeoIsUnusable] },
+                        ],
+                      },
+                      "$geoLocation.coordinates",
+                      null,
+                    ],
+                  },
                 ],
               },
             ],
@@ -2232,6 +2323,19 @@ export const mainSearchController = async (req, res) => {
       }
     });
 
+    const searchTelemetry = {
+      resolvedSlug: resolvedLocation?.slug || "",
+      resolvedLevel: resolvedLocation?.level || "",
+      originSource: resolvedLocationOrigin?.source || "",
+      originConfidence: resolvedLocationOrigin?.confidence || "",
+      originLat: Number.isFinite(resolvedLocationOrigin?.lat) ? resolvedLocationOrigin.lat : null,
+      originLng: Number.isFinite(resolvedLocationOrigin?.lng) ? resolvedLocationOrigin.lng : null,
+      originRadiusKm: Number.isFinite(resolvedLocationOrigin?.radiusKm) ? resolvedLocationOrigin.radiusKm : null,
+      distanceSortUsed: Boolean(useSearchedLocationSort),
+      distanceBandsKm: distanceBands,
+      resultCount: total,
+    };
+
     res.send({
       results,
       total,
@@ -2243,6 +2347,7 @@ export const mainSearchController = async (req, res) => {
       isNearbySearch,
       fallbackTier,
       nearbySearchRadiusKm,
+      searchTelemetry,
     });
 
   } catch (err) {
@@ -2666,7 +2771,9 @@ export const updateBusinessBadgesAction = async (req, res) => {
 
 const sanitizeDownloadFilename = (value = "document") =>
   String(value || "document")
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+    .split("")
+    .map((char) => (char.charCodeAt(0) < 32 || /[<>:"/\\|?*]/.test(char) ? "-" : char))
+    .join("")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 140) || "document";

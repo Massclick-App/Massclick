@@ -458,7 +458,8 @@ export const logSearchActivity = (
   userDetails,
   searchedUserText = "",
   isKnownCategory = false,
-  matchedBusinessIds = []
+  matchedBusinessIds = [],
+  searchTelemetry = null
 ) =>
   async (dispatch) => {
     try {
@@ -473,6 +474,7 @@ export const logSearchActivity = (
           userDetails,
           isKnownCategory,
           matchedBusinessIds,
+          ...(searchTelemetry ? { searchTelemetry } : {}),
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -652,8 +654,17 @@ export const backendMainSearch = (term, location, category, extraParams = {}) =>
     const raw = response.data;
     const isLegacy = Array.isArray(raw);
     const normalized = isLegacy
-      ? { results: raw, total: raw.length, page: 1, pageSize: raw.length, hasMore: false, resolvedCategory: null, searchIntent: null }
-      : { results: raw.results || [], total: raw.total || 0, page: raw.page || 1, pageSize: raw.pageSize || 20, hasMore: raw.hasMore || false, resolvedCategory: raw.resolvedCategory || null, searchIntent: raw.searchIntent || null };
+      ? { results: raw, total: raw.length, page: 1, pageSize: raw.length, hasMore: false, resolvedCategory: null, searchIntent: null, searchTelemetry: null }
+      : {
+          results: raw.results || [],
+          total: raw.total || 0,
+          page: raw.page || 1,
+          pageSize: raw.pageSize || 20,
+          hasMore: raw.hasMore || false,
+          resolvedCategory: raw.resolvedCategory || null,
+          searchIntent: raw.searchIntent || null,
+          searchTelemetry: raw.searchTelemetry || null,
+        };
 
     dispatch({ type: SEARCH_BUSINESS_SUCCESS, payload: normalized.results });
 

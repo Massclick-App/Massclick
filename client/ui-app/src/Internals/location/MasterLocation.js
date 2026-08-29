@@ -1,10 +1,10 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllMasterLocation, createMasterLocation, editMasterLocation, deleteMasterLocation, getMasterLocationFieldOptions, toggleMasterLocation, bulkToggleMasterLocation } from "../../redux/actions/masterLocationAction.js";
 import styles from "./masterLocation.module.css";
 import { Box, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip, Autocomplete, TextField, Switch, Tooltip, Checkbox, Alert, IconButton, Menu, MenuItem, ListItemIcon } from "@mui/material";
-import { CheckCircle2, Eye, FilterX, ListChecks, MoreVertical, PauseCircle, Pencil, RotateCcw, SearchCheck, SlidersHorizontal, Trash2 } from "lucide-react";
+import { CheckCircle2, Crosshair, ExternalLink, Eye, FilterX, ListChecks, MapPin, Minus, MoreVertical, PauseCircle, Pencil, Plus, RotateCcw, SearchCheck, SlidersHorizontal, Trash2 } from "lucide-react";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import AdminViewTabs from "../../components/AdminViewTabs.js";
 
@@ -33,6 +33,16 @@ const SOURCE_TONES = {
 };
 
 const TRICHY_DISTRICT = "Tiruchirappalli";
+const DEFAULT_MAP_CENTER = { lat: 10.7905, lng: 78.7047 };
+const TILE_SIZE = 256;
+const MIN_MAP_ZOOM = 9;
+const MAX_MAP_ZOOM = 18;
+const EMPTY_COORDINATE_DRAFT = {
+  latitude: "",
+  longitude: "",
+  formattedAddress: "",
+  placeId: ""
+};
 const REVIEW_QUEUE_FILTERS = {
   district: TRICHY_DISTRICT,
   zone: "",
@@ -105,6 +115,275 @@ const describeError = (error) => {
   return payload.message || "Something went wrong.";
 };
 
+const formatCoord = (value) => (
+  Number.isFinite(value) ? value.toFixed(6) : ""
+);
+
+const parseCoordinateDraft = (draft) => {
+  const lat = Number(draft.latitude);
+  const lng = Number(draft.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+};
+
+const isValidLatitude = (value) => {
+  const lat = Number(value);
+  return Number.isFinite(lat) && lat >= -90 && lat <= 90;
+};
+
+const isValidLongitude = (value) => {
+  const lng = Number(value);
+  return Number.isFinite(lng) && lng >= -180 && lng <= 180;
+};
+
+const hasCoordinateInput = (draft) =>
+  String(draft.latitude).trim() !== "" || String(draft.longitude).trim() !== "";
+
+const hasValidCoordinateInput = (draft) =>
+  String(draft.latitude).trim() !== "" &&
+  String(draft.longitude).trim() !== "" &&
+  isValidLatitude(draft.latitude) &&
+  isValidLongitude(draft.longitude);
+
+const getCoordinateDraftFromLocation = (loc = {}) => {
+  const point = loc.coordinates?.coordinates;
+  const hasPoint = Array.isArray(point) &&
+    point.length === 2 &&
+    point.every((value) => Number.isFinite(Number(value)));
+
+  return {
+    latitude: hasPoint ? formatCoord(Number(point[1])) : "",
+    longitude: hasPoint ? formatCoord(Number(point[0])) : "",
+    formattedAddress: loc.coordinatesMeta?.formattedAddress || "",
+    placeId: loc.coordinatesMeta?.placeId || ""
+  };
+};
+
+const getCoordinateStatus = (row) => {
+  if (!row.hasCoordinate) {
+    return {
+      label: "No pin",
+      tone: "red",
+      tooltip: "No coordinate is stored for this location."
+    };
+  }
+  if (row.coordinateLocked) {
+    return {
+      label: "Locked",
+      tone: "green",
+      tooltip: "This coordinate was manually placed and is protected from automated updates."
+    };
+  }
+  if (row.coordinateConfidence === "low") {
+    return {
+      label: "Low",
+      tone: "amber",
+      tooltip: "This coordinate is low-confidence."
+    };
+  }
+  if (row.coordinateSource === "manual") {
+    return {
+      label: "Manual",
+      tone: "green",
+      tooltip: "This coordinate was manually set."
+    };
+  }
+  return {
+    label: "Has pin",
+    tone: row.coordinateConfidence === "medium" ? "blue" : "neutral",
+    tooltip: row.coordinateSource ? `Source: ${row.coordinateSource}` : "A coordinate is stored for this location."
+  };
+};
+
+const clampLat = (lat) => Math.max(-85.05112878, Math.min(85.05112878, lat));
+const worldSize = (zoom) => TILE_SIZE * 2 ** zoom;
+const lngToWorldX = (lng, zoom) => ((lng + 180) / 360) * worldSize(zoom);
+const latToWorldY = (lat, zoom) => {
+  const sin = Math.sin((clampLat(lat) * Math.PI) / 180);
+  return (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * worldSize(zoom);
+};
+const worldXToLng = (x, zoom) => (x / worldSize(zoom)) * 360 - 180;
+const worldYToLat = (y, zoom) => {
+  const n = Math.PI - (2 * Math.PI * y) / worldSize(zoom);
+  return (180 / Math.PI) * Math.atan(Math.sinh(n));
+};
+const wrapTileX = (x, zoom) => {
+  const count = 2 ** zoom;
+  return ((x % count) + count) % count;
+};
+
+const CoordinatePicker = ({ cx, draft, onChange, onTouch }) => {
+  const selected = parseCoordinateDraft(draft);
+  const selectedLat = selected?.lat;
+  const selectedLng = selected?.lng;
+  const [center, setCenter] = useState(selected || DEFAULT_MAP_CENTER);
+  const [zoom, setZoom] = useState(13);
+  const mapRef = useRef(null);
+  const [mapSize, setMapSize] = useState({ width: 560, height: 320 });
+
+  useEffect(() => {
+    if (Number.isFinite(selectedLat) && Number.isFinite(selectedLng)) {
+      setCenter({ lat: selectedLat, lng: selectedLng });
+    }
+  }, [selectedLat, selectedLng]);
+
+  useEffect(() => {
+    if (!mapRef.current) return undefined;
+    const updateSize = () => {
+      const rect = mapRef.current.getBoundingClientRect();
+      setMapSize({
+        width: Math.max(280, rect.width),
+        height: Math.max(260, rect.height)
+      });
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(mapRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const centerX = lngToWorldX(center.lng, zoom);
+  const centerY = latToWorldY(center.lat, zoom);
+  const topLeftX = centerX - mapSize.width / 2;
+  const topLeftY = centerY - mapSize.height / 2;
+  const minTileX = Math.floor(topLeftX / TILE_SIZE);
+  const maxTileX = Math.floor((topLeftX + mapSize.width) / TILE_SIZE);
+  const minTileY = Math.max(0, Math.floor(topLeftY / TILE_SIZE));
+  const maxTileY = Math.min(2 ** zoom - 1, Math.floor((topLeftY + mapSize.height) / TILE_SIZE));
+
+  const tiles = useMemo(() => {
+    const nextTiles = [];
+    for (let x = minTileX; x <= maxTileX; x += 1) {
+      for (let y = minTileY; y <= maxTileY; y += 1) {
+        nextTiles.push({
+          key: `${zoom}-${x}-${y}`,
+          src: `https://tile.openstreetmap.org/${zoom}/${wrapTileX(x, zoom)}/${y}.png`,
+          left: x * TILE_SIZE - topLeftX,
+          top: y * TILE_SIZE - topLeftY
+        });
+      }
+    }
+    return nextTiles;
+  }, [maxTileX, maxTileY, minTileX, minTileY, topLeftX, topLeftY, zoom]);
+
+  const markerPosition = selected ? {
+    left: lngToWorldX(selected.lng, zoom) - topLeftX,
+    top: latToWorldY(selected.lat, zoom) - topLeftY
+  } : null;
+
+  const setPin = (lat, lng) => {
+    onTouch();
+    onChange({
+      ...draft,
+      latitude: formatCoord(lat),
+      longitude: formatCoord(lng)
+    });
+  };
+
+  const handleMapClick = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = topLeftX + event.clientX - rect.left;
+    const y = topLeftY + event.clientY - rect.top;
+    setPin(worldYToLat(y, zoom), worldXToLng(x, zoom));
+  };
+
+  const selectedQuery = selected ? `${selected.lat},${selected.lng}` : `${DEFAULT_MAP_CENTER.lat},${DEFAULT_MAP_CENTER.lng}`;
+
+  return (
+    <div className={cx("master-location-map-panel")}>
+      <div className={cx("master-location-map-toolbar")}>
+        <div className={cx("master-location-map-actions")}>
+          <Tooltip title="Zoom in">
+            <button
+              type="button"
+              aria-label="Zoom in"
+              className={cx("master-location-icon-button")}
+              onClick={() => setZoom((value) => Math.min(MAX_MAP_ZOOM, value + 1))}
+            >
+              <Plus size={16} />
+            </button>
+          </Tooltip>
+          <Tooltip title="Zoom out">
+            <button
+              type="button"
+              aria-label="Zoom out"
+              className={cx("master-location-icon-button")}
+              onClick={() => setZoom((value) => Math.max(MIN_MAP_ZOOM, value - 1))}
+            >
+              <Minus size={16} />
+            </button>
+          </Tooltip>
+          <Tooltip title="Center on pin">
+            <span>
+              <button
+                type="button"
+                aria-label="Center on pin"
+                className={cx("master-location-icon-button")}
+                disabled={!selected}
+                onClick={() => selected && setCenter(selected)}
+              >
+                <Crosshair size={16} />
+              </button>
+            </span>
+          </Tooltip>
+        </div>
+        <div className={cx("master-location-map-links")}>
+          <Tooltip title="Open in Google Maps">
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedQuery)}`}
+              target="_blank"
+              rel="noreferrer"
+              className={cx("master-location-map-link")}
+            >
+              Google <ExternalLink size={13} />
+            </a>
+          </Tooltip>
+          <Tooltip title="Open in OpenStreetMap">
+            <a
+              href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(selectedQuery)}`}
+              target="_blank"
+              rel="noreferrer"
+              className={cx("master-location-map-link")}
+            >
+              OSM <ExternalLink size={13} />
+            </a>
+          </Tooltip>
+        </div>
+      </div>
+      <div
+        ref={mapRef}
+        className={cx("master-location-map")}
+        onClick={handleMapClick}
+        role="button"
+        aria-label="Set map pin"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if ((event.key === "Enter" || event.key === " ") && selected) setCenter(selected);
+        }}
+      >
+        {tiles.map((tile) => (
+          <img
+            alt=""
+            className={cx("master-location-map-tile")}
+            draggable="false"
+            key={tile.key}
+            src={tile.src}
+            style={{ left: tile.left, top: tile.top }}
+          />
+        ))}
+        {markerPosition && (
+          <div
+            className={cx("master-location-map-marker")}
+            style={{ left: markerPosition.left, top: markerPosition.top }}
+          >
+            <MapPin size={30} fill="#ef4444" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const getLocationStatus = (row) => {
   if (row.isActive) {
     return {
@@ -152,6 +431,9 @@ export default function MasterLocation() {
     pincode: "",
     alternateNames: ""
   });
+  const [coordinateDraft, setCoordinateDraft] = useState(EMPTY_COORDINATE_DRAFT);
+  const [coordinateChanged, setCoordinateChanged] = useState(false);
+  const [existingCoordinateMeta, setExistingCoordinateMeta] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [activeView, setActiveView] = useState("list");
 
@@ -411,8 +693,53 @@ export default function MasterLocation() {
     if (formData.pincode.trim() && !/^\d{6}$/.test(formData.pincode.trim())) {
       newErrors.pincode = "Pincode must be 6 digits";
     }
+    if (hasCoordinateInput(coordinateDraft)) {
+      if (!isValidLatitude(coordinateDraft.latitude)) {
+        newErrors.latitude = "Latitude must be between -90 and 90";
+      }
+      if (!isValidLongitude(coordinateDraft.longitude)) {
+        newErrors.longitude = "Longitude must be between -180 and 180";
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const buildCoordinateQuery = () => [
+    formData.district,
+    formData.zone,
+    formData.ward,
+    formData.locality,
+    formData.pincode
+  ].filter(Boolean).join(", ");
+
+  const buildSubmitPayload = () => {
+    const payload = { ...formData };
+    if (!coordinateChanged || !hasValidCoordinateInput(coordinateDraft)) return payload;
+
+    const latitude = Number(coordinateDraft.latitude);
+    const longitude = Number(coordinateDraft.longitude);
+    const now = new Date().toISOString();
+    const query = buildCoordinateQuery();
+
+    payload.coordinates = {
+      type: "Point",
+      coordinates: [longitude, latitude]
+    };
+    payload.coordinatesMeta = {
+      ...(existingCoordinateMeta || {}),
+      source: "manual",
+      confidence: "high",
+      query,
+      formattedAddress: coordinateDraft.formattedAddress.trim() || `Manual pin for ${query}`,
+      placeId: coordinateDraft.placeId.trim(),
+      derivedFromCount: 0,
+      updatedAt: now,
+      lockedAt: now,
+      verifiedBy: "admin-ui"
+    };
+
+    return payload;
   };
 
   const resetForm = () => {
@@ -425,6 +752,9 @@ export default function MasterLocation() {
       pincode: "",
       alternateNames: ""
     });
+    setCoordinateDraft(EMPTY_COORDINATE_DRAFT);
+    setCoordinateChanged(false);
+    setExistingCoordinateMeta(null);
     setErrors({});
     setEditingId(null);
   };
@@ -432,14 +762,15 @@ export default function MasterLocation() {
   const handleSubmit = e => {
     e.preventDefault();
     if (!validateForm()) return;
+    const payload = buildSubmitPayload();
     if (editingId) {
-      dispatch(editMasterLocation(editingId, formData)).then(() => {
+      dispatch(editMasterLocation(editingId, payload)).then(() => {
         resetForm();
         setActiveView("list");
         setTableRefreshKey(prev => prev + 1);
       }).catch(() => {});
     } else {
-      dispatch(createMasterLocation(formData)).then(() => {
+      dispatch(createMasterLocation(payload)).then(() => {
         resetForm();
         setTableRefreshKey(prev => prev + 1);
       }).catch(() => {});
@@ -451,12 +782,15 @@ export default function MasterLocation() {
     setFormData({
       state: row.state || "Tamil Nadu",
       district: row.district || "Tiruchirappalli",
-      zone: row.zone || "",
-      ward: row.ward || "",
-      locality: row.locality || "",
-      pincode: row.pincode || "",
+      zone: row.zoneRaw || "",
+      ward: row.wardRaw || "",
+      locality: row.localityRaw || "",
+      pincode: row.pincodeRaw || "",
       alternateNames: Array.isArray(row.alternateNamesRaw) ? row.alternateNamesRaw.join(", ") : ""
     });
+    setCoordinateDraft(row.coordinateDraft || EMPTY_COORDINATE_DRAFT);
+    setCoordinateChanged(false);
+    setExistingCoordinateMeta(row.coordinatesMeta || null);
     setActiveView("form");
   };
 
@@ -481,27 +815,51 @@ export default function MasterLocation() {
   };
 
   const filterDistrictOptions = [...new Set([...districtOptions, filterDistrict].filter(Boolean))].sort();
-  const rows = masterLocation.map((loc, index) => ({
-    id: loc._id || index,
-    name: loc.locality || loc.ward || loc.zone || loc.district,
-    state: loc.state,
-    district: loc.district,
-    zone: loc.zone || "-",
-    ward: loc.ward || "-",
-    locality: loc.locality || "-",
-    level: loc.level,
-    pincode: loc.pincode || (loc.pincodes?.length ? loc.pincodes.join(", ") : "-"),
-    hierarchyPath: loc.hierarchyPath,
-    slug: loc.slug,
-    alternateNames: loc.alternateNames?.length ? loc.alternateNames.join(", ") : "-",
-    alternateNamesRaw: loc.alternateNames || [],
-    isActive: loc.isActive,
-    reviewStatus: loc.reviewStatus || "approved",
-    importSource: loc.importSource || "",
-    sourceLabel: formatImportSource(loc.importSource),
-    sourceOrigin: loc.importSource?.startsWith("gmaps") ? "Google" : loc.importSource ? "Imported" : "Manual",
-    fullPlace: loc.hierarchyPath || [loc.state, loc.district, loc.zone, loc.ward, loc.locality].filter(Boolean).join(" > ")
-  }));
+  const rows = masterLocation.map((loc, index) => {
+    const point = loc.coordinates?.coordinates;
+    const hasCoordinate = Array.isArray(point) &&
+      point.length === 2 &&
+      point.every((value) => Number.isFinite(Number(value)));
+    const latitude = hasCoordinate ? Number(point[1]) : null;
+    const longitude = hasCoordinate ? Number(point[0]) : null;
+    const coordinateSource = loc.coordinatesMeta?.source || "";
+    const coordinateConfidence = loc.coordinatesMeta?.confidence || "";
+
+    return {
+      id: loc._id || index,
+      name: loc.locality || loc.ward || loc.zone || loc.district,
+      state: loc.state,
+      district: loc.district,
+      zone: loc.zone || "-",
+      zoneRaw: loc.zone || "",
+      ward: loc.ward || "-",
+      wardRaw: loc.ward || "",
+      locality: loc.locality || "-",
+      localityRaw: loc.locality || "",
+      level: loc.level,
+      pincode: loc.pincode || (loc.pincodes?.length ? loc.pincodes.join(", ") : "-"),
+      pincodeRaw: loc.pincode || "",
+      hierarchyPath: loc.hierarchyPath,
+      slug: loc.slug,
+      alternateNames: loc.alternateNames?.length ? loc.alternateNames.join(", ") : "-",
+      alternateNamesRaw: loc.alternateNames || [],
+      isActive: loc.isActive,
+      reviewStatus: loc.reviewStatus || "approved",
+      importSource: loc.importSource || "",
+      sourceLabel: formatImportSource(loc.importSource),
+      sourceOrigin: loc.importSource?.startsWith("gmaps") ? "Google" : loc.importSource ? "Imported" : "Manual",
+      hasCoordinate,
+      latitude,
+      longitude,
+      coordinateLabel: hasCoordinate ? `${formatCoord(latitude)}, ${formatCoord(longitude)}` : "-",
+      coordinateSource,
+      coordinateConfidence,
+      coordinateLocked: Boolean(loc.coordinatesMeta?.lockedAt),
+      coordinatesMeta: loc.coordinatesMeta || null,
+      coordinateDraft: getCoordinateDraftFromLocation(loc),
+      fullPlace: loc.hierarchyPath || [loc.state, loc.district, loc.zone, loc.ward, loc.locality].filter(Boolean).join(" > ")
+    };
+  });
 
   const currentPageIds = rows.map(row => row.id);
   const selectedOnPage = currentPageIds.filter(id => selectedIds.includes(id));
@@ -575,6 +933,23 @@ export default function MasterLocation() {
   }, {
     id: "pincode",
     label: "Pin"
+  }, {
+    id: "coordinateLabel",
+    label: "Map Pin",
+    sortable: false,
+    renderCell: (value, row) => {
+      const pinStatus = getCoordinateStatus(row);
+      return (
+        <div className={cx("master-location-pin-cell")}>
+          <Tooltip title={pinStatus.tooltip}>
+            <span>
+              <Badge tone={pinStatus.tone}>{pinStatus.label}</Badge>
+            </span>
+          </Tooltip>
+          <span>{value}</span>
+        </div>
+      );
+    }
   }, {
     id: "importSource",
     label: "Source",
@@ -734,6 +1109,30 @@ export default function MasterLocation() {
     </div>
   );
 
+  const renderCoordinateField = ({ label, name, placeholder }) => (
+    <div key={name} className={cx("master-location-form-input-group")}>
+      <label htmlFor={name} className={cx("master-location-input-label")}>
+        {label}
+      </label>
+      <input
+        type="text"
+        id={name}
+        name={name}
+        className={`form-text-input ${errors[name] ? "error" : ""}`}
+        value={coordinateDraft[name]}
+        placeholder={placeholder}
+        onChange={(event) => {
+          setCoordinateChanged(true);
+          setCoordinateDraft(prev => ({
+            ...prev,
+            [name]: event.target.value
+          }));
+        }}
+      />
+      {errors[name] && <p className="form-error-text">{errors[name]}</p>}
+    </div>
+  );
+
   return <div className={cx("master-location-page")}>
       <header className={cx("master-location-header")}>
           <div>
@@ -780,6 +1179,51 @@ export default function MasterLocation() {
                   {hierarchyFields.map(renderHierarchyField)}
                   {renderPlainField(pincodeField)}
                   {renderPlainField(alternateNamesField)}
+                  <div className={cx("master-location-coordinate-section master-location-col-span-all")}>
+                    <div className={cx("master-location-section-heading")}>
+                      <div>
+                        <h3>Map Pin</h3>
+                        <p>
+                          {hasValidCoordinateInput(coordinateDraft)
+                            ? "Saving after a pin change locks this coordinate as manually verified."
+                            : "No coordinate is set for this location."}
+                        </p>
+                      </div>
+                      <Badge tone={coordinateChanged ? "amber" : hasValidCoordinateInput(coordinateDraft) ? "green" : "red"}>
+                        {coordinateChanged ? "Changed" : hasValidCoordinateInput(coordinateDraft) ? "Ready" : "No pin"}
+                      </Badge>
+                    </div>
+                    <div className={cx("master-location-coordinate-grid")}>
+                      <div className={cx("master-location-coordinate-fields")}>
+                        {renderCoordinateField({
+                          label: "Latitude",
+                          name: "latitude",
+                          placeholder: "10.790500"
+                        })}
+                        {renderCoordinateField({
+                          label: "Longitude",
+                          name: "longitude",
+                          placeholder: "78.704700"
+                        })}
+                        {renderCoordinateField({
+                          label: "Source Note",
+                          name: "formattedAddress",
+                          placeholder: "Google/OSM place or manual note"
+                        })}
+                        {renderCoordinateField({
+                          label: "Google Place ID",
+                          name: "placeId",
+                          placeholder: "Optional"
+                        })}
+                      </div>
+                      <CoordinatePicker
+                        cx={cx}
+                        draft={coordinateDraft}
+                        onChange={setCoordinateDraft}
+                        onTouch={() => setCoordinateChanged(true)}
+                      />
+                    </div>
+                  </div>
                 </>;
               })()}
 

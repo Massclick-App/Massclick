@@ -13,10 +13,10 @@ picking this up should read only this file to know where things stand.
 
 | | |
 |---|---|
-| Phase | **Trichy coordinate fill complete; #7b synthetic zero-business wards disabled on dev.** Localities 7.8% -> 89.3%, wards 12.8% -> 71.6%, zones 33% -> 100%. |
-| Next action | #15 admin map UI, #11/#12 business geo quality, #14 telemetry. Also hand-place the 31 remaining active ward coordinates when useful. |
-| DB writes so far | dev only: 67 manual (locked) + 8,034 recovered + 66 GeoNames + 45 derived parents + 83 disabled (36 localities + 47 wards) + 1 zone created |
-| Snapshots | Latest #7b snapshot is listed in `db-backups/MANIFEST.md` (see Rollback below) |
+| Phase | **Trichy coordinate fill complete; search ranking + telemetry fixes complete in code.** Localities 7.8% -> 89.3%, wards 12.8% -> 71.6%, zones 33% -> 100%. |
+| Next action | Repeat coordinate recovery/enrichment for the next district. Also hand-place the 31 remaining active Trichy ward coordinates through the admin UI when useful. |
+| DB writes so far | dev only: 67 manual (locked) + 8,034 recovered + 66 GeoNames + 45 derived parents + 83 disabled (36 localities + 47 wards) + 1 zone created + 3,680 business precision tags + 413 business coordinate repairs |
+| Snapshots | Latest business coordinate repair snapshot is listed in `db-backups/MANIFEST.md` (see Rollback below) |
 | Prod | **untouched** |
 
 ### Coverage, before -> after (active Trichy documents)
@@ -36,6 +36,9 @@ By source now: `gmaps-import` 3,150 · `osm-import` 1,152 · `gmaps-leads-derive
 `census-import` 70 · **`manual` 67 (locked)** · `geonames-import` 66 · `derived-from-children` 65 ·
 `business-derived` 31 · `mixed-derived` 17.
 
+Business geo precision now: `address` 2,864 · `locality` 616 · `district` 200 ·
+`outside-district` 0 · `invalid` 0.
+
 **Still empty:** 582 active localities, 31 active wards. The 47 zero-business synthetic template
 wards are now inactive; the remaining coordinate-less wards mostly look real and need coordinates,
 not deletion.
@@ -49,10 +52,10 @@ the 2km border tolerance. The one real remainder is `Kathalur` (2.72km, hierarch
 node db-backups/restore.js --from "db-backups/snapshots/massClick_dev/2026-08-29_08-11-57__pre-manual-coordinate-apply"
 ```
 That is the earliest snapshot, taken before any of today's writes. The latest snapshot, taken
-immediately before #7b, is:
+immediately before the business precision write, is:
 
 ```bash
-node db-backups/restore.js --from "db-backups/snapshots/massClick_dev/2026-08-29_09-38-54__pre-trichy-synthetic-wards-disable"
+node db-backups/restore.js --from "db-backups/snapshots/massClick_dev/2026-08-29_10-02-41__pre-trichy-business-coordinate-repair"
 ```
 
 ### Documents
@@ -139,18 +142,18 @@ Status key: `open` · `in progress` · `blocked` · `done`
 | 4 | `masterlocations` | 6 coordinates flat wrong — four at 77.70°E, one `[0,0]`, one in Thanjavur | `scripts/applyManualCoordinates.js`, user-reviewed batches | **done** — 66 applied and locked |
 | 5 | `masterlocations` | `backfillMasterLocationCoordinates.js` skips bad points without `--force`, wipes manual ones with it | `coordinatesMeta.lockedAt` + boundary-based suspect check | **done** 2026-08-29 |
 | 5b | `masterlocations` | `applyMasterLocationCoordinateSourceReport.js` `$set`s the whole `coordinatesMeta` object — would wipe a lock along with the coordinate | Skip locked docs before writing; `localitySkippedLocked` / `parentSkippedLocked` counters | **done** 2026-08-29 |
-| 5c | `masterlocations` | `evaluateResult()` still validates *incoming Google geocodes* with the same self-poisoning business-derived `districtGuards` (see changelog) — it can accept a wrong result whose district box was widened by earlier wrong results | Switch that check to `isPointInDistrict()` too | open — not urgent, only affects new geocodes |
+| 5c | `masterlocations` | `evaluateResult()` still validates *incoming Google geocodes* with the same self-poisoning business-derived `districtGuards` (see changelog) — it can accept a wrong result whose district box was widened by earlier wrong results | Switch that check to `isPointInDistrict()` too | **done** 2026-08-29 — code-only; incoming Google geocodes now use the published district boundary |
 | 6 | `masterlocations` | Schema defaults `coordinates` to `[0,0]` — a valid point in the Atlantic | `default: undefined` on both subfields | **done** 2026-08-29 |
 | 7 | `masterlocations` | active "localities" that are address junk (`nearby Muthoot FinCorp`, plus-codes, bare `Area`) | `scripts/disableTrichyNoiseRound5.js` | **done** — 36 disabled, 3 blocked by the business/lock guards |
 | 7b | `masterlocations` | 50 active wards had repeated generic template names; 47 had zero businesses anywhere under their ward scope | `scripts/disableTrichySyntheticWards.js --apply`, after snapshot; disable only zero-business candidates and keep guarded wards live | **done** 2026-08-29 — 47 disabled; ward coverage 50.0% -> 71.6% |
 | 8 | `masterlocations` | Zone `Tiruverumbur` had 94 localities but no zone doc | `scripts/createTiruverumburZone.js` | **done** — created and locked. The `Tiruverumbur` / `Thiruverumbur` spelling merge is deliberately NOT done: it rewrites slugs, and therefore URLs |
 | 9 | `masterlocations` | `coordinatesMeta.confidence` was never read — `low/n=1` ranked same as `high/n=1682` | Bands double for a `low`-confidence origin; gmaps-lead and pincode-average origins are now graded rather than passed through unlabelled | **done** 2026-08-29 |
 | 10 | `masterlocations` | Distance bands hardcoded 2/5/10/20 km for a cross street and a 25 km taluk alike | `coordinatesMeta.radiusM` (p80 child spread) + `buildDistanceBands()` in the controller | **done** 2026-08-29 — 68 nodes measured |
-| 11 | `businesslists` | 345+ Trichy businesses share an exact coordinate (58 on one point) — locality centroids faking address precision | Add `geoLocationPrecision`; rank using the more precise of business vs masterlocation point | open |
-| 12 | `businesslists` | 410 Trichy businesses have a coordinate outside the district | Flag and re-geocode | open |
-| 13 | `gmaps_leads` | Origin fallback regex-scans 321,919 docs, no index on `name`/`formatted_address`, every search on the miss path | Index those fields, cache origin by slug | open — less urgent once #2 lands |
-| 14 | `logsearches` | `masterLocationSlug` empty on all 105 rows — no record of what resolved or which origin fired | Log `resolvedSlug`, `originSource`, `distanceSortUsed`, `resultCount` | open |
-| 15 | `masterlocations` | Admin UI [MasterLocation.js](client/ui-app/src/Internals/location/MasterLocation.js) has no coordinate field or map — only a DB script can set one | Map picker in the edit form → writes `manual`/`high`/`lockedAt`; status chip per row | open — blocker for self-service |
+| 11 | `businesslists` | 345+ Trichy businesses share an exact coordinate (58 on one point) — locality centroids faking address precision | Add `geoLocationPrecision`; rank using the more precise of business vs masterlocation point | **done** 2026-08-29 — 428 shared-centroid rows tagged (`275 locality`, `153 district`); ranking prefers masterlocation coordinates for broad/bad business points |
+| 12 | `businesslists` | 410 Trichy businesses have a coordinate outside the district | Flag and re-geocode | **done** 2026-08-29 — 413 bad rows repaired (`390 outside-district` + `23 invalid`); 25 from trusted map URL coordinates, 388 from linked masterlocation fallback |
+| 13 | `gmaps_leads` | Origin fallback regex-scans 321,919 docs, no index on `name`/`formatted_address`, every search on the miss path | Index those fields, cache origin by slug | **done in code** 2026-08-29 — text index declared; indexed lookup with regex fallback; process cache by resolved slug |
+| 14 | `logsearches` | `masterLocationSlug` empty on all 105 rows — no record of what resolved or which origin fired | Log `resolvedSlug`, `originSource`, `distanceSortUsed`, `resultCount` | **done** 2026-08-29 — code-only; future searches persist resolved/origin telemetry |
+| 15 | `masterlocations` | Admin UI [MasterLocation.js](client/ui-app/src/Internals/location/MasterLocation.js) had no coordinate field or map — only a DB script could set one | Map picker in the edit form → writes `manual`/`high`/`lockedAt` when the pin changes; status chip per row | **done** 2026-08-29 |
 
 ---
 
@@ -171,15 +174,17 @@ Status key: `open` · `in progress` · `blocked` · `done`
 --- Trichy coordinate fill is complete. What is left is not geocoding: ---
 9  ranker uses coordinatesMeta.confidence     DONE
 10 radiusM + level-scaled distance bands       DONE  68 nodes measured
-15 admin UI map picker
-11 businesslists geoLocationPrecision (fake-precise centroids)
-12 businesslists: 410 Trichy businesses geocoded outside the district
+15 admin UI map picker                         DONE
+11 businesslists geoLocationPrecision        DONE  3,680 tagged; ranker uses it
+12 businesslists outside/invalid points      DONE  413 repaired; 0 bad remain
 –  auditMasterLocationCoordinates.js      (validator, report-only)
 –  hand-place whatever the audit still flags
-14 search-origin telemetry
+14 search-origin telemetry                  DONE  code-only
+5c future geocode boundary validation       DONE  code-only
+13 gmaps origin lookup index/cache          DONE  code-only; index not manually built on dev
 ```
 
-Everything before `14` is Trichy-scoped. After that, repeat `2`–`3` for the next district.
+Everything before `14` is Trichy-scoped. Next district work repeats `2`–`3`.
 
 ---
 
@@ -260,6 +265,12 @@ node db-backups/backup.js --collections masterlocations --query "{\"district\":\
 | 2026-08-29 | Band multipliers took two attempts. `[1, 2.5, 5, 10]` on an unclamped radius gave Musiri `[19.8, 49.5, 99, 198]km` — meaningless when the district is 55km across, and it would have collapsed every result into band 0. Fixed by clamping the base to **0.5-6km** and using `[1, 2, 4, 8]`: a big taluk gets `[6, 12, 24, 48]`, Thillai Nagar Main gets `[0.61, 1.22, 2.44, 4.88]` |
 | 2026-08-29 | **#7b evidence gathered** (see the section above). 47 template-name wards, **zero businesses between them**, 1-2 generic children each, all sharing their taluk's pincode, all seeded 2026-07-10. Deliberately NOT acted on — deleting ~47 plausible-looking wards is the user's call |
 | 2026-08-29 | **#7b done — WRITES TO DEV.** `scripts/disableTrichySyntheticWards.js --apply` disabled 47 repeated template-name wards only after confirming zero businesses under each ward scope and taking snapshot `2026-08-29_09-38-54__pre-trichy-synthetic-wards-disable`. Three guarded template wards with businesses were left active. `publicLocationSlug` was recomputed; 1 row changed. Ward coverage is now **78/109 (71.6%)**, not the earlier rough ~90% estimate. |
+| 2026-08-29 | **#15 done — NO DB WRITES.** Admin Master Locations now shows a `Map Pin` status column and the edit/create form has latitude, longitude, source note, place ID, and a compact OpenStreetMap tile picker. Saving a changed pin writes GeoJSON `[longitude, latitude]` plus `coordinatesMeta.source: "manual"`, `confidence: "high"`, `lockedAt`, `verifiedBy: "admin-ui"`; ordinary hierarchy edits leave existing coordinate provenance untouched. Verified with focused ESLint, CSS scope check, and local dev compile at `http://localhost:3001`. |
+| 2026-08-29 | **#11 done / #12 flagged — WRITES TO DEV.** Added `businesslists.geoLocationPrecision` + meta and `scripts/classifyTrichyBusinessGeoPrecision.js`. Applied to 3,680 Trichy businesses after snapshot `2026-08-29_09-52-45__pre-trichy-business-geo-precision`: `address` 2,839, `locality` 275, `district` 153, `outside-district` 390, `invalid` 23. Search ranking now trusts business `geoLocation` first only for unflagged/address-like points; for locality/district/outside/invalid business points it prefers the linked masterlocation coordinate when available. Business-pincode origin fallback now excludes `outside-district` and `invalid` points from its average. |
+| 2026-08-29 | **#12 done — WRITES TO DEV.** `scripts/repairTrichyBadBusinessCoordinates.js --apply` repaired all 413 bad Trichy business coordinates after snapshot `2026-08-29_10-02-41__pre-trichy-business-coordinate-repair`: 24 direct `maps.google.com/?q=` coordinates, 1 matching Google place URL, and 388 linked masterlocation fallbacks. Current Trichy business precision counts: `address` 2,864, `locality` 616, `district` 200, `outside-district` 0, `invalid` 0. |
+| 2026-08-29 | **#14 done — NO DB WRITES.** Search responses now include `searchTelemetry` (`resolvedSlug`, `resolvedLevel`, origin source/confidence/point/radius, distance bands, distance-sort flag, result count). The search results page forwards it to `logSearchActivity`; `logsearches` schema and controller now persist it, and fill `masterLocationSlug` from `resolvedSlug` when older callers send no selected slug. Verified with focused backend syntax checks and focused client/server ESLint. |
+| 2026-08-29 | **#5c done — NO DB WRITES.** `backfillMasterLocationCoordinates.js` no longer builds or uses business-derived `districtGuards` for incoming Google geocodes. `evaluateResult()` now rejects geocode outliers with `isPointInDistrict()`, the same published-boundary helper already used by `needsCoordinate()` / suspect-point handling. Verified with `node --check` and focused ESLint for the script. |
+| 2026-08-29 | **#13 done in code — NO DB WRITES.** `gmapsLeadsSchema` declares a weighted text index on `name`, `formatted_address`, `massclick_location`, and `search_query`. The search-origin fallback now caches by resolved location slug for six hours, tries the indexed text lookup first, and falls back to the old regex query if the text index is missing or returns nothing. Did not manually build the dev index because index creation is a DB write. |
 | 2026-08-29 | **#3 done** — `scripts/matchGeoNamesCoordinates.js` wrote 66. The guards rejected 63 matches a naive pass would have taken: 42 outside the district, 20 too far from their parent, 1 ambiguous. Added `geonames-import` to the source enum rather than mislabelling them `osm-import` |
 | 2026-08-29 | Post-apply check: 4,931 active points, 25 strictly outside the district polygon, **24 of them within the 2km border tolerance**. The one real remainder is `Kathalur` at 2.72km — the hierarchy bug above. The Trichy polygon legitimately contains a 2.4x2.7km **Pudukkottai enclave** at [78.569, 10.697], which the helper correctly treats as a hole |
 | 2026-08-29 | **#6 done** — `masterLocationSchema.js`: `coordinates.type` and `coordinates.coordinates` now `default: undefined`. Verified a new doc carries no `coordinates` key and an explicit point still round-trips |

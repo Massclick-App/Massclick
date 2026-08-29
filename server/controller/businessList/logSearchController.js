@@ -78,6 +78,47 @@ const nonNegativeInteger = (value, fallback) => {
   return Number.isFinite(number) && number >= 0 ? Math.floor(number) : fallback;
 };
 
+const optionalString = (value = "") => String(value || "").trim();
+
+const optionalLowerString = (value = "") => optionalString(value).toLowerCase();
+
+const optionalNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+const optionalBoolean = (value) => value === true || value === "true";
+
+const normalizeSearchTelemetry = (body = {}, matchedBusinessIds = []) => {
+  const telemetry =
+    body.searchTelemetry &&
+    typeof body.searchTelemetry === "object" &&
+    !Array.isArray(body.searchTelemetry)
+      ? body.searchTelemetry
+      : {};
+  const field = (name) => telemetry[name] ?? body[name];
+  const rawBands = field("distanceBandsKm");
+
+  return {
+    resolvedSlug: optionalLowerString(field("resolvedSlug")),
+    resolvedLevel: optionalLowerString(field("resolvedLevel")),
+    originSource: optionalString(field("originSource")),
+    originConfidence: optionalLowerString(field("originConfidence")),
+    originLat: optionalNumber(field("originLat")),
+    originLng: optionalNumber(field("originLng")),
+    originRadiusKm: optionalNumber(field("originRadiusKm")),
+    distanceSortUsed: optionalBoolean(field("distanceSortUsed")),
+    distanceBandsKm: Array.isArray(rawBands)
+      ? rawBands.map(Number).filter(Number.isFinite)
+      : [],
+    resultCount: nonNegativeInteger(
+      field("resultCount"),
+      Array.isArray(matchedBusinessIds) ? matchedBusinessIds.length : 0,
+    ),
+  };
+};
+
 const withRetry = async (fn, label, attempts = 3) => {
   let lastError;
 
@@ -545,6 +586,7 @@ export const logSearchAction = async (req, res) => {
     const leadSettings = await getSettings();
     const bypassLeadSendGuards = leadSettings.whatsapp_dev_bypass_lead_guards === true;
     const rawSearchText = searchedUserText?.trim?.() || "";
+    const normalizedSearchTelemetry = normalizeSearchTelemetry(req.body, matchedBusinessIds);
 
     leadLog(reqId, "request:received", {
       categoryName,
@@ -554,6 +596,7 @@ export const logSearchAction = async (req, res) => {
       searchedUserText: rawSearchText,
       isKnownCategory,
       matchedBusinessIdsCount: Array.isArray(matchedBusinessIds) ? matchedBusinessIds.length : 0,
+      searchTelemetry: normalizedSearchTelemetry,
       userNamePresent: Boolean(userDetails?.userName),
       customerMobile: maskMobile(userDetails?.mobileNumber1),
     });
@@ -580,7 +623,7 @@ export const logSearchAction = async (req, res) => {
     // absent district simply means "not supplied".
     const normalizedDistrict = district?.toLowerCase().trim() || "";
     const normalizedMasterLocationSlug =
-      masterLocationSlug?.toLowerCase().trim() || "";
+      masterLocationSlug?.toLowerCase().trim() || normalizedSearchTelemetry.resolvedSlug || "";
 
     const isValidUser =
       userDetails &&
@@ -692,6 +735,7 @@ export const logSearchAction = async (req, res) => {
           location: normalizedLocation,
           district: normalizedDistrict,
           masterLocationSlug: normalizedMasterLocationSlug,
+          ...normalizedSearchTelemetry,
           userDetails: [],
           whatsapp: false,
           isAnonymous: true,
@@ -757,6 +801,7 @@ export const logSearchAction = async (req, res) => {
         location: normalizedLocation,
         district: normalizedDistrict,
         masterLocationSlug: normalizedMasterLocationSlug,
+        ...normalizedSearchTelemetry,
         userDetails: [
           {
             userName: userDetails.userName,
@@ -793,19 +838,6 @@ export const logSearchAction = async (req, res) => {
         message: "Search logged; lead not dispatched because the location could not be resolved",
         detectedCategory: finalCategoryName,
       });
-    }
-
-    const locationGroups = {
-      trichy: ["trichy", "tiruchirappalli"],
-    };
-
-    let locationList = [normalizedLocation];
-
-    for (const key in locationGroups) {
-      if (locationGroups[key].includes(normalizedLocation)) {
-        locationList = locationGroups[key];
-        break;
-      }
     }
 
     // ── Find matching businesses for WhatsApp/FCM sending ──────────────────────
@@ -1384,7 +1416,7 @@ export const sendEnquiryLead = async (req, res) => {
     const getCategoryRegex = (val) => {
       try {
         return getDynamicCategoryRegex(val);
-      } catch (e) {
+      } catch {
         return new RegExp(`^${escapeRegex(val)}$`, "i");
       }
     };

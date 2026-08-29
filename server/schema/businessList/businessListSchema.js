@@ -295,6 +295,22 @@ const businessListSchema = new mongoose.Schema({
       default: [0, 0],
     },
   },
+  // How much the business geoLocation should be trusted for search ranking.
+  // Many legacy rows carry locality or district centroids as if they were
+  // exact storefront pins. Search should prefer the linked masterlocation
+  // point for those broad/bad cases instead of ranking them as precise.
+  geoLocationPrecision: {
+    type: String,
+    enum: ["unknown", "address", "locality", "district", "outside-district", "invalid"],
+    default: "unknown",
+    index: true,
+  },
+  geoLocationPrecisionMeta: {
+    reason: { type: String, default: "" },
+    sharedCount: { type: Number, default: 0 },
+    outsideDistrictKm: { type: Number, default: null },
+    updatedAt: { type: Date, default: null },
+  },
   analytics: {
     views: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },

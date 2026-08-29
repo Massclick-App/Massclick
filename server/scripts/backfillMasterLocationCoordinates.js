@@ -1,3 +1,4 @@
+/* global process */
 import fs from "fs";
 import path from "path";
 import { execFileSync } from "child_process";
@@ -6,7 +7,6 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 
-import businessListModel from "../model/businessList/businessListModel.js";
 import masterLocationModel from "../model/locationModel/masterLocationModel.js";
 import { isPointInDistrict } from "../helper/location/districtBoundary.js";
 
@@ -267,54 +267,7 @@ const districtComponent = (result) =>
   getComponent(result, "administrative_area_level_3") ||
   getComponent(result, "administrative_area_level_2");
 
-const buildDistrictGuards = async () => {
-  const rows = await businessListModel.aggregate([
-    {
-      $match: {
-        isActive: true,
-        "masterLocation.district": { $type: "string", $ne: "" },
-        "geoLocation.coordinates.0": { $type: "number", $ne: 0 },
-        "geoLocation.coordinates.1": { $type: "number", $ne: 0 },
-      },
-    },
-    {
-      $group: {
-        _id: "$masterLocation.district",
-        count: { $sum: 1 },
-        coords: { $push: "$geoLocation.coordinates" },
-      },
-    },
-  ]);
-
-  const guards = new Map();
-  for (const row of rows) {
-    const lngs = row.coords.map((coord) => coord[0]).filter(Number.isFinite).sort((a, b) => a - b);
-    const lats = row.coords.map((coord) => coord[1]).filter(Number.isFinite).sort((a, b) => a - b);
-    const quantile = (values, q) => values[Math.max(0, Math.min(values.length - 1, Math.floor((values.length - 1) * q)))];
-    guards.set(row._id, {
-      district: row._id,
-      count: row.count,
-      minLng: quantile(lngs, 0.05),
-      maxLng: quantile(lngs, 0.95),
-      minLat: quantile(lats, 0.05),
-      maxLat: quantile(lats, 0.95),
-    });
-  }
-  return guards;
-};
-
-const insideDistrictGuard = (guard, coordinates) => {
-  if (!guard || guard.count < 10) return true;
-
-  const [lng, lat] = coordinates;
-  const pad = 0.25;
-  return lng >= guard.minLng - pad &&
-    lng <= guard.maxLng + pad &&
-    lat >= guard.minLat - pad &&
-    lat <= guard.maxLat + pad;
-};
-
-const evaluateResult = (doc, result, districtGuards) => {
+const evaluateResult = (doc, result) => {
   const country = getComponent(result, "country");
   const state = getComponent(result, "administrative_area_level_1");
   const district = districtComponent(result);
@@ -355,7 +308,7 @@ const evaluateResult = (doc, result, districtGuards) => {
     : (localityLike || locationType === "GEOMETRIC_CENTER" ? "medium" : "low");
   const coordinates = [location.lng, location.lat];
 
-  if (!insideDistrictGuard(districtGuards.get(doc.district), coordinates)) {
+  if (!isPointInDistrict(doc.district, coordinates)) {
     return { accepted: false, reason: "district-geo-outlier" };
   }
 
@@ -369,14 +322,14 @@ const evaluateResult = (doc, result, districtGuards) => {
   };
 };
 
-const chooseGeocode = (doc, response, districtGuards) => {
+const chooseGeocode = (doc, response) => {
   if (response.status !== "OK") {
     return { accepted: false, reason: `google-status:${response.status}${response.errorMessage ? `:${response.errorMessage}` : ""}` };
   }
 
   const rejected = [];
   for (const result of response.results || []) {
-    const evaluation = evaluateResult(doc, result, districtGuards);
+    const evaluation = evaluateResult(doc, result);
     if (evaluation.accepted) return evaluation;
     rejected.push(evaluation.reason);
   }
@@ -491,8 +444,6 @@ const run = async () => {
   const derived = [];
   const skipped = [];
   const cache = loadCache(CACHE_FILE);
-  const districtGuards = await buildDistrictGuards();
-
   // Seed the parent-derivation pool with points we already trust. A suspect
   // point is deliberately left out: a child sitting in the wrong district must
   // not pull its parent's centre toward it, whether or not this run happens to
@@ -518,7 +469,7 @@ const run = async () => {
     const doc = localityTargets[i];
     const query = buildGeocodeQuery(doc);
     const response = await geocode(query, googleKey, cache);
-    const chosen = chooseGeocode(doc, response, districtGuards);
+    const chosen = chooseGeocode(doc, response);
 
     if (!chosen.accepted) {
       review.push({
@@ -690,6 +641,10 @@ const run = async () => {
 
 run().catch(async (err) => {
   console.error(err);
-  try { await mongoose.disconnect(); } catch {}
+  try {
+    await mongoose.disconnect();
+  } catch {
+    // Best-effort cleanup after a fatal script error.
+  }
   process.exit(1);
 });
