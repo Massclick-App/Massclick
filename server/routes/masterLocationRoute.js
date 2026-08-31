@@ -4,6 +4,7 @@ import {
     addMasterLocationAction,
     viewMasterLocationAction,
     viewAllMasterLocationAction,
+    viewMasterLocationsWithBusinessStatsAction,
     searchMasterLocationAction,
     listDistinctMasterLocationValuesAction,
     updateMasterLocationAction,
@@ -19,6 +20,9 @@ const router = express.Router();
 router.post('/api/masterlocation/create', oauthAuthentication, addMasterLocationAction);
 router.get('/api/masterlocation/view/:id', oauthAuthentication, viewMasterLocationAction);
 router.get('/api/masterlocation/viewall', oauthAuthentication, viewAllMasterLocationAction);
+// Same list, joined with each location's linked-business count/preview —
+// powers the Location Coverage admin console.
+router.get('/api/masterlocation/viewall-with-business-stats', oauthAuthentication, viewMasterLocationsWithBusinessStatsAction);
 router.get('/api/masterlocation/distinct-values', oauthAuthentication, listDistinctMasterLocationValuesAction);
 router.put('/api/masterlocation/update/:id', oauthAuthentication, updateMasterLocationAction);
 router.delete('/api/masterlocation/delete/:id', oauthAuthentication, deleteMasterLocationAction);

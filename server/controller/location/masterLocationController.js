@@ -2,6 +2,7 @@ import {
     createMasterLocation,
     viewMasterLocation,
     viewAllMasterLocation,
+    viewMasterLocationsWithBusinessStats,
     searchMasterLocation,
     listDistinctMasterLocationValues,
     updateMasterLocation,
@@ -89,6 +90,63 @@ export const viewAllMasterLocationAction = async (req, res) => {
         });
     } catch (error) {
         console.error("Master location fetch error:", error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
+    }
+};
+
+// Powers the "Location Coverage" admin console: same filters as
+// viewAllMasterLocationAction, plus each row's linked-business count/preview
+// and a businessCoverage filter ("has" / "needs") to isolate either side.
+export const viewMasterLocationsWithBusinessStatsAction = async (req, res) => {
+    try {
+        const pageNo = parseInt(req.query.pageNo) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+
+        const search = req.query.search || "";
+        const status = req.query.status || "all";
+        const reviewStatus = req.query.reviewStatus || "all";
+        const importSource = req.query.importSource || "all";
+        const origin = req.query.origin || "all";
+        const level = req.query.level || "all";
+        const district = req.query.district || "";
+        const zone = req.query.zone || "";
+        const ward = req.query.ward || "";
+        const locality = req.query.locality || "";
+        const pincode = req.query.pincode || "";
+        const pincodeStatus = req.query.pincodeStatus || "all";
+        const businessCoverage = req.query.businessCoverage || "all";
+        const sortBy = req.query.sortBy || null;
+        const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
+
+        const { list, total, businessPreviewLimit } = await viewMasterLocationsWithBusinessStats({
+            pageNo,
+            pageSize,
+            search,
+            status,
+            reviewStatus,
+            importSource,
+            origin,
+            level,
+            district,
+            zone,
+            ward,
+            locality,
+            pincode,
+            pincodeStatus,
+            businessCoverage,
+            sortBy,
+            sortOrder
+        });
+
+        res.send({
+            data: list,
+            total,
+            pageNo,
+            pageSize,
+            businessPreviewLimit,
+        });
+    } catch (error) {
+        console.error("Location coverage fetch error:", error);
         return res.status(BAD_REQUEST.code).send({ message: error.message });
     }
 };

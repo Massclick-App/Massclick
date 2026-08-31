@@ -1,0 +1,317 @@
+/* ===========================
+   Location Coverage Page Styles (Orange Theme, matches Master Location)
+   Owns only .location-coverage-* classes — no parent/child targeting.
+   =========================== */
+
+.location-coverage-page {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 16px;
+  background-color: #f8f9fb;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.location-coverage-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 4px 20px;
+}
+
+.location-coverage-page-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.location-coverage-page-subtitle {
+  margin: 4px 0 0;
+  max-width: 640px;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.location-coverage-card {
+  background-color: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.location-coverage-mode-card {
+  padding: 0 8px;
+  overflow: hidden;
+}
+
+.location-coverage-toolbar-card {
+  padding: 16px 18px;
+}
+
+.location-coverage-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.location-coverage-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.location-coverage-toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.location-coverage-mode-row {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.location-coverage-mode-row::-webkit-scrollbar {
+  display: none;
+}
+
+.location-coverage-mode-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background-color: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.location-coverage-mode-button:hover {
+  color: #0f172a;
+}
+
+.location-coverage-mode-button-active {
+  border-bottom-color: #ff8c00;
+  color: #b45309;
+}
+
+.location-coverage-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.location-coverage-filter-toggle:hover {
+  border-color: #ff8c00;
+  color: #b45309;
+}
+
+.location-coverage-filter-toggle-open {
+  border-color: #ff8c00;
+  background-color: #fff7ed;
+  color: #b45309;
+}
+
+.location-coverage-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eef1f5;
+}
+
+.location-coverage-filter-field {
+  min-width: 0;
+}
+
+.location-coverage-filter-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.location-coverage-filter-select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-size: 0.85rem;
+}
+
+.location-coverage-filter-select:focus {
+  outline: 2px solid rgba(255, 140, 0, 0.28);
+  border-color: #ff8c00;
+}
+
+.location-coverage-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.location-coverage-hint {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.76rem;
+}
+
+/* Soft badges: tinted ground, same-hue text, hairline edge. */
+.location-coverage-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.location-coverage-badge-neutral {
+  border-color: #e5e7eb;
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.location-coverage-badge-green {
+  border-color: #a7f3d0;
+  background-color: #ecfdf5;
+  color: #047857;
+}
+
+.location-coverage-badge-amber {
+  border-color: #fde68a;
+  background-color: #fffbeb;
+  color: #b45309;
+}
+
+.location-coverage-badge-blue {
+  border-color: #bfdbfe;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.location-coverage-badge-red {
+  border-color: #fecaca;
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.location-coverage-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 190px;
+}
+
+.location-coverage-name-cell span {
+  max-width: 280px;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-coverage-status-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.location-coverage-coverage-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 130px;
+}
+
+/* Compact business preview: name + a live/pending dot per business, capped
+   and overflow summarized rather than listing every match inline. */
+.location-coverage-business-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.location-coverage-business-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: #334155;
+  font-size: 0.78rem;
+}
+
+.location-coverage-business-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-coverage-business-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.location-coverage-business-dot-live {
+  background-color: #10b981;
+}
+
+.location-coverage-business-dot-off {
+  background-color: #cbd5e1;
+}
+
+.location-coverage-business-more {
+  color: #94a3b8;
+  font-size: 0.74rem;
+}
+
+.location-coverage-business-empty {
+  color: #cbd5e1;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 720px) {
+  .location-coverage-page {
+    padding: 0 10px;
+  }
+
+  .location-coverage-toolbar-card {
+    padding: 14px 12px;
+  }
+}

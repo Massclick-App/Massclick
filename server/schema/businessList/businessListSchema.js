@@ -373,6 +373,9 @@ businessListSchema.index({ geoLocation: "2dsphere" });
 // hierarchy level; district exact-match covers the most common search scope.
 businessListSchema.index({ "masterLocation.slug": 1 });
 businessListSchema.index({ "masterLocation.district": 1, isActive: 1 });
+// Exact FK lookup — powers the Location Coverage admin console's per-location
+// business join (masterLocationHelper.js's viewMasterLocationsWithBusinessStats).
+businessListSchema.index({ "masterLocation.locationId": 1 });
 
 // Public URL identity. Partial rather than sparse so that documents holding a
 // null publicId (the field default, e.g. a pre-backfill doc or a bulk insert

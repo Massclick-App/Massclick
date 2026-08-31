@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
+import businessListModel from "../../model/businessList/businessListModel.js";
 import { computePublicLocationSlugs } from "./locationSlug.js";
 
 const slugify = (str) =>
@@ -85,9 +86,9 @@ export const viewMasterLocation = async (id) => {
   return location;
 };
 
-export const viewAllMasterLocation = async ({
-  pageNo,
-  pageSize,
+// Shared by viewAllMasterLocation and viewMasterLocationsWithBusinessStats so
+// the two admin list views can never drift apart on what a filter means.
+const buildMasterLocationQuery = ({
   search,
   status,
   reviewStatus,
@@ -100,8 +101,6 @@ export const viewAllMasterLocation = async ({
   locality,
   pincode,
   pincodeStatus,
-  sortBy,
-  sortOrder,
 }) => {
   const query = {};
   const andConditions = [];
@@ -174,22 +173,48 @@ export const viewAllMasterLocation = async ({
   }
 
   if (andConditions.length) query.$and = andConditions;
+  return query;
+};
 
-  const sortableFields = new Set([
-    "district",
-    "zone",
-    "ward",
-    "locality",
-    "level",
-    "pincode",
-    "reviewStatus",
-    "importSource",
-    "slug",
-    "hierarchyPath",
-    "createdAt",
-    "updatedAt",
-  ]);
-  const sortQuery = sortBy && sortableFields.has(sortBy) ? { [sortBy]: sortOrder } : { slug: 1 };
+const LOCATION_SORTABLE_FIELDS = new Set([
+  "district",
+  "zone",
+  "ward",
+  "locality",
+  "level",
+  "pincode",
+  "reviewStatus",
+  "importSource",
+  "slug",
+  "hierarchyPath",
+  "createdAt",
+  "updatedAt",
+]);
+
+export const viewAllMasterLocation = async ({
+  pageNo,
+  pageSize,
+  search,
+  status,
+  reviewStatus,
+  importSource,
+  origin,
+  level,
+  district,
+  zone,
+  ward,
+  locality,
+  pincode,
+  pincodeStatus,
+  sortBy,
+  sortOrder,
+}) => {
+  const query = buildMasterLocationQuery({
+    search, status, reviewStatus, importSource, origin, level,
+    district, zone, ward, locality, pincode, pincodeStatus,
+  });
+
+  const sortQuery = sortBy && LOCATION_SORTABLE_FIELDS.has(sortBy) ? { [sortBy]: sortOrder } : { slug: 1 };
 
   const total = await masterLocationModel.countDocuments(query);
 
@@ -201,6 +226,88 @@ export const viewAllMasterLocation = async ({
     .lean();
 
   return { list, total };
+};
+
+// Number of businesses shown inline per location row — a compact preview,
+// not the full list. The exact businessCount is always returned alongside it
+// so the UI can tell "5 shown" from "5 total".
+const BUSINESS_PREVIEW_LIMIT = 5;
+
+/**
+ * Same location list as viewAllMasterLocation, but with each row's linked
+ * business count/preview joined in, and an optional businessCoverage filter
+ * ("has" / "needs") applied on top of it.
+ *
+ * The join is strict FK only (business.masterLocation.locationId === this
+ * location's _id) — deliberately not a free-text fallback. ~96.5% of
+ * businesses already carry the structured link; the remainder (mostly older
+ * records with only district/town-level free text) are left uncounted here
+ * rather than guessed at.
+ */
+export const viewMasterLocationsWithBusinessStats = async ({
+  pageNo,
+  pageSize,
+  search,
+  status,
+  reviewStatus,
+  importSource,
+  origin,
+  level,
+  district,
+  zone,
+  ward,
+  locality,
+  pincode,
+  pincodeStatus,
+  businessCoverage,
+  sortBy,
+  sortOrder,
+}) => {
+  const query = buildMasterLocationQuery({
+    search, status, reviewStatus, importSource, origin, level,
+    district, zone, ward, locality, pincode, pincodeStatus,
+  });
+
+  const isSortable = sortBy && (sortBy === "businessCount" || LOCATION_SORTABLE_FIELDS.has(sortBy));
+  const sortQuery = isSortable ? { [sortBy]: sortOrder } : { slug: 1 };
+
+  const pipeline = [
+    { $match: query },
+    {
+      $lookup: {
+        from: businessListModel.collection.name,
+        let: { locId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$masterLocation.locationId", "$$locId"] } } },
+          { $project: { businessName: 1, isActive: 1 } },
+        ],
+        as: "businesses",
+      },
+    },
+    { $addFields: { businessCount: { $size: "$businesses" } } },
+  ];
+
+  if (businessCoverage === "has") pipeline.push({ $match: { businessCount: { $gt: 0 } } });
+  if (businessCoverage === "needs") pipeline.push({ $match: { businessCount: 0 } });
+
+  pipeline.push({ $sort: sortQuery });
+
+  pipeline.push({
+    $facet: {
+      data: [
+        { $skip: (pageNo - 1) * pageSize },
+        { $limit: pageSize },
+        { $addFields: { businesses: { $slice: ["$businesses", BUSINESS_PREVIEW_LIMIT] } } },
+      ],
+      totalCount: [{ $count: "count" }],
+    },
+  });
+
+  const [result] = await masterLocationModel.aggregate(pipeline);
+  const list = result?.data || [];
+  const total = result?.totalCount?.[0]?.count || 0;
+
+  return { list, total, businessPreviewLimit: BUSINESS_PREVIEW_LIMIT };
 };
 
 // Distinct existing values for one hierarchy field, scoped by its parents —

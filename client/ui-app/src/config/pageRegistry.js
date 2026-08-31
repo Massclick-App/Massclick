@@ -13,6 +13,7 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/category',            label: 'Category' },
   { path: '/dashboard/location',            label: 'Location' },
   { path: '/dashboard/master-location',     label: 'Master Locations' },
+  { path: '/dashboard/location-coverage',   label: 'Location Coverage' },
   { path: '/dashboard/seo',                 label: 'SEO Management' },
   { path: '/dashboard/seopagecontent',      label: 'SEO Page Content' },
   { path: '/dashboard/seopagecontentblogs', label: 'SEO Blogs' },

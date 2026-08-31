@@ -39,6 +39,7 @@ const Category = lazy(() => import(/* webpackChunkName: "admin-category" */ './I
 const Roles = lazy(() => import(/* webpackChunkName: "admin-roles" */ './Internals/Roles/Roles.js'));
 const Location = lazy(() => import(/* webpackChunkName: "admin-location" */ './Internals/location/Location.js'));
 const MasterLocation = lazy(() => import(/* webpackChunkName: "admin-master-location" */ './Internals/location/MasterLocation.js'));
+const LocationCoverage = lazy(() => import(/* webpackChunkName: "admin-location-coverage" */ './Internals/locationCoverage/LocationCoverage.js'));
 const TermsAndConditionsDatas = lazy(() => import(/* webpackChunkName: "admin-terms" */ './Internals/footersContents/termsAndConditions/termsAndConditions.js'));
 const LegalDocuments = lazy(() => import(/* webpackChunkName: "admin-legal-documents" */ './Internals/legalDocuments/legalDocuments.js'));
 const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './components/MainGrid.js'));
@@ -358,6 +359,7 @@ function AppRoutes({
                 <Route path="category" element={<Category />} />
                 <Route path="location" element={<Location />} />
                 <Route path="master-location" element={<MasterLocation />} />
+                <Route path="location-coverage" element={<LocationCoverage />} />
                 <Route path="seo" element={<SeoData />} />
                 <Route path="seopagecontent" element={<SeoPageContent />} />
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />

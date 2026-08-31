@@ -77,6 +77,7 @@ const MENU_SECTIONS = [
       { text: "Categories", icon: CategoryIcon, path: "/dashboard/category" },
       { text: "Locations", icon: LocationOnIcon, path: "/dashboard/location" },
       { text: "Master Locations", icon: LocationOnIcon, path: "/dashboard/master-location" },
+      { text: "Location Coverage", icon: TravelExploreIcon, path: "/dashboard/location-coverage" },
       { text: "SEO", icon: SearchIcon, path: "/dashboard/seo" },
       { text: "Pages", icon: ArticleIcon, path: "/dashboard/seopagecontent" },
       { text: "Blogs", icon: NewspaperIcon, path: "/dashboard/seopagecontentblogs" },
