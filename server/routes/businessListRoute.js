@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, exportBusinessListAction, updateBusinessListAction, updateBusinessSectionAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction, regenerateBusinessCertificatesAction, downloadBusinessDocumentAction, revertPaidStatusAction, businessDuplicateRulesAction, scanBusinessDuplicatesAction, resolveBusinessDuplicatesAction, ignoreBusinessDuplicatesAction, restoreBusinessDuplicatesAction } from "../controller/businessList/businessListController.js"
+import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, exportBusinessListAction, updateBusinessListAction, updateBusinessSectionAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction, regenerateBusinessCertificatesAction, downloadBusinessDocumentAction, revertPaidStatusAction, businessDuplicateRulesAction, scanBusinessDuplicatesAction, resolveBusinessDuplicatesAction, ignoreBusinessDuplicatesAction, restoreBusinessDuplicatesAction, businessDuplicateImpactAction, purgeBusinessDuplicatesAction } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead, sendBusinessInfoToCustomer } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -76,5 +76,9 @@ router.get('/api/businesslist/duplicates/scan', oauthAuthentication, scanBusines
 router.post('/api/businesslist/duplicates/resolve', oauthAuthentication, resolveBusinessDuplicatesAction);
 router.post('/api/businesslist/duplicates/ignore', oauthAuthentication, ignoreBusinessDuplicatesAction);
 router.post('/api/businesslist/duplicates/restore', oauthAuthentication, restoreBusinessDuplicatesAction);
+router.post('/api/businesslist/duplicates/impact', oauthAuthentication, businessDuplicateImpactAction);
+// Permanent, irreversible. Separate endpoint from /resolve so a soft disable
+// can never turn into a hard delete through a stray parameter.
+router.post('/api/businesslist/duplicates/purge', oauthAuthentication, purgeBusinessDuplicatesAction);
 
 export default router; 

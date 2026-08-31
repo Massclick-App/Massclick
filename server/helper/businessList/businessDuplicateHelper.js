@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import businessListModel from "../../model/businessList/businessListModel.js";
 
 /**
@@ -586,4 +587,130 @@ export const restoreDuplicateGroup = async ({ memberIds = [], reviewedBy = null 
     }
   );
   return { restored: result.modifiedCount ?? 0 };
+};
+
+/* ------------------------------------------------------------------ *
+ * Hard delete
+ *
+ * Note that the directory's pre-existing "delete" endpoint is itself only a
+ * soft delete (it sets isActive:false), so this is the first code path that
+ * genuinely removes a business. It is therefore explicit about what it touches:
+ *
+ *   DELETED   content that belongs to the listing and is meaningless without
+ *             it - reviews, favourites, feed posts and follows.
+ *   DETACHED  records that merely point at the listing and should outlive it -
+ *             the pointer is cleared so nothing dispatches to a dead document.
+ *   PRESERVED financial and audit history - payments, reward claims, analytics
+ *             events, WhatsApp audit. These are never deleted; the impact
+ *             report surfaces their counts so the decision is informed.
+ *
+ * S3 objects (banner, gallery, KYC, QR, certificates) are deliberately left in
+ * place. Removing them is a separate, differently-risky operation.
+ * ------------------------------------------------------------------ */
+
+
+const relatedCollections = () => {
+  const db = mongoose.connection.db;
+  return {
+    reviews: db.collection("businessreview"),
+    favorites: db.collection("favorites"),
+    feedPosts: db.collection("massclick_feed_posts"),
+    feedFollows: db.collection("massclick_feed_follows"),
+    ads: db.collection("advertisments"),
+    dispatches: db.collection("delayed_lead_dispatches"),
+    payments: db.collection("payments"),
+    rewardClaims: db.collection("reward_claims"),
+  };
+};
+
+const toObjectIds = (ids) =>
+  ids.filter((id) => mongoose.Types.ObjectId.isValid(id)).map((id) => new mongoose.Types.ObjectId(id));
+
+/**
+ * What a hard delete would destroy. Called before the confirm dialog so the
+ * admin sees the blast radius rather than a generic "are you sure?".
+ */
+export const getPurgeImpact = async (ids = []) => {
+  const objectIds = toObjectIds(ids);
+  if (!objectIds.length) return null;
+
+  const c = relatedCollections();
+  const countIn = async (collection, field = "businessId") => {
+    try {
+      return await collection.countDocuments({ [field]: { $in: objectIds } });
+    } catch {
+      return 0;
+    }
+  };
+
+  const [reviews, favorites, feedPosts, feedFollows, ads, dispatches, payments, rewardClaims] =
+    await Promise.all([
+      countIn(c.reviews),
+      countIn(c.favorites),
+      countIn(c.feedPosts),
+      countIn(c.feedFollows),
+      countIn(c.ads),
+      countIn(c.dispatches, "businessIds"),
+      countIn(c.payments),
+      countIn(c.rewardClaims),
+    ]);
+
+  return {
+    listings: objectIds.length,
+    deletes: { reviews, favorites, feedPosts, feedFollows },
+    detaches: { advertisements: ads, leadDispatches: dispatches },
+    preserves: { payments, rewardClaims },
+  };
+};
+
+/**
+ * Permanently remove listings and their owned content. Irreversible.
+ */
+export const purgeDuplicateGroup = async ({ removeIds = [] }) => {
+  const objectIds = toObjectIds(removeIds);
+  if (!objectIds.length) throw new Error("No valid listing ids supplied");
+
+  const c = relatedCollections();
+  const filter = { businessId: { $in: objectIds } };
+  const safeDelete = async (collection) => {
+    try {
+      const result = await collection.deleteMany(filter);
+      return result.deletedCount ?? 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const [reviews, favorites, feedPosts, feedFollows] = await Promise.all([
+    safeDelete(c.reviews),
+    safeDelete(c.favorites),
+    safeDelete(c.feedPosts),
+    safeDelete(c.feedFollows),
+  ]);
+
+  // Detach rather than delete: an advertisement or a queued dispatch outlives
+  // the listing, it just must not point at a document that no longer exists.
+  let advertisements = 0;
+  let leadDispatches = 0;
+  try {
+    advertisements =
+      (await c.ads.updateMany(filter, { $set: { businessId: null } })).modifiedCount ?? 0;
+  } catch { advertisements = 0; }
+  try {
+    leadDispatches =
+      (
+        await c.dispatches.updateMany(
+          { $or: [{ businessIds: { $in: objectIds } }, { customerListBusinessIds: { $in: objectIds } }] },
+          { $pull: { businessIds: { $in: objectIds }, customerListBusinessIds: { $in: objectIds } } }
+        )
+      ).modifiedCount ?? 0;
+  } catch { leadDispatches = 0; }
+
+  const result = await businessListModel.deleteMany({ _id: { $in: objectIds } });
+
+  return {
+    purged: result.deletedCount ?? 0,
+    cascade: { reviews, favorites, feedPosts, feedFollows },
+    detached: { advertisements, leadDispatches },
+  };
 };

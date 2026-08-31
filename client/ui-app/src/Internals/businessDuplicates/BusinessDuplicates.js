@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { Button, CircularProgress, Typography, Tooltip } from "@mui/material";
+import {
+  Button, CircularProgress, Typography, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+} from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
@@ -9,6 +12,9 @@ import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import { useSnackbar } from "../../components/snackbar/SnackbarProvider.js";
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
@@ -18,6 +24,8 @@ import {
   resolveDuplicateGroup,
   ignoreDuplicateGroup,
   restoreDuplicateGroup,
+  fetchPurgeImpact,
+  purgeDuplicateGroup,
 } from "../../redux/actions/businessDuplicateAction.js";
 import styles from "./businessDuplicates.module.css";
 
@@ -83,6 +91,11 @@ const BusinessDuplicates = () => {
   const [removeChoice, setRemoveChoice] = useState({});
   const [busyGroup, setBusyGroup] = useState(null);
   const [resolved, setResolved] = useState({});
+  // Hard delete is irreversible, so it goes through a confirm dialog that first
+  // reports exactly what would be destroyed.
+  const [purgeTarget, setPurgeTarget] = useState(null);
+  const [purgeImpact, setPurgeImpact] = useState(null);
+  const [purgeLoading, setPurgeLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +195,47 @@ const BusinessDuplicates = () => {
         [group.groupKey]: { kind: "merged", count: result.removed, memberIds: removeIds },
       }));
       enqueueSnackbar(result.message, { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    } finally {
+      setBusyGroup(null);
+    }
+  };
+
+  const openPurgeDialog = async (group) => {
+    const removeIds = [...(removeChoice[group.groupKey] || [])];
+    if (!removeIds.length) {
+      enqueueSnackbar("Nothing selected to delete", { variant: "warning" });
+      return;
+    }
+    setPurgeTarget({ group, removeIds });
+    setPurgeImpact(null);
+    setPurgeLoading(true);
+    try {
+      setPurgeImpact(await dispatch(fetchPurgeImpact(removeIds)));
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    } finally {
+      setPurgeLoading(false);
+    }
+  };
+
+  const confirmPurge = async () => {
+    if (!purgeTarget) return;
+    const { group, removeIds } = purgeTarget;
+    setBusyGroup(group.groupKey);
+    try {
+      const result = await dispatch(
+        purgeDuplicateGroup({ keepId: keepChoice[group.groupKey], removeIds })
+      );
+      setResolved((current) => ({
+        ...current,
+        // No memberIds recorded: a purge cannot be undone, so no Undo is offered.
+        [group.groupKey]: { kind: "purged", count: result.purged },
+      }));
+      enqueueSnackbar(result.message, { variant: "success" });
+      setPurgeTarget(null);
+      setPurgeImpact(null);
     } catch (error) {
       enqueueSnackbar(error.message, { variant: "error" });
     } finally {
@@ -418,7 +472,11 @@ const BusinessDuplicates = () => {
                     </div>
                     {record ? (
                       <span className={cx("done-pill")}>
-                        {record.kind === "merged" ? `${record.count} removed` : "Dismissed"}
+                        {record.kind === "merged"
+                          ? `${record.count} disabled`
+                          : record.kind === "purged"
+                            ? `${record.count} deleted`
+                            : "Dismissed"}
                       </span>
                     ) : (
                       <span className={cx("chevron", isOpen && "chevron-open")}>▾</span>
@@ -513,20 +571,27 @@ const BusinessDuplicates = () => {
 
                       <div className={cx("group-actions")}>
                         <p className={cx("action-note")}>
-                          Removing takes a listing off the site by clearing its live flags. The
-                          document, its reviews, analytics and QR codes stay in the database, so
-                          this is reversible.
+                          <strong>Disable</strong> takes the listing off the site but keeps the
+                          document, its reviews, analytics and QR codes — reversible.{" "}
+                          <strong>Delete</strong> erases the documents and their owned content from
+                          the database — permanent.
                         </p>
                         <div className={cx("action-buttons")}>
                           {record ? (
-                            <button
-                              className={cx("action-btn", "action-undo")}
-                              onClick={() => undoGroup(group)}
-                              disabled={busy}
-                            >
-                              <RestartAltRoundedIcon sx={{ fontSize: "1rem" }} />
-                              <span>Undo</span>
-                            </button>
+                            record.kind === "purged" ? (
+                              <span className={cx("purged-note")}>
+                                Permanently deleted — cannot be undone
+                              </span>
+                            ) : (
+                              <button
+                                className={cx("action-btn", "action-undo")}
+                                onClick={() => undoGroup(group)}
+                                disabled={busy}
+                              >
+                                <RestartAltRoundedIcon sx={{ fontSize: "1rem" }} />
+                                <span>Undo</span>
+                              </button>
+                            )
                           ) : (
                             <>
                               <button
@@ -537,20 +602,34 @@ const BusinessDuplicates = () => {
                                 <BlockRoundedIcon sx={{ fontSize: "1rem" }} />
                                 <span>Not a duplicate</span>
                               </button>
-                              <button
-                                className={cx("action-btn", "action-apply")}
-                                onClick={() => applyMerge(group)}
-                                disabled={busy || removing.size === 0}
-                              >
-                                {busy ? (
-                                  <CircularProgress size={14} sx={{ color: "#fff" }} />
-                                ) : (
-                                  <CheckCircleRoundedIcon sx={{ fontSize: "1rem" }} />
-                                )}
+                              <Tooltip title="Clears the live flags so the listing leaves the site. Document, reviews, analytics and QR codes are kept — this can be undone.">
                                 <span>
-                                  Keep 1, remove {removing.size}
+                                  <button
+                                    className={cx("action-btn", "action-apply")}
+                                    onClick={() => applyMerge(group)}
+                                    disabled={busy || removing.size === 0}
+                                  >
+                                    {busy ? (
+                                      <CircularProgress size={14} sx={{ color: "#fff" }} />
+                                    ) : (
+                                      <VisibilityOffRoundedIcon sx={{ fontSize: "1rem" }} />
+                                    )}
+                                    <span>Disable {removing.size}</span>
+                                  </button>
                                 </span>
-                              </button>
+                              </Tooltip>
+                              <Tooltip title="Erases the documents and their reviews, favourites and feed content from the database. This cannot be undone.">
+                                <span>
+                                  <button
+                                    className={cx("action-btn", "action-purge")}
+                                    onClick={() => openPurgeDialog(group)}
+                                    disabled={busy || removing.size === 0}
+                                  >
+                                    <DeleteForeverRoundedIcon sx={{ fontSize: "1rem" }} />
+                                    <span>Delete {removing.size}</span>
+                                  </button>
+                                </span>
+                              </Tooltip>
                             </>
                           )}
                         </div>
@@ -563,6 +642,85 @@ const BusinessDuplicates = () => {
           </section>
         </>
       )}
+
+      <Dialog
+        open={Boolean(purgeTarget)}
+        onClose={() => { setPurgeTarget(null); setPurgeImpact(null); }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle className={cx("purge-title")}>
+          <WarningAmberRoundedIcon sx={{ color: "#b3261e" }} />
+          Permanently delete {purgeTarget?.removeIds.length} listing
+          {purgeTarget?.removeIds.length === 1 ? "" : "s"}?
+        </DialogTitle>
+        <DialogContent>
+          <p className={cx("purge-lead")}>
+            This erases the documents from the database. It cannot be undone — use{" "}
+            <strong>Disable</strong> instead if you might want them back.
+          </p>
+
+          {purgeLoading && (
+            <div className={cx("purge-loading")}>
+              <CircularProgress size={18} />
+              <span>Checking what this would affect…</span>
+            </div>
+          )}
+
+          {purgeImpact && (
+            <div className={cx("impact")}>
+              <div className={cx("impact-block", "impact-delete")}>
+                <span className={cx("impact-head")}>Will be deleted</span>
+                <ul className={cx("impact-list")}>
+                  <li>{purgeImpact.listings} business listing(s)</li>
+                  <li>{purgeImpact.deletes.reviews} review(s)</li>
+                  <li>{purgeImpact.deletes.favorites} saved favourite(s)</li>
+                  <li>{purgeImpact.deletes.feedPosts} feed post(s)</li>
+                  <li>{purgeImpact.deletes.feedFollows} feed follower(s)</li>
+                </ul>
+              </div>
+              <div className={cx("impact-block", "impact-detach")}>
+                <span className={cx("impact-head")}>Will be detached</span>
+                <ul className={cx("impact-list")}>
+                  <li>{purgeImpact.detaches.advertisements} advertisement(s)</li>
+                  <li>{purgeImpact.detaches.leadDispatches} queued lead dispatch(es)</li>
+                </ul>
+              </div>
+              <div className={cx("impact-block", "impact-keep")}>
+                <span className={cx("impact-head")}>Kept (financial & audit history)</span>
+                <ul className={cx("impact-list")}>
+                  <li>{purgeImpact.preserves.payments} payment record(s)</li>
+                  <li>{purgeImpact.preserves.rewardClaims} reward claim(s)</li>
+                </ul>
+              </div>
+              <p className={cx("impact-foot")}>
+                Uploaded files in S3 (banner, gallery, KYC, QR, certificates) are left in place.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ padding: "12px 22px 18px" }}>
+          <button
+            className={cx("action-btn", "action-dismiss")}
+            onClick={() => { setPurgeTarget(null); setPurgeImpact(null); }}
+          >
+            Cancel
+          </button>
+          <button
+            className={cx("action-btn", "action-purge")}
+            onClick={confirmPurge}
+            disabled={purgeLoading || Boolean(busyGroup)}
+          >
+            {busyGroup ? (
+              <CircularProgress size={14} sx={{ color: "#fff" }} />
+            ) : (
+              <DeleteForeverRoundedIcon sx={{ fontSize: "1rem" }} />
+            )}
+            <span>Delete permanently</span>
+          </button>
+        </DialogActions>
+      </Dialog>
 
       {!scan && !scanning && (
         <div className={cx("intro")}>

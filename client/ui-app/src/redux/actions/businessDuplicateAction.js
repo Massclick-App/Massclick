@@ -101,3 +101,34 @@ export const restoreDuplicateGroup = (payload) => async (dispatch) => {
     throw new Error(failureMessage(error, 'Could not restore the listings'));
   }
 };
+
+/** Preview what a permanent delete would destroy, before confirming it. */
+export const fetchPurgeImpact = (ids) => async (dispatch) => {
+  try {
+    const response = await axiosInstance.post(
+      `${API_URL}/businesslist/duplicates/impact`,
+      { ids },
+      { headers: await authHeaders(dispatch), timeout: 60000 }
+    );
+    return response.data.impact;
+  } catch (error) {
+    throw new Error(failureMessage(error, 'Could not read the delete impact'));
+  }
+};
+
+/**
+ * Permanent delete. `confirm: true` is sent explicitly and the server rejects
+ * the call without it, so this cannot be reached by accident.
+ */
+export const purgeDuplicateGroup = (payload) => async (dispatch) => {
+  try {
+    const response = await axiosInstance.post(
+      `${API_URL}/businesslist/duplicates/purge`,
+      { ...payload, confirm: true },
+      { headers: await authHeaders(dispatch), timeout: 120000 }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(failureMessage(error, 'Could not delete the listings'));
+  }
+};

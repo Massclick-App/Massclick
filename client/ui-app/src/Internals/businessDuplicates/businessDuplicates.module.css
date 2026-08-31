@@ -716,3 +716,93 @@
     padding-left: 0;
   }
 }
+
+/* ---------- permanent delete ---------- */
+
+/* Visually distinct from .action-apply: disable is the routine choice and stays
+   solid red-brown; delete is outlined so the destructive one reads as a
+   deliberate departure rather than the default. */
+.action-purge {
+  border-color: #7a1512;
+  background-color: #fff;
+  color: #7a1512;
+}
+
+.action-purge:hover:not(:disabled) {
+  background-color: #7a1512;
+  color: #fff;
+}
+
+.purged-note {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7a1512;
+}
+
+.purge-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--dup-ink);
+}
+
+.purge-lead {
+  margin: 0 0 14px;
+  font-size: 0.83rem;
+  line-height: 1.6;
+  color: var(--dup-muted);
+}
+
+.purge-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  font-size: 0.8rem;
+  color: var(--dup-muted);
+}
+
+.impact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.impact-block {
+  padding: 11px 14px;
+  border: 1px solid var(--dup-border);
+  border-left-width: 3px;
+  border-radius: 9px;
+  background-color: #fbfcfd;
+}
+
+.impact-delete { border-left-color: #b3261e; }
+.impact-detach { border-left-color: #c2620c; }
+.impact-keep { border-left-color: #2e7d32; }
+
+.impact-head {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dup-ink);
+}
+
+.impact-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.79rem;
+  line-height: 1.65;
+  color: var(--dup-muted);
+}
+
+.impact-foot {
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--dup-muted);
+}

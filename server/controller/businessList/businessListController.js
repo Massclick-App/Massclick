@@ -18,6 +18,8 @@ import {
   resolveDuplicateGroup,
   ignoreDuplicateGroup,
   restoreDuplicateGroup,
+  getPurgeImpact,
+  purgeDuplicateGroup,
 } from "../../helper/businessList/businessDuplicateHelper.js";
 import { ensureBusinessCertificates, regenerateBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
 import {
@@ -3039,6 +3041,62 @@ export const restoreBusinessDuplicatesAction = async (req, res) => {
     return res.send({ success: true, message: "Listings restored to the site", ...result });
   } catch (error) {
     console.error("Error in restoreBusinessDuplicatesAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+/**
+ * What a permanent delete would destroy. The console calls this before showing
+ * the confirm dialog, so the admin sees the blast radius instead of a generic
+ * "are you sure?".
+ */
+export const businessDuplicateImpactAction = async (req, res) => {
+  try {
+    const { ids = [] } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(BAD_REQUEST.code).send({ message: "No listings supplied" });
+    }
+
+    const impact = await getPurgeImpact(ids);
+    return res.send({ success: true, impact });
+  } catch (error) {
+    console.error("Error in businessDuplicateImpactAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+/**
+ * Permanent delete. Irreversible, so it demands an explicit confirm flag from
+ * the client rather than trusting the button that called it.
+ */
+export const purgeBusinessDuplicatesAction = async (req, res) => {
+  try {
+    const { keepId, removeIds = [], confirm } = req.body;
+
+    if (confirm !== true) {
+      return res.status(BAD_REQUEST.code).send({ message: "Permanent delete requires explicit confirmation" });
+    }
+    if (!Array.isArray(removeIds) || removeIds.length === 0) {
+      return res.status(BAD_REQUEST.code).send({ message: "Select at least one listing to delete" });
+    }
+    if (keepId && removeIds.includes(keepId)) {
+      return res.status(BAD_REQUEST.code).send({ message: "The kept listing cannot also be deleted" });
+    }
+
+    const result = await purgeDuplicateGroup({ removeIds });
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    return res.send({
+      success: true,
+      message: `${result.purged} listing${result.purged === 1 ? "" : "s"} permanently deleted`,
+      ...result,
+    });
+  } catch (error) {
+    console.error("Error in purgeBusinessDuplicatesAction:", error);
     return res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };
