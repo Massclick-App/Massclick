@@ -47,9 +47,10 @@ since 2026-08-29 rather than making you re-derive it:
 node server/scripts/auditMasterLocationCoordinates.js --top=15 --json=outputs/geo_audit_$(date +%Y%m%d).json
 ```
 
-Last status check after the 2026-08-31 C-lite eight-record cleanup: 0 `[0,0]` masterlocations ·
-8 outside-district (all remaining items are ≤5.51km border/boundary cases) · 222 far-from-parent ·
-209 thin evidence · 349 suspect duplicate points · 0 inactive district docs ·
+Last status check after the 2026-08-31 C cleanup: 0 `[0,0]` masterlocations ·
+1 outside-district (`Tirunelveli > Nanguneri > Kavalkinaru`, 2.92km beyond tolerance, one live
+matching business) · 221 far-from-parent · 209 thin evidence · 349 suspect duplicate points ·
+14 low precision · 0 inactive district docs ·
 0 stale business fields · 0 businesses on an inactive location after the five-decision apply ·
 0 `[0,0]` businesses.
 
@@ -61,6 +62,8 @@ Scoped snapshots were taken first:
 approved `Sipcot-pdk` coordinate: `2026-08-31_06-24-59__pre-sipcot-pdk-coordinate`.
 Second C-lite cleanup snapshots: `2026-08-31_06-44-45__pre-search-geo-c-lite-eight-masterlocations`
 and `2026-08-31_06-44-47__pre-search-geo-c-lite-eight-businesses`.
+Final C outside cleanup snapshot:
+`2026-08-31_07-05-27__pre-search-geo-c-outside-nolive-clear`.
 
 **1. Wrong business coordinates / duplicate cleanup**
 
@@ -129,14 +132,27 @@ and `2026-08-31_06-44-47__pre-search-geo-c-lite-eight-businesses`.
   and relinked `Lakshmi Catering`.
 
 Verification: 9 linked businesses checked, 0 stale cached `masterLocation` slugs. Audit outside
-district count is now 8, down from 10.
+district count went to 8, down from 10.
 
-**4. Lower value, only if I ask**
+**4. Final C outside cleanup**
+
+Cleared coordinates from 7 nonlocked outside-district masterlocation rows with zero live linked
+businesses. No rows were deactivated and no pincodes were cleared. Post-write audit: outside-district
+`8 -> 1`; the only survivor is `Tirunelveli > Nanguneri > Kavalkinaru`, which has one live business
+whose address/pincode also says Kavalkinaru, so treat it as a decision/border case.
+
+**5. Lower value, only if I ask**
 
 - 349 suspect duplicate points DB-wide — including one point carried by **14** different Thuraiyur
-  localities (one geocode reused).
+  localities (one geocode reused). Live-impact split: 349 groups / 781 docs, 31 groups touch live
+  businesses, 1,447 linked live businesses total. No bulk fix before prod.
 - 209 thin-evidence points (`low` confidence or `derivedFromCount <= 2`). This class caused both
-  severe errors already fixed, so it's the most likely source of the next one.
+  severe errors already fixed, so it's the most likely source of the next one. Live-impact split:
+  81 rows touch 213 live businesses; defer unless a specific search result exposes one.
+- 221 far-from-parent rows. Many are inherited hierarchy/radius artifacts; only 13 have live linked
+  businesses (27 live businesses total) and those need place decisions rather than automatic writes.
+- 14 low-precision rows. Three have live businesses (8 live businesses total) and supporting text;
+  not a prod blocker.
 - Trichy's 31 coordinate-less active wards / 582 localities, and the residual business-linked gaps
   (Thanjavur 11, Tirunelveli 6). I've already said to leave these.
 - No more districts. I've said this explicitly — don't start a fourth.
@@ -179,6 +195,8 @@ district count is now 8, down from 10.
 ?? SEARCH_GEO_STATUS_PROMPT.md
 ```
 
+The two modified docs are the current C cleanup notes. `SEARCH_GEO_STATUS_PROMPT.md` predates this
+handoff update and should be treated as user/other-session work unless the user says otherwise.
 Everything else is pushed or already committed. `server/scripts/` and `outputs/` are gitignored, so
 the scripts below and the audit JSON won't show in `git status`.
 

@@ -20,9 +20,9 @@ step 3 (`matchGeoNamesCoordinates.js`) plus the parent median rollup.
 | | |
 |---|---|
 | Phase | **Three-district search-geo push complete; search ranking + telemetry fixes complete in code.** Trichy localities 7.8% -> 89.3%, wards 12.8% -> 71.6%, zones 33% -> 100%. |
-| Next action | No decision-blocked geo cleanup remains. Only deferred low-value audit buckets remain: duplicate-point suspects, thin-evidence points, far-from-parent rows, border cases, and broader district expansion if explicitly requested. |
-| DB writes so far | dev only: 70 manual locked points + 8,034 recovered + 66 GeoNames + 45 derived parents + 83 disabled (36 localities + 47 wards) + 8 targeted cleanup/relink decisions + 3,680 business precision tags + 413 business coordinate repairs |
-| Snapshots | Latest C-lite cleanup snapshots are listed in `db-backups/MANIFEST.md` (see Rollback below) |
+| Next action | C cleanup is finished as far as it can go without fresh place decisions. Only one live outside-district border case remains (`Kavalkinaru`); the rest is deferred audit noise: duplicate-point suspects, thin-evidence points, far-from-parent rows, low precision, and broader district expansion if explicitly requested. |
+| DB writes so far | dev only: 70 manual locked points + 8,034 recovered + 66 GeoNames + 45 derived parents + 83 disabled (36 localities + 47 wards) + 15 targeted cleanup/relink/clear decisions + 3,680 business precision tags + 413 business coordinate repairs |
+| Snapshots | Latest C cleanup snapshot is `2026-08-31_07-05-27__pre-search-geo-c-outside-nolive-clear`; earlier C-lite cleanup snapshots are listed in `db-backups/MANIFEST.md` (see Rollback below) |
 | Prod | **untouched** |
 
 ### Latest read-only status check — 2026-08-31
@@ -89,6 +89,24 @@ records. Scoped snapshots were taken first:
 
 Post-write verification: 9 linked businesses checked, 0 stale `masterLocation` slugs. Audit now
 reports 8 outside-district points, down from 10.
+
+Final C cleanup on 2026-08-31 cleared seven remaining outside-district masterlocation coordinates
+that had zero live linked businesses and were not manual/locked. Scoped snapshot:
+`2026-08-31_07-05-27__pre-search-geo-c-outside-nolive-clear`. Post-write audit:
+0 `[0,0]` masterlocations, 1 outside-district point (`Tirunelveli > Nanguneri > Kavalkinaru`,
+2.92km beyond polygon tolerance, with one live matching business), 221 far-from-parent, 209 thin
+evidence, 349 suspect duplicate points, 14 low precision, 0 inactive district docs, 0 stale cached
+business fields, 0 businesses on inactive locations, 0 business `[0,0]`.
+
+C residual live-impact split:
+
+| bucket | total | rows with live businesses | live businesses | action |
+|---|---:|---:|---:|---|
+| outside district | 1 | 1 | 1 | decision/border case: `Kavalkinaru` |
+| far from parent | 221 | 13 | 27 | needs place-by-place decisions; no bulk write |
+| thin evidence | 209 | 81 | 213 | deferred unless a specific row affects search quality |
+| low precision | 14 | 3 | 8 | deferred; not a prod blocker |
+| suspect duplicate point groups | 349 groups / 781 docs | 31 groups | 1,447 | noisy long-tail; do not bulk-fix before prod |
 
 ### Coverage, before -> after (active Trichy documents)
 
@@ -451,7 +469,7 @@ Status key: `open` · `in progress` · `blocked` · `done`
 | 14 | `logsearches` | `masterLocationSlug` empty on all 105 rows — no record of what resolved or which origin fired | Log `resolvedSlug`, `originSource`, `distanceSortUsed`, `resultCount` | **done** 2026-08-29 — code-only; future searches persist resolved/origin telemetry |
 | 15 | `masterlocations` | Admin UI [MasterLocation.js](client/ui-app/src/Internals/location/MasterLocation.js) had no coordinate field or map — only a DB script could set one | Map picker in the edit form → writes `manual`/`high`/`lockedAt` when the pin changes; status chip per row | **done** 2026-08-29 |
 | 16 | `businesslists` | `geoLocation.coordinates` defaulted to `[0,0]` — the exact landmine #6 fixed on `masterlocations` but never here. 14 rows carried it, 4 of them live | `default: undefined` on **both** subfields (see note), then `$unset` the 14 existing rows | **done** 2026-08-29 |
-| 17 | `masterlocations` | 13 points outside their own district polygon outside Trichy — the 77.70°E class, never swept elsewhere | Cleared the 2 severe ones (both `business-derived/low/n=1`, poisoned by a single wrong business point each). Left the 11 border cases: all ≤9.85km, consistent with polygon simplification | **done for the severe cases**; 11 border cases deliberately left, and the 2 underlying *business* coordinates are still wrong — see below |
+| 17 | `masterlocations` | DB-wide outside-district coordinate audit | Cleared the 2 severe one-business poison points, then cleared 7 no-live outside-district coordinates after snapshot `2026-08-31_07-05-27__pre-search-geo-c-outside-nolive-clear`. Do not guess replacement points | **done for C** — only `Tirunelveli > Nanguneri > Kavalkinaru` remains: 2.92km beyond polygon tolerance, one live business whose text/pincode also says Kavalkinaru. Treat as a decision/border case, not an automatic clear |
 | 18 | `gmaps_leads` | The text index declared for #13 was never built on dev | Resolves itself: [app.js:207](server/app.js:207) connects with no options, so mongoose `autoIndex` defaults true and builds it on next server start | **resolves on deploy** — verified dev has no conflicting text index; MongoDB allows only one per collection, so check prod before deploying there |
 
 ---
@@ -477,7 +495,7 @@ Status key: `open` · `in progress` · `blocked` · `done`
 11 businesslists geoLocationPrecision        DONE  3,680 tagged; ranker uses it
 12 businesslists outside/invalid points      DONE  413 repaired; 0 bad remain
 –  auditMasterLocationCoordinates.js      DONE  2026-08-29, report-only, 10 checks
-–  hand-place whatever the audit still flags  OPEN  see problems #16/#17
+–  hand-place whatever the audit still flags  DONE-FOR-C  only decision/deferred queues remain
 14 search-origin telemetry                  DONE  code-only
 5c future geocode boundary validation       DONE  code-only
 13 gmaps origin lookup index/cache          DONE  index builds itself on deploy via mongoose autoIndex
@@ -486,8 +504,9 @@ Status key: `open` · `in progress` · `blocked` · `done`
 Everything before `14` is Trichy-scoped. Next district work repeats `2`–`3`.
 
 **The execution order is now complete.** What remains is not plan items but findings the audit
-produced: problems #16 (businesslists `[0,0]` schema default) and #17 (13 outside-district points
-across other districts), plus the two long-standing Trichy records below.
+produced: problems #16 (businesslists `[0,0]` schema default) and #17 (outside-district points
+across other districts), plus the two long-standing Trichy records below. Those are now resolved
+or explicitly deferred for C; see the 2026-08-31 changelog rows.
 
 **Nothing in this tracker is live until it is deployed.** All of the "DONE — code-only" work sits in
 commits on local `dev`; the running `dev-api.massclick.in` does not have it until those are pushed
@@ -559,6 +578,7 @@ node db-backups/backup.js --collections masterlocations --query "{\"district\":\
 
 | date | what happened |
 |---|---|
+| 2026-08-31 | **C cleanup finalized — WRITES TO DEV.** Cleared 7 nonlocked outside-district masterlocation coordinates that had zero live linked businesses, after scoped snapshot `2026-08-31_07-05-27__pre-search-geo-c-outside-nolive-clear`. Audit now reports outside-district `8 -> 1`; the remaining item is `Tirunelveli > Nanguneri > Kavalkinaru` at 2.92km beyond tolerance with one live Kavalkinaru business, so it needs a place decision rather than an automatic clear. Other remaining C audit buckets are explicitly deferred/noisy: 221 far-from-parent, 209 thin evidence, 349 suspect duplicate points, 14 low precision; all hard integrity checks are clean (`[0,0]`, stale cached fields, inactive district docs, businesses on inactive locations). |
 | 2026-08-29 | **#16 done — WRITES TO DEV.** `businessListSchema.geoLocation` now defaults **both** `type` and `coordinates` to undefined, and the 14 existing `[0,0]` rows were `$unset` (snapshot `2026-08-29_11-55-41__pre-business-zerozero-clear`). **The `type` half is not optional.** Proved it against a scratch collection carrying the same `2dsphere` index: a doc with no `geoLocation` key is accepted, a doc with a real point is accepted, but `{ type: "Point" }` with no `coordinates` is **rejected outright** — `"Can't extract geo keys ... Point must be an array or object"`. Changing only `coordinates` and leaving `type: "Point"` as the default would have made every new business insert fail. Verified the new shape produces no `geoLocation` key, that an explicit point still round-trips, and that all read paths (`getPointCoordinates`, the export helper, the aggregation pipeline) already null-guard |
 | 2026-08-29 | **#17 partly done — WRITES TO DEV.** Cleared the two severe outside-district points (Pudukkottai `Sipcot-pdk` 239.8km, Salem `Thillainagar` 116.5km) after a lock guard, snapshot `2026-08-29_11-58-04__pre-clear-severe-outside-district`. Both were `business-derived/low/n=1` — clearing returns them to "no coordinate", so search falls back to the parent ward, which is enormously better than a 240km error. Deliberately did **not** guess replacement points. The 11 remaining are ≤9.85km border cases and were left alone. Audit re-run confirms 13 -> 11 |
 | 2026-08-29 | **Line-ending churn in `businessListSchema.js`, caught and undone.** The file has mixed endings (357 CRLF + 31 bare LF, mixed even inside the `geoLocation` block). Editing it normalized everything to CRLF, inflating an 11-line change into 42 insertions / 31 deletions with unrelated lines showing as modified at byte-identical content. Rebuilt from `git show HEAD:<path>`, splitting on `/[^\n]*\n\|[^\n]+$/` so each line keeps its own terminator, changing only the two `default:` lines plus the inserted comment. Final diff: **13 insertions, 2 deletions**. The tell was `git diff --check` flagging "trailing whitespace" on lines never touched |
