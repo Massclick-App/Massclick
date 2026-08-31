@@ -109,6 +109,7 @@ const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './In
 const SystemSettings = lazy(() => import(/* webpackChunkName: "admin-settings" */ './Internals/SystemSettings/SystemSettings.js'));
 const CategoryDisplaySettings = lazy(() => import(/* webpackChunkName: "admin-cat-display" */ './Internals/CategoryDisplaySettings/CategoryDisplaySettings.js'));
 const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */ './Internals/gmapsLeads/GmapsLeads.js'));
+const BusinessDuplicates = lazy(() => import(/* webpackChunkName: "admin-business-duplicates" */ './Internals/businessDuplicates/BusinessDuplicates.js'));
 const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
 const AuthControl = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthControl/AuthControl.js'));
 const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-public-user-counter" */ './Internals/PublicUserCounter/PublicUserCounterAdmin.js'));
@@ -391,6 +392,7 @@ function AppRoutes({
                 <Route path="system-settings" element={<SystemSettings />} />
                 <Route path="category-display" element={<CategoryDisplaySettings />} />
                 <Route path="gmaps-leads" element={<GmapsLeads />} />
+                <Route path="business-duplicates" element={<BusinessDuplicates />} />
                 <Route path="msg91-analytics" element={<Msg91Analytics />} />
                 <Route path="gsc-analytics" element={<GscAnalytics />} />
                 <Route path="ga4-analytics" element={<Ga4Analytics />} />

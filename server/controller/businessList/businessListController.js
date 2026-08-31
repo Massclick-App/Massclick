@@ -12,6 +12,13 @@ import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import { getCache, setCache } from "../../utils/redisClient.js";
 import { invalidateSearchCache, invalidateDashboardCache, invalidateCategoryCache } from "../../utils/cacheInvalidation.js";
 import { buildBusinessExportWorkbook } from "../../utils/businessExportXlsx.js";
+import {
+  scanDuplicates,
+  getRuleCatalogue,
+  resolveDuplicateGroup,
+  ignoreDuplicateGroup,
+  restoreDuplicateGroup,
+} from "../../helper/businessList/businessDuplicateHelper.js";
 import { ensureBusinessCertificates, regenerateBusinessCertificates } from "../../helper/businessList/businessCertificateHelper.js";
 import {
   resolveLocationForSearch,
@@ -2912,5 +2919,126 @@ export const revertPaidStatusAction = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(400).send({ message: error.message });
+  }
+};
+
+/**
+ * Duplicate review console.
+ *
+ * The scan is deliberately synchronous and uncached: an admin runs it, acts on
+ * what it returns, and re-runs it. A stale cache here would show groups that
+ * were already merged and invite double action on live listings.
+ */
+export const businessDuplicateRulesAction = async (req, res) => {
+  try {
+    return res.send({ success: true, rules: getRuleCatalogue() });
+  } catch (error) {
+    console.error("Error in businessDuplicateRulesAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const scanBusinessDuplicatesAction = async (req, res) => {
+  try {
+    const ruleIds = (req.query.rules || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    const result = await scanDuplicates({
+      ruleIds,
+      location: req.query.location || "",
+      category: req.query.category || "",
+      includeResolved: req.query.includeResolved === "true",
+    });
+
+    return res.send({ success: true, ...result });
+  } catch (error) {
+    console.error("Error in scanBusinessDuplicatesAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const resolveBusinessDuplicatesAction = async (req, res) => {
+  try {
+    const { keepId, removeIds = [], groupKey = "", ruleId = "", reason = "", note = "" } = req.body;
+
+    if (!Array.isArray(removeIds) || removeIds.length === 0) {
+      return res.status(BAD_REQUEST.code).send({ message: "Select at least one listing to remove" });
+    }
+    if (keepId && removeIds.includes(keepId)) {
+      return res.status(BAD_REQUEST.code).send({ message: "The kept listing cannot also be removed" });
+    }
+
+    const result = await resolveDuplicateGroup({
+      keepId,
+      removeIds,
+      groupKey,
+      ruleId,
+      reason,
+      note,
+      reviewedBy: req.authUser?.userId || null,
+    });
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    return res.send({
+      success: true,
+      message: `${result.removed} listing${result.removed === 1 ? "" : "s"} taken off the site`,
+      ...result,
+    });
+  } catch (error) {
+    console.error("Error in resolveBusinessDuplicatesAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const ignoreBusinessDuplicatesAction = async (req, res) => {
+  try {
+    const { memberIds = [], groupKey = "", ruleId = "", reason = "", note = "" } = req.body;
+
+    if (!Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(BAD_REQUEST.code).send({ message: "No listings supplied" });
+    }
+
+    const result = await ignoreDuplicateGroup({
+      memberIds,
+      groupKey,
+      ruleId,
+      reason,
+      note,
+      reviewedBy: req.authUser?.userId || null,
+    });
+
+    return res.send({ success: true, message: "Group marked as not a duplicate", ...result });
+  } catch (error) {
+    console.error("Error in ignoreBusinessDuplicatesAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const restoreBusinessDuplicatesAction = async (req, res) => {
+  try {
+    const { memberIds = [] } = req.body;
+
+    if (!Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(BAD_REQUEST.code).send({ message: "No listings supplied" });
+    }
+
+    const result = await restoreDuplicateGroup({
+      memberIds,
+      reviewedBy: req.authUser?.userId || null,
+    });
+
+    await invalidateSearchCache();
+    await invalidateDashboardCache();
+    await invalidateCategoryCache();
+
+    return res.send({ success: true, message: "Listings restored to the site", ...result });
+  } catch (error) {
+    console.error("Error in restoreBusinessDuplicatesAction:", error);
+    return res.status(BAD_REQUEST.code).send({ message: error.message });
   }
 };

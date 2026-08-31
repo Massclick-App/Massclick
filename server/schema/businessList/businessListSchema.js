@@ -351,6 +351,20 @@ const businessListSchema = new mongoose.Schema({
   },
   filters: { type: mongoose.Schema.Types.Mixed, default: {} },
   isActive: { type: Boolean, default: true },
+  // Audit trail for the duplicate-review console. A business is never hard
+  // deleted there: the loser of a merge is taken off the site by flipping the
+  // live flags, and this records why, so the decision stays reversible and
+  // reviewable months later.
+  duplicateReview: {
+    status: { type: String, enum: ['pending', 'merged', 'kept', 'ignored'], default: 'pending' },
+    ruleId: { type: String, default: '' },
+    reason: { type: String, default: '' },
+    groupKey: { type: String, default: '' },
+    mergedInto: { type: Schema.Types.ObjectId, ref: 'BusinessList', default: null },
+    note: { type: String, default: '' },
+    reviewedAt: { type: Date, default: null },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  },
 });
 
 businessListSchema.index({ geoLocation: "2dsphere" });

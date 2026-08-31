@@ -24,6 +24,7 @@ import { styled } from '@mui/material/styles';
 import CollectionsBookmarkOutlinedIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
 import { EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -4515,6 +4516,13 @@ const BusinessList = React.memo(() => {
             >
               <TravelExploreIcon sx={{ fontSize: "1rem" }} />
               <span>GMaps Leads</span>
+            </button>
+            <button
+              className={cx("duplicates-btn")}
+              onClick={() => navigate('/dashboard/business-duplicates')}
+            >
+              <ContentCopyRoundedIcon sx={{ fontSize: "1rem" }} />
+              <span>Find Duplicates</span>
             </button>
           </Box>
         </div>

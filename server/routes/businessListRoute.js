@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, exportBusinessListAction, updateBusinessListAction, updateBusinessSectionAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction, regenerateBusinessCertificatesAction, downloadBusinessDocumentAction, revertPaidStatusAction } from "../controller/businessList/businessListController.js"
+import { addBusinessListAction, viewBusinessListAction,getBusinessBySlugAction, getSuggestionsController, getEnhancedSuggestionsController, mainSearchController, nearbyBusinessesController, viewAllBusinessListAction,viewAllBusinessAction, exportBusinessListAction, updateBusinessListAction, updateBusinessSectionAction, deleteBusinessListAction, activeBusinessListAction, viewAllClientBusinessListAction, viewBusinessByCategory, findBusinessByMobileAction, dashboardSummaryAction, dashboardChartsAction, adminAnalyticsReportAction, getPendingBusinessAction, trackQrDownload, updateBusinessBadgesAction, regenerateBusinessCertificatesAction, downloadBusinessDocumentAction, revertPaidStatusAction, businessDuplicateRulesAction, scanBusinessDuplicatesAction, resolveBusinessDuplicatesAction, ignoreBusinessDuplicatesAction, restoreBusinessDuplicatesAction } from "../controller/businessList/businessListController.js"
 import { oauthAuthentication } from '../helper/oauthHelper.js';
 import { logSearchAction, viewLogSearchAction, viewSearchAction, updateSearchAction, getTrendingSearchesAction, sendEnquiryLead, sendBusinessInfoToCustomer } from "../controller/businessList/logSearchController.js"
 import { cacheMiddleware } from '../middleware/cacheMiddleware.js';
@@ -68,5 +68,13 @@ router.get(
 );
 router.post("/api/businesslist/qr-download/:id", oauthAuthentication, trackQrDownload);
 router.get('/api/businesslist/trending-searches/viewall', trendsCache, viewLogSearchAction);
+
+// Duplicate review console. Admin-only; never cached, because the scan result
+// drives destructive-looking actions on live listings.
+router.get('/api/businesslist/duplicates/rules', oauthAuthentication, businessDuplicateRulesAction);
+router.get('/api/businesslist/duplicates/scan', oauthAuthentication, scanBusinessDuplicatesAction);
+router.post('/api/businesslist/duplicates/resolve', oauthAuthentication, resolveBusinessDuplicatesAction);
+router.post('/api/businesslist/duplicates/ignore', oauthAuthentication, ignoreBusinessDuplicatesAction);
+router.post('/api/businesslist/duplicates/restore', oauthAuthentication, restoreBusinessDuplicatesAction);
 
 export default router; 

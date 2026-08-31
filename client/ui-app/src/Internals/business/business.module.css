@@ -3154,3 +3154,49 @@ textarea[readonly],
     padding: 16px;
   }
 }
+
+/* Opens the duplicate review console. Same shape as .gmaps-btn, held apart by
+   colour so the two directory tools stay visually distinct in the toolbar. */
+.duplicates-btn {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  background-color: #5a6472;
+  color: #fff;
+  border-style: none;
+  padding: 0.5em 1.2em;
+  border-radius: 0.5em;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 4px 8px 10px -3px rgba(0, 0, 0, 0.356);
+  transition: all 250ms;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.duplicates-btn::before {
+  content: "";
+  position: absolute;
+  height: 100%;
+  width: 0;
+  border-radius: 0.5em;
+  background-color: #454d59;
+  z-index: -1;
+  transition: all 350ms;
+}
+
+.duplicates-btn:hover::before {
+  width: 100%;
+}
+
+.duplicates-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+}
+
+.duplicates-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
