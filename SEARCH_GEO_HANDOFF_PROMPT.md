@@ -1,91 +1,143 @@
-# Handoff prompt — paste this into a new session
+# Search geo — handoff prompt
 
-```
-We're continuing the MassClick search geo quality work.
-
-Repo: D:\dev_abishek\massclick
-Dev DB: massClick_dev, ONLY through the massclick-mongodb SSH tunnel on 127.0.0.1:27019.
-Start it with:  ssh -f -N -o ServerAliveInterval=30 massclick-mongodb
-It drops often — just re-run it, that's normal.
-
-READ FIRST, and don't re-derive what it already records:
-  SEARCH_GEO_PROGRESS.md     status, 15-problem register, rollback commands, verified facts
-  SEARCH_GEO_STRATEGY.md     how search works in code + the fixes
-  TRICHY_GEO_AUDIT.md        the original data audit (its §5c count is superseded)
-
-Rules:
-- Never touch prod massClick unless I say "prod" and confirm.
-- Snapshot before any DB write. Run backup.js from D:\dev_abishek\db-backups,
-  and never put it behind a pipe — a pipe swallows its exit code and the write
-  runs anyway. That happened once. Prefer scripts that snapshot themselves.
-- Don't run npm run build unless I ask.
-- Ask before searching the repo broadly.
-
-Where things stand: the Trichy coordinate fill is DONE on dev.
-Localities 7.8% → 89.3%, wards 12.8% → 50%, zones 33% → 100%.
-The ranker now scales its distance bands by node size and widens them for
-low-confidence origins.
-
-The next task is #7b, and it needs my decision first — see the "7b — the
-synthetic wards" section in SEARCH_GEO_PROGRESS.md. Ask me about it.
-```
+Paste everything below the line into a fresh session.
 
 ---
 
-## Quick orientation for whoever picks this up
+We're continuing the MassClick search geo quality work.
 
-**What this initiative was.** Search ranking started using distance from the searched
-location (`2cba80cf`, `d74acd8f`), which exposed that `masterlocations` had almost no
-coordinates — 92% of active Trichy localities were empty, so the ranker kept falling
-back to guesses. Trichy Junction was the symptom that started it.
+Repo: `D:\dev_abishek\massclick`
+Dev DB only: `massClick_dev`, through the `massclick-mongodb` SSH tunnel on `127.0.0.1:27019`.
+Start/check the tunnel with:
 
-**The finding that changed the plan.** The 2026-08-25 enrichment import carried
-`_lat`/`_lon` on 8,291 of its 10,128 rows and dropped them — the importer treated
-`_`-prefixed keys as scratch metadata. Recovering them by `slug` was an exact join
-at zero API cost. The user's instinct was to hand-enter all 5,494 localities; the
-right split turned out to be automate the bulk, hand-place the ~250 nodes that are
-ever used as a search *origin*.
+```bash
+ssh -f -N -o ServerAliveInterval=30 massclick-mongodb
+```
 
-**Scripts, all dry-run by default, all self-snapshotting on `--apply`, all refusing
-prod without `--prod`** (note: `server/scripts/` is gitignored in this repo):
+It drops often — that's normal, just re-run. Connection string is `DEV_URI` in
+`D:\dev_abishek\db-backups\backup.js`. Port **27019**, never 27018.
 
-| script | what it does |
+## Rules
+
+- Never touch prod `massClick` unless I explicitly say "prod" and confirm.
+- Snapshot before any DB write using `D:\dev_abishek\db-backups\backup.js`, scoped with
+  `--collections` and `--query` to just what the task touches. Never whole-DB backups.
+- Never pipe the backup command; a pipe can swallow the exit code and let the write run anyway.
+- Prefer scripts that snapshot themselves.
+- Don't run `npm run build` unless I ask.
+- Ask before broad repo searches.
+- Fresh Google Geocoding API calls need my explicit go-ahead every time. I've declined twice.
+
+## Read first
+
+- `SEARCH_GEO_PROGRESS.md` — the living tracker. Status, 18-problem register, changelog, rollback.
+- `SEARCH_GEO_STRATEGY.md` — how search works in code, and why.
+- `TRICHY_GEO_AUDIT.md` — the original read-only audit (Trichy-specific, partly superseded).
+
+## Where things stand
+
+**The original plan's execution order is COMPLETE.** Three districts done (Trichy, Thanjavur,
+Tirunelveli), the ranker/telemetry/boundary work is code-complete and **pushed**, and the audit
+script — the last unchecked line — is built. What remains are findings, not plan items.
+
+**Start by running the audit.** It's read-only, has no `--apply`, and tells you what has rotted
+since 2026-08-29 rather than making you re-derive it:
+
+```bash
+node server/scripts/auditMasterLocationCoordinates.js --top=15 --json=outputs/geo_audit_$(date +%Y%m%d).json
+```
+
+Last run: 0 `[0,0]` masterlocations · 11 outside-district (all ≤9.85km border noise) · 226
+far-from-parent · 216 thin evidence · 352 suspect duplicate points · 0 stale business fields ·
+1 business on an inactive location · 0 `[0,0]` businesses.
+
+## Open items, in the order I'd take them
+
+**1. Two wrong business coordinates (needs a decision, then a small write)**
+
+- `N K International` (Pudukkottai, live) — street says "SIPCOT, Pudukkottai", pincode 622002, but
+  its `geoLocation` is **Hosur's** SIPCOT in Krishnagiri, ~240km off. The masterlocation it poisoned
+  is already cleared. Precedent: `repairTrichyBadBusinessCoordinates.js` fell bad points back to the
+  linked masterlocation.
+- `Maxivision Super Speciality Eye Hospitals trichy` — exists **twice**. One copy is correctly linked
+  to Trichy `Thillai Nagar Main`. The duplicate is linked to Salem `Central Salem > Thillainagar`
+  with **`source: "manual"`**, despite `location: Trichy`, `street: thillai nagar`, pincode 620018.
+  Its coordinate is also wrong (`76.68` where Trichy is `78.68`). **Deliberately untouched** — no
+  script here overrides a `manual`/`owner-selected` link. I need to decide: misclick between two
+  same-named localities, and should the duplicate record exist at all?
+
+**2. Two long-standing Trichy records (need my answer, not code)**
+
+- `Kathalur` — filed under `K. Abishekapuram > Sastri Road` but the real place is ~2.7km into
+  Pudukkottai near Iluppur/Panjappur. Needs re-parenting or deactivating.
+- `Subramaniapuram` — one point `78.701372, 10.787608` given to two different localities in two
+  different zones (`Golden Rock > Ponmalai East` and `K. Abishekapuram > Subramaniapuram`). Both are
+  written and locked. Which one owns it?
+
+**3. Lower value, only if I ask**
+
+- 352 suspect duplicate points DB-wide — including one point carried by **14** different Thuraiyur
+  localities (one geocode reused).
+- 216 thin-evidence points (`low` confidence or `derivedFromCount <= 2`). This class caused both
+  severe errors already fixed, so it's the most likely source of the next one.
+- Trichy's 31 coordinate-less active wards / 582 localities, and the residual business-linked gaps
+  (Thanjavur 11, Tirunelveli 6). I've already said to leave these.
+- No more districts. I've said this explicitly — don't start a fourth.
+
+## Things that will bite you
+
+- **Coverage numbers lie if you use the naive check.** Anything built before 2026-08-29 may carry
+  literal `[0,0]`. Always test `coordinates.coordinates.0 exists AND != [0,0]`. 2,825 such docs
+  across 13 districts were cleared; the schema defaults are fixed on both `masterlocations` and
+  `businesslists` now, so new ones shouldn't appear — but verify rather than assume.
+- **`mongoose.connect` in `server/app.js` passes no options, so `autoIndex` defaults to true.** Every
+  `schema.index()` builds on server start. That's how the `gmaps_leads` text index gets created
+  without a manual write. Corollary: **adding a `schema.index()` in this codebase is a deploy-time DB
+  write**, and MongoDB allows only one text index per collection — a second would fail the build.
+- **A GeoJSON default fix must clear BOTH `type` and `coordinates`.** `{type:"Point"}` with no
+  coordinates is invalid GeoJSON and the 2dsphere index rejects the entire insert. Changing only
+  `coordinates` would break every new insert. Verified against a scratch collection.
+- **`backfillBusinessMasterLocations.js` cannot see stale denormalized fields.** Its `sameLink()`
+  guard (~line 207) compares `locationId` + `confidence` + `source` only, never the cached
+  `slug`/`zone`/`ward` that search actually matches on. When a location doc's own names change in
+  place, linked businesses serve stale strings forever and `--force` won't fix it. Use
+  `resyncBusinessMasterLocationFields.js` for that class.
+- **Several files have mixed line endings** (`businessListSchema.js`: 357 CRLF + 31 bare LF, mixed
+  even within one block). Editing normalizes the whole file and turns a small change into a huge
+  diff. If `git diff --check` flags "trailing whitespace" on lines you never touched, or the diff is
+  far bigger than your edit, rebuild from `git show HEAD:<path>`, split on `/[^\n]*\n|[^\n]+$/` to
+  preserve each line's terminator, and change only the lines you mean to.
+- **Validate any new checker against data whose answer you already know.** The audit shipped with
+  three bugs found this way — a missing `state` projection, a flat distance limit that should scale
+  off `coordinatesMeta.radiusM`, and a wrongly-scoped `[0,0]` query that reported 2 where the truth
+  was 14. All three looked like data problems.
+- **A snapshot count that disagrees with the report that motivated it is a stop-and-look signal.**
+  That's exactly how the 2-vs-14 bug surfaced.
+
+## Uncommitted right now
+
+```
+M SEARCH_GEO_PROGRESS.md
+M server/schema/businessList/businessListSchema.js   (13 insertions, 2 deletions — clean)
+```
+
+Everything else is pushed. `server/scripts/` and `outputs/` are gitignored, so the scripts below and
+the audit JSON won't show in `git status`.
+
+## Scripts (all dry-run by default, all `--apply` to write, all refuse prod without `--prod`)
+
+| script | what |
 |---|---|
-| `recoverImportCoordinates.js` | restores the dropped import coordinates |
-| `applyManualCoordinates.js` | reviewed CSV → locked manual points |
-| `matchGeoNamesCoordinates.js` | GeoNames, parent-distance guarded |
+| `auditMasterLocationCoordinates.js` | **Read-only, no `--apply`.** 10 health checks. Run this first |
+| `resyncBusinessMasterLocationFields.js` | Refresh stale cached `slug`/`zone`/`ward` on businesses whose `locationId` is still right |
+| `fixZeroZeroCoordinates.js` | Clear `[0,0]` landmine points, global or `--districts=` |
+| `matchGeoNamesCoordinates.js` | GeoNames name match, parent-distance guarded |
+| `recoverImportCoordinates.js` | **Trichy only** — recovers the dropped import coordinates. No other district has that source file |
+| `backfillMasterLocationCoordinates.js` | Google-geocodes localities (paid, ask me), median-rolls parents |
+| `applyManualCoordinates.js` | Reviewed CSV → locked manual points |
 | `deriveLocationRadius.js` | p80 child spread → `coordinatesMeta.radiusM` |
-| `disableTrichyNoiseRound5.js` | address-fragment localities |
-| `createTiruverumburZone.js` | one-off, the missing zone doc |
-| `helper/location/districtBoundary.js` | point-in-polygon (not a script — the shared guard) |
 
-**Three things not to relearn the hard way:**
-
-1. **Never judge a coordinate against bounds derived from your own data.** The
-   business-derived `districtGuards` in `backfillMasterLocationCoordinates.js` had
-   been widened to `minLng 77.684` *by the four bad points at 77.70*, so it cleared
-   them while flagging real northern-Trichy places. Use `isPointInDistrict()`.
-2. **Keep the 2km border tolerance.** Simplified polygons put border villages on the
-   wrong side — Nazareth Rd 0.37km out, Kunnathur 0.28km in, 0.67km apart. And the
-   Trichy polygon legitimately contains a 2.4×2.7km Pudukkottai enclave at
-   `[78.569, 10.697]`; the second ring is a hole, not a bug.
-3. **Distance bands need a clamped base.** Scaling straight off `radiusM` gave Musiri
-   `[19.8, 49.5, 99, 198]km`, which collapses every result into band 0. Base is
-   clamped to 0.5–6km with multipliers `[1, 2, 4, 8]`.
-
-**Open, needing the user:**
-- **#7b** — 47 template-name wards (`Adi Dravidar Colony` ×7, `Anna Nagar` ×6…) with
-  **zero businesses between them**, 1–2 generic children each, all sharing their
-  taluk's pincode, all seeded 2026-07-10. Almost certainly generated scaffold. Ward
-  coverage goes 50% → ~90% if they're disabled. Not an automated call.
-- **`Kathalur`** — a hierarchy bug, not a coordinate bug. Filed under
-  `K. Abishekapuram > Sastri Road`, actually ~2.7km into Pudukkottai. Re-parent or
-  deactivate.
-- **`Subramaniapuram`** — one point (`78.701372, 10.787608`) given to two different
-  localities in two different zones.
-
-**Then, in order:** #15 admin map picker (so coordinates can be fixed without a
-script), #11/#12 business geo quality (345+ Trichy businesses share an exact
-coordinate; 410 sit outside the district), #14 search-origin telemetry
-(`logsearches.masterLocationSlug` is empty on every row, so nothing shows which
-searches fall back to the gmaps scan).
+`server/helper/location/districtBoundary.js` is the point-in-polygon helper (2km border tolerance,
+published LGD boundaries vendored at `server/assets/geo/tamil_nadu_districts.geojson`). Judge "is
+this coordinate wrong" against that, never against bounds derived from our own business points —
+those are self-poisoning.

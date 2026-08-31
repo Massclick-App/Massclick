@@ -285,14 +285,25 @@ const businessListSchema = new mongoose.Schema({
     templateVersion: { type: Number, default: 0 },
   },
   geoLocation: {
+    // Both subfields default to undefined deliberately, mirroring the same
+    // fix on masterLocationSchema. [0, 0] is a real, indexable point in the
+    // Gulf of Guinea: it satisfied every "does this business have a location"
+    // check while being nowhere near India, so an unset coordinate was
+    // indistinguishable from a valid one and still entered the 2dsphere index
+    // below.
+    //
+    // `type` must default to undefined too, not just `coordinates`. A document
+    // carrying { type: "Point" } with no coordinates is invalid GeoJSON, and
+    // the 2dsphere index rejects the whole insert rather than skipping the
+    // field. Absent means absent - both keys or neither.
     type: {
       type: String,
       enum: ["Point"],
-      default: "Point",
+      default: undefined,
     },
     coordinates: {
       type: [Number],
-      default: [0, 0],
+      default: undefined,
     },
   },
   // How much the business geoLocation should be trusted for search ranking.
