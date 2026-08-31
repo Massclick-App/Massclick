@@ -47,38 +47,95 @@ since 2026-08-29 rather than making you re-derive it:
 node server/scripts/auditMasterLocationCoordinates.js --top=15 --json=outputs/geo_audit_$(date +%Y%m%d).json
 ```
 
-Last run: 0 `[0,0]` masterlocations · 11 outside-district (all ≤9.85km border noise) · 226
-far-from-parent · 216 thin evidence · 352 suspect duplicate points · 0 stale business fields ·
-1 business on an inactive location · 0 `[0,0]` businesses.
+Last status check after the 2026-08-31 C-lite eight-record cleanup: 0 `[0,0]` masterlocations ·
+8 outside-district (all remaining items are ≤5.51km border/boundary cases) · 222 far-from-parent ·
+209 thin evidence · 349 suspect duplicate points · 0 inactive district docs ·
+0 stale business fields · 0 businesses on an inactive location after the five-decision apply ·
+0 `[0,0]` businesses.
 
-## Open items, in the order I'd take them
+## Resolved items applied on 2026-08-31
 
-**1. Two wrong business coordinates (needs a decision, then a small write)**
+Scoped snapshots were taken first:
+`2026-08-31_06-13-41__pre-search-geo-five-decision-masterlocations` and
+`2026-08-31_06-13-48__pre-search-geo-five-decision-businesses`. Follow-up snapshot before the
+approved `Sipcot-pdk` coordinate: `2026-08-31_06-24-59__pre-sipcot-pdk-coordinate`.
+Second C-lite cleanup snapshots: `2026-08-31_06-44-45__pre-search-geo-c-lite-eight-masterlocations`
+and `2026-08-31_06-44-47__pre-search-geo-c-lite-eight-businesses`.
 
-- `N K International` (Pudukkottai, live) — street says "SIPCOT, Pudukkottai", pincode 622002, but
-  its `geoLocation` is **Hosur's** SIPCOT in Krishnagiri, ~240km off. The masterlocation it poisoned
-  is already cleared. Precedent: `repairTrichyBadBusinessCoordinates.js` fell bad points back to the
-  linked masterlocation.
-- `Maxivision Super Speciality Eye Hospitals trichy` — exists **twice**. One copy is correctly linked
-  to Trichy `Thillai Nagar Main`. The duplicate is linked to Salem `Central Salem > Thillainagar`
-  with **`source: "manual"`**, despite `location: Trichy`, `street: thillai nagar`, pincode 620018.
-  Its coordinate is also wrong (`76.68` where Trichy is `78.68`). **Deliberately untouched** — no
-  script here overrides a `manual`/`owner-selected` link. I need to decide: misclick between two
-  same-named localities, and should the duplicate record exist at all?
+**1. Wrong business coordinates / duplicate cleanup**
 
-**2. Two long-standing Trichy records (need my answer, not code)**
+- `N K International` (Pudukkottai, live) — decision received 2026-08-31: clear/remove the existing
+  Hosur/Krishnagiri business coordinate, keep the Pudukkottai SIPCOT address, and use the linked
+  Pudukkottai/SIPCOT master-location coordinate as fallback. Add a new business-specific coordinate
+  only after independent verification. Applied: business `geoLocation` cleared and
+  `geoLocationPrecision` set to `unknown`. Follow-up applied: linked `Sipcot-pdk` now has approved,
+  locked fallback coordinate `[78.785628, 10.417312]` (`lng,lat`; user supplied lat `10.417312`,
+  lng `78.785628`). Pudukkottai scoped audit reports 0 outside-district points.
+- `Maxivision Super Speciality Eye Hospitals trichy` — decision received 2026-08-31: keep the
+  correct `Trichy > Thillai Nagar Main` record as canonical. Merge/copy any useful unique data from
+  the duplicate into the canonical record, then deactivate the duplicate linked to
+  `Salem > Thillainagar`; remove its Salem manual master-location link and clear its bad `76.68...`
+  coordinate. Applied: canonical row marked kept and received the duplicate's Google Maps link and
+  pincode-bearing address; duplicate row is `businessesLive:false`, `activeBusinesses:false`,
+  `isActive:false`, with `masterLocation` and `geoLocation` cleared.
+- `Nilan Construction` — decision received 2026-08-31: keep the
+  `Nilan Construction -> Arisikara Street` manual link, reactivate the `Arisikara Street`
+  masterlocation, and do not relink the business to another Thanjavur locality without evidence.
+  Avoid leaving the business linked to an inactive location. Applied: `Arisikara Street` is active
+  and approved; audit now reports 0 businesses linked to inactive locations.
 
-- `Kathalur` — filed under `K. Abishekapuram > Sastri Road` but the real place is ~2.7km into
-  Pudukkottai near Iluppur/Panjappur. Needs re-parenting or deactivating.
-- `Subramaniapuram` — one point `78.701372, 10.787608` given to two different localities in two
-  different zones (`Golden Rock > Ponmalai East` and `K. Abishekapuram > Subramaniapuram`). Both are
-  written and locked. Which one owns it?
+**2. Two long-standing Trichy records**
 
-**3. Lower value, only if I ask**
+- `Kathalur` — decision received 2026-08-31: remove/deactivate
+  `Trichy > K. Abishekapuram > Sastri Road > Kathalur` from that hierarchy. Correct hierarchy is
+  `Pudukkottai > Viralimalai Taluk > Kathalur`. Applied: Trichy row is inactive/rejected; new active
+  Pudukkottai row created under existing `Viralimalai > Viralimalai Surroundings > Kathalur`, locked
+  at `[78.617303, 10.635103]`, public slug `kathalur`.
+- `Subramaniapuram` — decision received 2026-08-31: keep `78.701372, 10.787608` on
+  `Golden Rock > Ponmalai East > Subramaniapuram`; remove/clear it from
+  `K. Abishekapuram > Subramaniapuram > Subramaniapuram`, which needs its own separate coordinate.
+  Applied/verified: the K. Abishekapuram row now has a separate locked coordinate
+  `[78.6513468, 10.8149413]`; no duplicate point remains.
 
-- 352 suspect duplicate points DB-wide — including one point carried by **14** different Thuraiyur
+**3. C-lite audit records decided and applied**
+
+- `Malayandipattinam` — created/used
+  `Coimbatore > Anaimalai > Anaimalai > Kottur Malayandipattinam`, locked
+  `[76.9828064, 10.5400649]`, relinked `Kannan Electrical and plumbing contractor`, and cleared the
+  coordinate/pincode from the original Tiruppur row.
+- `Vellalapalayam` — kept under `Coimbatore > Negamam > Negamam`; cleared the weak one-business
+  master coordinate for later re-geocode.
+- `Old Karur Road` — reparented to
+  `Tiruchirappalli > K. Abishekapuram > Palakkarai North > Old Karur Road`, pincode `620002`;
+  cleared the shared/generic coordinate; relinked `N.N Electronics`.
+- `West Street Koppu` — reparented to
+  `Tiruchirappalli > Andanallur > Ettarai > West Street Koppu`, pincode `639103`; kept and locked
+  `[78.5872, 10.8415]`; relinked `Banana Merchant Trichy`.
+- `Kudamuritti Check Post` — reparented to
+  `Tiruchirappalli > K. Abishekapuram > Palakkarai North > Kudamuritti Check Post`, pincode
+  `620002`; kept and locked `[78.6864624, 10.8391911]`; relinked `MJP Tours and Travels` and
+  `Sri Ram Travels`.
+- `Padaiveedu` — kept the true `Namakkal > Tiruchengodu > Padaiveedu Area > Padaiveedu` row but
+  cleared its Namakkal-city point. Created
+  `Namakkal > Namakkal > Namakkal Town > Kamaraj Nagar`, pincode `637002`, and relinked
+  `M Square Dental Care`.
+- `Kilakurichi` — reparented to
+  `Thanjavur > Pattukottai Block > Pattukottai Block Area > Kilakurichi`, pincode `614015`, and
+  cleared its Mannargudi/Melanatham-derived point. Created
+  `Tiruvarur > Mannargudi > Mannargudi Area > Melanatham`, pincode `614015`, and relinked
+  `D- tech security systems`.
+- `Amaravathipudur` — created `Sivaganga > Sakkottai > Sakkottai Area`, reparented
+  `Amaravathipudur` there, kept pincode `630301`, cleared the generic Karaikudi city coordinate,
+  and relinked `Lakshmi Catering`.
+
+Verification: 9 linked businesses checked, 0 stale cached `masterLocation` slugs. Audit outside
+district count is now 8, down from 10.
+
+**4. Lower value, only if I ask**
+
+- 349 suspect duplicate points DB-wide — including one point carried by **14** different Thuraiyur
   localities (one geocode reused).
-- 216 thin-evidence points (`low` confidence or `derivedFromCount <= 2`). This class caused both
+- 209 thin-evidence points (`low` confidence or `derivedFromCount <= 2`). This class caused both
   severe errors already fixed, so it's the most likely source of the next one.
 - Trichy's 31 coordinate-less active wards / 582 localities, and the residual business-linked gaps
   (Thanjavur 11, Tirunelveli 6). I've already said to leave these.
@@ -117,12 +174,13 @@ far-from-parent · 216 thin evidence · 352 suspect duplicate points · 0 stale 
 ## Uncommitted right now
 
 ```
-M SEARCH_GEO_PROGRESS.md
-M server/schema/businessList/businessListSchema.js   (13 insertions, 2 deletions — clean)
+ M SEARCH_GEO_HANDOFF_PROMPT.md
+ M SEARCH_GEO_PROGRESS.md
+?? SEARCH_GEO_STATUS_PROMPT.md
 ```
 
-Everything else is pushed. `server/scripts/` and `outputs/` are gitignored, so the scripts below and
-the audit JSON won't show in `git status`.
+Everything else is pushed or already committed. `server/scripts/` and `outputs/` are gitignored, so
+the scripts below and the audit JSON won't show in `git status`.
 
 ## Scripts (all dry-run by default, all `--apply` to write, all refuse prod without `--prod`)
 
