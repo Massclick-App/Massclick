@@ -10,6 +10,7 @@ import {
   getPublicLocationSlug,
 } from "../helper/location/locationSlug.js";
 import {
+  buildCanonicalLocationCategoryPath,
   buildLocationCategoryPath,
   buildLocationPath,
 } from "../helper/location/locationUrl.js";
@@ -135,7 +136,7 @@ const buildLegacyCategoryRedirect = async (parts = []) => {
     return buildLocationCategoryPath({ districtDoc, districtSlug, categorySlug: finalCategorySlug });
   }
 
-  return buildLocationCategoryPath({
+  return buildCanonicalLocationCategoryPath({
     districtDoc,
     districtSlug,
     locationDoc,
@@ -305,7 +306,7 @@ const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => 
   let target = null;
 
   if (classification?.type === "location") {
-    target = buildLocationCategoryPath({
+    target = await buildCanonicalLocationCategoryPath({
       districtDoc,
       districtSlug,
       locationDoc: classification.locationDoc,

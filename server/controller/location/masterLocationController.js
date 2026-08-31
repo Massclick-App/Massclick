@@ -14,6 +14,7 @@ import {
     resolveDistrictBySlug,
 } from "../../helper/location/locationResolver.js";
 import { classifyMiddleSegment } from "../../helper/location/urlSegmentClassifier.js";
+import { buildCanonicalLocationCategoryPath } from "../../helper/location/locationUrl.js";
 import {
     getDistrictUrlSlug,
     getDistrictDisplayName,
@@ -297,6 +298,14 @@ export const resolveRouteLocationAction = async (req, res) => {
             // its own breadcrumb/URL builders already work with (see
             // client/ui-app/src/utils/breadcrumbs.js).
             const locationDoc = classification.locationDoc;
+            const canonicalPath = classification.type === "location"
+                ? await buildCanonicalLocationCategoryPath({
+                    districtDoc,
+                    districtSlug: districtSummary.slug,
+                    locationDoc,
+                    categorySlug: classification.categorySlug,
+                })
+                : "";
             return res.send({
                 district: districtSummary,
                 classification: {
@@ -309,6 +318,7 @@ export const resolveRouteLocationAction = async (req, res) => {
                         level: locationDoc.level,
                     },
                     categorySlug: classification.categorySlug,
+                    ...(canonicalPath ? { canonicalPath } : {}),
                     canonicalize: Boolean(classification.canonicalize),
                 },
             });

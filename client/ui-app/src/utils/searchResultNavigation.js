@@ -434,6 +434,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     categorySlug: paramCategorySlug,
     subcategory,
     subcategorySlug: paramSubcategorySlug,
+    canonicalPath,
     isKnownCategory: routeKnownCategory,
   } = urlParams;
 
@@ -528,6 +529,7 @@ export const extractSearchResultData = (locationState = {}, urlParams = {}) => {
     routeLocationName,
     categorySlug,
     subcategorySlug,
+    canonicalPath: String(canonicalPath || ""),
     displayName: finalSearchTerm, // Keep original for display
     isKnownCategory, // Flag for API call routing
     results: Array.isArray(results) ? results : null,

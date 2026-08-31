@@ -10,6 +10,7 @@ import {
   getLocationUrlPath,
 } from "../helper/location/locationSlug.js";
 import {
+  buildCanonicalLocationCategoryPath,
   buildLocationCategoryPath,
   buildLocationPath,
 } from "../helper/location/locationUrl.js";
@@ -266,8 +267,9 @@ const isValidSitemapLocationDoc = (doc = {}) => {
   return doc.level === "district" || (locationPath && isValidLocationPath(locationPath));
 };
 
-const buildDistrictCategoryPath = (districtSlug, entry = {}) => {
-  return buildLocationCategoryPath({
+const buildDistrictCategoryPath = async (districtSlug, entry = {}) => {
+  return buildCanonicalLocationCategoryPath({
+    districtDoc: entry.districtDoc,
     districtSlug,
     locationDoc: entry.locationDoc,
     locationPath: entry.locationPath,
@@ -482,6 +484,7 @@ const buildDistrictCategoryPages = async (districtDoc) => {
       const lastmod = isoDate(row.maxDate || pageLocationDoc.updatedAt);
 
       upsertSitemapPage(pages, {
+        districtDoc,
         locationDoc: pageLocationDoc,
         locationSlug: publicLocationSlug,
         locationPath: publicLocationPath,
@@ -756,13 +759,15 @@ const sendLocationSitemap = async (districtSlug, pageParam, res) => {
   const start = (page - 1) * LOCATION_SITEMAP_LIMIT;
   const pages = allPages.slice(start, start + LOCATION_SITEMAP_LIMIT);
 
-  const nodes = pages.map((entry) =>
-    createUrlNode({
-      loc: `${BASE_URL}${buildDistrictCategoryPath(sitemapDistrictSlug, entry)}`,
-      lastmod: entry.lastmod,
-      changefreq: "daily",
-      priority: getLocationPriority(entry.locationLevel),
-    })
+  const nodes = await Promise.all(
+    pages.map(async (entry) =>
+      createUrlNode({
+        loc: `${BASE_URL}${await buildDistrictCategoryPath(sitemapDistrictSlug, entry)}`,
+        lastmod: entry.lastmod,
+        changefreq: "daily",
+        priority: getLocationPriority(entry.locationLevel),
+      })
+    )
   );
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

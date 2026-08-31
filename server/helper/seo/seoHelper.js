@@ -16,7 +16,20 @@ const titleCase = (text = "") =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
-const buildCanonicalUrl = ({ category = "", location = "", district = "", locationPath = "" } = {}) => {
+const normalizeCanonicalPath = (canonicalPath = "") => {
+  const cleanPath = String(canonicalPath || "").split(/[?#]/)[0];
+  const path = cleanPath
+    .split("/")
+    .map((part) => slugify(part))
+    .filter(Boolean)
+    .join("/");
+  return path ? `/${path}` : "";
+};
+
+const buildCanonicalUrl = ({ category = "", location = "", district = "", locationPath = "", canonicalPath = "" } = {}) => {
+  const routeCanonicalPath = normalizeCanonicalPath(canonicalPath);
+  if (routeCanonicalPath) return `https://massclick.in${routeCanonicalPath}`;
+
   const districtSlug = slugify(district || "");
   const locationSlug = slugify(location || "");
   const categorySlug = slugify(category || "");
@@ -60,7 +73,7 @@ const buildCanonicalUrl = ({ category = "", location = "", district = "", locati
 // pre-migration 2-segment canonical when omitted, so existing callers that
 // don't pass a district yet (anything before ssrMiddleware.js is rewired in
 // Phase 6) keep producing the exact canonical they always have.
-const buildDynamicSeoMeta = ({ category, location, district, locationPath }) => {
+const buildDynamicSeoMeta = ({ category, location, district, locationPath, canonicalPath }) => {
   const categoryTitle = category ? titleCase(category) : null;
   const locationTitle = location ? titleCase(location) : null;
 
@@ -69,7 +82,7 @@ const buildDynamicSeoMeta = ({ category, location, district, locationPath }) => 
       title: `Best ${categoryTitle} in ${locationTitle} | Massclick`,
       description: `Find trusted ${categoryTitle} in ${locationTitle}. Compare ratings, reviews and contact details to find the best near you.`,
       keywords: `${categoryTitle}, ${categoryTitle} in ${locationTitle}, best ${categoryTitle} ${locationTitle}`,
-      canonical: buildCanonicalUrl({ location, category, district, locationPath }),
+      canonical: buildCanonicalUrl({ location, category, district, locationPath, canonicalPath }),
       robots: "index, follow",
       generated: true,
     };
@@ -80,7 +93,7 @@ const buildDynamicSeoMeta = ({ category, location, district, locationPath }) => 
       title: `Best ${categoryTitle} | Massclick`,
       description: `Find trusted ${categoryTitle} near you on Massclick.`,
       keywords: `${categoryTitle}, best ${categoryTitle}`,
-      canonical: buildCanonicalUrl({ category, district }),
+      canonical: buildCanonicalUrl({ category, district, canonicalPath }),
       robots: "index, follow",
       generated: true,
     };
@@ -91,7 +104,7 @@ const buildDynamicSeoMeta = ({ category, location, district, locationPath }) => 
       title: `Local Businesses in ${locationTitle} | Massclick`,
       description: `Discover trusted local businesses and services in ${locationTitle} on Massclick.`,
       keywords: `businesses in ${locationTitle}, ${locationTitle} local services`,
-      canonical: buildCanonicalUrl({ location, district, locationPath }),
+      canonical: buildCanonicalUrl({ location, district, locationPath, canonicalPath }),
       robots: "index, follow",
       generated: true,
     };
@@ -100,7 +113,7 @@ const buildDynamicSeoMeta = ({ category, location, district, locationPath }) => 
   return {
     title: "Massclick - Local Business Search Platform",
     description: "Find trusted local businesses, services, and professionals near you on Massclick.",
-    canonical: buildCanonicalUrl({ district }),
+    canonical: buildCanonicalUrl({ district, canonicalPath }),
     robots: "index, follow",
     generated: true,
   };
@@ -222,7 +235,7 @@ export const getSeo = async ({ pageType, category, location }) => {
   }
 };
 
-export const getSeoMeta = async ({ pageType, category, location, district, locationPath }) => {
+export const getSeoMeta = async ({ pageType, category, location, district, locationPath, canonicalPath }) => {
   try {
     const normalize = (v = "") =>
       v.toLowerCase().trim().replace(/[-_\s]+/g, " ");
@@ -231,6 +244,7 @@ export const getSeoMeta = async ({ pageType, category, location, district, locat
     const safeCategory = category ? normalize(category) : null;
     const safeLocation = location ? normalize(location) : null;
     const safeLocationPath = locationPath ? String(locationPath).toLowerCase().trim() : null;
+    const safeCanonicalPath = normalizeCanonicalPath(canonicalPath);
     // Not run through the free-text `normalize` above — district is a URL
     // slug ("trichy"), not free text. Kept as-is for the cache key and for
     // buildDynamicSeoMeta's canonical building.
@@ -247,17 +261,18 @@ export const getSeoMeta = async ({ pageType, category, location, district, locat
           location: safeLocation,
           district: safeDistrict,
           locationPath: safeLocationPath,
+          canonicalPath: safeCanonicalPath,
         }),
       };
     };
 
-    await logger.seoDebug('Query:', { pageType, category, location, district, locationPath, safePageType, safeCategory, safeLocation, safeDistrict, safeLocationPath });
+    await logger.seoDebug('Query:', { pageType, category, location, district, locationPath, canonicalPath, safePageType, safeCategory, safeLocation, safeDistrict, safeLocationPath, safeCanonicalPath });
 
     // Generate cache key based on query parameters. `district` MUST be part
     // of this key: without it, two districts sharing a location/category
     // text (e.g. "Anna Nagar" in 4 districts) would read and write the same
     // cached canonical for 24h, handing one district's URL to another's page.
-    const cacheKey = `seo-meta:${SEO_META_CACHE_VERSION}:${safePageType}${safeCategory ? `:${safeCategory}` : ""}${safeLocation ? `:${safeLocation}` : ""}${safeDistrict ? `:${safeDistrict}` : ""}${safeLocationPath ? `:${safeLocationPath}` : ""}`;
+    const cacheKey = `seo-meta:${SEO_META_CACHE_VERSION}:${safePageType}${safeCategory ? `:${safeCategory}` : ""}${safeLocation ? `:${safeLocation}` : ""}${safeDistrict ? `:${safeDistrict}` : ""}${safeLocationPath ? `:${safeLocationPath}` : ""}${safeCanonicalPath ? `:${safeCanonicalPath}` : ""}`;
 
     // Try to get from cache first
     const cachedSeo = await getCache(cacheKey);
@@ -385,7 +400,7 @@ export const getSeoMeta = async ({ pageType, category, location, district, locat
     // location (e.g. returning a Thanjavur "fire service" entry for a Trichy
     // search) — that produces a wrong canonical URL and wrong on-page copy.
     // Instead, build accurate SEO for the exact category/location requested.
-    await logger.seoDebug('Step 5: No curated match — generating dynamic SEO', { category: safeCategory, location: safeLocation, district: safeDistrict, locationPath: safeLocationPath });
+    await logger.seoDebug('Step 5: No curated match — generating dynamic SEO', { category: safeCategory, location: safeLocation, district: safeDistrict, locationPath: safeLocationPath, canonicalPath: safeCanonicalPath });
     const templateSeo = safeCategory
       ? await renderSeoMetaFromTemplate({ category: safeCategory, location: safeLocation, district: safeDistrict })
       : null;
@@ -395,6 +410,7 @@ export const getSeoMeta = async ({ pageType, category, location, district, locat
         location: safeLocation,
         district: safeDistrict,
         locationPath: safeLocationPath,
+        canonicalPath: safeCanonicalPath,
       }),
     );
 

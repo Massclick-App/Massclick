@@ -37,7 +37,7 @@ const normalizeSeoText = (text = "") =>
 
 export const getSeoMetaAction = async (req, res) => {
   try {
-    let { pageType, category, location, district, locationPath } = req.query;
+    let { pageType, category, location, district, locationPath, canonicalPath } = req.query;
 
     if (!pageType) {
       return res.status(400).send({ message: "pageType is required" });
@@ -52,6 +52,7 @@ export const getSeoMetaAction = async (req, res) => {
       district: district || undefined,
       // Keep slashes intact so nested route paths stay hierarchical.
       locationPath: locationPath || undefined,
+      canonicalPath: canonicalPath || undefined,
     });
 
     res.send(seoData);

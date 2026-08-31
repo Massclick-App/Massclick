@@ -21,6 +21,7 @@ import {
   getLocationUrlPath,
 } from "../helper/location/locationSlug.js";
 import {
+  buildCanonicalLocationCategoryPath,
   buildLocationCategoryPath,
   buildLocationPath,
 } from "../helper/location/locationUrl.js";
@@ -198,15 +199,25 @@ export const resolveCategoryRouteContext = async (parts = []) => {
         ? titleCase(slugToText(locationSlug))
         : districtName;
 
-    const canonicalPath = buildCategoryPath({
-      districtDoc,
-      districtSlug,
-      locationDoc,
-      locationSlug,
-      locationPath,
-      categorySlug,
-      subcategorySlug,
-    }) || (isLocationLanding
+    const canonicalPath = (!isLocationLanding
+      ? await buildCanonicalLocationCategoryPath({
+          districtDoc,
+          districtSlug,
+          locationDoc,
+          locationSlug,
+          locationPath,
+          categorySlug,
+          subcategorySlug,
+        })
+      : buildCategoryPath({
+          districtDoc,
+          districtSlug,
+          locationDoc,
+          locationSlug,
+          locationPath,
+          categorySlug,
+          subcategorySlug,
+        })) || (isLocationLanding
       ? buildLocationPath({ districtDoc, districtSlug, locationDoc })
       : "/");
 
@@ -443,6 +454,7 @@ export async function ssrMiddleware(req, res) {
         category,
         ...(seoLocation ? { location: seoLocation } : {}),
         ...(categoryRoute.locationPath ? { locationPath: categoryRoute.locationPath } : {}),
+        ...(categoryRoute.canonicalPath ? { canonicalPath: categoryRoute.canonicalPath } : {}),
         ...(categoryRoute.districtSlug ? { district: categoryRoute.districtSlug } : {}),
       }) : null);
 

@@ -151,7 +151,7 @@ const getLocationUrlEntriesForDistrict = async (districtDoc) => {
   const cacheKey = String(districtDoc._id || districtDoc.district);
   const now = Date.now();
   const cached = locationUrlCache.get(cacheKey);
-  if (cached && now - cached.builtAt < CACHE_TTL_MS) return cached.entriesByPath;
+  if (cached && now - cached.builtAt < CACHE_TTL_MS) return cached.entries;
 
   const docs = await masterLocationModel
     .find(
@@ -174,15 +174,24 @@ const getLocationUrlEntriesForDistrict = async (districtDoc) => {
     .lean();
 
   const entriesByPath = new Map();
+  const entriesByTarget = new Map();
   for (const doc of docs) {
     const path = getLocationUrlPath(doc);
-    if (!path) continue;
-    if (!entriesByPath.has(path)) entriesByPath.set(path, []);
-    entriesByPath.get(path).push(doc);
+    if (path) {
+      if (!entriesByPath.has(path)) entriesByPath.set(path, []);
+      entriesByPath.get(path).push(doc);
+    }
+
+    const target = getLocationUrlSegment(doc);
+    if (target) {
+      if (!entriesByTarget.has(target)) entriesByTarget.set(target, []);
+      entriesByTarget.get(target).push(doc);
+    }
   }
 
-  locationUrlCache.set(cacheKey, { builtAt: now, entriesByPath });
-  return entriesByPath;
+  const entries = { entriesByPath, entriesByTarget };
+  locationUrlCache.set(cacheKey, { builtAt: now, entries });
+  return entries;
 };
 
 export const invalidateLocationUrlCache = () => {
@@ -212,7 +221,7 @@ export const resolveLocationPathWithinDistrict = async (districtDoc, locationPat
   const segments = pathSegments(locationPath);
   if (segments.length === 0 || segments.length > MAX_LOCATION_PATH_SEGMENTS) return null;
 
-  const entriesByPath = await getLocationUrlEntriesForDistrict(districtDoc);
+  const { entriesByPath } = await getLocationUrlEntriesForDistrict(districtDoc);
   const allCandidates = entriesByPath.get(segments.join("/")) || [];
   if (allCandidates.length === 0) return null;
 
@@ -225,6 +234,53 @@ export const resolveLocationPathWithinDistrict = async (districtDoc, locationPat
   // locationSlug.js), so the actual level no longer matches segment count.
   // Fall back to whichever level the folded node actually is.
   return pickCandidate(allCandidates);
+};
+
+export const resolveUniqueLocationTargetWithinDistrict = async (districtDoc, locationSlug = "") => {
+  const targetSlug = slugify(locationSlug);
+  if (!districtDoc?.district || !targetSlug) return null;
+
+  const { entriesByTarget } = await getLocationUrlEntriesForDistrict(districtDoc);
+  const candidates = entriesByTarget.get(targetSlug) || [];
+  return candidates.length === 1 ? candidates[0] : null;
+};
+
+export const buildCanonicalLocationCategoryPath = async ({
+  districtDoc = null,
+  districtSlug = "",
+  locationDoc = null,
+  locationPath = "",
+  locationSlug = "",
+  categorySlug = "",
+  subcategorySlug = "",
+} = {}) => {
+  const fullPath = buildLocationCategoryPath({
+    districtDoc,
+    districtSlug,
+    locationDoc,
+    locationPath,
+    locationSlug,
+    categorySlug,
+    subcategorySlug,
+  });
+
+  if (!districtDoc || !locationDoc) return fullPath;
+
+  const targetSlug = getLocationUrlSegment(locationDoc);
+  if (!targetSlug) return fullPath;
+
+  const uniqueTargetDoc = await resolveUniqueLocationTargetWithinDistrict(districtDoc, targetSlug);
+  if (!uniqueTargetDoc || String(uniqueTargetDoc._id) !== String(locationDoc._id)) {
+    return fullPath;
+  }
+
+  return buildLocationCategoryPath({
+    districtDoc,
+    districtSlug,
+    locationSlug: targetSlug,
+    categorySlug,
+    subcategorySlug,
+  });
 };
 
 /**
@@ -286,6 +342,19 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
         locationDoc,
         categorySlug: categoryInLocation.categorySlug,
         ...(canonicalize ? { canonicalize: true } : {}),
+      };
+    }
+
+    const shortLocationDoc = await resolveUniqueLocationTargetWithinDistrict(
+      districtDoc,
+      categoryInLocation.locationSlug,
+    );
+
+    if (shortLocationDoc) {
+      return {
+        type: "location",
+        locationDoc: shortLocationDoc,
+        categorySlug: categoryInLocation.categorySlug,
       };
     }
 

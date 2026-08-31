@@ -307,6 +307,7 @@ const SearchResults = React.memo(
       routeLocationName,
       categorySlug,
       subcategorySlug,
+      canonicalPath: routeCanonicalPath,
       displayName,
       isKnownCategory,
       results: stateResults,
@@ -390,7 +391,7 @@ const SearchResults = React.memo(
     const locationSlug = districtSlug
       ? routeLocationSlug || ""
       : createSlug(locationText);
-    const canonicalPath = buildCategoryPath({
+    const canonicalPath = routeCanonicalPath || buildCategoryPath({
       districtSlug,
       locationSlug,
       locationPath: routeLocationPath,
@@ -1048,11 +1049,12 @@ const SearchResults = React.memo(
           ? {}
           : { location: routeLocationSlug || routeLocationPath || locationText.toLowerCase() }),
         ...(routeLocationPath ? { locationPath: routeLocationPath } : {}),
+        ...(routeCanonicalPath ? { canonicalPath: routeCanonicalPath } : {}),
         ...(districtSlug ? { district: districtSlug } : {}),
       };
       dispatch({ type: CLEAR_SEO_META });
       dispatch(fetchSeoMeta(seoParams));
-    }, [dispatch, districtSlug, effectiveCategory, locationText, routeLocationPath, routeLocationSlug]);
+    }, [dispatch, districtSlug, effectiveCategory, locationText, routeCanonicalPath, routeLocationPath, routeLocationSlug]);
 
     useEffect(() => {
       if (!effectiveCategory) return;

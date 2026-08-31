@@ -47,6 +47,7 @@ const DistrictRouteResolver = () => {
               district: districtSummary,
               location: classification.location,
               category: classification.categorySlug || p4 || p3,
+              canonicalPath: classification.canonicalPath,
             }),
           });
           return;

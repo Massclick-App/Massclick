@@ -82,6 +82,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const districtName = routeContext?.districtName || districtContext?.name || formatUrlText(districtSlug);
   const locationSlug = routeContext?.locationSlug || locationParam || "";
   const locationPath = routeContext?.locationPath || "";
+  const routeCanonicalPath = routeContext?.canonicalPath || "";
   const locationLabel = routeContext?.locationName || (districtSlug ? districtName : formatUrlText(locationSlug));
   const categoryLabel = categorySlug ? formatUrlText(categorySlug) : "Categories";
   const listingItems = isDirectoryLanding ? districtCategories : subCategories;
@@ -193,9 +194,11 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       ...(districtSlug && !locationSlug
         ? {}
         : { location: locationSlug || locationLabel.toLowerCase() }),
+      ...(locationPath ? { locationPath } : {}),
+      ...(routeCanonicalPath ? { canonicalPath: routeCanonicalPath } : {}),
       ...(districtSlug ? { district: districtSlug } : {}),
     }));
-  }, [dispatch, categorySlug, districtSlug, locationLabel, locationSlug]);
+  }, [dispatch, categorySlug, districtSlug, locationLabel, locationPath, locationSlug, routeCanonicalPath]);
 
   useEffect(() => {
     if (!categorySlug) return;
@@ -283,7 +286,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     });
   };
 
-  const pagePath = isDistrictLanding
+  const pagePath = routeCanonicalPath || (isDistrictLanding
     ? `/${districtSlug}`
     : buildCategoryPath({
         districtSlug,
@@ -291,7 +294,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         locationPath,
         categorySlug,
         isDistrictScope: Boolean(districtSlug && !locationSlug),
-      });
+      }));
   const categoryPageUrl = `https://massclick.in${pagePath === "/" ? "" : pagePath}`;
   const fallbackSeo = isDirectoryLanding
     ? {
