@@ -1047,6 +1047,7 @@ const SearchResults = React.memo(
         ...(districtSlug && !routeLocationSlug && !routeLocationPath
           ? {}
           : { location: routeLocationSlug || routeLocationPath || locationText.toLowerCase() }),
+        ...(routeLocationPath ? { locationPath: routeLocationPath } : {}),
         ...(districtSlug ? { district: districtSlug } : {}),
       };
       dispatch({ type: CLEAR_SEO_META });
@@ -1141,6 +1142,10 @@ const SearchResults = React.memo(
       canonical: canonicalUrl,
       robots: hasResolvedResults ? "index, follow" : "noindex, follow",
     };
+    const routeCanonicalSeoData =
+      seoMetaData && Object.keys(seoMetaData).length > 0
+        ? { ...seoMetaData, canonical: canonicalUrl }
+        : seoMetaData;
     const seoContent = seoPageContents?.[0];
     const sanitizedPageContent = seoContent?.pageContent
       ? sanitizeSeoHtml(seoContent.pageContent)
@@ -1195,7 +1200,7 @@ const SearchResults = React.memo(
 
     return (
       <>
-        <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
+        <SeoMeta seoData={routeCanonicalSeoData} fallback={fallbackSeo} />
 
         <Helmet>
           {searchResultsSchema && (

@@ -442,6 +442,7 @@ export async function ssrMiddleware(req, res) {
         pageType: "category",
         category,
         ...(seoLocation ? { location: seoLocation } : {}),
+        ...(categoryRoute.locationPath ? { locationPath: categoryRoute.locationPath } : {}),
         ...(categoryRoute.districtSlug ? { district: categoryRoute.districtSlug } : {}),
       }) : null);
 
