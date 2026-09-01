@@ -496,6 +496,8 @@ export default function Category() {
   });
   const [webImageFilter, setWebImageFilter] = useState("all");
   const [mobileImageFilter, setMobileImageFilter] = useState("all");
+  const [allCatsForImageFilter, setAllCatsForImageFilter] = useState(null);
+  const [imageFilterLoading, setImageFilterLoading] = useState(false);
   const subCategories = [
     "Services",
     "Construction Company",
@@ -519,6 +521,28 @@ export default function Category() {
   useEffect(() => {
     dispatch(getAllCategory());
   }, [dispatch]);
+  useEffect(() => {
+    const imageFilterActive =
+      webImageFilter !== "all" || mobileImageFilter !== "all";
+    if (!imageFilterActive) {
+      setAllCatsForImageFilter(null);
+      return;
+    }
+    if (allCatsForImageFilter !== null) return;
+    let cancelled = false;
+    setImageFilterLoading(true);
+    fetchAllCategoriesPageWise({ status: "active" })
+      .then((cats) => {
+        if (!cancelled) setAllCatsForImageFilter(cats);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setImageFilterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [webImageFilter, mobileImageFilter, allCatsForImageFilter]);
   useEffect(() => {
     if (formData.category) {
       const slug = formData.category
@@ -1265,7 +1289,9 @@ export default function Category() {
       : preview || liveImagePreview
         ? "Showing legacy image fallback"
         : "Upload Mobile Vertical to preview the final mobile look";
-  const rows = category
+  const imageFilterActive =
+    webImageFilter !== "all" || mobileImageFilter !== "all";
+  const rows = (imageFilterActive ? allCatsForImageFilter || [] : category)
     .filter((c) => c.isActive)
     .map((cat, index) => {
       const categoryImages = cat.categoryImages || {
@@ -3400,7 +3426,15 @@ export default function Category() {
                   customer filters.
                 </p>
               </div>
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignSelf: "flex-start" }}>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignSelf: "flex-start", alignItems: "center" }}>
+                {imageFilterLoading && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mr: 1 }}>
+                    <CircularProgress size={14} />
+                    <Typography variant="caption" sx={{ color: "#888" }}>
+                      Loading all categories…
+                    </Typography>
+                  </Box>
+                )}
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
                   <Typography variant="caption" sx={{ color: "#888", fontWeight: 600 }}>
                     Web images
