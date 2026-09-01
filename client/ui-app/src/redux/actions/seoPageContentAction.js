@@ -141,7 +141,7 @@ export const deleteSeoPageContent = (id) => async (dispatch) => {
 };
 
 export const fetchSeoPageContentMeta =
-  ({ pageType, category, location }) =>
+  ({ pageType, category, location, displayLocation, district }) =>
   async (dispatch) => {
     dispatch({ type: FETCH_SEOPAGECONTENT_META_REQUEST });
 
@@ -149,7 +149,7 @@ export const fetchSeoPageContentMeta =
       const res = await axiosInstance.get(
         `${API}/seopagecontent/meta`,
         {
-          params: { pageType, category, location },
+          params: { pageType, category, location, displayLocation, district },
         }
       );
 

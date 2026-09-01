@@ -130,6 +130,15 @@ const buildCategoryPath = ({
   return `/${segments.filter(Boolean).join("/")}`;
 };
 
+const buildTemplateLocation = ({ locationName = "", districtName = "", hasSpecificLocation = false } = {}) => {
+  const locationLabel = String(locationName || "").trim();
+  const districtLabel = String(districtName || "").trim();
+  if (!locationLabel) return districtLabel;
+  if (!hasSpecificLocation || !districtLabel) return locationLabel;
+  if (slugify(locationLabel) === slugify(districtLabel)) return locationLabel;
+  return `${locationLabel}, ${districtLabel}`;
+};
+
 // districtSlug here comes from getDistrictUrlSlug (alias-aware), so these
 // links are already in the canonical form the redirect middleware expects.
 // Falls back to the pre-Phase-B shape when the business has no publicId yet,
@@ -439,12 +448,13 @@ export async function ssrMiddleware(req, res) {
         ? ""
         : categoryRoute?.locationSlug || location;
       const cacheKeyPrefix = categoryRoute ? `category:${categoryRoute.cacheKey}` : "";
+      const contentCacheKey = cacheKeyPrefix ? `${cacheKeyPrefix}:content:v2` : "";
       const businessesCacheKey = `${cacheKeyPrefix}:businesses:v2`;
 
       // Parallel cache lookups for better performance
       const [cachedSeo, cachedContent, cachedBusinesses] = await Promise.all([
         cacheKeyPrefix ? getCache(`${cacheKeyPrefix}:seo`) : null,
-        cacheKeyPrefix ? getCache(`${cacheKeyPrefix}:content`) : null,
+        contentCacheKey ? getCache(contentCacheKey) : null,
         cacheKeyPrefix ? getCache(businessesCacheKey) : null
       ]);
 
@@ -461,7 +471,13 @@ export async function ssrMiddleware(req, res) {
       categoryContent = cachedContent || (categoryRoute && !isLocationLandingPage ? await getSeoPageContentMetaService({
         pageType: "category",
         location: location,
-        category: category
+        category: category,
+        displayLocation: buildTemplateLocation({
+          locationName: location,
+          districtName: categoryRoute.districtName,
+          hasSpecificLocation: Boolean(categoryRoute.locationSlug || categoryRoute.locationPath),
+        }),
+        ...(categoryRoute.districtSlug ? { district: categoryRoute.districtSlug } : {}),
       }) : null);
 
       categoryBusinesses = cachedBusinesses || (categoryRoute && !isLocationLandingPage ? await findBusinessesByCategory(
@@ -473,8 +489,8 @@ export async function ssrMiddleware(req, res) {
       if (cacheKeyPrefix && seo && !cachedSeo) {
         await setCache(`${cacheKeyPrefix}:seo`, seo, CACHE_TTL.SEO_META);
       }
-      if (cacheKeyPrefix && categoryContent && !cachedContent) {
-        await setCache(`${cacheKeyPrefix}:content`, categoryContent, CACHE_TTL.PAGE_CONTENT);
+      if (contentCacheKey && categoryContent && !cachedContent) {
+        await setCache(contentCacheKey, categoryContent, CACHE_TTL.PAGE_CONTENT);
       }
       if (cacheKeyPrefix && categoryBusinesses && !cachedBusinesses) {
         await setCache(businessesCacheKey, categoryBusinesses, CACHE_TTL.BUSINESSES);

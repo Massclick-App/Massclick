@@ -38,7 +38,7 @@ const normalizeSeoText = (v = "") =>
 
 export const getSeoPageContentMetaAction = async (req, res) => {
   try {
-    const { pageType, category, location } = req.query;
+    const { pageType, category, location, displayLocation, district } = req.query;
 
     if (!pageType) {
       return res.status(400).send({ message: "pageType is required" });
@@ -48,6 +48,8 @@ export const getSeoPageContentMetaAction = async (req, res) => {
       pageType: normalizeSeoText(pageType),
       category: category ? normalizeSeoText(category) : undefined,
       location: location ? normalizeSeoText(location) : undefined,
+      displayLocation: displayLocation ? String(displayLocation).trim() : undefined,
+      district: district ? String(district).trim() : undefined,
     });
 
     res.send(seoContent);

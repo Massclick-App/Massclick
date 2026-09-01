@@ -32,6 +32,8 @@ export const getSeoPageContentMetaService = async ({
   pageType,
   category,
   location,
+  displayLocation,
+  district,
 }) => {
   try {
     const safePageType = normalizeSeoText(pageType);
@@ -117,6 +119,8 @@ export const getSeoPageContentMetaService = async ({
       const rendered = await renderSeoPageContentFromTemplate({
         category: safeCategory,
         location: safeLocation,
+        displayLocation,
+        district,
       });
       if (rendered) return rendered;
     }

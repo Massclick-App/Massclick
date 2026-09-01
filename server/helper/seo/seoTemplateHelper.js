@@ -88,18 +88,20 @@ export const resolveLocationTokens = async (locationText) => {
   };
 };
 
-const buildTokens = async ({ categorySlug, location }) => {
+const buildTokens = async ({ categorySlug, location, displayLocation }) => {
   const categoryDoc = await categoryModel
     .findOne({ slug: categorySlug, isActive: true })
     .lean();
 
   const locationTokens = await resolveLocationTokens(location);
+  const templateLocation = String(displayLocation || "").trim();
 
   return {
     category: categoryDoc?.title || categoryDoc?.category || titleCase(categorySlug),
     categoryUrl: categorySlug,
     locality: null,
     ...locationTokens,
+    ...(templateLocation ? { location: templateLocation } : {}),
   };
 };
 
@@ -157,7 +159,7 @@ export const renderSeoMetaFromTemplate = async ({ category, location, district }
 // Renders seoPageContents content (headerContent/pageContent/faq) — net-new
 // capability for getSeoPageContentMetaService, which today just returns null
 // when nothing curated matches.
-export const renderSeoPageContentFromTemplate = async ({ category, location }) => {
+export const renderSeoPageContentFromTemplate = async ({ category, location, displayLocation }) => {
   try {
     const categorySlug = slugify(category);
 
@@ -167,7 +169,7 @@ export const renderSeoPageContentFromTemplate = async ({ category, location }) =
 
     if (!template) return null;
 
-    const tokens = await buildTokens({ categorySlug, location });
+    const tokens = await buildTokens({ categorySlug, location, displayLocation });
 
     // Table tokens are added only on this path, never in renderSeoMetaFromTemplate —
     // a {table1} left in a title/description must stay empty rather than inject

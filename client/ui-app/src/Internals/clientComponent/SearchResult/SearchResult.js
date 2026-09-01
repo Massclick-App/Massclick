@@ -94,6 +94,14 @@ const toDisplayText = (value = "") =>
   String(value)
     .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+const buildTemplateLocation = ({ locationName = "", districtName = "", hasSpecificLocation = false } = {}) => {
+  const locationLabel = String(locationName || "").trim();
+  const districtLabel = String(districtName || "").trim();
+  if (!locationLabel) return districtLabel;
+  if (!hasSpecificLocation || !districtLabel) return locationLabel;
+  if (createSlug(locationLabel) === createSlug(districtLabel)) return locationLabel;
+  return `${locationLabel}, ${districtLabel}`;
+};
 const isActiveFilterValue = (value) =>
   Array.isArray(value)
     ? value.length > 0
@@ -401,6 +409,11 @@ const SearchResults = React.memo(
       isDistrictScope: Boolean(districtSlug && !locationSlug),
     });
     const canonicalUrl = `https://massclick.in${canonicalPath}`;
+    const templateLocation = buildTemplateLocation({
+      locationName: locationText,
+      districtName,
+      hasSpecificLocation: Boolean(districtSlug && (routeLocationSlug || routeLocationPath)),
+    });
     const breadcrumbCategorySlug = isLocationListing
       ? ""
       : subcategorySlug
@@ -1062,9 +1075,11 @@ const SearchResults = React.memo(
         pageType: "category",
         category: effectiveCategory.replace(/-/g, " "),
         ...(locationText ? { location: locationText } : {}),
+        ...(templateLocation ? { displayLocation: templateLocation } : {}),
+        ...(districtSlug ? { district: districtSlug } : {}),
       };
       dispatch(fetchSeoPageContentMeta(seoContentParams));
-    }, [dispatch, effectiveCategory, locationText]);
+    }, [dispatch, districtSlug, effectiveCategory, locationText, templateLocation]);
 
     const handleRetry = useCallback(() => {
       dispatch(performSearch(normalizedSearchTerm, apiLocation, isKnownCategory, buildSearchParams(1)));
