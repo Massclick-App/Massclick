@@ -115,6 +115,7 @@ export const viewMasterLocationsWithBusinessStatsAction = async (req, res) => {
         const locality = req.query.locality || "";
         const pincode = req.query.pincode || "";
         const pincodeStatus = req.query.pincodeStatus || "all";
+        const category = req.query.category || "";
         const businessCoverage = req.query.businessCoverage || "all";
         const sortBy = req.query.sortBy || null;
         const sortOrder = req.query.sortOrder === "desc" ? -1 : 1;
@@ -134,6 +135,7 @@ export const viewMasterLocationsWithBusinessStatsAction = async (req, res) => {
             locality,
             pincode,
             pincodeStatus,
+            category,
             businessCoverage,
             sortBy,
             sortOrder

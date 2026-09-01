@@ -1,10 +1,11 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import React, { useEffect, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Autocomplete, TextField, Tooltip } from "@mui/material";
 import { CheckCircle2, MapPinOff, SlidersHorizontal } from "lucide-react";
 import { getLocationCoverage } from "../../redux/actions/locationCoverageAction.js";
 import { getMasterLocationFieldOptions } from "../../redux/actions/masterLocationAction.js";
+import { businessCategorySearch } from "../../redux/actions/categoryAction.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
 import styles from "./locationCoverage.module.css";
 
@@ -49,6 +50,7 @@ const getLocationStatus = (row) => {
 
 const LocationCoverage = () => {
   const dispatch = useDispatch();
+  const { searchCategory = [] } = useSelector((state) => state.categoryReducer || {});
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -61,9 +63,12 @@ const LocationCoverage = () => {
   const [filterZone, setFilterZone] = useState("");
   const [filterLevel, setFilterLevel] = useState("locality");
   const [filterLiveStatus, setFilterLiveStatus] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [categoryInput, setCategoryInput] = useState("");
 
   const [districtOptions, setDistrictOptions] = useState([]);
   const [zoneOptions, setZoneOptions] = useState([]);
+  const categorySearchTimeoutRef = useRef(null);
 
   useEffect(() => {
     dispatch(getMasterLocationFieldOptions({ field: "district" })).then(setDistrictOptions);
@@ -76,9 +81,20 @@ const LocationCoverage = () => {
     return () => clearTimeout(handle);
   }, [dispatch, filterDistrict]);
 
+  // 500+ categories — search-as-you-type against the same endpoint the
+  // business form uses, rather than ever loading the full list.
+  useEffect(() => {
+    if (categorySearchTimeoutRef.current) clearTimeout(categorySearchTimeoutRef.current);
+    if (categoryInput.trim().length < 2) return undefined;
+    categorySearchTimeoutRef.current = setTimeout(() => {
+      dispatch(businessCategorySearch(categoryInput.trim()));
+    }, 300);
+    return () => clearTimeout(categorySearchTimeoutRef.current);
+  }, [dispatch, categoryInput]);
+
   useEffect(() => {
     setTableRefreshKey((prev) => prev + 1);
-  }, [coverageMode, filterDistrict, filterZone, filterLevel, filterLiveStatus]);
+  }, [coverageMode, filterDistrict, filterZone, filterLevel, filterLiveStatus, filterCategory]);
 
   const activeFilterChips = [
     filterDistrict && {
@@ -87,6 +103,11 @@ const LocationCoverage = () => {
       clear: () => { setFilterDistrict(""); setFilterZone(""); }
     },
     filterZone && { key: "zone", label: `Zone: ${filterZone}`, clear: () => setFilterZone("") },
+    filterCategory && {
+      key: "category",
+      label: `Category: ${filterCategory}`,
+      clear: () => { setFilterCategory(""); setCategoryInput(""); }
+    },
     filterLiveStatus !== "all" && {
       key: "status",
       label: filterLiveStatus === "active" ? "Live only" : "Off only",
@@ -99,6 +120,8 @@ const LocationCoverage = () => {
     setFilterZone("");
     setFilterLevel("locality");
     setFilterLiveStatus("all");
+    setFilterCategory("");
+    setCategoryInput("");
   };
 
   const columns = [{
@@ -140,7 +163,7 @@ const LocationCoverage = () => {
     }
   }, {
     id: "businessCount",
-    label: "Coverage",
+    label: filterCategory ? `Coverage — ${filterCategory}` : "Coverage (any category)",
     sortable: true,
     renderCell: (value) => (
       <div className={cx("location-coverage-coverage-cell")}>
@@ -151,7 +174,7 @@ const LocationCoverage = () => {
     )
   }, {
     id: "businesses",
-    label: "Businesses",
+    label: filterCategory ? `Businesses in ${filterCategory}` : "Businesses (any category)",
     sortable: false,
     renderCell: (value, row) => {
       if (!value?.length) {
@@ -182,7 +205,9 @@ const LocationCoverage = () => {
           <h1 className={cx("location-coverage-page-title")}>Location Coverage</h1>
           <p className={cx("location-coverage-page-subtitle")}>
             Every master location, filterable by whether a business is already linked to it —
-            use this to find where to prioritize new business signups.
+            use this to find where to prioritize new business signups. Pick a category below to
+            see coverage for that category specifically — with 500+ categories, &ldquo;has a
+            business&rdquo; across all of them at once isn&rsquo;t a useful signal.
           </p>
         </div>
       </header>
@@ -277,6 +302,24 @@ const LocationCoverage = () => {
                 />
               </div>
               <div className={cx("location-coverage-filter-field")}>
+                <label className={cx("location-coverage-filter-label")}>Category</label>
+                <Autocomplete
+                  size="small"
+                  options={searchCategory}
+                  getOptionLabel={(option) => option?.category || ""}
+                  isOptionEqualToValue={(option, value) => option.category === value.category}
+                  value={filterCategory ? { category: filterCategory } : null}
+                  inputValue={categoryInput}
+                  onChange={(e, newValue) => setFilterCategory(newValue?.category || "")}
+                  onInputChange={(e, newInputValue, reason) => {
+                    setCategoryInput(newInputValue);
+                    if (reason === "clear" || newInputValue === "") setFilterCategory("");
+                  }}
+                  noOptionsText={categoryInput.trim().length < 2 ? "Type at least 2 characters" : "No matching category"}
+                  renderInput={(params) => <TextField {...params} placeholder="Search 500+ categories" />}
+                />
+              </div>
+              <div className={cx("location-coverage-filter-field")}>
                 <label className={cx("location-coverage-filter-label")}>Level</label>
                 <select
                   className={cx("location-coverage-filter-select")}
@@ -330,6 +373,7 @@ const LocationCoverage = () => {
               zone: filterZone,
               level: filterLevel,
               status: filterLiveStatus,
+              category: filterCategory,
               businessCoverage: COVERAGE_MODES.find((m) => m.id === coverageMode)?.businessCoverage || "all",
             }
           }))

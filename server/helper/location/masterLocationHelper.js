@@ -259,6 +259,7 @@ export const viewMasterLocationsWithBusinessStats = async ({
   locality,
   pincode,
   pincodeStatus,
+  category,
   businessCoverage,
   sortBy,
   sortOrder,
@@ -271,6 +272,15 @@ export const viewMasterLocationsWithBusinessStats = async ({
   const isSortable = sortBy && (sortBy === "businessCount" || LOCATION_SORTABLE_FIELDS.has(sortBy));
   const sortQuery = isSortable ? { [sortBy]: sortOrder } : { slug: 1 };
 
+  // Businesses are one-document-per-category (a listing in 9 categories is 9
+  // documents), so "does this location have a business" is meaningless across
+  // 500+ categories at once — scoping to one category is what makes the
+  // has/needs signal actionable rather than a wall of green badges.
+  const businessMatch = { $expr: { $eq: ["$masterLocation.locationId", "$$locId"] } };
+  if (category && category.trim() !== "") {
+    businessMatch.category = { $regex: `^${escapeRegex(category.trim())}$`, $options: "i" };
+  }
+
   const pipeline = [
     { $match: query },
     {
@@ -278,8 +288,8 @@ export const viewMasterLocationsWithBusinessStats = async ({
         from: businessListModel.collection.name,
         let: { locId: "$_id" },
         pipeline: [
-          { $match: { $expr: { $eq: ["$masterLocation.locationId", "$$locId"] } } },
-          { $project: { businessName: 1, isActive: 1 } },
+          { $match: businessMatch },
+          { $project: { businessName: 1, isActive: 1, category: 1 } },
         ],
         as: "businesses",
       },
