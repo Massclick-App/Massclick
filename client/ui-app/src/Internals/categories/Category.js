@@ -494,6 +494,8 @@ export default function Category() {
     open: false,
     variantKey: null,
   });
+  const [webImageFilter, setWebImageFilter] = useState("all");
+  const [mobileImageFilter, setMobileImageFilter] = useState("all");
   const subCategories = [
     "Services",
     "Construction Company",
@@ -1265,38 +1267,55 @@ export default function Category() {
         : "Upload Mobile Vertical to preview the final mobile look";
   const rows = category
     .filter((c) => c.isActive)
-    .map((cat, index) => ({
-      id: cat._id || index,
-      _id: cat._id,
-      categoryImages: cat.categoryImages || {
+    .map((cat, index) => {
+      const categoryImages = cat.categoryImages || {
         webHero: cat.categoryImage || "",
         webCard: "",
         webThumbnail: "",
         mobileVertical: cat.liveImage || "",
         mobileCard: "",
         mobileThumbnail: "",
-      },
-      categoryImage: cat.categoryImage,
-      liveImage: cat.liveImage,
-      category: cat.category,
-      categoryType: cat.categoryType,
-      subCategoryType: cat.subCategoryType,
-      title: cat.title,
-      keywords:
-        Array.isArray(cat.keywords) && cat.keywords.length
-          ? cat.keywords.join(", ")
-          : "-",
-      description: cat.description,
-      seoTitle: cat.seoTitle || "-",
-      seoDescription: cat.seoDescription || "-",
-      slug: cat.slug || "-",
-      isActive: cat.isActive,
-      filterConfig: cat.filterConfig || [],
-    }));
+      };
+      const hasWebImage = !!(
+        categoryImages.webHero ||
+        categoryImages.webCard ||
+        categoryImages.webThumbnail
+      );
+      const hasMobileImage = !!(
+        categoryImages.mobileVertical ||
+        categoryImages.mobileCard ||
+        categoryImages.mobileThumbnail
+      );
+      return {
+        id: cat._id || index,
+        _id: cat._id,
+        categoryImages,
+        categoryImage: cat.categoryImage,
+        liveImage: cat.liveImage,
+        category: cat.category,
+        categoryType: cat.categoryType,
+        subCategoryType: cat.subCategoryType,
+        title: cat.title,
+        keywords:
+          Array.isArray(cat.keywords) && cat.keywords.length
+            ? cat.keywords.join(", ")
+            : "-",
+        description: cat.description,
+        seoTitle: cat.seoTitle || "-",
+        seoDescription: cat.seoDescription || "-",
+        slug: cat.slug || "-",
+        isActive: cat.isActive,
+        filterConfig: cat.filterConfig || [],
+        hasWebImage,
+        hasMobileImage,
+      };
+    });
   const hasLookupFilter =
     lookupFilters.type !== "all" ||
     lookupFilters.subType !== "all" ||
-    lookupFilters.filters !== "all";
+    lookupFilters.filters !== "all" ||
+    webImageFilter !== "all" ||
+    mobileImageFilter !== "all";
   const lookupRows = rows.filter((row) => {
     if (lookupFilters.type !== "all" && row.categoryType !== lookupFilters.type)
       return false;
@@ -1316,6 +1335,10 @@ export default function Category() {
       row.filterConfig.length > 0
     )
       return false;
+    if (webImageFilter === "not-ready" && row.hasWebImage) return false;
+    if (webImageFilter === "ready" && !row.hasWebImage) return false;
+    if (mobileImageFilter === "not-ready" && row.hasMobileImage) return false;
+    if (mobileImageFilter === "ready" && !row.hasMobileImage) return false;
     return true;
   });
   const categoryList = [
@@ -1389,18 +1412,8 @@ export default function Category() {
       renderCell: (_, row) => {
         const imageMap = row.categoryImages || {};
         const variantCount = Object.values(imageMap).filter(Boolean).length;
-        const hasWeb = !!(
-          imageMap.webHero ||
-          imageMap.webCard ||
-          imageMap.webThumbnail ||
-          row.categoryImage
-        );
-        const hasMobile = !!(
-          imageMap.mobileVertical ||
-          imageMap.mobileCard ||
-          imageMap.mobileThumbnail ||
-          row.liveImage
-        );
+        const hasWeb = row.hasWebImage;
+        const hasMobile = row.hasMobileImage;
         return (
           <div className={cx("category-table-media")}>
             <Chip
@@ -3388,6 +3401,50 @@ export default function Category() {
                 </p>
               </div>
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignSelf: "flex-start" }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                  <Typography variant="caption" sx={{ color: "#888", fontWeight: 600 }}>
+                    Web images
+                  </Typography>
+                  <ToggleButtonGroup
+                    size="small"
+                    value={webImageFilter}
+                    exclusive
+                    onChange={(_, value) => value && setWebImageFilter(value)}
+                    sx={{
+                      "& .MuiToggleButton-root": {
+                        textTransform: "none",
+                        fontSize: "0.8rem",
+                        px: 1.5,
+                      },
+                    }}
+                  >
+                    <ToggleButton value="all">All</ToggleButton>
+                    <ToggleButton value="not-ready">Not Ready</ToggleButton>
+                    <ToggleButton value="ready">Ready</ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                  <Typography variant="caption" sx={{ color: "#888", fontWeight: 600 }}>
+                    Mobile images
+                  </Typography>
+                  <ToggleButtonGroup
+                    size="small"
+                    value={mobileImageFilter}
+                    exclusive
+                    onChange={(_, value) => value && setMobileImageFilter(value)}
+                    sx={{
+                      "& .MuiToggleButton-root": {
+                        textTransform: "none",
+                        fontSize: "0.8rem",
+                        px: 1.5,
+                      },
+                    }}
+                  >
+                    <ToggleButton value="all">All</ToggleButton>
+                    <ToggleButton value="not-ready">Not Ready</ToggleButton>
+                    <ToggleButton value="ready">Ready</ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
                 <CategoryPdfDownload
                   loadCategories={() =>
                     fetchAllCategoriesPageWise({ status: "all" })
