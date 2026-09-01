@@ -1,9 +1,9 @@
 import { createScopedClassNames } from "../../utils/createScopedClassNames";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Autocomplete, TextField, Tooltip } from "@mui/material";
-import { CheckCircle2, MapPinOff, SlidersHorizontal } from "lucide-react";
-import { getLocationCoverage } from "../../redux/actions/locationCoverageAction.js";
+import { Autocomplete, TextField, Tooltip, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress } from "@mui/material";
+import { CheckCircle2, MapPinOff, SlidersHorizontal, LayoutGrid, X } from "lucide-react";
+import { getLocationCoverage, getLocationCategoryCoverage } from "../../redux/actions/locationCoverageAction.js";
 import { getMasterLocationFieldOptions } from "../../redux/actions/masterLocationAction.js";
 import { businessCategorySearch } from "../../redux/actions/categoryAction.js";
 import CustomizedTable from "../../components/Table/CustomizedTable.js";
@@ -69,6 +69,26 @@ const LocationCoverage = () => {
   const [districtOptions, setDistrictOptions] = useState([]);
   const [zoneOptions, setZoneOptions] = useState([]);
   const categorySearchTimeoutRef = useRef(null);
+
+  const [breakdown, setBreakdown] = useState({ open: false, loading: false, error: "", data: null, locationName: "" });
+  const [missingFilter, setMissingFilter] = useState("");
+
+  const openBreakdown = (row) => {
+    setMissingFilter("");
+    setBreakdown({ open: true, loading: true, error: "", data: null, locationName: row.name });
+    dispatch(getLocationCategoryCoverage(row.id))
+      .then((data) => setBreakdown({ open: true, loading: false, error: "", data, locationName: row.name }))
+      .catch((error) => setBreakdown({ open: true, loading: false, error: error.message, data: null, locationName: row.name }));
+  };
+
+  const closeBreakdown = () => setBreakdown((prev) => ({ ...prev, open: false }));
+
+  const filteredMissing = useMemo(() => {
+    const list = breakdown.data?.missing || [];
+    const term = missingFilter.trim().toLowerCase();
+    if (!term) return list;
+    return list.filter((cat) => cat.toLowerCase().includes(term));
+  }, [breakdown.data, missingFilter]);
 
   useEffect(() => {
     dispatch(getMasterLocationFieldOptions({ field: "district" })).then(setDistrictOptions);
@@ -165,11 +185,21 @@ const LocationCoverage = () => {
     id: "businessCount",
     label: filterCategory ? `Coverage — ${filterCategory}` : "Coverage (any category)",
     sortable: true,
-    renderCell: (value) => (
+    renderCell: (value, row) => (
       <div className={cx("location-coverage-coverage-cell")}>
         <span className={cx(`location-coverage-badge location-coverage-badge-${value > 0 ? "green" : "red"}`)}>
           {value > 0 ? `${value} business${value === 1 ? "" : "es"}` : "No business"}
         </span>
+        <Tooltip title="See which categories have a business here, and which don't">
+          <button
+            type="button"
+            className={cx("location-coverage-breakdown-trigger")}
+            onClick={() => openBreakdown(row)}
+          >
+            <LayoutGrid size={12} />
+            <span>By category</span>
+          </button>
+        </Tooltip>
       </div>
     )
   }, {
@@ -404,6 +434,79 @@ const LocationCoverage = () => {
             .finally(() => setLoading(false));
         }}
       />
+
+      <Dialog open={breakdown.open} onClose={closeBreakdown} maxWidth="md" fullWidth>
+        <DialogTitle className={cx("location-coverage-breakdown-title")}>
+          <div>
+            <div>{breakdown.locationName}</div>
+            {breakdown.data?.location?.hierarchyPath && (
+              <span className={cx("location-coverage-breakdown-subtitle")}>{breakdown.data.location.hierarchyPath}</span>
+            )}
+          </div>
+          <IconButton size="small" onClick={closeBreakdown} aria-label="Close">
+            <X size={18} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {breakdown.loading && (
+            <div className={cx("location-coverage-breakdown-loading")}>
+              <CircularProgress size={22} />
+            </div>
+          )}
+          {!breakdown.loading && breakdown.error && (
+            <p className={cx("location-coverage-breakdown-error")}>{breakdown.error}</p>
+          )}
+          {!breakdown.loading && breakdown.data && (
+            <div className={cx("location-coverage-breakdown-grid")}>
+              <div className={cx("location-coverage-breakdown-column")}>
+                <h3 className={cx("location-coverage-breakdown-heading")}>
+                  Has a business
+                  <span className={cx("location-coverage-badge location-coverage-badge-green")}>
+                    {breakdown.data.present.length}
+                  </span>
+                </h3>
+                <div className={cx("location-coverage-breakdown-list")}>
+                  {breakdown.data.present.length === 0 && (
+                    <span className={cx("location-coverage-business-empty")}>No categories yet</span>
+                  )}
+                  {breakdown.data.present.map((item) => (
+                    <div key={item.category} className={cx("location-coverage-breakdown-row")}>
+                      <span>{item.category}</span>
+                      <span className={cx("location-coverage-breakdown-count")}>{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className={cx("location-coverage-breakdown-column")}>
+                <h3 className={cx("location-coverage-breakdown-heading")}>
+                  No business yet
+                  <span className={cx("location-coverage-badge location-coverage-badge-red")}>
+                    {breakdown.data.missing.length}
+                  </span>
+                </h3>
+                <TextField
+                  size="small"
+                  fullWidth
+                  placeholder={`Filter ${breakdown.data.missing.length} categories`}
+                  value={missingFilter}
+                  onChange={(e) => setMissingFilter(e.target.value)}
+                  className={cx("location-coverage-breakdown-search")}
+                />
+                <div className={cx("location-coverage-breakdown-list")}>
+                  {filteredMissing.length === 0 && (
+                    <span className={cx("location-coverage-business-empty")}>No match</span>
+                  )}
+                  {filteredMissing.map((cat) => (
+                    <div key={cat} className={cx("location-coverage-breakdown-row")}>
+                      <span>{cat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 

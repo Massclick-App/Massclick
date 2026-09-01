@@ -74,3 +74,17 @@ export const getLocationCoverage =
         throw new Error(failureMessage(error, 'Could not load location coverage'));
       }
     };
+
+// Per-location category drill-down: every active category with a business
+// there (and a count), and every one without. Fetched on demand per row.
+export const getLocationCategoryCoverage = (locationId) => async (dispatch) => {
+  try {
+    const response = await axiosInstance.get(
+      `${API_URL}/masterlocation/${locationId}/category-coverage`,
+      { headers: await authHeaders(dispatch) }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(failureMessage(error, 'Could not load category coverage for this location'));
+  }
+};

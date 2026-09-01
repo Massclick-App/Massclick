@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import categoryModel from "../../model/category/categoryModel.js";
 import { computePublicLocationSlugs } from "./locationSlug.js";
 
 const slugify = (str) =>
@@ -318,6 +319,59 @@ export const viewMasterLocationsWithBusinessStats = async ({
   const total = result?.totalCount?.[0]?.count || 0;
 
   return { list, total, businessPreviewLimit: BUSINESS_PREVIEW_LIMIT };
+};
+
+// Per-location category breakdown for the "what's covered / what's missing"
+// drill-down: which of the ~550 active categories already have a business
+// linked to THIS one location (with a count each), and which have none.
+// Categories are matched case-insensitively since business.category is
+// free-typed at creation time rather than a reference to the category doc.
+export const getLocationCategoryCoverage = async (locationId) => {
+  if (!ObjectId.isValid(locationId)) throw new Error("Invalid location ID");
+
+  const location = await masterLocationModel.findById(locationId).lean();
+  if (!location) throw new Error("Location not found");
+
+  const [presentCounts, allCategories] = await Promise.all([
+    businessListModel.aggregate([
+      { $match: { "masterLocation.locationId": new ObjectId(locationId) } },
+      { $group: { _id: { $toLower: "$category" }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]),
+    categoryModel.find({ isActive: true }, { category: 1 }).sort({ category: 1 }).lean(),
+  ]);
+
+  const countByLowerCategory = new Map(presentCounts.map((row) => [row._id, row.count]));
+  const knownKeys = new Set();
+
+  const present = [];
+  const missing = [];
+  for (const cat of allCategories) {
+    const key = (cat.category || "").toLowerCase();
+    knownKeys.add(key);
+    const count = countByLowerCategory.get(key);
+    if (count) present.push({ category: cat.category, count });
+    else missing.push(cat.category);
+  }
+
+  // Business categories not matching any active category doc (renamed,
+  // deactivated, or a data-entry variant) — included so they aren't silently
+  // dropped from the count, not just the active category list.
+  for (const row of presentCounts) {
+    if (!knownKeys.has(row._id)) present.push({ category: row._id, count: row.count });
+  }
+  present.sort((a, b) => b.count - a.count);
+
+  return {
+    location: {
+      id: location._id,
+      name: location.locality || location.ward || location.zone || location.district,
+      hierarchyPath: location.hierarchyPath,
+    },
+    present,
+    missing,
+    totalCategories: allCategories.length,
+  };
 };
 
 // Distinct existing values for one hierarchy field, scoped by its parents —

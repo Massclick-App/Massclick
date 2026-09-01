@@ -256,6 +256,117 @@
   min-width: 130px;
 }
 
+.location-coverage-breakdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.location-coverage-breakdown-trigger:hover {
+  text-decoration: underline;
+}
+
+.location-coverage-breakdown-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.location-coverage-breakdown-subtitle {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.location-coverage-breakdown-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.location-coverage-breakdown-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.location-coverage-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 640px) {
+  .location-coverage-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.location-coverage-breakdown-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.location-coverage-breakdown-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.location-coverage-breakdown-search {
+  margin-bottom: 2px;
+}
+
+.location-coverage-breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.location-coverage-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: #334155;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.location-coverage-breakdown-row:hover {
+  background-color: #f8f9fb;
+}
+
+.location-coverage-breakdown-count {
+  flex: 0 0 auto;
+  color: #047857;
+  font-weight: 700;
+  text-transform: none;
+}
+
 /* Compact business preview: name + a live/pending dot per business, capped
    and overflow summarized rather than listing every match inline. */
 .location-coverage-business-list {

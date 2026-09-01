@@ -5,6 +5,7 @@ import {
     viewMasterLocationAction,
     viewAllMasterLocationAction,
     viewMasterLocationsWithBusinessStatsAction,
+    getLocationCategoryCoverageAction,
     searchMasterLocationAction,
     listDistinctMasterLocationValuesAction,
     updateMasterLocationAction,
@@ -23,6 +24,9 @@ router.get('/api/masterlocation/viewall', oauthAuthentication, viewAllMasterLoca
 // Same list, joined with each location's linked-business count/preview —
 // powers the Location Coverage admin console.
 router.get('/api/masterlocation/viewall-with-business-stats', oauthAuthentication, viewMasterLocationsWithBusinessStatsAction);
+// Per-location category drill-down (which categories have a business here,
+// which don't) — fetched on demand from the Location Coverage console.
+router.get('/api/masterlocation/:id/category-coverage', oauthAuthentication, getLocationCategoryCoverageAction);
 router.get('/api/masterlocation/distinct-values', oauthAuthentication, listDistinctMasterLocationValuesAction);
 router.put('/api/masterlocation/update/:id', oauthAuthentication, updateMasterLocationAction);
 router.delete('/api/masterlocation/delete/:id', oauthAuthentication, deleteMasterLocationAction);

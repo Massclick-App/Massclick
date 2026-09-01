@@ -3,6 +3,7 @@ import {
     viewMasterLocation,
     viewAllMasterLocation,
     viewMasterLocationsWithBusinessStats,
+    getLocationCategoryCoverage,
     searchMasterLocation,
     listDistinctMasterLocationValues,
     updateMasterLocation,
@@ -150,6 +151,21 @@ export const viewMasterLocationsWithBusinessStatsAction = async (req, res) => {
         });
     } catch (error) {
         console.error("Location coverage fetch error:", error);
+        return res.status(BAD_REQUEST.code).send({ message: error.message });
+    }
+};
+
+// Per-location category drill-down for the Location Coverage console: every
+// active category that has a business at this location (with a count) and
+// every one that doesn't. Fetched on demand per row, not part of the list
+// payload — a 546-category breakdown for every row on the page would dwarf
+// the rest of the response.
+export const getLocationCategoryCoverageAction = async (req, res) => {
+    try {
+        const coverage = await getLocationCategoryCoverage(req.params.id);
+        res.send(coverage);
+    } catch (error) {
+        console.error("Location category coverage fetch error:", error);
         return res.status(BAD_REQUEST.code).send({ message: error.message });
     }
 };
