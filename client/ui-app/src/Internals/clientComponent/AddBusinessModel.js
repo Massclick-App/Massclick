@@ -290,10 +290,16 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                 });
 
                 localStorage.setItem("mobileNumber", res.user?.mobileNumber1 || getStoredMobile(mobileNumber));
-                await registerWebFCMToken();
                 identify(getCustomerUser()?._id);
                 onSuccess?.(getCustomerUser());
                 handleClose();
+
+                // Push-token registration is optional and may wait on the
+                // browser/network. Authentication has already succeeded, so it
+                // must not keep the login modal stuck on its loading state.
+                void registerWebFCMToken().catch(() => {
+                    // A later app visit can retry notification registration.
+                });
             }
         } catch (error) {
             setOtpDigits(['', '', '', '']);
