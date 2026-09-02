@@ -71,6 +71,7 @@ import massclickEventRoute from "./routes/massclickEventRoute.js";
 import legalDocumentRoutes from "./routes/legalDocumentRoutes.js";
 import hiringRoutes from "./routes/hiringRoutes.js";
 import rewardRoutes from "./routes/rewardRoutes.js";
+import adsRoutes from "./routes/adsRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startDelayedLeadDispatchScheduler } from "./scheduler/delayedLeadDispatchScheduler.js";
 import { startKeywordRankCron } from "./cron/keywordRankCron.js";
@@ -185,6 +186,7 @@ app.use("/", searchRequestRoutes);
 app.use("/", massclickEventRoute);
 app.use("/", legalDocumentRoutes);
 app.use("/", hiringRoutes);
+app.use("/", adsRoutes);
 app.use(legacyUrlRedirectMiddleware);
 app.use("/", rewardRoutes);
 
