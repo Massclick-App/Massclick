@@ -6,6 +6,14 @@ import DownloadIcon from "@mui/icons-material/Download";
 import PaletteIcon from "@mui/icons-material/Palette";
 import ShareIcon from "@mui/icons-material/Share";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import SearchIcon from "@mui/icons-material/Search";
+import TuneIcon from "@mui/icons-material/Tune";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import LinkIcon from "@mui/icons-material/Link";
+import BrushIcon from "@mui/icons-material/Brush";
+import QrCode2Icon from "@mui/icons-material/QrCode2";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { findBusinessByMobile } from "../../../../redux/actions/businessListAction";
@@ -17,16 +25,31 @@ import styles from "./VisitingCardPage.module.css";
 const cx = createScopedClassNames(styles);
 
 const templates = [
-  { id: "modern", name: "Modern Professional", className: "template-modern", accent: "#0b67d8" },
-  { id: "dark", name: "Dark Premium", className: "template-dark", accent: "#d9ad3a" },
-  { id: "massclick", name: "Orange MassClick", className: "template-massclick", accent: "#f97316" },
-  { id: "corporate", name: "Corporate Blue", className: "template-corporate", accent: "#154aa3" },
-  { id: "luxury", name: "Luxury Gold", className: "template-luxury", accent: "#c7972e" },
-  { id: "gradient", name: "Creative Gradient", className: "template-gradient", accent: "#4f46e5" },
-  { id: "vertical", name: "Vertical Card", className: "template-vertical", accent: "#0f3555" },
-  { id: "minimal", name: "Minimal White", className: "template-minimal", accent: "#2563eb" },
-  { id: "tech", name: "Tech Startup", className: "template-tech", accent: "#06b6d4" },
-  { id: "local", name: "Local Business", className: "template-local", accent: "#4f7d3b" },
+  { id: "modern", name: "Modern Professional", className: "template-modern", accent: "#0b67d8", category: "Modern" },
+  { id: "dark", name: "Dark Premium", className: "template-dark", accent: "#d9ad3a", category: "Professional", premium: true },
+  { id: "massclick", name: "Orange MassClick", className: "template-massclick", accent: "#f97316", category: "Creative" },
+  { id: "corporate", name: "Corporate Blue", className: "template-corporate", accent: "#154aa3", category: "Professional" },
+  { id: "luxury", name: "Luxury Gold", className: "template-luxury", accent: "#c7972e", category: "Luxury", premium: true },
+  { id: "elegant-green", name: "Elegant Green", className: "template-elegant-green", accent: "#119a7b", category: "Professional" },
+  { id: "gradient", name: "Gradient Purple", className: "template-gradient", accent: "#7651df", category: "Creative" },
+  { id: "minimal-dark", name: "Minimal Dark", className: "template-minimal-dark", accent: "#687386", category: "Minimal", premium: true },
+  { id: "classic-red", name: "Classic Red", className: "template-classic-red", accent: "#b51619", category: "Professional" },
+  { id: "wave-blue", name: "Wave Blue", className: "template-wave-blue", accent: "#2478ef", category: "Creative" },
+  { id: "teal-hexagon", name: "Teal Hexagon", className: "template-teal-hexagon", accent: "#168d83", category: "Modern" },
+  { id: "tech-green", name: "Tech Green", className: "template-tech-green", accent: "#63a914", category: "Modern", premium: true },
+  { id: "blue-geometry", name: "Blue Geometry", className: "template-blue-geometry", accent: "#1f59bc", category: "Modern" },
+  { id: "pink-elegance", name: "Pink Elegance", className: "template-pink-elegance", accent: "#dc7198", category: "Luxury" },
+  { id: "navy-orange", name: "Navy Orange", className: "template-navy-orange", accent: "#f45112", category: "Professional", premium: true },
+  { id: "classic-beige", name: "Classic Beige", className: "template-classic-beige", accent: "#ba8b38", category: "Luxury" },
+  { id: "maroon-classic", name: "Maroon Classic", className: "template-maroon-classic", accent: "#c99b32", category: "Luxury", premium: true },
+  { id: "minimal", name: "Minimal White", className: "template-minimal", accent: "#687386", category: "Minimal" },
+  { id: "black-blue", name: "Black Blue", className: "template-black-blue", accent: "#1763ee", category: "Professional", premium: true },
+  { id: "local", name: "Nature Green", className: "template-local", accent: "#78a939", category: "Creative" },
+  { id: "creative-purple", name: "Creative Purple", className: "template-creative-purple", accent: "#8b43dc", category: "Creative" },
+  { id: "executive-dark", name: "Executive Dark", className: "template-executive-dark", accent: "#d9a72e", category: "Luxury", premium: true },
+  { id: "minimal-orange", name: "Minimal Orange", className: "template-minimal-orange", accent: "#ff6a1a", category: "Minimal" },
+  { id: "enterprise-teal", name: "Enterprise Teal", className: "template-enterprise-teal", accent: "#5da899", category: "Professional" },
+  { id: "light-elegant", name: "Light Elegant", className: "template-light-elegant", accent: "#536a88", category: "Minimal" },
 ];
 
 const readStoredUser = () => {
@@ -150,6 +173,9 @@ const getContactRows = (profile) => [
   { label: "E", value: profile.email || "info@business.com" },
   { label: "W", value: profile.website },
   { label: "L", value: profile.location || "Tamil Nadu" },
+  ...(profile.socialLinks?.length
+    ? [{ label: "S", value: profile.socialLinks.filter(Boolean).join(" • ") }]
+    : []),
 ].filter((row) => row.value);
 
 const CardPreview = ({ template, profile, size = "normal" }) => (
@@ -250,7 +276,7 @@ const svgLogoMark = (profile, x, y, size, fill, textColor) => {
 };
 
 const buildCardSvg = (template, profile) => {
-  const dark = ["dark", "luxury", "gradient", "tech"].includes(template.id);
+  const dark = ["dark", "luxury", "gradient", "minimal-dark", "tech-green", "navy-orange", "maroon-classic", "black-blue", "creative-purple", "executive-dark", "enterprise-teal"].includes(template.id);
   const bg = {
     modern: "#ffffff",
     dark: "#111111",
@@ -258,10 +284,25 @@ const buildCardSvg = (template, profile) => {
     corporate: "#f7fbff",
     luxury: "#101010",
     gradient: "#355df6",
-    vertical: "#ffffff",
+    "elegant-green": "#ffffff",
+    "minimal-dark": "#15191f",
+    "classic-red": "#ffffff",
+    "wave-blue": "#f7fbff",
+    "teal-hexagon": "#ffffff",
+    "tech-green": "#11171a",
+    "blue-geometry": "#ffffff",
+    "pink-elegance": "#fff8fa",
+    "navy-orange": "#07162d",
+    "classic-beige": "#fff9ed",
+    "maroon-classic": "#681015",
     minimal: "#ffffff",
-    tech: "#031426",
+    "black-blue": "#11161d",
     local: "#fffdf6",
+    "creative-purple": "#7839cf",
+    "executive-dark": "#141414",
+    "minimal-orange": "#ffffff",
+    "enterprise-teal": "#0b3439",
+    "light-elegant": "#ffffff",
   }[template.id] || "#ffffff";
   const text = dark ? "#ffffff" : "#07122f";
   const muted = dark ? "#d6dbe4" : "#4b5f7a";
@@ -293,8 +334,7 @@ const buildCardSvg = (template, profile) => {
     <rect width="1050" height="600" rx="34" fill="${bg}" />
     <path d="M0 476 C180 418 308 592 512 504 C676 434 748 320 1050 356 L1050 600 L0 600 Z" fill="${accent}" opacity="${dark ? "0.22" : "0.12"}" />
     <path d="M778 0 L1050 0 L1050 206 C968 162 920 92 778 0 Z" fill="${accent}" opacity="${dark ? "0.2" : "0.14"}" />
-    ${template.id === "vertical" ? `<rect x="0" y="0" width="126" height="600" fill="${accent}" />` : ""}
-    ${svgLogoMark(profile, 51, 53, 86, template.id === "vertical" ? "#ffffff" : accent, template.id === "vertical" ? accent : "#ffffff")}
+    ${svgLogoMark(profile, 51, 53, 86, accent, "#ffffff")}
     ${svgLine(businessName, 170, 92, 42, text, 850)}
     ${svgLine(tagLine, 172, 128, 22, muted, 500)}
     <rect x="82" y="186" width="128" height="7" rx="3.5" fill="${accent}" />
@@ -354,6 +394,21 @@ const createCardPng = async (template, profile) => {
   });
 };
 
+const EditorSection = ({ title, panel, icon, openPanel, setOpenPanel, children }) => (
+  <section className={cx("customizer-section")}>
+    <button
+      type="button"
+      className={cx("accordion-trigger")}
+      onClick={() => setOpenPanel(openPanel === panel ? "" : panel)}
+      aria-expanded={openPanel === panel}
+    >
+      <span>{icon}{title}</span>
+      <ExpandMoreIcon className={cx(openPanel === panel && "accordion-icon-open")} />
+    </button>
+    {openPanel === panel && children}
+  </section>
+);
+
 export default function VisitingCardPage() {
   const dispatch = useDispatch();
   const { matchedBusiness, matchedBusinessLoading, matchedBusinessError } = useSelector(
@@ -364,13 +419,33 @@ export default function VisitingCardPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0].id);
   const [statusMessage, setStatusMessage] = useState("");
   const [isDesignModalOpen, setIsDesignModalOpen] = useState(false);
+  const [profileEdits, setProfileEdits] = useState({});
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateCategory, setTemplateCategory] = useState("All");
+  const [openPanel, setOpenPanel] = useState("profile");
 
   useEffect(() => {
     if (mobileNumber) dispatch(findBusinessByMobile(mobileNumber));
   }, [dispatch, mobileNumber]);
 
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) || templates[0];
-  const profile = getBusinessProfile(matchedBusiness || {}, storedUser);
+  const selectCatalogueTemplate = (templateId) => {
+    setSelectedTemplateId(templateId);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
+  const businessProfile = getBusinessProfile(matchedBusiness || {}, storedUser);
+  const profile = { ...businessProfile, ...profileEdits };
+  const filteredTemplates = templates.filter((template) => {
+    const matchesCategory = templateCategory === "All" || template.category === templateCategory;
+    const matchesSearch = template.name.toLowerCase().includes(templateSearch.toLowerCase().trim());
+    return matchesCategory && matchesSearch;
+  });
+  const updateProfile = (field, value) => setProfileEdits((current) => ({ ...current, [field]: value }));
+  const updateListField = (field, index, value) => {
+    const currentValues = [...(profile[field] || [])];
+    currentValues[index] = value;
+    updateProfile(field, currentValues);
+  };
 
   const fileName = `${createSlug(profile.businessName) || "massclick"}-visiting-card.png`;
 
@@ -397,12 +472,15 @@ export default function VisitingCardPage() {
   const handleCopyDetails = async () => {
     const details = [
       profile.businessName,
+      profile.tagLine,
       profile.personName,
       profile.role,
+      profile.category ? `Category: ${profile.category}` : "",
       profile.phones?.length ? `Phone: ${profile.phones.join(", ")}` : "",
       profile.email ? `Email: ${profile.email}` : "",
       profile.website ? `Website: ${profile.website}` : "",
       profile.location ? `Address: ${profile.location}` : "",
+      profile.socialLinks?.filter(Boolean).length ? `Social: ${profile.socialLinks.filter(Boolean).join(", ")}` : "",
       `Profile: ${profile.url}`,
     ].filter(Boolean).join("\n");
 
@@ -452,12 +530,7 @@ export default function VisitingCardPage() {
     <>
       <StickySearchBar />
       <main className={cx("visiting-card-page")}>
-        <section className={cx("page-header")}>
-          <BusinessDocumentsNav />
-          <span>Digital Visiting Card</span>
-          <h1>Select Your Business Card Template</h1>
-          <p>Choose a template, preview your card, then download or share it digitally.</p>
-        </section>
+        <div className={cx("document-back-row")}><BusinessDocumentsNav /></div>
 
         {!mobileNumber && (
           <div className={cx("notice-box")}>Login mobile number was not found. Please log in again.</div>
@@ -467,40 +540,108 @@ export default function VisitingCardPage() {
           <div className={cx("notice-box")}>{matchedBusinessError}</div>
         )}
 
-        <section className={cx("workspace document-output-workspace")}>
-          <aside className={cx("preview-panel")}>
-            <div className={cx("document-output-toolbar")}>
-              <button type="button" className={cx("secondary-action")} onClick={() => setIsDesignModalOpen(true)}>
-                <PaletteIcon />
-                Theme
-              </button>
-              <button type="button" className={cx("primary-action")} onClick={handleDownload}>
-                <DownloadIcon />
-                Download PNG
-              </button>
-              <button type="button" className={cx("secondary-action")} onClick={handleShare}>
-                <ShareIcon />
-                Share
-              </button>
-              <button type="button" className={cx("secondary-action")} onClick={handleCopyDetails}>
-                <ContentCopyIcon />
-                Copy Details
-              </button>
-              <button type="button" className={cx("icon-action")} onClick={handleCopyLink} aria-label="Copy business profile link">
-                <ContentCopyIcon />
-              </button>
-            </div>
-
-            <div className={cx("preview-header")}>
-              <div>
-                <span>Selected Template</span>
-                <h2>{selectedTemplate.name}</h2>
+        <section className={cx("studio-layout")}>
+          <div className={cx("studio-main")}>
+            <section className={cx("identity-hero")}>
+              <div className={cx("hero-copy")}>
+                <span>Digital Visiting Card</span>
+                <h1>Create. Customize. Share.<br />Your Digital Identity</h1>
+                <p>Choose a template, customize every detail, and share your professional identity instantly.</p>
               </div>
+              <div className={cx("hero-preview")}>
+                <span className={cx("hero-callout hero-callout-left")}>Your Details</span>
+                <CardPreview template={selectedTemplate} profile={profile} size="thumbnail" />
+                <span className={cx("hero-callout hero-callout-right")}>Your Brand</span>
+              </div>
+              <div className={cx("hero-stats")}>
+                <span><strong>120+</strong><small>Premium Templates</small></span>
+                <span><strong>25+</strong><small>Themes</small></span>
+                <span><strong>10+</strong><small>Card Types</small></span>
+                <span><strong>∞</strong><small>Custom Possibilities</small></span>
+                <span><strong>1 Click</strong><small>Share Instantly</small></span>
+              </div>
+            </section>
+
+            <section className={cx("template-browser")}>
+              <div className={cx("template-browser-head")}>
+                <div className={cx("category-row")}>
+                  <strong>Choose a Template</strong>
+                  {["All", "Modern", "Minimal", "Professional", "Creative", "Luxury"].map((category) => (
+                    <button type="button" key={category} className={cx(templateCategory === category && "category-active")} onClick={() => setTemplateCategory(category)}>{category === "All" ? "All 25" : category}</button>
+                  ))}
+                </div>
+                <label className={cx("template-search")}><SearchIcon /><input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search templates..." /><TuneIcon /></label>
+              </div>
+              <div className={cx("studio-template-grid")}>
+                {filteredTemplates.map((template) => (
+                  <button type="button" key={template.id} className={cx("studio-template", selectedTemplateId === template.id && "studio-template-active")} onClick={() => selectCatalogueTemplate(template.id)}>
+                    <CardPreview template={template} profile={profile} size="thumbnail" />
+                    <span>{templates.findIndex((item) => item.id === template.id) + 1}. {template.name}{template.premium && <b>♛</b>}</span>
+                  </button>
+                ))}
+              </div>
+              {!filteredTemplates.length && <p className={cx("empty-templates")}>No templates match your search.</p>}
+            </section>
+          </div>
+
+          <aside className={cx("customizer")}>
+            <header><strong>Customize Your Card</strong><button type="button" onClick={() => setProfileEdits({})}>↻ Reset</button></header>
+            <section className={cx("customizer-section")}>
+              <button type="button" className={cx("accordion-trigger")} onClick={() => setOpenPanel(openPanel === "profile" ? "" : "profile")}><span><PersonOutlineIcon /> Profile</span><ExpandMoreIcon /></button>
+              {openPanel === "profile" && <div className={cx("profile-fields")}>
+                <label>Business Name<input value={profile.businessName} onChange={(event) => updateProfile("businessName", event.target.value)} /></label>
+                <label>Full Name<input value={profile.personName} onChange={(event) => updateProfile("personName", event.target.value)} /></label>
+                <label>Designation<input value={profile.role} onChange={(event) => updateProfile("role", event.target.value)} /></label>
+                <label>Tagline<input value={profile.tagLine} onChange={(event) => updateProfile("tagLine", event.target.value)} /></label>
+              </div>}
+            </section>
+            <EditorSection title="Contact Details" panel="contact" icon={<ContentCopyIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}>
+              <div className={cx("profile-fields")}>
+                <label>Primary Phone<input type="tel" value={profile.phones?.[0] || ""} onChange={(event) => updateListField("phones", 0, event.target.value)} placeholder="+91 98765 43210" /></label>
+                <label>Alternate / WhatsApp<input type="tel" value={profile.phones?.[1] || ""} onChange={(event) => updateListField("phones", 1, event.target.value)} placeholder="Optional second number" /></label>
+                <label>Email Address<input type="email" value={profile.email || ""} onChange={(event) => updateProfile("email", event.target.value)} placeholder="name@business.com" /></label>
+                <label>Website<input value={profile.website || ""} onChange={(event) => updateProfile("website", event.target.value)} placeholder="www.business.com" /></label>
+                <label>Full Business Address<textarea value={profile.location || ""} onChange={(event) => updateProfile("location", event.target.value)} placeholder="Door number, street, area, city, district, state and PIN code" /></label>
+              </div>
+            </EditorSection>
+            <EditorSection title="Social Links" panel="social" icon={<LinkIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}>
+              <div className={cx("profile-fields")}>
+                <label>LinkedIn<input value={profile.socialLinks?.[0] || ""} onChange={(event) => updateListField("socialLinks", 0, event.target.value)} placeholder="linkedin.com/in/yourname" /></label>
+                <label>Instagram<input value={profile.socialLinks?.[1] || ""} onChange={(event) => updateListField("socialLinks", 1, event.target.value)} placeholder="instagram.com/yourbusiness" /></label>
+                <label>Facebook<input value={profile.socialLinks?.[2] || ""} onChange={(event) => updateListField("socialLinks", 2, event.target.value)} placeholder="facebook.com/yourbusiness" /></label>
+                <label>YouTube / Other<input value={profile.socialLinks?.[3] || ""} onChange={(event) => updateListField("socialLinks", 3, event.target.value)} placeholder="Your channel or social URL" /></label>
+              </div>
+            </EditorSection>
+            <EditorSection title="Branding" panel="branding" icon={<PaletteIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}>
+              <div className={cx("profile-fields")}>
+                <label>Logo Image URL<input value={profile.logoImage || ""} onChange={(event) => updateProfile("logoImage", event.target.value)} placeholder="https://.../logo.png" /></label>
+                <label>Business Category<input value={profile.category || ""} onChange={(event) => updateProfile("category", event.target.value)} placeholder="e.g. Sports Academy" /></label>
+              </div>
+            </EditorSection>
+            <EditorSection title="Design Settings" panel="design" icon={<BrushIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}>
+              <div className={cx("design-options")}>
+                {templates.map((template) => <button type="button" key={template.id} className={cx(selectedTemplateId === template.id && "design-option-active")} onClick={() => setSelectedTemplateId(template.id)}><i style={{ background: template.accent }} />{template.name}</button>)}
+              </div>
+            </EditorSection>
+            <EditorSection title="QR Code Settings" panel="qr" icon={<QrCode2Icon />} openPanel={openPanel} setOpenPanel={setOpenPanel}>
+              <div className={cx("profile-fields")}>
+                <label>Profile / QR Destination URL<input value={profile.url || ""} onChange={(event) => updateProfile("url", event.target.value)} placeholder="https://massclick.in/business/..." /></label>
+                <label>QR Image URL<input value={profile.qrImage || ""} onChange={(event) => { updateProfile("qrImage", event.target.value); updateProfile("qrExportImage", event.target.value); }} placeholder="https://.../qr-code.png" /></label>
+                <button type="button" className={cx("field-button")} onClick={handleCopyLink}>Copy profile link</button>
+              </div>
+            </EditorSection>
+            <EditorSection title="Advanced Settings" panel="advanced" icon={<SettingsOutlinedIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}>
+              <div className={cx("profile-fields")}>
+                <label>Card Label<input value={profile.category || ""} onChange={(event) => updateProfile("category", event.target.value)} placeholder="Digital Visiting Card" /></label>
+                <button type="button" className={cx("field-button")} onClick={() => setProfileEdits({})}>Restore saved business details</button>
+              </div>
+            </EditorSection>
+            <div className={cx("customizer-actions")}>
+              <button type="button" className={cx("save-preview")} onClick={handleDownload}><DownloadIcon /> Save & Download Card</button>
+              <button type="button" onClick={handleShare}><ShareIcon /> Share Card</button>
+              <button type="button" onClick={handleCopyDetails}><ContentCopyIcon /> Copy Details</button>
             </div>
-
-            <CardPreview template={selectedTemplate} profile={profile} />
             {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
-
           </aside>
         </section>
 

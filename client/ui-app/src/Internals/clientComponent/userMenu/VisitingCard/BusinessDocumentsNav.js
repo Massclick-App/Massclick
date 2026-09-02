@@ -1,81 +1,46 @@
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import AppBar from "@mui/material/AppBar";
+import { useNavigate } from "react-router-dom";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import Box from "@mui/material/Box";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
-import Toolbar from "@mui/material/Toolbar";
-
-const documentOptions = [
-  { label: "Visiting Card", type: "visiting-card", path: "/user_marketing-materials" },
-  { label: "Letterhead", type: "letterhead", path: "/user_marketing-materials?type=letterhead" },
-  { label: "Quotation", type: "quotation", path: "/user_marketing-materials?type=quotation" },
-  { label: "Voucher", type: "voucher", path: "/user_marketing-materials?type=voucher" },
-];
 
 export default function BusinessDocumentsNav() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const searchParams = new URLSearchParams(location.search);
-  const currentType = searchParams.get("type") || documentOptions[0].type;
-  const currentPath =
-    documentOptions.find((option) => option.type === currentType)?.path || documentOptions[0].path;
 
   return (
     <Box
+      component="button"
+      type="button"
+      onClick={() => navigate("/user_marketing-materials")}
+      aria-label="Back to Marketing Materials home"
       sx={{
-        maxWidth: 760,
-        mx: "auto",
-        mb: 3,
-        borderRadius: 2,
-        overflow: "hidden",
-        boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
+        display: "inline-flex",
+        minHeight: 38,
+        alignItems: "center",
+        gap: 0.8,
+        px: 1.4,
+        mb: 0,
+        border: "1px solid #dbe3ee",
+        borderRadius: "999px",
+        bgcolor: "#ffffff",
+        color: "#334155",
+        boxShadow: "0 4px 12px rgba(15, 23, 42, 0.06)",
+        fontFamily: "inherit",
+        fontSize: "0.78rem",
+        fontWeight: 800,
+        cursor: "pointer",
+        transition: "border-color .18s ease, background-color .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease",
+        "&:hover": {
+          borderColor: "#fdba74",
+          bgcolor: "#fff7ed",
+          color: "#ea580c",
+          transform: "translateX(-2px)",
+          boxShadow: "0 6px 16px rgba(234, 88, 12, 0.1)",
+        },
+        "&:focus-visible": { outline: "3px solid rgba(249,115,22,.24)", outlineOffset: 2 },
       }}
     >
-      <AppBar
-        position="static"
-        elevation={0}
-        sx={{
-          bgcolor: "#ffffff",
-          color: "#0f172a",
-          border: "1px solid rgba(148, 163, 184, 0.28)",
-        }}
-      >
-        <Toolbar disableGutters sx={{ minHeight: "52px !important", px: { xs: 0.5, sm: 1 } }}>
-          <Tabs
-            value={currentPath}
-            onChange={(event, value) => navigate(value)}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
-            aria-label="Business document pages"
-            sx={{
-              width: "100%",
-              minHeight: 52,
-              "& .MuiTabs-indicator": {
-                height: 3,
-                borderRadius: "3px 3px 0 0",
-                backgroundColor: "#f97316",
-              },
-              "& .MuiTab-root": {
-                minHeight: 52,
-                flex: { sm: 1 },
-                color: "#475569",
-                fontWeight: 800,
-                textTransform: "none",
-                fontSize: { xs: "0.86rem", sm: "0.95rem" },
-              },
-              "& .MuiTab-root.Mui-selected": {
-                color: "#f97316",
-              },
-            }}
-          >
-            {documentOptions.map((option) => (
-              <Tab key={option.path} value={option.path} label={option.label} />
-            ))}
-          </Tabs>
-        </Toolbar>
-      </AppBar>
+      <ArrowBackRoundedIcon sx={{ fontSize: 18 }} />
+      <span>Back to Materials</span>
     </Box>
   );
 }

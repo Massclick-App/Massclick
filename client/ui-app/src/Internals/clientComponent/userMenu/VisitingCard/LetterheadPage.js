@@ -4,7 +4,14 @@ import { useDispatch, useSelector } from "react-redux";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DownloadIcon from "@mui/icons-material/Download";
-import PaletteIcon from "@mui/icons-material/Palette";
+import SearchIcon from "@mui/icons-material/Search";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import BusinessIcon from "@mui/icons-material/Business";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import ViewDayOutlinedIcon from "@mui/icons-material/ViewDayOutlined";
+import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
+import BrandingWatermarkIcon from "@mui/icons-material/BrandingWatermark";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { findBusinessByMobile } from "../../../../redux/actions/businessListAction";
@@ -16,16 +23,31 @@ import styles from "./VisitingCardPage.module.css";
 const cx = createScopedClassNames(styles);
 
 const letterheadTemplates = [
-  { id: "massclick", name: "MassClick Orange", primary: "#07122f", accent: "#ff6b16", soft: "#fff7ed" },
-  { id: "royal", name: "Royal Blue", primary: "#102a56", accent: "#2563eb", soft: "#eff6ff" },
-  { id: "emerald", name: "Emerald Trust", primary: "#063b35", accent: "#10b981", soft: "#ecfdf5" },
-  { id: "maroon", name: "Maroon Classic", primary: "#4a0f1c", accent: "#be123c", soft: "#fff1f2" },
-  { id: "slate", name: "Slate Executive", primary: "#111827", accent: "#64748b", soft: "#f8fafc" },
-  { id: "teal", name: "Teal Global", primary: "#083344", accent: "#06b6d4", soft: "#ecfeff" },
-  { id: "indigo", name: "Indigo Prime", primary: "#1e1b4b", accent: "#6366f1", soft: "#eef2ff" },
-  { id: "gold", name: "Black Gold", primary: "#15110a", accent: "#c7972e", soft: "#fffbeb" },
-  { id: "green", name: "Local Green", primary: "#17351f", accent: "#65a30d", soft: "#f7fee7" },
-  { id: "red", name: "Red Corporate", primary: "#3f1111", accent: "#dc2626", soft: "#fef2f2" },
+  { id:"modern", name:"Modern Professional", primary:"#10213d", accent:"#ff6418", soft:"#fff3ec", category:"Modern" },
+  { id:"corporate", name:"Corporate Blue", primary:"#123b7a", accent:"#2c8cff", soft:"#eff7ff", category:"Corporate" },
+  { id:"elegant-green", name:"Elegant Green", primary:"#075f4e", accent:"#18a873", soft:"#edfff7", category:"Elegant" },
+  { id:"minimal", name:"Minimal White", primary:"#202a38", accent:"#d5a86d", soft:"#fafafa", category:"Minimal" },
+  { id:"luxury", name:"Luxury Gold", primary:"#141923", accent:"#d6a934", soft:"#fff9e8", category:"Elegant", premium:true },
+  { id:"creative-wave", name:"Creative Wave", primary:"#174b8a", accent:"#41a9ea", soft:"#eefaff", category:"Creative" },
+  { id:"gradient-purple", name:"Gradient Purple", primary:"#56249d", accent:"#8c4fe3", soft:"#f7efff", category:"Creative" },
+  { id:"classic-red", name:"Classic Red", primary:"#721012", accent:"#c31d22", soft:"#fff1f1", category:"Classic" },
+  { id:"teal-professional", name:"Teal Professional", primary:"#075852", accent:"#20aa91", soft:"#ecfffb", category:"Professional" },
+  { id:"executive-dark", name:"Executive Dark", primary:"#151a22", accent:"#d1a22e", soft:"#fff9e8", category:"Professional", premium:true },
+  { id:"light-elegant", name:"Light Elegant", primary:"#5a4a31", accent:"#d4ae72", soft:"#fff9ee", category:"Elegant" },
+  { id:"blue-geometry", name:"Blue Geometry", primary:"#123b86", accent:"#316bd5", soft:"#eef4ff", category:"Modern" },
+  { id:"green-curve", name:"Green Curve", primary:"#087745", accent:"#35b965", soft:"#effff4", category:"Business" },
+  { id:"pink-elegance", name:"Pink Elegance", primary:"#86455f", accent:"#eda3bc", soft:"#fff1f6", category:"Elegant" },
+  { id:"navy-orange", name:"Navy Orange", primary:"#071b36", accent:"#ff5a16", soft:"#fff3ed", category:"Corporate", premium:true },
+  { id:"corporate-modern", name:"Corporate Modern", primary:"#1c2939", accent:"#326796", soft:"#f1f6fa", category:"Corporate" },
+  { id:"maroon-classic", name:"Maroon Classic", primary:"#681323", accent:"#be3347", soft:"#fff1f3", category:"Classic" },
+  { id:"aqua-fresh", name:"Aqua Fresh", primary:"#176d72", accent:"#69d7c8", soft:"#edfffc", category:"Creative" },
+  { id:"black-white", name:"Black & White", primary:"#171717", accent:"#545454", soft:"#f5f5f5", category:"Minimal" },
+  { id:"violet-edge", name:"Violet Edge", primary:"#4d2a86", accent:"#8f55dc", soft:"#f6efff", category:"Modern" },
+  { id:"silver-minimal", name:"Silver Minimal", primary:"#49515d", accent:"#aeb5bf", soft:"#f6f7f8", category:"Minimal" },
+  { id:"sunrise-orange", name:"Sunrise Orange", primary:"#9a3b12", accent:"#ff8a32", soft:"#fff4ea", category:"Creative" },
+  { id:"sky-professional", name:"Sky Professional", primary:"#195a91", accent:"#43a5ef", soft:"#eff9ff", category:"Professional" },
+  { id:"forest-business", name:"Forest Business", primary:"#0d5137", accent:"#3b9664", soft:"#effaf4", category:"Business" },
+  { id:"premium-black", name:"Premium Black Gold", primary:"#111722", accent:"#cda43b", soft:"#fff9e8", category:"Elegant", premium:true },
 ];
 
 const readStoredUser = () => {
@@ -335,16 +357,16 @@ const LetterheadPreview = ({ profile, template, draft, onDraftChange }) => {
         </div>
         <div className={cx("letterhead-contact-card")}>
           <span>Business Contact</span>
-          <strong>{phones}</strong>
-          <small>{profile.email}</small>
+          <div><b>P</b><p><small>Phone</small><strong>{phones}</strong></p></div>
+          <div><b>E</b><p><small>Email</small><strong>{profile.email}</strong></p></div>
         </div>
       </header>
 
       <section className={cx("letterhead-info-strip")}>
-        <span><strong>P</strong>{phones}</span>
-        <span><strong>E</strong>{profile.email}</span>
-        <span><strong>W</strong>{profile.website}</span>
-        <span><strong>L</strong>{profile.location}</span>
+        <span className={cx("letterhead-info-item")}><strong>P</strong><span><small>Phone</small><b>{phones}</b></span></span>
+        <span className={cx("letterhead-info-item")}><strong>E</strong><span><small>Email</small><b>{profile.email}</b></span></span>
+        <span className={cx("letterhead-info-item")}><strong>W</strong><span><small>Website</small><b>{profile.website}</b></span></span>
+        <span className={cx("letterhead-info-item letterhead-address-item")}><strong>L</strong><span><small>Registered Address</small><b>{profile.location}</b></span></span>
       </section>
 
       <div className={cx("letterhead-body")}>
@@ -401,6 +423,25 @@ const LetterheadPreview = ({ profile, template, draft, onDraftChange }) => {
   );
 };
 
+const LetterheadThumbnail = ({ profile, template }) => (
+  <div className={cx("letterhead-catalogue-sheet", `letterhead-catalogue-${template.id}`)} style={{ "--lh-primary":template.primary, "--lh-accent":template.accent, "--lh-soft":template.soft }}>
+    <header><span>{profile.logoImage ? <img src={profile.logoImage} alt="" /> : getInitials(profile.businessName)}</span><div><strong>{profile.businessName}</strong><small>{profile.tagLine}</small></div><i /></header>
+    <div className={cx("catalogue-meta")}><b>To,</b><em>Date: {todayDisplay()}</em><span>Recipient Name</span><span>Managing Director</span><strong>Subject: Professional business communication</strong></div>
+    <div className={cx("catalogue-lines")}>{Array.from({ length:7 }, (_, index) => <i key={index} />)}</div>
+    <footer>{profile.email} · {profile.website}</footer>
+  </div>
+);
+
+const LetterheadEditorSection = ({ title, subtitle, panel, icon, openPanel, setOpenPanel, children }) => (
+  <section className={cx("customizer-section")}>
+    <button type="button" className={cx("accordion-trigger")} onClick={() => setOpenPanel(openPanel === panel ? "" : panel)} aria-expanded={openPanel === panel}>
+      <span>{icon}<span><b>{title}</b>{subtitle && <small>{subtitle}</small>}</span></span>
+      <ExpandMoreIcon className={cx(openPanel === panel && "accordion-icon-open")} />
+    </button>
+    {openPanel === panel && children}
+  </section>
+);
+
 export default function LetterheadPage() {
   const dispatch = useDispatch();
   const { matchedBusiness, matchedBusinessLoading, matchedBusinessError } = useSelector(
@@ -416,6 +457,10 @@ export default function LetterheadPage() {
   const [draft, setDraft] = useState(() => readLetterheadDraft() || createDefaultLetterheadDraft());
   const [statusMessage, setStatusMessage] = useState("");
   const [isDesignModalOpen, setIsDesignModalOpen] = useState(false);
+  const [profileEdits, setProfileEdits] = useState({});
+  const [templateCategory, setTemplateCategory] = useState("All");
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [openPanel, setOpenPanel] = useState("business");
 
   useEffect(() => {
     if (mobileNumber) dispatch(findBusinessByMobile(mobileNumber));
@@ -432,8 +477,19 @@ export default function LetterheadPage() {
     primary: customColors.primary,
     accent: customColors.accent,
   };
-  const profile = getBusinessProfile(matchedBusiness || {}, storedUser);
+  const businessProfile = getBusinessProfile(matchedBusiness || {}, storedUser);
+  const profile = { ...businessProfile, ...profileEdits };
+  const filteredTemplates = letterheadTemplates.filter((template) =>
+    (templateCategory === "All" || template.category === templateCategory) &&
+    template.name.toLowerCase().includes(templateSearch.trim().toLowerCase())
+  );
   const fileName = `${createSlug(profile.businessName) || "massclick"}-letterhead.png`;
+  const updateProfile = (field, value) => setProfileEdits((current) => ({ ...current, [field]: value }));
+  const updatePhone = (index, value) => {
+    const phones = [...(profile.phones || [])];
+    phones[index] = value;
+    updateProfile("phones", phones);
+  };
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplateId(template.id);
@@ -441,6 +497,11 @@ export default function LetterheadPage() {
       primary: template.primary,
       accent: template.accent,
     });
+  };
+
+  const handleTemplatePreview = (template) => {
+    handleTemplateSelect(template);
+    setIsDesignModalOpen(true);
   };
 
   const handleColorChange = (field, value) => {
@@ -506,12 +567,7 @@ export default function LetterheadPage() {
     <>
       <StickySearchBar />
       <main className={cx("visiting-card-page")}>
-        <section className={cx("page-header")}>
-          <BusinessDocumentsNav />
-          <span>Business Stationery</span>
-          <h1>Premium Letterhead Templates</h1>
-          <p>Select a color theme, preview the full letterpad, and download it as a high-resolution PNG.</p>
-        </section>
+        <div className={cx("document-back-row")}><BusinessDocumentsNav /></div>
 
         {!mobileNumber && (
           <div className={cx("notice-box")}>Login mobile number was not found. Please log in again.</div>
@@ -521,47 +577,52 @@ export default function LetterheadPage() {
           <div className={cx("notice-box")}>{matchedBusinessError}</div>
         )}
 
-        <section className={cx("letterhead-workspace document-output-workspace")}>
-          <div className={cx("letterhead-preview-panel")}>
-            <div className={cx("document-output-toolbar")}>
-              <button type="button" className={cx("secondary-action")} onClick={() => setIsDesignModalOpen(true)}>
-                <PaletteIcon />
-                Theme
+        <section className={cx("letterhead-studio-layout")}>
+          <div className={cx("letterhead-studio-main")}>
+            <section className={cx("letterhead-hero")}>
+              <div><span>Professional Letterheads</span><h2>Build trust with every business communication</h2><p>Choose from 25 international-quality templates. Customize, preview and download a print-ready letterhead.</p><button type="button" onClick={() => setIsDesignModalOpen(true)}>Create Custom Letterhead</button></div>
+              <button
+                type="button"
+                className={cx("hero-letterhead-preview")}
+                onClick={() => setIsDesignModalOpen(true)}
+                aria-label={`Open large preview of ${selectedTemplate.name}`}
+              >
+                <LetterheadThumbnail profile={profile} template={selectedTemplate} />
+                <span className={cx("hero-preview-hint")}><b>Open full editor</b><small>Click to edit and type letterhead content</small></span>
               </button>
-              <button type="button" className={cx("secondary-action")} onClick={handleResetDraft}>
-                Clear Text
-              </button>
-              <button type="button" className={cx("primary-action")} onClick={handleDownload}>
-                <DownloadIcon />
-                Download Letterhead
-              </button>
-              <button type="button" className={cx("icon-action")} onClick={handleCopyContact} aria-label="Copy letterhead contact details">
-                <ContentCopyIcon />
-              </button>
+            </section>
+            <div className={cx("letterhead-stats")}><span><b>25+</b><small>Premium Templates</small></span><span><b>20+</b><small>Color Themes</small></span><span><b>10+</b><small>Business Categories</small></span><span><b>100%</b><small>Editable</small></span><span><b>1 Click</b><small>Download & Share</small></span></div>
+            <div className={cx("letterhead-catalogue-head")}>
+              <div><strong>Choose a Category</strong><nav>{["All","Corporate","Business","Creative","Minimal","Professional","Modern","Elegant","Classic"].map((category) => <button type="button" key={category} className={cx(templateCategory === category && "category-active")} onClick={() => setTemplateCategory(category)}>{category === "All" ? "All 25" : category}</button>)}</nav></div>
+              <label className={cx("template-search")}><SearchIcon /><input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search templates..." /></label>
             </div>
-
-            {matchedBusinessLoading ? (
-              <div className={cx("loading-box")}>Loading your business letterhead details...</div>
-            ) : (
-              <LetterheadPreview
-                profile={profile}
-                template={selectedTemplate}
-                draft={draft}
-                onDraftChange={handleDraftChange}
-              />
-            )}
-            {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
+            <div className={cx("letterhead-catalogue-grid")}>
+              {filteredTemplates.map((template) => <button type="button" key={template.id} className={cx("letterhead-catalogue-card", selectedTemplateId === template.id && "letterhead-catalogue-active")} onClick={() => handleTemplatePreview(template)} aria-label={`Open full preview of ${template.name}`}><LetterheadThumbnail profile={profile} template={template} /><span>{letterheadTemplates.findIndex((item) => item.id === template.id) + 1}. {template.name}{template.premium && <b>♛ PRO</b>}</span></button>)}
+            </div>
+            {!filteredTemplates.length && <p className={cx("empty-templates")}>No letterhead templates match your search.</p>}
           </div>
 
+          <aside className={cx("customizer letterhead-customizer")}>
+            <header><strong>Customize Your Letterhead</strong><button type="button" onClick={() => { setProfileEdits({}); handleResetColors(); }}>↻ Reset</button></header>
+            <LetterheadEditorSection title="Business Details" subtitle="Edit company information" panel="business" icon={<BusinessIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}><div className={cx("profile-fields")}><label>Business Name<input value={profile.businessName} onChange={(event) => updateProfile("businessName", event.target.value)} /></label><label>Tagline<input value={profile.tagLine} onChange={(event) => updateProfile("tagLine", event.target.value)} /></label><label>Category<input value={profile.category} onChange={(event) => updateProfile("category", event.target.value)} /></label><label>GST / Tax Number<input value={profile.gst} onChange={(event) => updateProfile("gst", event.target.value)} /></label></div></LetterheadEditorSection>
+            <LetterheadEditorSection title="Logo & Brand" subtitle="Upload logo and brand colors" panel="brand" icon={<ImageOutlinedIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}><div className={cx("profile-fields")}><label>Logo Image URL<input value={profile.logoImage || ""} onChange={(event) => updateProfile("logoImage", event.target.value)} /></label><label>Header Color<input type="color" value={customColors.primary} onChange={(event) => handleColorChange("primary", event.target.value)} /></label><label>Accent Color<input type="color" value={customColors.accent} onChange={(event) => handleColorChange("accent", event.target.value)} /></label></div></LetterheadEditorSection>
+            <LetterheadEditorSection title="Header Design" subtitle="Choose header style" panel="header" icon={<ViewDayOutlinedIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}><div className={cx("design-options")}>{letterheadTemplates.map((template) => <button type="button" key={template.id} className={cx(selectedTemplateId === template.id && "design-option-active")} onClick={() => handleTemplateSelect(template)}><i style={{background:template.accent}} />{template.name}</button>)}</div></LetterheadEditorSection>
+            <LetterheadEditorSection title="Content Style" subtitle="Recipient, date and letter content" panel="content" icon={<FormatAlignLeftIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}><div className={cx("profile-fields")}><label>Date<input value={draft.date} onChange={(event) => handleDraftChange("date", event.target.value)} /></label><label>Recipient<textarea value={draft.to} onChange={(event) => handleDraftChange("to", event.target.value)} /></label><label>Subject<input value={draft.subject} onChange={(event) => handleDraftChange("subject", event.target.value)} /></label><label>Letter Content<textarea rows="6" value={draft.body} onChange={(event) => handleDraftChange("body", event.target.value)} /></label></div></LetterheadEditorSection>
+            <LetterheadEditorSection title="Footer Design" subtitle="Contact and footer information" panel="footer" icon={<ViewDayOutlinedIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}><div className={cx("profile-fields")}><label>Primary Phone<input value={profile.phones?.[0] || ""} onChange={(event) => updatePhone(0,event.target.value)} /></label><label>Alternate Phone<input value={profile.phones?.[1] || ""} onChange={(event) => updatePhone(1,event.target.value)} /></label><label>Email<input value={profile.email} onChange={(event) => updateProfile("email",event.target.value)} /></label><label>Website<input value={profile.website} onChange={(event) => updateProfile("website",event.target.value)} /></label><label>Full Address<textarea value={profile.location} onChange={(event) => updateProfile("location",event.target.value)} /></label></div></LetterheadEditorSection>
+            <LetterheadEditorSection title="Watermark" subtitle="Add watermark or pattern" panel="watermark" icon={<BrandingWatermarkIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}><div className={cx("profile-fields")}><p className={cx("editor-help")}>Your business initials are automatically used as a subtle professional watermark.</p></div></LetterheadEditorSection>
+            <LetterheadEditorSection title="Page Setup & Background" subtitle="A4 print-ready settings" panel="page" icon={<SettingsOutlinedIcon />} openPanel={openPanel} setOpenPanel={setOpenPanel}><div className={cx("profile-fields")}><p className={cx("editor-help")}>A4 portrait · 300 DPI export · safe print margins · white document background.</p></div></LetterheadEditorSection>
+            <div className={cx("customizer-actions")}><button type="button" className={cx("save-preview")} onClick={handleDownload}><DownloadIcon /> Download Letterhead</button><button type="button" onClick={handleCopyContact}><ContentCopyIcon /> Copy Business Details</button><button type="button" onClick={handleResetDraft}>Clear Letter Content</button></div>
+            {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
+          </aside>
         </section>
 
         {isDesignModalOpen && (
           <div className={cx("document-modal-overlay")} role="presentation">
-            <section className={cx("document-modal")} role="dialog" aria-modal="true" aria-labelledby="letterhead-design-title">
+            <section className={cx("document-modal letterhead-full-preview-modal")} role="dialog" aria-modal="true" aria-labelledby="letterhead-design-title">
               <header className={cx("document-modal-header")}>
                 <div>
                   <span>Business Stationery</span>
-                  <h2 id="letterhead-design-title">Choose Letterhead Style</h2>
+                  <h2 id="letterhead-design-title">Full Letterhead Preview — {selectedTemplate.name}</h2>
                 </div>
                 <button type="button" className={cx("icon-action")} onClick={() => setIsDesignModalOpen(false)} aria-label="Close design settings">
                   <CloseIcon />
@@ -569,6 +630,14 @@ export default function LetterheadPage() {
               </header>
 
               <div className={cx("document-modal-body")}>
+                <div className={cx("letterhead-live-preview")}>
+                  {matchedBusinessLoading ? (
+                    <div className={cx("loading-box")}>Loading your business letterhead details...</div>
+                  ) : (
+                    <LetterheadPreview profile={profile} template={selectedTemplate} draft={draft} onDraftChange={handleDraftChange} />
+                  )}
+                </div>
+                <aside className={cx("letterhead-preview-settings")}>
                 <div className={cx("letterhead-theme-grid")}>
                   {letterheadTemplates.map((template, index) => (
                     <button
@@ -612,11 +681,15 @@ export default function LetterheadPage() {
                     />
                   </label>
                 </div>
+                </aside>
               </div>
 
               <footer className={cx("document-modal-actions")}>
                 <button type="button" className={cx("secondary-action")} onClick={handleResetColors}>
                   Reset Colors
+                </button>
+                <button type="button" className={cx("primary-action")} onClick={handleDownload}>
+                  <DownloadIcon /> Download High-Resolution Letterhead
                 </button>
               </footer>
             </section>

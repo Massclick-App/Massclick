@@ -1,5 +1,6 @@
 import { createScopedClassNames } from "../../../../utils/createScopedClassNames";
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
@@ -7,6 +8,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DownloadIcon from "@mui/icons-material/Download";
 import PaletteIcon from "@mui/icons-material/Palette";
 import SaveIcon from "@mui/icons-material/Save";
+import SearchIcon from "@mui/icons-material/Search";
 import StickySearchBar from "../../StickySearchBar/StickySearchBar";
 import Footer from "../../footer/footer";
 import { findBusinessByMobile } from "../../../../redux/actions/businessListAction";
@@ -20,12 +22,31 @@ const cx = createScopedClassNames(styles);
 const STORAGE_KEY = "massclick_quotation_draft_v1";
 
 const quotationThemes = [
-  { id: "executive", name: "Executive Blue", primary: "#102a56", accent: "#2563eb", soft: "#eff6ff" },
-  { id: "massclick", name: "MassClick Orange", primary: "#07122f", accent: "#ff6b16", soft: "#fff7ed" },
-  { id: "emerald", name: "Emerald Trust", primary: "#063b35", accent: "#10b981", soft: "#ecfdf5" },
-  { id: "gold", name: "Black Gold", primary: "#15110a", accent: "#c7972e", soft: "#fffbeb" },
-  { id: "rose", name: "Rose Premium", primary: "#4a0f1c", accent: "#e11d48", soft: "#fff1f2" },
-  { id: "teal", name: "Teal Global", primary: "#083344", accent: "#06b6d4", soft: "#ecfeff" },
+  { id:"modern-blue", name:"Modern Blue", primary:"#123c82", accent:"#2767db", soft:"#eff5ff", category:"Modern" },
+  { id:"elegant-minimal", name:"Elegant Minimal", primary:"#765c45", accent:"#b99572", soft:"#faf6f1", category:"Elegant" },
+  { id:"corporate-professional", name:"Corporate Professional", primary:"#133d77", accent:"#377ccc", soft:"#eef5ff", category:"Corporate" },
+  { id:"orange-modern", name:"Orange Modern", primary:"#732810", accent:"#ff6418", soft:"#fff2e9", category:"Modern" },
+  { id:"green-business", name:"Green Business", primary:"#155e2f", accent:"#35a852", soft:"#effbf2", category:"Corporate" },
+  { id:"dark-executive", name:"Dark Executive", primary:"#111b29", accent:"#d8a82e", soft:"#fff9e8", category:"Professional", dark:true, premium:true },
+  { id:"purple-creative", name:"Purple Creative", primary:"#5229a0", accent:"#8b5cf6", soft:"#f5f0ff", category:"Creative" },
+  { id:"clean-minimal", name:"Clean Minimal", primary:"#334155", accent:"#94a3b8", soft:"#f8fafc", category:"Minimal" },
+  { id:"red-professional", name:"Red Professional", primary:"#7f1118", accent:"#dc2935", soft:"#fff1f2", category:"Professional" },
+  { id:"teal-modern", name:"Teal Modern", primary:"#075c59", accent:"#14a99f", soft:"#ecfffc", category:"Modern" },
+  { id:"black-white", name:"Black & White", primary:"#171717", accent:"#555", soft:"#f5f5f5", category:"Minimal" },
+  { id:"gradient-blue", name:"Gradient Blue", primary:"#1258a5", accent:"#24c5e8", soft:"#edfbff", category:"Colorful" },
+  { id:"luxury-gold", name:"Luxury Gold", primary:"#151515", accent:"#d4a62a", soft:"#fff9e6", category:"Elegant", dark:true, premium:true },
+  { id:"creative-agency", name:"Creative Agency", primary:"#4438a0", accent:"#e948a4", soft:"#fff0fa", category:"Creative" },
+  { id:"construction", name:"Construction Quote", primary:"#272727", accent:"#f4b000", soft:"#fff9e6", category:"Professional" },
+  { id:"tech-quote", name:"Tech Quote", primary:"#062a3b", accent:"#04bfd8", soft:"#eafcff", category:"Corporate", dark:true },
+  { id:"pink-beauty", name:"Pink Beauty", primary:"#9d3658", accent:"#ff668f", soft:"#fff1f5", category:"Colorful" },
+  { id:"corporate-clean", name:"Corporate Clean", primary:"#123c82", accent:"#2459ad", soft:"#f1f5fb", category:"Corporate" },
+  { id:"simple-classic", name:"Simple Classic", primary:"#146b64", accent:"#159b8c", soft:"#effbf9", category:"Classic" },
+  { id:"finance", name:"Finance Quote", primary:"#225d2c", accent:"#45a452", soft:"#f0faf1", category:"Professional" },
+  { id:"maroon", name:"Maroon Classic", primary:"#62121a", accent:"#9f2835", soft:"#fff1f2", category:"Classic" },
+  { id:"aqua", name:"Aqua Professional", primary:"#17636b", accent:"#47b9bd", soft:"#edfbfb", category:"Colorful" },
+  { id:"event", name:"Event Management", primary:"#77123f", accent:"#c01d66", soft:"#fff0f7", category:"Creative" },
+  { id:"interior", name:"Interior Quote", primary:"#312c26", accent:"#a78b6d", soft:"#faf7f2", category:"Elegant" },
+  { id:"premium-black", name:"Premium Black Gold", primary:"#111822", accent:"#cda33b", soft:"#fff9e8", category:"Elegant", dark:true, premium:true },
 ];
 
 const fallbackCategories = [
@@ -149,11 +170,33 @@ const createDefaultDraft = () => ({
   taxRate: 18,
   discount: 0,
   terms: "Prices are valid until the mentioned date. Final booking is subject to advance payment and availability.",
+  notes: "Payment acknowledged subject to realization. This computer-generated quotation is valid with authorized approval.",
+  preparedBy: "",
+  checkedBy: "",
+  approvedBy: "",
+  receivedBy: "",
   items: [
     newItem("Wedding hall rental package", 75000),
     newItem("Decoration and stage setup", 25000),
     newItem("Dining and service arrangement", 18000),
   ],
+});
+
+const createResetDraft = () => ({
+  ...createDefaultDraft(),
+  category: "",
+  customerName: "",
+  customerPhone: "",
+  customerEmail: "",
+  customerAddress: "",
+  projectTitle: "",
+  terms: "",
+  notes: "",
+  preparedBy: "",
+  checkedBy: "",
+  approvedBy: "",
+  receivedBy: "",
+  items: [],
 });
 
 const categoryLabel = (category) =>
@@ -307,9 +350,12 @@ const buildQuotationSvg = (draft, profile, theme) => {
 
     ${svgLine("Terms", 82, 1408, 18, theme.accent, 850)}
     ${svgLine(limitText(draft.terms, 74), 82, 1442, 16, "#475569", 600)}
-    <rect x="0" y="1650" width="1240" height="104" fill="${theme.primary}" />
-    ${svgLine(limitText(profile.businessName, 44), 82, 1708, 22, "#ffffff", 850)}
-    ${svgLine(limitText([phones, profile.email, profile.website].filter(Boolean).join(" | "), 72), 560, 1708, 17, "#ffffff", 650)}
+    ${svgLine("NOTES & DECLARATION", 82, 1588, 16, theme.primary, 850)}
+    ${svgLine(limitText(draft.notes, 100), 82, 1615, 14, "#475569", 550)}
+    ${[[82,"Prepared By",draft.preparedBy],[372,"Checked By",draft.checkedBy],[662,"Approved By",draft.approvedBy],[952,"Received By",draft.receivedBy]].map(([x,label,value]) => `<line x1="${x}" y1="1652" x2="${x + 205}" y2="1652" stroke="#64748b" />${value ? svgLine(limitText(value,20),x,1644,13,"#334155",650) : ""}${svgLine(label.toUpperCase(),x + 52,1678,12,"#475569",800)}`).join("")}
+    <rect x="0" y="1700" width="1240" height="54" fill="${theme.primary}" />
+    ${svgLine(limitText(profile.businessName, 44), 82, 1733, 18, "#ffffff", 850)}
+    ${svgLine(limitText([phones, profile.email, profile.website].filter(Boolean).join(" | "), 72), 560, 1733, 14, "#ffffff", 650)}
   </svg>`;
 };
 
@@ -389,9 +435,12 @@ const QuotationPreview = ({ draft, profile, theme }) => {
           </div>
         </div>
         <div className={cx("quotation-meta-card")}>
-          <strong>{draft.quotationNo}</strong>
-          <span>Date: {draft.date}</span>
-          <span>Valid: {draft.validUntil}</span>
+          <span>Business Contact</span>
+          <strong>{profile.businessName}</strong>
+          <small>{profile.location}</small>
+          <small>{phones}</small>
+          <small>{profile.email}</small>
+          <small>{profile.website}</small>
         </div>
       </header>
 
@@ -404,9 +453,14 @@ const QuotationPreview = ({ draft, profile, theme }) => {
         </div>
         <div>
           <span>Business Contact</span>
-          <h3>{phones}</h3>
-          <p>{profile.email}</p>
-          <p>{profile.website}</p>
+          <h3>{draft.projectTitle}</h3>
+          <p>Category: {draft.category}</p>
+        </div>
+        <div>
+          <span>Quotation Details</span>
+          <h3>{draft.quotationNo}</h3>
+          <p>Date: {draft.date}</p>
+          <p>Valid until: {draft.validUntil}</p>
         </div>
       </section>
 
@@ -453,8 +507,33 @@ const QuotationPreview = ({ draft, profile, theme }) => {
           <h3><span>Total</span><strong>Rs. {money(totals.total)}</strong></h3>
         </div>
       </section>
+      <section className={cx("quotation-authorization")}>
+        <div className={cx("quotation-notes-box")}>
+          <span>Notes &amp; Declaration</span>
+          <p>{draft.notes || "No additional notes."}</p>
+        </div>
+        <div className={cx("quotation-signature-grid")}>
+          {[
+            ["Prepared By", draft.preparedBy],
+            ["Checked By", draft.checkedBy],
+            ["Approved By", draft.approvedBy],
+            ["Received By", draft.receivedBy],
+          ].map(([label, value]) => <div key={label}><strong>{value || " "}</strong><span>{label}</span></div>)}
+        </div>
+        <footer><span>{profile.website}</span><span>{profile.email}</span></footer>
+      </section>
     </article>
   );
+};
+
+const QuotationThumbnail = ({ draft, profile, theme }) => {
+  const totals = calculateTotals(draft);
+  return <div className={cx("quotation-catalogue-sheet", theme.dark && "quotation-catalogue-dark")} style={{"--qt-primary":theme.primary,"--qt-accent":theme.accent,"--qt-soft":theme.soft}}>
+    <header><span>{profile.logoImage ? <img src={profile.logoImage} alt="" /> : "Q"}</span><div><strong>QUOTATION</strong><small>{profile.businessName}</small></div><i /></header>
+    <section><div><b>{draft.quotationNo}</b><small>{draft.customerName || "Customer Name"}</small></div><em>{draft.date}</em></section>
+    <div className={cx("quotation-mini-table")}><strong><i>#</i><i>Description</i><i>Qty</i><i>Amount</i></strong>{draft.items.slice(0,4).map((item,index) => <span key={item.id}><i>{index+1}</i><i>{item.description}</i><i>{item.quantity}</i><i>{money(Number(item.quantity||0)*Number(item.unitPrice||0))}</i></span>)}</div>
+    <footer><span>Total</span><b>Rs. {money(totals.total)}</b></footer>
+  </div>;
 };
 
 export default function QuotationPage() {
@@ -471,11 +550,32 @@ export default function QuotationPage() {
   });
   const [statusMessage, setStatusMessage] = useState("");
   const [isDesignModalOpen, setIsDesignModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [themeCategory, setThemeCategory] = useState("All");
+  const [themeSearch, setThemeSearch] = useState("");
 
   useEffect(() => {
     if (mobileNumber) dispatch(findBusinessByMobile(mobileNumber));
     dispatch(getAllCategory({ pageNo: 1, pageSize: 600, options: { status: "active" } }));
   }, [dispatch, mobileNumber]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
+  useEffect(() => {
+    if (!isFormModalOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setIsFormModalOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isFormModalOpen]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
@@ -489,6 +589,10 @@ export default function QuotationPage() {
 
   const baseTheme = quotationThemes.find((theme) => theme.id === selectedThemeId) || quotationThemes[0];
   const selectedTheme = { ...baseTheme, primary: customColors.primary, accent: customColors.accent };
+  const filteredThemes = quotationThemes.filter((theme) =>
+    (themeCategory === "All" || theme.category === themeCategory) &&
+    theme.name.toLowerCase().includes(themeSearch.trim().toLowerCase())
+  );
 
   const selectedCategoryObject = categories.find((category) => categoryLabel(category) === draft.category);
 
@@ -516,8 +620,16 @@ export default function QuotationPage() {
     setCustomColors({ primary: theme.primary, accent: theme.accent });
   };
 
+  const openThemeInBuilder = (theme) => {
+    handleThemeSelect(theme);
+    window.requestAnimationFrame(() => document.getElementById("quotation-builder")?.scrollIntoView({ behavior:"smooth", block:"start" }));
+  };
+
   const addItem = () => {
-    setDraft((current) => ({ ...current, items: [...current.items, newItem(`${current.category} item`, 0)] }));
+    setDraft((current) => ({
+      ...current,
+      items: [...current.items, newItem(current.category ? `${current.category} item` : "", 0)],
+    }));
   };
 
   const removeItem = (id) => {
@@ -530,7 +642,7 @@ export default function QuotationPage() {
   };
 
   const resetDraft = () => {
-    const nextDraft = createDefaultDraft();
+    const nextDraft = createResetDraft();
     setDraft(nextDraft);
     localStorage.removeItem(STORAGE_KEY);
     setStatusMessage("Quotation draft reset.");
@@ -551,15 +663,14 @@ export default function QuotationPage() {
     <>
       <StickySearchBar />
       <main className={cx("visiting-card-page")}>
-        <section className={cx("page-header")}>
-          <BusinessDocumentsNav />
-          <span>Business Document</span>
-          <h1>Quotation Builder</h1>
-          <p>Select a category, fill client details and pricing, save the draft, then download a branded quotation.</p>
-        </section>
+        <div className={cx("document-back-row")}><BusinessDocumentsNav /></div>
 
-        <section className={cx("quotation-workspace")}>
-          <div className={cx("quotation-form-panel")}>
+        <section className={cx("quotation-workspace quotation-workspace-preview-only")} id="quotation-builder">
+          {isFormModalOpen && createPortal(<>
+          <div className={cx("quotation-form-backdrop")} onMouseDown={() => setIsFormModalOpen(false)} aria-hidden="true" />
+          <div className={cx("quotation-form-panel quotation-form-modal")} role="dialog" aria-modal="true" aria-labelledby="quotation-form-title">
+            <header className={cx("quotation-form-modal-header")}><div><span>Quotation Details</span><h2 id="quotation-form-title">Create or Edit Quotation</h2><p>Complete the customer, project, pricing and terms information.</p></div><button type="button" className={cx("icon-action")} onClick={() => setIsFormModalOpen(false)} aria-label="Close quotation editor"><CloseIcon /></button></header>
+            <div className={cx("quotation-form-modal-content")}>
             <section className={cx("quotation-form-section")}>
               <span>Quote Setup</span>
               <div className={cx("quotation-fields-grid")}>
@@ -674,10 +785,24 @@ export default function QuotationPage() {
               <span>Terms</span>
               <textarea value={draft.terms} onChange={(event) => updateDraft("terms", event.target.value)} />
             </section>
+            <section className={cx("quotation-form-section quotation-authorization-fields")}>
+              <span>Notes &amp; Authorization</span>
+              <label>Notes &amp; Declaration<textarea value={draft.notes || ""} onChange={(event) => updateDraft("notes", event.target.value)} /></label>
+              <div className={cx("quotation-fields-grid")}>
+                <label>Prepared By<input value={draft.preparedBy || ""} onChange={(event) => updateDraft("preparedBy", event.target.value)} /></label>
+                <label>Checked By<input value={draft.checkedBy || ""} onChange={(event) => updateDraft("checkedBy", event.target.value)} /></label>
+                <label>Approved By<input value={draft.approvedBy || ""} onChange={(event) => updateDraft("approvedBy", event.target.value)} /></label>
+                <label>Received By<input value={draft.receivedBy || ""} onChange={(event) => updateDraft("receivedBy", event.target.value)} /></label>
+              </div>
+            </section>
+            </div>
+            <footer className={cx("quotation-form-modal-actions")}><button type="button" className={cx("secondary-action quotation-danger-action")} onClick={resetDraft}><DeleteOutlineIcon /> Reset</button><button type="button" className={cx("secondary-action")} onClick={saveDraft}><SaveIcon /> Save Draft</button><button type="button" className={cx("primary-action")} onClick={() => { saveDraft(); setIsFormModalOpen(false); }}>Save & View Quotation</button></footer>
           </div>
+          </>, document.body)}
 
           <div className={cx("quotation-preview-panel")}>
             <div className={cx("document-output-toolbar")}>
+              <button type="button" className={cx("secondary-action")} onClick={() => setIsFormModalOpen(true)}><AddIcon /> Edit Details</button>
               <button type="button" className={cx("secondary-action")} onClick={() => setIsDesignModalOpen(true)}>
                 <PaletteIcon />
                 Theme
@@ -688,8 +813,24 @@ export default function QuotationPage() {
             </div>
 
             <QuotationPreview draft={draft} profile={profile} theme={selectedTheme} />
-            {statusMessage && <p className={cx("status-message")}>{statusMessage}</p>}
+            {statusMessage && <p className={cx("status-message")} role="status" aria-live="polite">{statusMessage}</p>}
           </div>
+
+          <aside className={cx("quotation-customizer-panel")}>
+            <header><strong>Customize Quotation</strong><button type="button" onClick={resetDraft}>↻ Reset</button></header>
+            <section><h3>Brand & Logo</h3><p>Business branding is loaded automatically.</p></section>
+            <section><h3>Color Theme</h3><div className={cx("quotation-theme-swatches")}>{quotationThemes.slice(0,8).map((theme) => <button type="button" key={theme.id} aria-label={`Use ${theme.name} theme`} title={theme.name} className={cx(selectedThemeId === theme.id && "quotation-swatch-active")} style={{background:theme.accent}} onClick={() => handleThemeSelect(theme)} />)}</div><div className={cx("quotation-inline-colors")}><label>Header<input type="color" value={customColors.primary} aria-label="Quotation header color" onChange={(event) => setCustomColors((current) => ({...current,primary:event.target.value}))} /></label><label>Accent<input type="color" value={customColors.accent} aria-label="Quotation accent color" onChange={(event) => setCustomColors((current) => ({...current,accent:event.target.value}))} /></label></div></section>
+            {["Header Style","Table Style","Tax & Currency","Terms & Notes","Footer & Signature"].map((label) => <button type="button" className={cx("quotation-setting-row")} key={label} onClick={() => setIsDesignModalOpen(true)}><span>{label}</span><b>⌄</b></button>)}
+            <section><h3>Smart Features</h3>{["Auto Calculate","Tax Calculation","Discount","QR Code"].map((label) => <label className={cx("quotation-toggle")} key={label}><span>{label}</span><input type="checkbox" defaultChecked /></label>)}</section>
+            <button type="button" className={cx("save-preview")} onClick={handleDownload}><DownloadIcon /> Download Quotation</button>
+          </aside>
+        </section>
+
+        <section className={cx("quotation-catalogue")}>
+          <div className={cx("quotation-catalogue-title")}><div><h2>Quotation Templates</h2><p>Choose from 25 professional designs and apply one to the quotation above.</p></div></div>
+          <header className={cx("quotation-catalogue-head")}><nav>{["All","Modern","Minimal","Professional","Corporate","Creative","Elegant","Classic","Colorful"].map((category) => <button type="button" key={category} className={cx(themeCategory === category && "category-active")} onClick={() => setThemeCategory(category)}>{category === "All" ? "All 25" : category}</button>)}</nav><label className={cx("template-search")}><SearchIcon /><input value={themeSearch} onChange={(event) => setThemeSearch(event.target.value)} placeholder="Search templates..." /></label></header>
+          <div className={cx("quotation-catalogue-grid")}>{filteredThemes.map((theme) => <button type="button" key={theme.id} className={cx("quotation-catalogue-card",selectedThemeId === theme.id && "quotation-catalogue-active")} onClick={() => openThemeInBuilder(theme)}><QuotationThumbnail draft={draft} profile={profile} theme={theme} /><span>{quotationThemes.findIndex((item) => item.id === theme.id)+1}. {theme.name}{theme.premium && <b>♛ PRO</b>}</span></button>)}</div>
+          {!filteredThemes.length && <p className={cx("empty-templates")}>No quotation templates match your search.</p>}
         </section>
 
         {isDesignModalOpen && (
