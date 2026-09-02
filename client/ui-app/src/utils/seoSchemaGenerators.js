@@ -7,6 +7,24 @@
 import { buildBusinessPath, buildCategoryPath } from "./searchResultNavigation";
 
 /**
+ * Site-wide identity constants.
+ *
+ * MIRROR of server/helper/seo/organizationSchema.js, which is the source of
+ * truth — SSR emits the Organization + WebSite nodes on every crawled page.
+ * CRA's ModuleScopePlugin forbids importing from outside src/, so the two files
+ * cannot share a module (same arrangement as breadcrumbs.js <-> the server's
+ * breadcrumbBuilder.js). Change one, change the other.
+ *
+ * Google merges JSON-LD nodes by @id. Anything referring to the company must
+ * emit ORGANIZATION_REF rather than an inline anonymous Organization node.
+ */
+const SITE_ORIGIN = "https://massclick.in";
+const ORGANIZATION_ID = `${SITE_ORIGIN}/#organization`;
+const WEBSITE_ID = `${SITE_ORIGIN}/#website`;
+const ORGANIZATION_REF = { "@id": ORGANIZATION_ID };
+const WEBSITE_REF = { "@id": WEBSITE_ID };
+
+/**
  * Generate LocalBusiness schema for single business detail pages
  * @param {Object} business - Business data object from API
  * @returns {Object} Valid LocalBusiness schema or null
@@ -157,10 +175,10 @@ export const generateOrganizationSchema = () => {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "@id": "https://massclick.in/#organization",
+    "@id": ORGANIZATION_ID,
     name: "Massclick",
-    url: "https://massclick.in",
-    logo: "https://massclick.in/logo.png",
+    url: SITE_ORIGIN,
+    logo: `${SITE_ORIGIN}/logo.png`,
     description: "Find trusted local businesses near you with reviews, ratings, and contact details",
     foundingDate: "2018",
     address: {
@@ -184,6 +202,7 @@ export const generateOrganizationSchema = () => {
       "https://www.facebook.com/massClicks",
       "https://www.linkedin.com/company/massclick/",
       "https://www.youtube.com/@Mass360Business",
+      "https://play.google.com/store/apps/details?id=com.massclick.massclick",
     ],
     areaServed: {
       "@type": "Country",
@@ -194,24 +213,19 @@ export const generateOrganizationSchema = () => {
 
 /**
  * Generate WebSite schema for site-wide metadata
- * Enables search box appearance in Google results
  * @returns {Object} Valid WebSite schema
  */
 export const generateWebsiteSchema = () => {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": WEBSITE_ID,
     name: "Massclick",
-    url: "https://massclick.in",
+    url: `${SITE_ORIGIN}/`,
     description: "Find trusted local businesses near you",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: "https://massclick.in/{search_term_string}",
-      },
-      "query-input": "required name=search_term_string",
-    },
+    publisher: ORGANIZATION_REF,
+    // No potentialAction/SearchAction: Google deprecated the sitelinks search
+    // box in late 2024, so the markup renders nothing.
   };
 };
 
@@ -376,11 +390,7 @@ export const generateServiceSchema = (service) => {
     schema.image = service.image;
   }
 
-  schema.provider = {
-    "@type": "Organization",
-    name: "Massclick",
-    url: "https://massclick.in",
-  };
+  schema.provider = ORGANIZATION_REF;
 
   if (service.location) {
     schema.areaServed = {
@@ -407,24 +417,10 @@ export const generateAboutPageSchema = (pageData = {}) => {
     "@type": "AboutPage",
     name: pageData.title || "About Massclick",
     description: pageData.description || "Learn about Massclick - your trusted platform for discovering local businesses",
-    url: "https://massclick.in/aboutus",
-    mainEntity: {
-      "@type": "Organization",
-      name: "Massclick",
-      description: "Find trusted local businesses near you with reviews, ratings, and contact details",
-      url: "https://massclick.in",
-      logo: "https://massclick.in/logo.png",
-      sameAs: [
-        "https://www.instagram.com/massclick.in",
-        "https://www.facebook.com/massClicks",
-        "https://www.linkedin.com/company/massclick/",
-        "https://www.youtube.com/@Mass360Business",
-      ],
-      areaServed: {
-        "@type": "Country",
-        name: "IN",
-      },
-    },
+    url: `${SITE_ORIGIN}/aboutus`,
+    isPartOf: WEBSITE_REF,
+    // Reference the canonical Organization rather than redefining it.
+    mainEntity: ORGANIZATION_REF,
   };
 };
 
@@ -439,21 +435,12 @@ export const generateContactPageSchema = (pageData = {}) => {
     "@type": "ContactPage",
     name: pageData.title || "Contact Massclick",
     description: pageData.description || "Get in touch with Massclick support",
-    url: "https://massclick.in/enquiry",
-    mainEntity: {
-      "@type": "LocalBusiness",
-      name: "Massclick",
-      contactPoint: {
-        "@type": "ContactPoint",
-        contactType: "Customer Service",
-        telephone: pageData.telephone || "+919789104201",
-        email: "support@massclick.in",
-        areaServed: {
-          "@type": "Country",
-          name: "IN",
-        },
-      },
-    },
+    url: `${SITE_ORIGIN}/enquiry`,
+    isPartOf: WEBSITE_REF,
+    // Was a separate anonymous LocalBusiness node, which made Massclick look
+    // like a different entity from the homepage Organization. The canonical
+    // Organization already carries contactPoint.
+    mainEntity: ORGANIZATION_REF,
   };
 };
 
@@ -494,10 +481,7 @@ export const generateArticleSchema = (blog) => {
     };
   }
 
-  schema.publisher = {
-    "@type": "Organization",
-    name: "Massclick",
-  };
+  schema.publisher = ORGANIZATION_REF;
 
   return schema;
 };

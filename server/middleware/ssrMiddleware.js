@@ -1,6 +1,12 @@
 import path from "path";
 import fs from "fs";
 import { getSeoMeta } from "../helper/seo/seoHelper.js";
+import {
+  ORGANIZATION_REF,
+  WEBSITE_REF,
+  buildOrganizationSchema,
+  buildWebsiteSchema,
+} from "../helper/seo/organizationSchema.js";
 import { getSeoBlogMetaBySlug } from "../helper/seo/seoOnpageBlogHelper.js";
 import { getSeoPageContentMetaService } from "../helper/seo/seoPageContentHelper.js";
 import { findBusinessesByCategory } from "../helper/businessList/businessListHelper.js";
@@ -551,55 +557,19 @@ export async function ssrMiddleware(req, res) {
         ? categoryRoute.canonicalPath
         : req.path || "/";
 
-    const basePublisher = {
-      "@type": "Organization",
-      name: "Massclick",
-      url: "https://massclick.in"
-    };
+    // Reference the canonical Organization node instead of redefining an
+    // anonymous one — see helper/seo/organizationSchema.js.
+    const basePublisher = ORGANIZATION_REF;
 
     const schemaObjects = [];
 
+    // Site-wide identity goes on EVERY page, not just the homepage: category and
+    // location pages carry most of the crawl budget, and the publisher/mainEntity
+    // @id references elsewhere only resolve if the node is present on that page.
+    schemaObjects.push(buildOrganizationSchema(), buildWebsiteSchema());
+
     if (!firstSegment) {
-      schemaObjects.push(
-        {
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          "@id": "https://massclick.in/#organization",
-          name: "Massclick",
-          url: "https://massclick.in",
-          logo: "https://massclick.in/apple-touch-icon.png",
-          foundingDate: "2018",
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: "SLK Complex, 166/9, Rani Mangammal Saalai, Renga Nagar, Krishna Moorthy Nagar, K K Nagar",
-            addressLocality: "Tiruchirappalli",
-            addressRegion: "Tamil Nadu",
-            postalCode: "620021",
-            addressCountry: "IN",
-          },
-          contactPoint: {
-            "@type": "ContactPoint",
-            telephone: "+919789104201",
-            contactType: "Customer Service",
-            email: "support@massclick.in",
-            areaServed: "IN",
-            availableLanguage: ["English", "Tamil"],
-          },
-          sameAs: [
-            "https://www.instagram.com/massclick.in",
-            "https://www.facebook.com/massClicks",
-            "https://www.linkedin.com/company/massclick/",
-            "https://www.youtube.com/@Mass360Business",
-          ],
-        },
-        {
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: "Massclick",
-          url: "https://massclick.in/",
-          publisher: basePublisher
-        }
-      );
+      // Homepage needs nothing beyond the site-wide identity above.
     } else if (isBlogPage) {
       schemaObjects.push({
         "@context": "https://schema.org",
@@ -716,6 +686,7 @@ export async function ssrMiddleware(req, res) {
         name: h1,
         url: canonical,
         description,
+        isPartOf: WEBSITE_REF,
         publisher: basePublisher
       });
     }

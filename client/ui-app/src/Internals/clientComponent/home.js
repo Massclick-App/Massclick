@@ -381,11 +381,8 @@ const LandingPage = React.memo(() => {
     name: fallbackSeo.title,
     description: fallbackSeo.description,
     url: "https://massclick.in/",
-    isPartOf: {
-      "@type": "WebSite",
-      name: "Massclick",
-      url: "https://massclick.in",
-    },
+    // Reference the canonical WebSite node by @id instead of redefining it.
+    isPartOf: { "@id": "https://massclick.in/#website" },
   };
 
   // SSR already injects Organization + WebSite schemas on fresh page loads.

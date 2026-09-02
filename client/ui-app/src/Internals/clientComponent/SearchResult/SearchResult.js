@@ -1206,8 +1206,12 @@ const SearchResults = React.memo(
         },
       }),
     };
-    const websiteSchema = generateWebsiteSchema();
-    const organizationSchema = generateOrganizationSchema();
+    // SSR already injects Organization + WebSite schemas on fresh page loads.
+    // Only emit them from React when SSR didn't run (client-side-only
+    // navigations) — otherwise the page ships two conflicting Organization nodes.
+    const ssrInjectedSchemas = !!window.__SSR_SEO__;
+    const websiteSchema = ssrInjectedSchemas ? null : generateWebsiteSchema();
+    const organizationSchema = ssrInjectedSchemas ? null : generateOrganizationSchema();
     const faqSchema =
       seoContent?.faq && seoContent.faq.length > 0
         ? generateFAQSchema(seoContent.faq)
