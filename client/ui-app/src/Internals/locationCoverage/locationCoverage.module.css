@@ -133,6 +133,47 @@
   color: #b45309;
 }
 
+.location-coverage-export-control {
+  display: inline-flex;
+  min-height: 36px;
+  overflow: hidden;
+  border: 1px solid #f97316;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.location-coverage-export-control select {
+  min-width: 190px;
+  padding: 0 30px 0 11px;
+  border: 0;
+  border-right: 1px solid #fed7aa;
+  outline: 0;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.location-coverage-export-control button {
+  display: inline-flex;
+  min-width: 128px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 0;
+  background: #f97316;
+  color: #fff;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.location-coverage-export-control button:disabled { opacity: .65; cursor: wait; }
+.location-coverage-export-message { margin: -5px 0 0; color: #64748b; font-size: .78rem; }
+
 .location-coverage-filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

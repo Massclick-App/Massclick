@@ -65,8 +65,10 @@ const PublicUserCounter = () => {
 
   const counts = useMemo(() => {
     if (!settings) return null;
+    const total = getVisibleCounterCount(settings, now);
     return {
-      total: getVisibleCounterCount(settings, now),
+      total,
+      today: Math.max(0, total - Number(settings.baseCount || 0)),
     };
   }, [settings, now]);
 
@@ -100,7 +102,7 @@ const PublicUserCounter = () => {
           <div className={cx("public-counter__metric")}>
             <TrendingUpRoundedIcon />
             <div>
-              <strong><DigitalNumber value={`+${formatCounterCount(settings.todayBaseCount)}`} size="small" /></strong>
+              <strong><DigitalNumber value={`+${formatCounterCount(counts.today)}`} size="small" /></strong>
               <span>New Users Today</span>
             </div>
           </div>
