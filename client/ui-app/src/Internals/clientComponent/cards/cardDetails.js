@@ -1185,24 +1185,23 @@ const BusinessDetail = React.memo(() => {
                 {customerImageSrcs.length > 0 && <p className={cx("business-CardDetails-uploadNote")}>
                     Includes {customerImageSrcs.length} photo{customerImageSrcs.length === 1 ? "" : "s"} shared by customers in their reviews.
                   </p>}
-                <div className={cx("business-CardDetails-uploadSection")}>
-                  <input type="file" ref={fileInputRef} multiple accept="image/*" style={{
-                    display: "none"
-                  }} onChange={handleGalleryFileSelection} />
-                  <button type="button" className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")} onClick={openGalleryFileDialog}>
-                    Select Images
-                  </button>
-                  <button type="button" className={cx("business-CardDetails-btn business-CardDetails-btn--primary")} onClick={handleUploadBusinessImages} disabled={newGalleryImages.length === 0 || isUploadingImages}>
-                    {isUploadingImages ? "Uploading..." : "Upload Images"}
-                  </button>
-                </div>
-                {!isBusinessImageUploadAllowed && <p className={cx("business-CardDetails-uploadNote")}>
-                    Upload allowed only if you are the owner of this business.
-                  </p>}
-                {newGalleryImages.length > 0 && <div className={cx("business-CardDetails-uploadPreview")}>
-                    {newGalleryImages.map((src, idx) => <img key={idx} src={src} alt={`Selected upload ${idx + 1}`} className={cx("business-CardDetails-uploadPreviewItem")} />)}
-                  </div>}
-                {uploadError && <p className={cx("business-CardDetails-uploadError")}>{uploadError}</p>}
+                {isBusinessImageUploadAllowed && <>
+                  <div className={cx("business-CardDetails-uploadSection")}>
+                    <input type="file" ref={fileInputRef} multiple accept="image/*" style={{
+                      display: "none"
+                    }} onChange={handleGalleryFileSelection} />
+                    <button type="button" className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")} onClick={openGalleryFileDialog}>
+                      Select Images
+                    </button>
+                    <button type="button" className={cx("business-CardDetails-btn business-CardDetails-btn--primary")} onClick={handleUploadBusinessImages} disabled={newGalleryImages.length === 0 || isUploadingImages}>
+                      {isUploadingImages ? "Uploading..." : "Upload Images"}
+                    </button>
+                  </div>
+                  {newGalleryImages.length > 0 && <div className={cx("business-CardDetails-uploadPreview")}>
+                      {newGalleryImages.map((src, idx) => <img key={idx} src={src} alt={`Selected upload ${idx + 1}`} className={cx("business-CardDetails-uploadPreviewItem")} />)}
+                    </div>}
+                  {uploadError && <p className={cx("business-CardDetails-uploadError")}>{uploadError}</p>}
+                </>}
                 {galleryDisplayImages.length > 0 ? <div className={cx("business-CardDetails-photoGrid")}>
                     {galleryDisplayImages.map((src, index) => <img key={index} src={src || getPlaceholderImage()} alt={`${business.businessName} ${index + 1}`} className={cx("business-CardDetails-photoItem")} onClick={() => {
                     setCurrentSlideIndex(index);
