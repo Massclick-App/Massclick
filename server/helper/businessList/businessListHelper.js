@@ -1243,14 +1243,18 @@ export const updateBusinessList = async (id, data) => {
       ? [...business.businessImagesKey]
       : [];
 
+    // Walk the caller's list, not the stored one, so `retainedBusinessImages`
+    // sets the ORDER as well as the membership - this is what lets the admin
+    // form arrange the gallery. Entries that match nothing stored are dropped,
+    // which is also how a delete is expressed.
     const retainedKeys = retainedBusinessImages
-      ? oldKeys.filter((key) => {
-          const keyUrl = getSignedUrlByKey(key);
-          return (
-            retainedBusinessImages.includes(key) ||
-            retainedBusinessImages.includes(keyUrl)
-          );
-        })
+      ? retainedBusinessImages
+          .map((entry) =>
+            oldKeys.find(
+              (key) => key === entry || getSignedUrlByKey(key) === entry,
+            ),
+          )
+          .filter(Boolean)
       : oldKeys;
 
     const newImages = data.businessImages.filter(
@@ -1267,6 +1271,8 @@ export const updateBusinessList = async (id, data) => {
       }),
     );
 
+    // Set preserves insertion order, so the gallery keeps the arrangement the
+    // caller sent, with anything newly uploaded appended after it.
     business.businessImagesKey = [...new Set([...retainedKeys, ...newKeys])];
     await removeOrphanedGalleryObjects(oldKeys, business.businessImagesKey);
   } else if (data.businessImages === null) {
