@@ -12,6 +12,7 @@ const SECTION_ORDER = [
   { key: "locationWeb", title: "Location & Web", step: 0 },
   { key: "socialMedia", title: "Social Media", step: 0 },
   { key: "bannerDetails", title: "Banner & Details", step: 0 },
+  { key: "galleryImages", title: "Gallery", step: 0 },
   { key: "openingHours", title: "Hours", step: 0 },
   { key: "badgesVisibility", title: "Badges", step: 0 },
   { key: "paymentDetails", title: "Payment", step: 0 },

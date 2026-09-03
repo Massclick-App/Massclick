@@ -2,7 +2,12 @@ import { ObjectId } from "mongodb";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import SearchLogModel from "../../model/businessList/searchLogModel.js";
 import mongoose from "mongoose";
-import { uploadImageToS3, getSignedUrlByKey, getImageDataUrlByKey } from "../../s3Uploder.js";
+import {
+  uploadImageToS3,
+  getSignedUrlByKey,
+  getImageDataUrlByKey,
+  deleteObjectByKey,
+} from "../../s3Uploder.js";
 import { s3Keys } from "../../utils/s3ObjectKeys.js";
 import { assetUrl } from "../../utils/assetUrl.js";
 import { sortBusinessesForDefaultSearch } from "../../utils/businessSearchSort.js";
@@ -1062,6 +1067,25 @@ const getMniLocationQuery = (location = "") => {
   return new RegExp(`^${escapeRegex(normalizedLocation)}$`, "i");
 };
 
+// Gallery photos are the one business asset an admin removes one at a time, so
+// dropped keys are cleaned out of S3 here instead of being left as orphans.
+// Best-effort: a failed delete must not fail the save the user asked for.
+const removeOrphanedGalleryObjects = async (oldKeys, keptKeys) => {
+  const kept = new Set(keptKeys || []);
+  const dropped = (oldKeys || []).filter((key) => key && !kept.has(key));
+  if (dropped.length === 0) return;
+
+  await Promise.all(
+    dropped.map(async (key) => {
+      try {
+        await deleteObjectByKey(key);
+      } catch (error) {
+        console.error("Failed to delete gallery object", key, error);
+      }
+    }),
+  );
+};
+
 export const updateBusinessList = async (id, data) => {
   if (!ObjectId.isValid(id)) throw new Error("Invalid business ID");
 
@@ -1151,10 +1175,30 @@ export const updateBusinessList = async (id, data) => {
   /* ===============================
      3️⃣ HANDLE GALLERY IMAGES
   =============================== */
+  // `retainedBusinessImages` is the caller's full list of gallery images it
+  // wants to KEEP (S3 keys, or the signed URLs it was served). Omit it and the
+  // gallery stays append-only, which is what the owner-side upload flows on web
+  // and mobile rely on; send it and anything missing from it is dropped, which
+  // is how the admin form removes a single photo.
+  const retainedBusinessImages = Array.isArray(data.retainedBusinessImages)
+    ? data.retainedBusinessImages.filter(Boolean)
+    : null;
+  delete data.retainedBusinessImages;
+
   if (Array.isArray(data.businessImages)) {
     const oldKeys = Array.isArray(business.businessImagesKey)
-      ? business.businessImagesKey
+      ? [...business.businessImagesKey]
       : [];
+
+    const retainedKeys = retainedBusinessImages
+      ? oldKeys.filter((key) => {
+          const keyUrl = getSignedUrlByKey(key);
+          return (
+            retainedBusinessImages.includes(key) ||
+            retainedBusinessImages.includes(keyUrl)
+          );
+        })
+      : oldKeys;
 
     const newImages = data.businessImages.filter(
       (img) => typeof img === "string" && img.startsWith("data:image"),
@@ -1170,9 +1214,14 @@ export const updateBusinessList = async (id, data) => {
       }),
     );
 
-    business.businessImagesKey = [...new Set([...oldKeys, ...newKeys])];
+    business.businessImagesKey = [...new Set([...retainedKeys, ...newKeys])];
+    await removeOrphanedGalleryObjects(oldKeys, business.businessImagesKey);
   } else if (data.businessImages === null) {
+    const oldKeys = Array.isArray(business.businessImagesKey)
+      ? [...business.businessImagesKey]
+      : [];
     business.businessImagesKey = [];
+    await removeOrphanedGalleryObjects(oldKeys, []);
   }
 
   delete data.businessImages;

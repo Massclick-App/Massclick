@@ -1532,7 +1532,11 @@ const SearchResults = React.memo(
                                 business.price ||
                                 null
                               }
-                              imageSrc={business.bannerImage || "/header.png"}
+                              imageSrc={
+                                business.bannerImage ||
+                                business.businessImages?.[0] ||
+                                "/header.png"
+                              }
                               logoImage={business.logoImage}
                               to={businessUrl}
                               isVerified={!!business.verification?.isVerified}
@@ -1635,7 +1639,11 @@ const SearchResults = React.memo(
                                     b.filters?.priceRange ||
                                     null
                                   }
-                                  imageSrc={b.bannerImage || "/header.png"}
+                                  imageSrc={
+                                    b.bannerImage ||
+                                    b.businessImages?.[0] ||
+                                    "/header.png"
+                                  }
                                   logoImage={b.logoImage}
                                   to={businessUrl}
                                   isVerified={!!b.verification?.isVerified}

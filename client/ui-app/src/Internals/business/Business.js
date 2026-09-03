@@ -55,7 +55,7 @@ const LISTING_MODE = {
 const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
 const SECTION_TO_STEP = {
   clientBusiness: 0, address: 0, contact: 0, businessInfo: 0, locationWeb: 0,
-  socialMedia: 0, bannerDetails: 0, openingHours: 0, badgesVisibility: 0,
+  socialMedia: 0, bannerDetails: 0, galleryImages: 0, openingHours: 0, badgesVisibility: 0,
   paymentDetails: 0,
   kycDocuments: 1,
   categorySeo: 2, keywordsTags: 2, displaySeo: 2, searchSeo: 2, preview: 2
@@ -68,6 +68,7 @@ const SECTION_ALL_FIELDS = {
   locationWeb: ["googleMap", "geoLatitude", "geoLongitude", "website"],
   socialMedia: ["facebook", "instagram", "youtube", "pinterest", "twitter", "linkedin"],
   bannerDetails: ["bannerImage", "businessDetails"],
+  galleryImages: ["businessImages"],
   paymentDetails: [
     "paymentConcept.baseAmount",
     "paymentConcept.gstAmount",
@@ -94,6 +95,12 @@ const DISPLAY_PLACEHOLDER_FIELDS = [
   "youtube", "pinterest", "twitter", "linkedin", "businessDetails",
 ];
 const FREE_REQUIRED_FIELDS = new Set(["businessName", "category", "location", "contact"]);
+const readFileAsDataUrl = file => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 const BUSINESS_LOCAL_DRAFT_KEY = "massclick.business.createDraft";
 const ORANGE_PRIMARY = '#FF8C00';
 const ORANGE_HOVER = '#D97800';
@@ -442,6 +449,11 @@ const FORM_SECTION_FLOW = {
     {
       key: "bannerDetails",
       title: "Business Banner & Details",
+      body: "Next, add gallery photos so the listing shows more than a single image."
+    },
+    {
+      key: "galleryImages",
+      title: "Gallery Images",
       body: "Then set opening hours so visitors know exactly when the business is available."
     },
     {
@@ -658,6 +670,35 @@ const BusinessList = React.memo(() => {
       kycDocuments: (prev.kycDocuments || []).filter((_, itemIndex) => itemIndex !== index)
     }));
   };
+  // Gallery photos work like the KYC bundle: formData.businessImages holds what
+  // is already stored on the business (signed URLs), galleryFiles holds what was
+  // picked in this session and not uploaded yet. Removing a stored photo only
+  // drops it from formData - the delete reaches S3 on save, when the server sees
+  // it missing from retainedBusinessImages.
+  const [galleryFiles, setGalleryFiles] = useState([]);
+  const handleGalleryUpload = event => {
+    const files = Array.from(event.target.files || []).filter(file => file instanceof File);
+    // Let the same file be picked again after it is removed from the strip.
+    event.target.value = "";
+    setGalleryFiles(prev => [...prev, ...files.map(file => {
+      file.preview = URL.createObjectURL(file);
+      return file;
+    })]);
+  };
+  const handleRemoveGalleryFile = index => {
+    setGalleryFiles(prevFiles => {
+      const updatedFiles = [...prevFiles];
+      URL.revokeObjectURL(updatedFiles[index].preview);
+      updatedFiles.splice(index, 1);
+      return updatedFiles;
+    });
+  };
+  const handleRemoveStoredGalleryImage = index => {
+    setFormData(prev => ({
+      ...prev,
+      businessImages: (prev.businessImages || []).filter((_, itemIndex) => itemIndex !== index)
+    }));
+  };
   const handleSectionChange = (sectionKey) => {
     setActiveSection(sectionKey);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -721,6 +762,7 @@ const BusinessList = React.memo(() => {
       locationWeb: ["geoLongitude", "geoLatitude"],
       socialMedia: [],
       bannerDetails: [],
+      galleryImages: [],
       openingHours: [],
       badgesVisibility: [],
       paymentDetails: []
@@ -746,6 +788,7 @@ const BusinessList = React.memo(() => {
       locationWeb: ["googleMap", "geoLongitude", "geoLatitude"],
       socialMedia: [],
       bannerDetails: ["bannerImage", "businessDetails"],
+      galleryImages: [],
       openingHours: [],
       badgesVisibility: [],
       paymentDetails: []
@@ -950,6 +993,33 @@ const BusinessList = React.memo(() => {
       setIsGalleryUploading(false);
     }
   };
+  const [deletingGalleryImage, setDeletingGalleryImage] = useState("");
+  const handleDeleteGalleryImage = async imageUrl => {
+    if (!galleryDialog.data?._id || deletingGalleryImage || isGalleryUploading) return;
+    const retained = (galleryDialog.data.businessImages || []).filter(img => img !== imageUrl);
+    setDeletingGalleryImage(imageUrl);
+    try {
+      const updatedBusiness = await dispatch(editBusinessSection(
+        galleryDialog.data._id,
+        "gallery-images",
+        { businessImages: [], retainedBusinessImages: retained }
+      ));
+      setGalleryDialog(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          businessImages: Array.isArray(updatedBusiness?.businessImages) ? updatedBusiness.businessImages : []
+        }
+      }));
+      await dispatch(getAllBusinessList());
+      enqueueSnackbar("Gallery image removed.", { variant: "success" });
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || "Could not remove the image. Please try again.";
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setDeletingGalleryImage("");
+    }
+  };
   const defaultOpeningHours = [{
     day: "Monday",
     open: "",
@@ -1064,6 +1134,7 @@ const BusinessList = React.memo(() => {
     linkedin: "",
     businessDetails: "",
     kycDocuments: [],
+    businessImages: [],
     openingHours: defaultOpeningHours.map(hour => ({ ...hour })),
     geoLocation: {
       type: "Point",
@@ -1237,6 +1308,7 @@ const BusinessList = React.memo(() => {
     };
 
     revokePreviewUrls(kycFiles);
+    revokePreviewUrls(galleryFiles);
     setEditMode(false);
     setEditId(null);
     setFormData(nextFormData);
@@ -1244,6 +1316,7 @@ const BusinessList = React.memo(() => {
     setPreview(nextFormData.bannerImage || null);
     setLogoPreview(nextFormData.logoImage || null);
     setKycFiles([]);
+    setGalleryFiles([]);
     setFieldErrors({});
     setForceBypassedFields([]);
     setListingMode(LISTING_MODE.FREE);
@@ -1373,6 +1446,7 @@ const BusinessList = React.memo(() => {
     delete serializableFormData.bannerImage;
     delete serializableFormData.logoImage;
     delete serializableFormData.kycDocuments;
+    delete serializableFormData.businessImages;
     return {
       savedAt: new Date().toISOString(),
       activeStep,
@@ -2432,6 +2506,8 @@ const BusinessList = React.memo(() => {
     setPostCreateBusinessName(row.businessName || "");
     setStepValidationTriggered({});
     setListingMode(isBusinessPaid(row) ? LISTING_MODE.PAID : LISTING_MODE.FREE);
+    revokePreviewUrls(galleryFiles);
+    setGalleryFiles([]);
     setFormData({
       clientId: row.clientId || "",
       businessName: row.businessName || "",
@@ -2469,6 +2545,7 @@ const BusinessList = React.memo(() => {
       premiumBusiness: Boolean(row.premiumBusiness),
       openingHours: row.openingHours?.length ? row.openingHours : defaultOpeningHours,
       kycDocuments: row.kycDocuments || [],
+      businessImages: Array.isArray(row.businessImages) ? row.businessImages : [],
       geoLocation: {
         type: "Point",
         coordinates: Array.isArray(row.geoLocation?.coordinates) ? row.geoLocation.coordinates.map(value => value ?? "") : ["", ""]
@@ -2660,6 +2737,7 @@ const BusinessList = React.memo(() => {
     locationWeb: 'location-web',
     socialMedia: 'social-media',
     bannerDetails: 'banner-details',
+    galleryImages: 'gallery-images',
     openingHours: 'opening-hours',
     kycDocuments: 'kyc-documents',
     categorySeo: 'category-seo',
@@ -2675,6 +2753,7 @@ const BusinessList = React.memo(() => {
     'location-web': ['googleMap', 'geoLatitude', 'geoLongitude', 'website', 'geoLocation'],
     'social-media': ['facebook', 'instagram', 'youtube', 'pinterest', 'twitter', 'linkedin'],
     'banner-details': ['bannerImage', 'logoImage', 'businessDetails'],
+    'gallery-images': ['businessImages'],
     'opening-hours': ['openingHours'],
     'category-seo': ['category', 'keywords'],
     'display-seo': ['title', 'description', 'seoTitle', 'seoDescription', 'filters'],
@@ -2774,6 +2853,13 @@ const BusinessList = React.memo(() => {
         sectionData.retainedKycDocuments = Array.isArray(formData.kycDocuments) ? formData.kycDocuments : [];
       }
 
+      if (sectionKey === 'galleryImages') {
+        sectionData.businessImages = await Promise.all(galleryFiles.map(readFileAsDataUrl));
+        // Photos the admin removed are simply absent from this list, which is
+        // the server's signal to drop them from the gallery and from S3.
+        sectionData.retainedBusinessImages = Array.isArray(formData.businessImages) ? formData.businessImages : [];
+      }
+
       if (Object.keys(sectionData).length === 0) {
         setSectionSavingState(prev => ({ ...prev, [sectionKey]: false }));
         return;
@@ -2786,6 +2872,16 @@ const BusinessList = React.memo(() => {
         setFormData(prev => ({
           ...prev,
           kycDocuments: Array.isArray(updatedBusiness?.kycDocuments) ? updatedBusiness.kycDocuments : prev.kycDocuments,
+        }));
+      }
+      if (sectionKey === 'galleryImages') {
+        revokePreviewUrls(galleryFiles);
+        setGalleryFiles([]);
+        // An emptied gallery comes back without the key at all, so fall back to
+        // [] rather than to the pre-save list.
+        setFormData(prev => ({
+          ...prev,
+          businessImages: Array.isArray(updatedBusiness?.businessImages) ? updatedBusiness.businessImages : [],
         }));
       }
       enqueueSnackbar(`${sectionKey} saved successfully!`, {
@@ -2969,6 +3065,7 @@ const BusinessList = React.memo(() => {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     })));
+    const galleryBase64 = await Promise.all(galleryFiles.map(readFileAsDataUrl));
     const longitudeRaw = cleanedFormData.geoLocation?.coordinates?.[0];
     const latitudeRaw = cleanedFormData.geoLocation?.coordinates?.[1];
     const longitude = Number.isFinite(Number(longitudeRaw)) ? Number(longitudeRaw) : 0;
@@ -2989,6 +3086,10 @@ const BusinessList = React.memo(() => {
       kycDocuments: kycBase64,
       retainedKycDocuments: editMode && Array.isArray(cleanedFormData.kycDocuments)
         ? cleanedFormData.kycDocuments
+        : undefined,
+      businessImages: galleryBase64,
+      retainedBusinessImages: editMode && Array.isArray(cleanedFormData.businessImages)
+        ? cleanedFormData.businessImages
         : undefined,
       geoLocation: {
         type: "Point",
@@ -4010,6 +4111,10 @@ const BusinessList = React.memo(() => {
             handleImageChange={handleImageChange}
             handleLogoSelect={handleLogoSelect}
             handleLogoClear={handleLogoClear}
+            galleryFiles={galleryFiles}
+            handleGalleryUpload={handleGalleryUpload}
+            handleRemoveGalleryFile={handleRemoveGalleryFile}
+            handleRemoveStoredGalleryImage={handleRemoveStoredGalleryImage}
             handleBusinessChange={handleBusinessChange}
             handleOpeningHourChange={handleOpeningHourChange}
             formDataBusinessDetails={businessvalue}
@@ -4219,6 +4324,11 @@ const BusinessList = React.memo(() => {
     if (key === "kycDocuments") {
       const existingKycCount = Array.isArray(formData.kycDocuments) ? formData.kycDocuments.length : 0;
       sectionStatus[key] = { done: kycFiles.length + existingKycCount > 0 ? 1 : 0, total: 1 };
+      return;
+    }
+    if (key === "galleryImages") {
+      const storedGalleryCount = Array.isArray(formData.businessImages) ? formData.businessImages.length : 0;
+      sectionStatus[key] = { done: galleryFiles.length + storedGalleryCount > 0 ? 1 : 0, total: 1 };
       return;
     }
     if (key === "openingHours") {
@@ -5535,10 +5645,30 @@ const BusinessList = React.memo(() => {
           gap: "12px",
           flexWrap: "wrap"
         }}>
-          {galleryDialog.data?.businessImages?.map((img, idx) => <Avatar key={idx} src={img} sx={{
-            width: 100,
-            height: 100
-          }} />)}
+          {galleryDialog.data?.businessImages?.map((img, idx) => <div key={idx} style={{ position: "relative" }}>
+            <Avatar src={img} sx={{
+              width: 100,
+              height: 100
+            }} />
+            <IconButton
+              size="small"
+              aria-label={`Remove gallery image ${idx + 1}`}
+              onClick={() => handleDeleteGalleryImage(img)}
+              disabled={Boolean(deletingGalleryImage) || isGalleryUploading}
+              sx={{
+                position: "absolute",
+                top: -6,
+                right: -6,
+                backgroundColor: "#fff",
+                boxShadow: "0 1px 4px rgba(15, 23, 42, 0.25)",
+                "&:hover": { backgroundColor: "#fee2e2" }
+              }}
+            >
+              {deletingGalleryImage === img
+                ? <CircularProgress size={14} />
+                : <CloseRoundedIcon sx={{ fontSize: 16, color: "#b91c1c" }} />}
+            </IconButton>
+          </div>)}
           {newGalleryImages.map((img, idx) => <Avatar key={idx} src={img} sx={{
             width: 100,
             height: 100,

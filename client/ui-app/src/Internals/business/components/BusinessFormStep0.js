@@ -1,6 +1,8 @@
 import React from "react";
 import { Button, Avatar, Autocomplete, TextField } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import IconButton from "@mui/material/IconButton";
 import { useSelector } from "react-redux";
 import { createScopedClassNames } from "../../../utils/createScopedClassNames";
 import GooglePlacesInput from "../../../components/GooglePlacesInput/GooglePlacesInput";
@@ -37,6 +39,10 @@ const BusinessFormStep0 = ({
   handleImageChange,
   handleLogoSelect,
   handleLogoClear,
+  galleryFiles = [],
+  handleGalleryUpload,
+  handleRemoveGalleryFile,
+  handleRemoveStoredGalleryImage,
   handleBusinessChange,
   handleOpeningHourChange,
   formDataBusinessDetails,
@@ -164,6 +170,7 @@ const BusinessFormStep0 = ({
     { key: "locationWeb", title: "Location & Web Presence", subtitle: "Map and website links" },
     { key: "socialMedia", title: "Social Media", subtitle: "Connect your social profiles" },
     { key: "bannerDetails", title: "Business Banner & Details", subtitle: "Upload banner image and describe your business" },
+    { key: "galleryImages", title: "Gallery Images", subtitle: "Shop photos shown on the business detail page" },
     { key: "openingHours", title: "Opening Hours", subtitle: "Set business hours for each day" },
     { key: "badgesVisibility", title: "Badges & Visibility", subtitle: "Control how this listing is highlighted" },
     { key: "paymentDetails", title: "Payment Details", subtitle: "Track total, advance paid, and pending amount" },
@@ -668,6 +675,104 @@ const BusinessFormStep0 = ({
     </>
   );
 
+  const storedGalleryImages = Array.isArray(formData.businessImages) ? formData.businessImages : [];
+  const galleryImageCount = storedGalleryImages.length + galleryFiles.length;
+
+  // One tile renderer for both halves of the gallery: photos already on the
+  // business and photos staged in this session. Staged ones are outlined so it
+  // is obvious which will only exist after the section is saved.
+  const renderGalleryTile = ({ key, src, alt, isNew, onRemove }) => (
+    <div
+      key={key}
+      style={{
+        position: "relative",
+        width: "108px",
+        height: "108px",
+        borderRadius: "10px",
+        overflow: "hidden",
+        border: isNew ? "2px dashed #16a34a" : "1px solid #e5e7eb",
+        background: "#f8fafc",
+      }}
+    >
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      />
+      <IconButton
+        size="small"
+        aria-label={`Remove ${alt}`}
+        onClick={onRemove}
+        sx={{
+          position: "absolute",
+          top: 4,
+          right: 4,
+          padding: "2px",
+          backgroundColor: "rgba(255, 255, 255, 0.92)",
+          "&:hover": { backgroundColor: "#fee2e2" },
+        }}
+      >
+        <CloseRoundedIcon sx={{ fontSize: 16, color: "#b91c1c" }} />
+      </IconButton>
+    </div>
+  );
+
+  const renderGalleryImages = () => (
+    <>
+      {renderSectionIntro(
+        "Shop gallery",
+        "These photos appear in the gallery on the business detail page, on the website and in the app. The banner stays first; everything here follows it.",
+        `${galleryImageCount} photo${galleryImageCount === 1 ? "" : "s"}`
+      )}
+
+      <div className={cx("section-grid")}>
+        <div className={fieldClass("field-span-full", "upload-section")}>
+          <div className={cx("upload-panel")}>
+            <div>
+              <label className="form-input-label">Gallery Images</label>
+              <p className={cx("upload-panel-copy")}>Pick several at once. Removing a saved photo deletes it from the listing when you save this section.</p>
+            </div>
+            <div className={cx("upload-content")}>
+              <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
+                Upload Images
+                <input type="file" accept="image/*" multiple hidden onChange={handleGalleryUpload} />
+              </Button>
+            </div>
+          </div>
+          {renderFieldError("businessImages")}
+        </div>
+
+        <div className={fieldClass("field-span-full")}>
+          {galleryImageCount === 0 ? (
+            <p className={cx("upload-panel-copy")}>No gallery photos yet. The detail page will fall back to the banner image on its own.</p>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+              {storedGalleryImages.map((src, index) =>
+                renderGalleryTile({
+                  key: `stored-${src}-${index}`,
+                  src,
+                  alt: `gallery photo ${index + 1}`,
+                  isNew: false,
+                  onRemove: () => handleRemoveStoredGalleryImage?.(index),
+                })
+              )}
+              {galleryFiles.map((file, index) =>
+                renderGalleryTile({
+                  key: `new-${file.name}-${index}`,
+                  src: file.preview,
+                  alt: file.name || `new gallery photo ${index + 1}`,
+                  isNew: true,
+                  onRemove: () => handleRemoveGalleryFile?.(index),
+                })
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   const renderOpeningHours = () => (
     <>
       {renderSectionIntro(
@@ -1052,6 +1157,7 @@ const BusinessFormStep0 = ({
     locationWeb: renderLocationWeb,
     socialMedia: renderSocialMedia,
     bannerDetails: renderBannerDetails,
+    galleryImages: renderGalleryImages,
     openingHours: renderOpeningHours,
     badgesVisibility: renderBadgesVisibility,
     paymentDetails: renderPaymentDetails,
