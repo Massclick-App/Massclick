@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import RouteLoadingFallback from './components/RouteLoadingFallback';
+import RouteLoadingFallback from 'shared/components/RouteLoadingFallback.js';
 
 jest.mock(
   'react-router-dom',

@@ -1,0 +1,272 @@
+import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { viewOtpUser } from "state/actions/otpAction.js";
+import { useDrawer } from "features/public/drawer/drawerContext.js";
+import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
+import { Notifications as NotificationsIcon, Mail as MailIcon, Menu as MenuIcon, AccountCircle as AccountCircleIcon } from "@mui/icons-material";
+import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
+import LoginIcon from '@mui/icons-material/Login';
+import DynamicFeedIcon from "@mui/icons-material/DynamicFeed";
+import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
+import RedeemRoundedIcon from "@mui/icons-material/RedeemRounded";
+import { getDisplayableLeadNotifications } from "features/public/leads-notification/leadNotificationUtils.js";
+import { fetchMatchedLeads } from "state/actions/leadsAction.js";
+import styles from "features/public/categoryBar.module.css";
+
+const AddBusinessModal = lazy(() => import("features/public/auth/AddBusinessModal.js"));
+const LeadsNotificationModal = lazy(() => import("features/public/leads-notification/leadsNotification.js"));
+const QuickLinksMenu = lazy(() =>
+  import(
+    /* webpackChunkName: "quick-links-menu" */ "features/public/quick-links-menu/QuickLinksMenu.js"
+  )
+);
+const cx = createScopedClassNames(styles);
+
+const categories = [{
+  name: "Claim Points",
+  icon: <RedeemRoundedIcon />
+}, {
+  name: "Leads",
+  icon: <MailIcon />
+},
+// { name: "MNI", icon: <CorporateFareIcon /> },
+{
+  name: "Publicize",
+  icon: <PublishedWithChangesIcon />
+}, {
+  name: "Business Enquiry",
+  icon: <AppRegistrationIcon />
+}, {
+  name: "Spotlight",
+  icon: <DynamicFeedIcon />
+}, {
+  name: "We're Hiring",
+  icon: <WorkOutlineRoundedIcon />
+}];
+
+const readStoredAuthUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("authUser") || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+
+const CategoryBar = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const {
+    openDrawer
+  } = useDrawer();
+  const quickLinksButtonRef = useRef(null);
+  const [isQuickLinksOpen, setIsQuickLinksOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("authToken"));
+  const [storedAuthUser, setStoredAuthUser] = useState(readStoredAuthUser);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const otpState = useSelector(state => state.otp) || {};
+  const {
+    viewResponse
+  } = otpState;
+  const authUser = useSelector(state => state.otp?.viewResponse);
+  // The saved customer session is the active identity. Redux can still contain
+  // the profile fetched for a user who has since logged out.
+  const userData = useMemo(() => (
+    Object.keys(storedAuthUser).length > 0
+      ? storedAuthUser
+      : (viewResponse && Object.keys(viewResponse).length > 0)
+        ? viewResponse
+        : authUser || {}
+  ), [authUser, storedAuthUser, viewResponse]);
+  const userName = userData?.userName || userData?.name || '';
+  const profileImageUrl = userData?.userProfile || userData?.profileImage || userData?.avatar || "";
+  const {
+    leads: leadsData
+  } = useSelector(state => state.leads);
+  const notificationLeads = useMemo(
+    () => getDisplayableLeadNotifications(leadsData, userData),
+    [leadsData, userData]
+  );
+  useEffect(() => {
+    const mobile = localStorage.getItem("mobileNumber");
+    const token = localStorage.getItem("authToken");
+    if (mobile && token) {
+      dispatch(viewOtpUser(mobile));
+      dispatch(fetchMatchedLeads());
+    }
+  }, [dispatch, isLoggedIn, storedAuthUser?.mobileNumber1]);
+  const syncCustomerSession = () => {
+    const token = localStorage.getItem("authToken");
+    setIsLoggedIn(!!token);
+    setStoredAuthUser(readStoredAuthUser());
+  };
+  
+  useEffect(() => {
+    syncCustomerSession();
+    window.addEventListener("storage", syncCustomerSession);
+    window.addEventListener("authChange", syncCustomerSession);
+    return () => {
+      window.removeEventListener("storage", syncCustomerSession);
+      window.removeEventListener("authChange", syncCustomerSession);
+    };
+  }, []);
+
+  const handleCategoryClick = name => {
+    setIsQuickLinksOpen(false);
+    if (name === "Claim Points") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/claim-rewards");
+    } else if (name === "Leads") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/leads");
+    } else if (name === "Publicize") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/publicize");
+    } else if (name === "MNI") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/mni");
+    } else if (name === "Business Enquiry") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/business-enquiry");
+    } else if (name === "Spotlight") {
+      if (!localStorage.getItem("authUser")) {
+        setIsModalOpen(true);
+        return;
+      }
+      navigate("/user_feed");
+    } else if (name === "We're Hiring") {
+      navigate("/careers");
+    }
+  };
+  
+  const goHome = () => navigate("/");
+  return <header className={cx("categoryBarContainer")} data-main-nav="true">
+    <div className={cx("categoryBarContent")}>
+
+      <div className={cx("logoGroup")}>
+        <div className={cx("logoWrapper")}>
+          <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
+            <img src="/header.png" alt="Massclick Logo" className={cx("logoImage")} width="44" height="44" decoding="async" />
+          </button>
+        </div>
+        <div className={cx("brandingText")}>
+          <button type="button" className={cx("logoButton")} onClick={goHome} aria-label="Go to Massclick home">
+            <img src="/Massclick-India01.svg" alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" fetchpriority="high" loading="eager" />
+          </button>
+        </div>
+      </div>
+
+      <nav className={cx("desktopNav")}>
+        <div className={cx("categoryButtons")}>
+          {categories.map((category, index) => <button key={index} className={cx("categoryButton")} onClick={() => handleCategoryClick(category.name)}>
+            {category.icon}
+            <span>{category.name}</span>
+          </button>)}
+        </div>
+      </nav>
+
+      <div className={cx("actionButtons")}>
+
+        <div className={cx("mobileMenuGroup")}>
+          <button
+            ref={quickLinksButtonRef}
+            type="button"
+            className={cx("mobileMenuButton")}
+            onClick={() => setIsQuickLinksOpen((open) => !open)}
+            aria-label="Open quick links menu"
+            aria-expanded={isQuickLinksOpen}
+            aria-controls={isQuickLinksOpen ? "quick-links-menu" : undefined}
+          >
+            <MenuIcon />
+          </button>
+          {isQuickLinksOpen && (
+            <Suspense fallback={null}>
+              <QuickLinksMenu
+                items={categories}
+                onClose={() => setIsQuickLinksOpen(false)}
+                onSelect={handleCategoryClick}
+                triggerRef={quickLinksButtonRef}
+              />
+            </Suspense>
+          )}
+        </div>
+
+        {!isLoggedIn ? <button type="button" className={cx("authButton loginButton")} aria-label="Login or sign up" onClick={() => setIsModalOpen(true)}>
+          <LoginIcon />
+          <span className={cx("loginText")}>Login / Sign Up</span>
+        </button> : <>
+          <button type="button" onClick={openDrawer} className={cx("iconButtonPrimary")} aria-label="Open user menu">
+            <span className={cx("userAvatar")} aria-hidden="true">
+              {profileImageUrl ? (
+                <img
+                  className={cx("userAvatarImage")}
+                  src={profileImageUrl}
+                  alt=""
+                  width="34"
+                  height="34"
+                />
+              ) : userName ? (
+                userName[0].toUpperCase()
+              ) : (
+                <AccountCircleIcon />
+              )}
+            </span>
+          </button>
+
+          <button type="button" className={cx("iconButtonPrimary")} onClick={() => setIsNotificationModalOpen(true)} aria-label="Open notifications">
+            <span className={cx("notificationIcon")} aria-hidden="true">
+              <NotificationsIcon />
+              {notificationLeads.length > 0 && (
+                <span className={cx("notificationBadge")}>{notificationLeads.length > 99 ? "99+" : notificationLeads.length}</span>
+              )}
+            </span>
+          </button>
+        </>}
+      </div>
+    </div>
+
+    {isModalOpen && (
+      <Suspense fallback={null}>
+        <AddBusinessModal open={true} handleClose={() => setIsModalOpen(false)} />
+      </Suspense>
+    )}
+
+    {isNotificationModalOpen && (
+      <Suspense fallback={null}>
+        <LeadsNotificationModal open={true} onClose={() => setIsNotificationModalOpen(false)} />
+      </Suspense>
+    )}
+  </header>;
+};
+
+export default CategoryBar;
+export const categoryBarHelpers = {
+  checkLogin: () => {
+    const token = localStorage.getItem("authToken");
+    return !!token;
+  },
+  handleLogout: navigate => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("mobileNumber");
+    window.dispatchEvent(new Event("authChange"));
+    navigate("/");
+  }
+};
+

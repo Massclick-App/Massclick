@@ -1,0 +1,110 @@
+import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
+import React, { useMemo, useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getAdvertisementByCategory } from "state/actions/advertisementAction.js";
+import styles from "features/public/banners/top-banner/TopBanner.module.css";
+import defaultBanner from "assets/new_banner.webp";
+import { assetUrl } from "shared/utils/imageUrlHelper.js";
+const cx = createScopedClassNames(styles);
+const SLIDE_INTERVAL = 2000;
+const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
+const parseDate = date => {
+  if (!date) return null;
+  if (typeof date === "string") {
+    return new Date(date);
+  }
+  if (typeof date === "object" && date.$date) {
+    return new Date(date.$date);
+  }
+  return null;
+};
+const normalizeCategory = (value = "") => value.toString().trim().toLowerCase().replace(/[^a-z]/g, "");
+const isCommonTopBanner = value => value === COMMON_TOP_BANNER_CATEGORY || normalizeCategory(value) === "allcategories";
+const DEFAULT_BANNER = {
+  _id: "default-banner",
+  title: "Default Banner",
+  redirectUrl: null,
+  image: defaultBanner,
+  isDefault: true
+};
+const TopBannerAds = ({
+  category
+}) => {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    if (category) {
+      dispatch(getAdvertisementByCategory(category));
+    }
+  }, [dispatch, category]);
+  const {
+    categoryAdvertisements = []
+  } = useSelector(state => state.advertisement || {});
+  const bannerAds = useMemo(() => {
+    if (!category) {
+      return [DEFAULT_BANNER];
+    }
+    const nowTime = Date.now();
+    const apiBanners = categoryAdvertisements.filter(ad => {
+      const start = parseDate(ad.startTime);
+      const end = parseDate(ad.endTime);
+      if (!start || !end) return false;
+      if (nowTime < start.getTime() || nowTime > end.getTime()) {
+        return false;
+      }
+      const imageKey = ad.bannerImageKey;
+      return ad.isActive && !ad.isDeleted && ad.position === "TOP_BANNER" && (normalizeCategory(ad.category) === normalizeCategory(category) || isCommonTopBanner(ad.category)) && imageKey;
+    }).map(ad => {
+      const baseUrl = assetUrl(ad.bannerImageKey);
+      const mobileBaseUrl = ad.mobileBannerImageKey ? assetUrl(ad.mobileBannerImageKey) : null;
+      return {
+        ...ad,
+        image: ad.bannerImage || baseUrl,
+        mobileImage: ad.mobileBannerImage || mobileBaseUrl
+      };
+    });
+    return apiBanners.length > 0 ? apiBanners : [DEFAULT_BANNER];
+  }, [categoryAdvertisements, category]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const hasPaidBanner = bannerAds.some(ad => !ad.isDefault && !isCommonTopBanner(ad.category));
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [category, bannerAds.length]);
+  useEffect(() => {
+    if (bannerAds.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex(prev => {
+        if (prev === bannerAds.length - 1) {
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, SLIDE_INTERVAL);
+    return () => clearInterval(timer);
+  }, [bannerAds.length]);
+  return <div className={cx("top-banner-carousel")}>
+      {hasPaidBanner && <div className={cx("sponsored-label")}>Sponsored</div>}
+
+      <div className={cx("carousel-track")} style={{
+      transform: `translateX(-${currentIndex * 100}%)`,
+      transition: "transform 0.5s ease-in-out"
+    }}>
+
+        {bannerAds.map((ad, index) => <a key={ad._id} href={ad.redirectUrl || "#"} target={ad.redirectUrl ? "_blank" : "_self"} rel="noopener noreferrer" className={cx("carousel-slide")}>
+            <div className={cx("banner-image-wrapper")}>
+              <picture>
+                {ad.mobileImage && <source media="(max-width: 768px)" srcSet={ad.mobileImage} />}
+                <img src={ad.image} alt={ad.title || "Top banner"} width="1720" height="168" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "low"} decoding="async" />
+              </picture>
+
+            </div>
+
+          </a>)}
+
+      </div>
+      {bannerAds.length > 1 && <div className={cx("carousel-dots")} aria-hidden="true">
+          {bannerAds.map((ad, index) => <span key={`${ad._id}-dot`} className={cx("carousel-dot", index === currentIndex && "active")} />)}
+        </div>}
+
+    </div>;
+};
+export default TopBannerAds;

@@ -1,154 +1,147 @@
-import React, { useState, useEffect, lazy, Suspense, memo } from 'react';
+import React, { useState, useEffect, Suspense, memo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { relogin } from './redux/actions/authAction.js';
-import { clientLogin } from './redux/actions/clientAuthAction.js';
-import { fetchMatchedLeads } from './redux/actions/leadsAction.js';
-import { setMaintenanceModeOn, setMaintenanceModeOff } from './redux/reducers/maintenanceReducer.js';
+import { relogin } from 'state/actions/authAction.js';
+import { clientLogin } from 'state/actions/clientAuthAction.js';
+import { fetchMatchedLeads } from 'state/actions/leadsAction.js';
+import { setMaintenanceModeOn, setMaintenanceModeOff } from 'state/reducers/maintenanceReducer.js';
 import {
   clearAdminSession,
   getAuthSnapshot,
   subscribeAuthState,
-} from './auth/authStore.js';
+} from 'app/auth/authStore.js';
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import {
   SnackbarProvider,
   useSnackbar,
-} from './components/snackbar/SnackbarProvider.js';
+} from 'shared/components/snackbar/SnackbarProvider.js';
 
-import theme from './Internals/clientComponent/theme.js';
-import PrivateRoute from './PrivateRoute';
-import PermissionRoute from './PermissionRoute';
-import ScrollToTop from './scrollTop.js';
-import RouteChangeTracker from './RouteChangeTracker.js';
-import { isBusinessPeopleUser } from './utils/userUtils.js';
+import {
+  AdminPages,
+  AppShellSurfaces,
+  FooterPages,
+  FOOTER_ROUTES,
+  PublicPages,
+  UserPages,
+} from 'app/routes/lazyRouteComponents.js';
+import theme from 'shared/theme/publicTheme.js';
+import PrivateRoute from 'app/routes/PrivateRoute.js';
+import PermissionRoute from 'app/routes/PermissionRoute.js';
+import ScrollToTop from 'app/routes/ScrollToTop.js';
+import RouteChangeTracker from 'app/routes/RouteChangeTracker.js';
+import { isBusinessPeopleUser } from 'shared/utils/userUtils.js';
 
-import GlobalLoaderWrapper from './Internals/clientComponent/common/GlobalLoaderWrapper.js';
-import RouteLoadingFallback from './components/RouteLoadingFallback.js';
-import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
-import { useDrawer } from './Internals/clientComponent/Drawer/drawerContext.js';
+import GlobalLoaderWrapper from 'features/public/common/GlobalLoaderWrapper.js';
+import RouteLoadingFallback from 'shared/components/RouteLoadingFallback.js';
+import { scheduleIdleCallback } from 'shared/utils/scheduleIdleCallback.js';
+import { useDrawer } from 'features/public/drawer/drawerContext.js';
 
-const Dashboard = lazy(() => import(/* webpackChunkName: "admin-dashboard" */ './Dashboard'));
-const Login = lazy(() => import(/* webpackChunkName: "admin-login" */ './Internals/Login/login.js'));
-const User = lazy(() => import(/* webpackChunkName: "admin-users" */ './Internals/user/Users.js'));
-const Clients = lazy(() => import(/* webpackChunkName: "admin-clients" */ './Internals/clients/Client.js'));
-const Business = lazy(() => import(/* webpackChunkName: "admin-business" */ './Internals/business/Business.js'));
-const Category = lazy(() => import(/* webpackChunkName: "admin-category" */ './Internals/categories/Category.js'));
-const Roles = lazy(() => import(/* webpackChunkName: "admin-roles" */ './Internals/Roles/Roles.js'));
-const Location = lazy(() => import(/* webpackChunkName: "admin-location" */ './Internals/location/Location.js'));
-const MasterLocation = lazy(() => import(/* webpackChunkName: "admin-master-location" */ './Internals/location/MasterLocation.js'));
-const LocationCoverage = lazy(() => import(/* webpackChunkName: "admin-location-coverage" */ './Internals/locationCoverage/LocationCoverage.js'));
-const TermsAndConditionsDatas = lazy(() => import(/* webpackChunkName: "admin-terms" */ './Internals/footersContents/termsAndConditions/termsAndConditions.js'));
-const LegalDocuments = lazy(() => import(/* webpackChunkName: "admin-legal-documents" */ './Internals/legalDocuments/legalDocuments.js'));
-const MainGrid = lazy(() => import(/* webpackChunkName: "admin-maingrid" */ './components/MainGrid.js'));
+const {
+  Dashboard,
+  Login,
+  User,
+  Clients,
+  Business,
+  Category,
+  Roles,
+  Location,
+  MasterLocation,
+  LocationCoverage,
+  TermsAndConditionsDatas,
+  LegalDocuments,
+  MainGrid,
+  EnquiryPage,
+  SearchRequestsAdmin,
+  RewardAdmin,
+  RewardsConceptPage,
+  RewardClaimsAdmin,
+  AdminCustomerCareChat,
+  AdvertisementPage,
+  EventCategory,
+  EventLocation,
+  EventAdvertisement,
+  EventCreation,
+  MassclickEvent,
+  SeoData,
+  SeoPageContent,
+  SeoPageContentBlogs,
+  SeoTemplate,
+  AuthorMaster,
+  AdminDataAnalytics,
+  UnifiedAnalytics,
+  SiteAnalytics,
+  AppAnalytics,
+  BusinessPersonReport,
+  MRPDatas,
+  FCMMarketing,
+  SystemSettings,
+  CategoryDisplaySettings,
+  GmapsLeads,
+  BusinessDuplicates,
+  Msg91Analytics,
+  AuthControl,
+  PublicUserCounterAdmin,
+  HiringAdmin,
+  GscAnalytics,
+  Ga4Analytics,
+  Quotation,
+  MassclickDocuments,
+  MassclickFeedAdmin,
+} = AdminPages;
 
-const BusinessListing = lazy(() => import(/* webpackChunkName: "home" */ './Internals/clientComponent/home.js'));
-const BusinessDetails = lazy(() => import(/* webpackChunkName: "business-detail" */ './Internals/clientComponent/cards/cardDetails.js'));
-const EventCarousel = lazy(() => import(/* webpackChunkName: "events" */ './Internals/clientComponent/events/eventCarousel/eventCarousel.js'));
-const EventDetails = lazy(() => import(/* webpackChunkName: "event-detail" */ './Internals/clientComponent/events/eventDetails/eventDetails.js'));
+const {
+  BusinessListing,
+  BusinessDetails,
+  EventCarousel,
+  EventDetails,
+  WriteReviewPage,
+  PaymentStatus,
+  LeadsPage,
+  PublicizePage,
+  FreeListingPage,
+  LeadsCardHistory,
+  BusinessEnquiry,
+  AuthorProfile,
+  RewardClaimPage,
+  MassclickEventDetails,
+  DistrictRouteResolver,
+  CategoriesPage,
+  BlogDetail,
+  Profile,
+} = PublicPages;
 
-const AboutUsPage = lazy(() => import(/* webpackChunkName: "footer-aboutus" */ './Internals/clientComponent/footer/aboutUs/aboutUsPage.js'));
-const Testimonials = lazy(() => import(/* webpackChunkName: "footer-testimonials" */ './Internals/clientComponent/footer/testimonials/testimonials.js'));
-const FeedbackComponent = lazy(() => import(/* webpackChunkName: "footer-feedback" */ './Internals/clientComponent/footer/feedback/feedback.js'));
-const CustomerCareComponent = lazy(() => import(/* webpackChunkName: "footer-care" */ './Internals/clientComponent/footer/customerCare/customerCare.js'));
-const Portfolio = lazy(() => import(/* webpackChunkName: "footer-portfolio" */ './Internals/clientComponent/footer/portfolio/portfolio.js'));
-const TermsAndConditions = lazy(() => import(/* webpackChunkName: "footer-terms" */ './Internals/clientComponent/footer/termsAndConditions/termsAndCondition.js'));
-const PrivacyPolicy = lazy(() => import(/* webpackChunkName: "footer-privacy" */ './Internals/clientComponent/footer/privacyPolicy/privacyPolicy.js'));
-const RefundPolicy = lazy(() => import(/* webpackChunkName: "footer-refund" */ './Internals/clientComponent/footer/refund/refundPolicy.js'));
-const EnquiryNow = lazy(() => import(/* webpackChunkName: "footer-enquiry" */ './Internals/clientComponent/footer/enquiry/enquiry.js'));
-const WebDevSection = lazy(() => import(/* webpackChunkName: "footer-webdev" */ './Internals/clientComponent/footer/webDev/webDevSection.js'));
-const DigitalMarketing = lazy(() => import(/* webpackChunkName: "footer-digital" */ './Internals/clientComponent/footer/digitalMarketing/digitalMarketing.js'));
-const GraphicDesign = lazy(() => import(/* webpackChunkName: "footer-graphic" */ './Internals/clientComponent/footer/graphicDesign/graphicDesign.js'));
-const Seo = lazy(() => import(/* webpackChunkName: "footer-seo" */ './Internals/clientComponent/footer/seo/seo.js'));
-const DeleteAccount = lazy(() => import(/* webpackChunkName: "footer-delete" */ './Internals/clientComponent/footer/deleteAccount/deleteAccount.js'));
-const KnowledgeBasePage = lazy(() => import(/* webpackChunkName: "knowledge-base" */ "./Internals/clientComponent/footer/knowledgeBase/knowledgeBase.js"));
-const CareersPage = lazy(() => import(/* webpackChunkName: "footer-careers" */ "./Internals/clientComponent/footer/careers/CareersPage.js"));
-const JobResultsPage = lazy(() => import(/* webpackChunkName: "careers-jobs" */ "./Internals/clientComponent/footer/careers/JobResultsPage.js"));
-const JobApplicationPage = lazy(() => import(/* webpackChunkName: "careers-apply" */ "./Internals/clientComponent/footer/careers/JobApplicationPage.js"));
+const {
+  UserDashboardPage,
+  UserEditProfilePage,
+  UserMRPPage,
+  UserMarketingMaterialsPage,
+  UserFavoritesPage,
+  UserCustomerServicePage,
+  UserPolicyPage,
+  UserFeedbackPage,
+  UserHelpPage,
+  UserMassclickDocumentsPage,
+  UserMassclickFeedPage,
+  SpotlightWorkspacePage,
+  SpotlightCreatePage,
+  UserRewardsPage,
+} = UserPages;
 
-const WriteReviewPage = lazy(() => import(/* webpackChunkName: "review" */ './Internals/clientComponent/rating/submitReviewPage.js'));
-const Profile = lazy(() => import(/* webpackChunkName: "profile" */ './Internals/Login/profile/profile.js'));
-const PaymentStatus = lazy(() => import(/* webpackChunkName: "payment" */ './Internals/phonePay/paymentStatus.js'));
-const LeadsPage = lazy(() => import(/* webpackChunkName: "leads" */ './Internals/clientComponent/LeadsPage/leadsPage.js'));
-const PublicizePage = lazy(() => import(/* webpackChunkName: "publicize" */ './Internals/clientComponent/publicize/publicize.js'));
-const FreeListingPage = lazy(() => import(/* webpackChunkName: "free-listing" */ './Internals/clientComponent/free-Listing/free-Listing.js'));
-const LeadsCardHistory = lazy(() => import(/* webpackChunkName: "leads-history" */ './Internals/clientComponent/LeadsPage/leadsCards/leadsCards.js'));
-const BusinessEnquiry = lazy(() => import(/* webpackChunkName: "business-enquiry" */ './Internals/clientComponent/businessEnquiry/businessEnquiry.js'));
-const AuthorProfile = lazy(() => import(/* webpackChunkName: "author-profile" */ './Internals/clientComponent/authorProfile/authorProfile.js'));
+const {
+  GlobalDrawer,
+  FloatingButtons,
+  MobileHomeDock,
+  AppInstallPrompt,
+  OTPLoginModal,
+  MaintenanceOverlay,
+} = AppShellSurfaces;
 
-const EnquiryPage = lazy(() => import(/* webpackChunkName: "admin-enquiry" */ './Internals/enquiry-page/enquiry-page.js'));
-const SearchRequestsAdmin = lazy(() => import(/* webpackChunkName: "admin-search-requests" */ './Internals/searchRequests/SearchRequestsAdmin.js'));
-const RewardAdmin = lazy(() => import(/* webpackChunkName: "admin-rewards" */ './Internals/rewards/RewardAdmin.js'));
-const RewardsConceptPage = lazy(() => import(/* webpackChunkName: "admin-rewards-concept" */ './Internals/rewards/RewardsConceptPage.js'));
-const RewardClaimsAdmin = lazy(() => import(/* webpackChunkName: "admin-reward-claims" */ './Internals/rewards/RewardClaimsAdmin.js'));
-const RewardClaimPage = lazy(() => import(/* webpackChunkName: "reward-claim" */ './Internals/clientComponent/rewards/RewardClaimPage.js'));
-const AdminCustomerCareChat = lazy(() => import(/* webpackChunkName: "admin-customer-care-chat" */ './Internals/CustomerCareChat/AdminCustomerCareChat.js'));
-const AdvertisementPage = lazy(() => import(/* webpackChunkName: "admin-advertisement" */ './Internals/advertisement/advertisement.js'));
-const EventCategory = lazy(() => import(/* webpackChunkName: "admin-event-category" */ './components/eventCategory/eventCategory.js'));
-const EventLocation = lazy(() => import(/* webpackChunkName: "admin-event-location" */ './components/eventLocation/eventLocation.js'));
-const EventAdvertisement = lazy(() => import(/* webpackChunkName: "admin-event-advertisement" */ './components/eventAdvertisement/eventAdvertisement.js'));
-const EventCreation = lazy(() => import(/* webpackChunkName: "admin-event-creation" */ './components/eventCreation/eventCreation.js'));
-const MassclickEvent = lazy(() => import('./Internals/massclickEvent/massclickEvent.js'));
-const MassclickEventDetails = lazy(() => import('./Internals/clientComponent/massclickEvents/MassclickEventDetails.js'));
-
-const GlobalDrawer = lazy(() => import(/* webpackChunkName: "drawer" */ './Internals/clientComponent/Drawer/globalDrawer.js'));
-const SeoData = lazy(() => import(/* webpackChunkName: "admin-seo" */ './Internals/seoData/seoData.js'));
-const SeoPageContent = lazy(() => import(/* webpackChunkName: "admin-seo-content" */ './Internals/seoData/seoPageContent/seoPageContent.js'));
-const SeoPageContentBlogs = lazy(() => import(/* webpackChunkName: "admin-seo-blogs" */ './Internals/seoData/seoPageContentBlog/seoPageContentBlog.js'));
-const SeoTemplate = lazy(() => import(/* webpackChunkName: "admin-seo-templates" */ './Internals/seoData/seoTemplate/seoTemplate.js'));
-const AuthorMaster = lazy(() => import(/* webpackChunkName: "admin-author-master" */ './Internals/seoData/authorMaster/authorMaster.js'));
-const AdminDataAnalytics = lazy(() => import(/* webpackChunkName: "admin-data-analytics" */ './components/adminAnalytics/AdminDataAnalytics.js'));
-const UnifiedAnalytics = lazy(() => import(/* webpackChunkName: "admin-unified-analytics" */ './components/unifiedAnalytics/UnifiedAnalytics.js'));
-const SiteAnalytics = lazy(() => import(/* webpackChunkName: "admin-site-analytics" */ './components/siteAnalytics/SiteAnalytics.js'));
-const AppAnalytics = lazy(() => import(/* webpackChunkName: "admin-app-analytics" */ './components/siteAnalytics/AppAnalytics.js'));
-const BusinessPersonReport = lazy(() => import(/* webpackChunkName: "admin-business-person-report" */ './Internals/businessPersonReport/BusinessPersonReport.js'));
-
-const MRPDatas = lazy(() => import(/* webpackChunkName: "admin-mrp" */ './Internals/MRPDATA/mrpData.js'));
-const FCMMarketing = lazy(() => import(/* webpackChunkName: "admin-fcm" */ './Internals/FCMMarketing/FCMMarketing.js'));
-const SystemSettings = lazy(() => import(/* webpackChunkName: "admin-settings" */ './Internals/SystemSettings/SystemSettings.js'));
-const CategoryDisplaySettings = lazy(() => import(/* webpackChunkName: "admin-cat-display" */ './Internals/CategoryDisplaySettings/CategoryDisplaySettings.js'));
-const GmapsLeads = lazy(() => import(/* webpackChunkName: "admin-gmaps-leads" */ './Internals/gmapsLeads/GmapsLeads.js'));
-const BusinessDuplicates = lazy(() => import(/* webpackChunkName: "admin-business-duplicates" */ './Internals/businessDuplicates/BusinessDuplicates.js'));
-const Msg91Analytics = lazy(() => import(/* webpackChunkName: "admin-msg91-analytics" */ './Internals/Msg91Analytics/Msg91Analytics.js'));
-const AuthControl = lazy(() => import(/* webpackChunkName: "admin-auth-console" */ './Internals/AuthControl/AuthControl.js'));
-const PublicUserCounterAdmin = lazy(() => import(/* webpackChunkName: "admin-public-user-counter" */ './Internals/PublicUserCounter/PublicUserCounterAdmin.js'));
-const HiringAdmin = lazy(() => import(/* webpackChunkName: "admin-hiring" */ './Internals/Hiring/HiringAdmin.js'));
-const GscAnalytics = lazy(() => import(/* webpackChunkName: "admin-gsc" */ './Internals/gscAnalytics/gscAnalytics.js'));
-const Ga4Analytics = lazy(() => import(/* webpackChunkName: "admin-ga4" */ './Internals/ga4Analytics/ga4Analytics.js'));
-const Quotation = lazy(() => import(/* webpackChunkName: "admin-quotation" */ './Internals/quotation/Quotation.js'));
-const MassclickDocuments = lazy(() => import(/* webpackChunkName: "admin-documents" */ './Internals/massclickDocuments/massclickDocuments.js'));
-const MassclickFeedAdmin = lazy(() => import(/* webpackChunkName: "admin-feed" */ './Internals/massclickFeed/massclickFeed.js'));
-
-const UserDashboardPage = lazy(() => import(/* webpackChunkName: "user-dashboard" */ './Internals/clientComponent/userMenu/DashboardPage/Dashboard.js'));
-const UserEditProfilePage = lazy(() => import(/* webpackChunkName: "user-edit-profile" */ './Internals/clientComponent/userMenu/EditProfile/EditProfilePage.js'));
-const UserMRPPage = lazy(() => import(/* webpackChunkName: "user-mni" */ './Internals/clientComponent/MRP/mrp.js'));
-const UserMarketingMaterialsPage = lazy(() => import(/* webpackChunkName: "user-marketing-materials" */ './Internals/clientComponent/userMenu/VisitingCard/MarketingMaterialsPage.js'));
-const UserFavoritesPage = lazy(() => import(/* webpackChunkName: "user-favorites" */ './Internals/clientComponent/userMenu/FavouritePage/FavouritePage.js'));
-const UserCustomerServicePage = lazy(() => import(/* webpackChunkName: "user-customer-service" */ './Internals/clientComponent/userMenu/CustomerService/CustomerServicePage.js'));
-const UserPolicyPage = lazy(() => import(/* webpackChunkName: "user-policy" */ './Internals/clientComponent/userMenu/PolicyPage/PolicyPage.js'));
-const UserFeedbackPage = lazy(() => import(/* webpackChunkName: "user-feedback" */ './Internals/clientComponent/userMenu/FeedbackPage/FeedBackPage.js'));
-const UserHelpPage = lazy(() => import(/* webpackChunkName: "user-help" */ './Internals/clientComponent/userMenu/HelpPage/HelpPage.js'));
-const UserMassclickDocumentsPage = lazy(() => import(/* webpackChunkName: "user-documents" */ './Internals/clientComponent/userMenu/MassclickDocuments/MassclickDocumentsPage.js'));
-const UserMassclickFeedPage = lazy(() => import(/* webpackChunkName: "user-feed" */ './Internals/clientComponent/userMenu/MassclickFeed/MassclickFeedPage.js'));
-const SpotlightWorkspacePage = lazy(() => import(/* webpackChunkName: "spotlight-workspace" */ './Internals/clientComponent/userMenu/SpotlightWorkspace/SpotlightWorkspacePage.js'));
-const SpotlightCreatePage = lazy(() => import(/* webpackChunkName: "spotlight-create" */ './Internals/clientComponent/userMenu/SpotlightCreate/SpotlightCreatePage.js'));
-const UserRewardsPage = lazy(() => import(/* webpackChunkName: "user-rewards" */ './Internals/clientComponent/userMenu/Rewards/RewardsPage.js'));
-
-const FloatingButtons = lazy(() => import(/* webpackChunkName: "floating-buttons" */ './Internals/clientComponent/floating/floatingButtons.js'));
-const MobileHomeDock = lazy(() => import(/* webpackChunkName: "mobile-home-dock" */ './Internals/clientComponent/mobileHomeDock/MobileHomeDock.js'));
-const AppInstallPrompt = lazy(() => import(/* webpackChunkName: "app-install-prompt" */ './Internals/clientComponent/appInstallPrompt/AppInstallPrompt.js'));
-// Google ad surfaces are intentionally disabled for now.
-// Uncomment these lines if you want to restore them later.
-// const FloatingAdCard = lazy(() => import(/* webpackChunkName: "floating-ad" */ './Internals/clientComponent/floating/floatingAdCard.js'));
-// const HomePopupAd = lazy(() => import(/* webpackChunkName: "home-popup-ad" */ './Internals/clientComponent/popup/HomePopupAd.js'));
-const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ './Internals/clientComponent/AddBusinessModel.js'));
-
-const DistrictRouteResolver = lazy(() => import(/* webpackChunkName: "district-route-resolver" */ './Internals/clientComponent/categories/DistrictRouteResolver.js'));
-const CategoriesPage = lazy(() => import(/* webpackChunkName: "category-directory" */ './Internals/clientComponent/categories/categories.js'));
-const BlogDetail = lazy(() => import(/* webpackChunkName: "blog-detail" */ './Internals/clientComponent/relatedBlogs/blogDetails/blogDetails.js'));
-const MaintenanceOverlay = lazy(() => import(/* webpackChunkName: "maintenance" */ './components/MaintenanceOverlay.js'));
+const {
+  JobResultsPage,
+  JobApplicationPage,
+} = FooterPages;
 
 const RateLimitNotifier = memo(() => {
   const { enqueueSnackbar } = useSnackbar();
@@ -209,25 +202,6 @@ function AppRoutes({
   const authSnapshot = getAuthSnapshot();
   const shouldHoldAdminRoute =
     !authReady && isAdminSurface && Boolean(authSnapshot.admin.refreshToken);
-
-  const footerRoutes = [
-    ['aboutus', <AboutUsPage />],
-    ['testimonials', <Testimonials />],
-    ['feedbacks', <FeedbackComponent />],
-    ['customercare', <CustomerCareComponent />],
-    ['portfolio', <Portfolio />],
-    ['terms', <TermsAndConditions />],
-    ['privacy', <PrivacyPolicy />],
-    ['refund', <RefundPolicy />],
-    ['enquiry', <EnquiryNow />],
-    ['deleteaccount', <DeleteAccount />],
-    ['knowledgebase', <KnowledgeBasePage />],
-    ['careers', <CareersPage />],
-    ['web', <WebDevSection />],
-    ['digital', <DigitalMarketing />],
-    ['graphic', <GraphicDesign />],
-    ['seo', <Seo />],
-  ];
 
   useEffect(() => {
     setRealtimeSocketToken(getRealtimeSocketToken(getAuthSnapshot(), pathname));
@@ -310,8 +284,8 @@ function AppRoutes({
           <Route path="/user_feedback" element={<UserFeedbackPage />} />
           <Route path="/user_help" element={<UserHelpPage />} />
 
-          {footerRoutes.map(([path, element]) => (
-            <Route key={path} path={path} element={element} />
+          {FOOTER_ROUTES.map(({ path, Component }) => (
+            <Route key={path} path={path} element={<Component />} />
           ))}
 
           <Route path="/:district" element={<CategoriesPage mode="districtLanding" />} />
@@ -550,7 +524,7 @@ function App() {
       }
     };
 
-    import('./services/socketService.js').then(({ connectSocket }) => {
+    import('shared/services/socketService.js').then(({ connectSocket }) => {
       try {
         const ws = connectSocket(realtimeSocketToken);
         if (ws) {

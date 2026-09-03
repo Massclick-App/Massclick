@@ -1,0 +1,200 @@
+import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
+import React, { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import styles from "features/public/popular-search/CardCarousel.module.css";
+import { useDispatch, useSelector } from "react-redux";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
+import KeyboardDoubleArrowRightIcon from "@mui/icons-material/KeyboardDoubleArrowRight";
+import KeyboardDoubleArrowLeftIcon from "@mui/icons-material/KeyboardDoubleArrowLeft";
+import { createEnquiryNow } from "state/actions/popularSearchesAction.js";
+import { fetchPopularSearches } from "state/actions/categoryAction.js";
+import { logSearchActivity, sendEnquiryLead } from "state/actions/businessListAction.js";
+import OTPLoginModal from "features/public/auth/AddBusinessModal.js";
+import Card from "features/public/popular-search/Card.jsx";
+import { getEffectiveSearchLocation } from "shared/utils/searchResultNavigation.js";
+const cx = createScopedClassNames(styles);
+const getAuthUser = () => JSON.parse(localStorage.getItem("authUser") || "null");
+const getErrorMessage = error => error?.response?.data?.message || error?.response?.data?.error || error?.response?.data || error?.message || "Something went wrong";
+const CardCarousel = () => {
+  const containerRef = useRef(null);
+  const cardWidthRef = useRef(300);
+  const dispatch = useDispatch();
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [pendingCard, setPendingCard] = useState(null);
+  const [submittingCard, setSubmittingCard] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const selectedDistrict = useSelector(state => state.locationReducer.selectedDistrict);
+  const popularSearchCards = useSelector(state => state.categoryReducer.popularSearchCards || []);
+  const sendEnquiryError = useSelector(state => state.businessListReducer.sendEnquiryError);
+  const cards = useMemo(() => {
+    const source = popularSearchCards.length ? popularSearchCards : [];
+    return source.map(card => ({
+      ...card,
+      title: card.title || card.categoryName || card.category || "",
+      buttonText: card.buttonText || "Enquire Now",
+      alt: card.alt || card.title || "Popular search",
+      image: card.imageUrl || card.image || null,
+      accent: card.accent || "#e67e22"
+    }));
+  }, [popularSearchCards]);
+  useEffect(() => {
+    dispatch(fetchPopularSearches());
+  }, [dispatch]);
+  useEffect(() => {
+    if (!sendEnquiryError) return;
+    setErrorMessage(getErrorMessage(sendEnquiryError));
+    setShowError(true);
+  }, [sendEnquiryError]);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const card = container.querySelector(".popular-search__card");
+    if (!card) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === card) {
+          cardWidthRef.current = entry.contentRect.width + 20;
+        }
+      }
+    });
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [cards.length]);
+  const scrollByCard = direction => {
+    if (!containerRef.current) return;
+    containerRef.current.scrollBy({
+      left: direction === "right" ? cardWidthRef.current : -cardWidthRef.current,
+      behavior: "smooth"
+    });
+  };
+  const proceedEnquiry = useCallback(async (card, user = getAuthUser()) => {
+    try {
+      if (!user?._id) return;
+      setSubmittingCard(card.title);
+      const categoryName = card.title;
+      const { location: locationName } = getEffectiveSearchLocation(selectedDistrict);
+      const userDetails = {
+        userName: user.userName,
+        mobileNumber1: user.mobileNumber1,
+        mobileNumber2: user.mobileNumber2 || "",
+        email: user.email || ""
+      };
+      dispatch(logSearchActivity(categoryName, locationName, userDetails, categoryName, true));
+      const enquiryPayload = {
+        category: categoryName,
+        categorySlug: categoryName.toLowerCase().replace(/\s+/g, "-"),
+        enquirySource: "Popular Searches",
+        userId: user._id,
+        userName: user.userName,
+        mobileNumber1: user.mobileNumber1,
+        mobileNumber2: user.mobileNumber2 || "",
+        email: user.email || "",
+        businessName: user.businessName || ""
+      };
+      await dispatch(createEnquiryNow(enquiryPayload));
+      const leadPayload = {
+        category: categoryName,
+        location: locationName,
+        customerName: user.userName,
+        customerMobile: user.mobileNumber1,
+        customerEmail: user.email || ""
+      };
+      await dispatch(sendEnquiryLead(leadPayload));
+      setShowSuccess(true);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      setShowError(true);
+    } finally {
+      setSubmittingCard(null);
+    }
+  }, [dispatch, selectedDistrict]);
+  const handleEnquireClick = card => {
+    const authUser = getAuthUser();
+    if (!authUser?._id) {
+      setPendingCard(card);
+      setIsLoginOpen(true);
+      return;
+    }
+    proceedEnquiry(card, authUser);
+  };
+  useEffect(() => {
+    const onAuthChange = () => {
+      const authUser = getAuthUser();
+      if (pendingCard && authUser?._id) {
+        proceedEnquiry(pendingCard, authUser);
+        setPendingCard(null);
+        setIsLoginOpen(false);
+      }
+    };
+    window.addEventListener("authChange", onAuthChange);
+    return () => window.removeEventListener("authChange", onAuthChange);
+  }, [pendingCard, proceedEnquiry]);
+  return <>
+      <section className={cx("popular-search")}>
+        <div className={cx("popular-search__header")}>
+          <div>
+            <h2 className={cx("popular-search__title")}>Popular Searches</h2>
+            <p className={cx("popular-search__subtitle")}>
+              Quick access to the most in-demand services around you.
+            </p>
+          </div>
+          <div className={cx("popular-search__controls")}>
+            <button type="button" className={cx("popular-search__control popular-search__control--left")} onClick={() => scrollByCard("left")} aria-label="Scroll popular searches left">
+              <KeyboardDoubleArrowLeftIcon />
+            </button>
+            <button type="button" className={cx("popular-search__control popular-search__control--right")} onClick={() => scrollByCard("right")} aria-label="Scroll popular searches right">
+              <KeyboardDoubleArrowRightIcon />
+            </button>
+          </div>
+        </div>
+
+        <div className={cx("popular-search__viewport")}>
+          <div className={cx("popular-search__track")} ref={containerRef}>
+            {cards.map((card, index) => (
+              <Card
+                key={`${card.title}-${index}`}
+                card={card}
+                onEnquireClick={handleEnquireClick}
+                isSubmitting={submittingCard === card.title}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <OTPLoginModal open={isLoginOpen} handleClose={() => setIsLoginOpen(false)} />
+
+      <Snackbar open={showSuccess} autoHideDuration={5000} onClose={() => setShowSuccess(false)} anchorOrigin={{
+      vertical: "top",
+      horizontal: "center"
+    }} sx={{
+      zIndex: 1400
+    }}>
+        <Alert onClose={() => setShowSuccess(false)} severity="success" sx={{
+        fontSize: "0.95rem",
+        fontWeight: 500,
+        borderRadius: "12px"
+      }}>
+          Your enquiry has been submitted successfully. Please wait - our team
+          will contact you within 24 hours.
+        </Alert>
+      </Snackbar>
+      <Snackbar open={showError} autoHideDuration={7000} onClose={() => setShowError(false)} anchorOrigin={{
+      vertical: "top",
+      horizontal: "center"
+    }} sx={{
+      zIndex: 1400
+    }}>
+        <Alert onClose={() => setShowError(false)} severity="error" sx={{
+        fontSize: "0.95rem",
+        fontWeight: 500,
+        borderRadius: "12px"
+      }}>
+          Failed to send enquiry: {errorMessage}
+        </Alert>
+      </Snackbar>
+    </>;
+};
+export default CardCarousel;

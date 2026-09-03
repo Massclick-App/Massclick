@@ -49,6 +49,7 @@
     "build": "react-app-rewired build",
     "postbuild": "node scripts/inject-preload.js",
     "check:css-scope": "node scripts/check-css-scope.cjs",
+    "check:imports": "node scripts/check-local-imports.cjs",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

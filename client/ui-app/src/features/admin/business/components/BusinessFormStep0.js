@@ -1,0 +1,1289 @@
+import React from "react";
+import { Button, Avatar, Autocomplete, TextField } from "@mui/material";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import IconButton from "@mui/material/IconButton";
+import { useSelector } from "react-redux";
+import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
+import GooglePlacesInput from "shared/components/google-places-input/GooglePlacesInput.js";
+import BusinessFormSection from "features/admin/business/components/BusinessFormSection.js";
+import styles from "features/admin/business/business.module.css";
+import { getAllUsersClient } from "state/actions/userClientAction.js";
+import { searchMasterLocations } from "state/actions/masterLocationAction.js";
+import {
+  formatBusinessAddress,
+  formatFullBusinessAddress,
+  getAddressWarnings,
+  normalizeAddressField,
+} from "shared/utils/formatBusinessAddress.js";
+
+const getMasterLocationLabel = (option) => {
+  if (!option || typeof option !== "object") return "";
+  return option.locality || option.ward || option.zone || option.district || "";
+};
+
+const cx = createScopedClassNames(styles);
+
+const BusinessFormStep0 = ({
+  formData,
+  fieldErrors,
+  preview,
+  logoPreview,
+  paymentMethodOptions,
+  normalizePaymentConcept,
+  getInputClassName,
+  renderFieldError,
+  handleChange,
+  handlePlaceSelect,
+  handleGeoCoordinateChange,
+  handleImageChange,
+  handleLogoSelect,
+  handleLogoClear,
+  galleryFiles = [],
+  handleGalleryUpload,
+  handleRemoveGalleryFile,
+  handleRemoveStoredGalleryImage,
+  handleReorderStoredGalleryImage,
+  handleReorderGalleryFile,
+  handleBusinessChange,
+  handleOpeningHourChange,
+  formDataBusinessDetails,
+  QUILL_MODULES,
+  QUILL_FORMATS,
+  QuillEditor,
+  location,
+  locationSuggestions,
+  showLocationSuggest,
+  setFormData,
+  setShowLocationSuggest,
+  setLocationSuggestions,
+  searchSuggestion,
+  userClient,
+  showSuggestions,
+  setShowSuggestions,
+  dispatch,
+  getUserClientSuggestion,
+  activeSection,
+  handleSectionAdvance,
+  getSectionNavigation,
+  getSectionRefKey,
+  getSectionIsDisabled,
+  editMode,
+  saveSectionData,
+  sectionSavingState,
+}) => {
+  const [clientSearchInput, setClientSearchInput] = React.useState("");
+  // { group: "stored" | "new", index } while a gallery tile is being dragged.
+  // Reordering stays inside a group: a staged file has no key yet, so the
+  // server always appends it after the stored photos on save.
+  const [galleryDrag, setGalleryDrag] = React.useState(null);
+  const [locationInput, setLocationInput] = React.useState(getMasterLocationLabel(formData.masterLocation));
+  const masterLocationState = useSelector((state) => state.masterLocationReducer) || {};
+  const {
+    locationSearchResults: masterLocationOptions = [],
+    locationSearchLoading: masterLocationLoading = false,
+  } = masterLocationState;
+
+  React.useEffect(() => {
+    // Load all clients when component mounts
+    if (dispatch) {
+      dispatch(getAllUsersClient());
+    }
+  }, [dispatch]);
+
+  React.useEffect(() => {
+    // Hydrate the verified-search input when a linked masterLocation arrives (edit mode loads async)
+    const label = getMasterLocationLabel(formData.masterLocation);
+    if (label) setLocationInput(label);
+  }, [formData.masterLocation]);
+
+  React.useEffect(() => {
+    if (!dispatch) return undefined;
+    const query = locationInput.trim();
+    if (query.length < 2) return undefined;
+    const handle = setTimeout(() => dispatch(searchMasterLocations(query)), 300);
+    return () => clearTimeout(handle);
+  }, [locationInput, dispatch]);
+
+  const handleMasterLocationPick = (loc) => {
+    setFormData((prev) => ({
+      ...prev,
+      masterLocation: {
+        locationId: loc._id,
+        slug: loc.slug,
+        state: loc.state || null,
+        district: loc.district || null,
+        zone: loc.zone || null,
+        ward: loc.ward || null,
+        locality: loc.locality || null,
+        resolvedLevel: loc.level,
+        confidence: "high",
+        source: "manual",
+        linkedAt: new Date().toISOString(),
+      },
+    }));
+  };
+
+  const handleClientSearch = (event, value) => {
+    setClientSearchInput(value);
+
+    // Only search if input is not empty and is a partial search (doesn't contain " — " which is the full label format)
+    if (value && value.trim().length > 0 && !value.includes(" — ") && dispatch) {
+      dispatch(getUserClientSuggestion(value));
+    } else if (value && value.includes(" — ")) {
+      }
+  };
+
+  // Get all available options - merge search results with user clients to avoid losing searched clients
+  const allOptions = React.useMemo(() => {
+    if (clientSearchInput && searchSuggestion?.length > 0) {
+      // When searching, show search results
+      return searchSuggestion;
+    }
+    // When not searching, show all clients AND keep any previously searched clients in the list
+    const mergedClients = [...(userClient || [])];
+    if (searchSuggestion?.length > 0) {
+      // Add search results that aren't already in userClient list
+      searchSuggestion.forEach(searched => {
+        if (!mergedClients.find(u => u.clientId === searched.clientId)) {
+          mergedClients.push(searched);
+        }
+      });
+      }
+    return mergedClients;
+  }, [clientSearchInput, searchSuggestion, userClient]);
+
+  // Find the selected client object from all available options
+  const getSelectedClient = () => {
+    if (!formData.clientId) return null;
+
+    // Extract ID part if clientId is in extended format "MCYYMMDDHHMMSS — Name"
+    const idPart = formData.clientId.split(' — ')[0].trim();
+
+    const selected = allOptions.find((c) => c.clientId === idPart);
+    const fallbackName = String(formData.clientId)
+      .replace(idPart, "")
+      .replace(/^\s*(?:\u2014|â€”|-)\s*/, "")
+      .trim();
+    return selected || { clientId: idPart, name: fallbackName };
+  };
+
+  const sections = [
+    { key: "clientBusiness", title: "Client & Business Information", subtitle: "Basic details about your business" },
+    { key: "address", title: "Address Details", subtitle: "Business location information" },
+    { key: "contact", title: "Contact Information", subtitle: "How customers can reach you" },
+    { key: "businessInfo", title: "Business Information", subtitle: "Additional business details" },
+    { key: "locationWeb", title: "Location & Web Presence", subtitle: "Map and website links" },
+    { key: "socialMedia", title: "Social Media", subtitle: "Connect your social profiles" },
+    { key: "bannerDetails", title: "Business Banner & Details", subtitle: "Upload banner image and describe your business" },
+    { key: "galleryImages", title: "Gallery Images", subtitle: "Shop photos shown on the business detail page" },
+    { key: "openingHours", title: "Opening Hours", subtitle: "Set business hours for each day" },
+    { key: "badgesVisibility", title: "Badges & Visibility", subtitle: "Control how this listing is highlighted" },
+    { key: "paymentDetails", title: "Payment Details", subtitle: "Track total, advance paid, and pending amount" },
+  ];
+
+  const renderSectionIntro = (eyebrow, summary, stat) => (
+    <div className={cx("section-intro") }>
+      <div className={cx("section-intro-copy") }>
+        <p className={cx("section-eyebrow")}>{eyebrow}</p>
+        <p className={cx("section-summary")}>{summary}</p>
+      </div>
+      {stat && <div className={cx("section-stat")}>{stat}</div>}
+    </div>
+  );
+
+  const fieldClass = (...extra) => cx("form-input-group", "field-card", ...extra);
+
+  // Tidy an address field when the operator leaves it: trailing commas, stray
+  // spaces and pasted placeholders are the bulk of what makes stored addresses
+  // unusable, and they are all obvious to fix at the moment of entry.
+  const handleAddressBlur = (event) => {
+    const { name, value } = event.target;
+    const normalized = normalizeAddressField(value);
+    if (normalized === value) return;
+    setFormData((prev) => ({ ...prev, [name]: normalized }));
+  };
+
+  // Years in business is a count, not free text. Anything non-numeric typed
+  // here previously reached the card and rendered as "+++ yrs experience".
+  const handleExperienceBlur = (event) => {
+    const digits = String(event.target.value || "").replace(/\D/g, "");
+    const years = digits ? String(Math.min(Number.parseInt(digits, 10), 200)) : "";
+    if (years === event.target.value) return;
+    setFormData((prev) => ({ ...prev, experience: years }));
+  };
+
+  // What the search-result card will actually render for this business, using
+  // the exact function the card uses. Showing it live is what teaches the
+  // format — a rule in a helper note gets skimmed, a wrong preview does not.
+  const addressPreview = formatBusinessAddress(formData);
+  const fullAddressPreview = formatFullBusinessAddress(formData);
+  const addressWarnings = getAddressWarnings(formData);
+
+  // Warnings render underneath the field they are about, and update as the
+  // operator types. A message next to the input is acted on; the same message
+  // in a list somewhere else is scrolled past.
+  const renderAddressWarnings = (field) => {
+    const forField = addressWarnings.filter((warning) => warning.field === field);
+    if (forField.length === 0) return null;
+    return (
+      <ul className={cx("address-hints")}>
+        {forField.map((warning) => (
+          <li key={warning.message} className={cx(`address-hint-${warning.level}`)}>
+            {warning.message}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+  const paymentConcept = normalizePaymentConcept
+    ? normalizePaymentConcept(formData.paymentConcept)
+    : formData.paymentConcept;
+  const paymentProgress = paymentConcept?.totalAmount > 0
+    ? Math.min(100, Math.round((paymentConcept.advancePaid / paymentConcept.totalAmount) * 100))
+    : 0;
+  const paymentStatusLabel = {
+    unpaid: "Unpaid",
+    part_paid: "Part Paid",
+    paid: "Paid",
+  }[paymentConcept?.paymentStatus] || "Unpaid";
+  const paymentMethodLabel = (paymentMethodOptions || []).find(
+    option => option.value === paymentConcept?.paymentMethod
+  )?.label || "Not selected";
+  const formatAmount = value => Number(value || 0).toLocaleString("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  });
+  const updatePaymentConcept = (patch) => {
+    setFormData((prev) => ({
+      ...prev,
+      paymentConcept: normalizePaymentConcept
+        ? normalizePaymentConcept({ ...(prev.paymentConcept || {}), ...patch })
+        : { ...(prev.paymentConcept || {}), ...patch },
+    }));
+  };
+
+  const renderClientBusiness = () => (
+    <>
+      {renderSectionIntro(
+        "Business identity",
+        "Start with the account owner and the business name. Keeping these aligned makes reviews and future edits much easier.",
+        "2 core fields"
+      )}
+
+      <div className={cx("section-grid", "section-grid-wide-left")}>
+        <div className={fieldClass("field-span-7")}>
+          <label htmlFor="clientId" className="form-input-label">Client ID</label>
+          <Autocomplete
+            options={allOptions}
+            getOptionLabel={(option) => `${option.clientId} — ${option.name}`}
+            value={getSelectedClient()}
+            onChange={(event, newValue) => {
+              setFormData((prev) => {
+                const updated = {
+                  ...prev,
+                  clientId: newValue ? newValue.clientId : ""
+                };
+                return updated;
+              });
+              setClientSearchInput("");
+            }}
+            onInputChange={handleClientSearch}
+            isOptionEqualToValue={(option, value) => option.clientId === value.clientId}
+            freeSolo={false}
+            disableClearable={false}
+            filterOptions={(options, state) => {
+              // Only show options that match the search input
+              if (!state.inputValue) return options;
+              return options.filter(
+                (option) =>
+                  option.clientId.includes(state.inputValue.toUpperCase()) ||
+                  option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+              );
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search by client ID or name"
+                size="small"
+                helperText="Must select from the list below. Search your client by name or ID."
+                error={!!fieldErrors.clientId}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    padding: "6px !important",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  },
+                }}
+              />
+            )}
+            slotProps={{
+              paper: {
+                sx: {
+                  maxHeight: "300px",
+                  borderRadius: "6px",
+                  border: "1px solid #e5e5e5",
+                },
+              },
+            }}
+          />
+          {renderFieldError("clientId")}
+        </div>
+
+        <div className={fieldClass("field-span-5")}>
+          <label htmlFor="businessName" className="form-input-label">Business Name</label>
+          <input
+            type="text"
+            id="businessName"
+            name="businessName"
+            className={`form-text-input ${fieldErrors.businessName ? "error" : ""}`}
+            value={formData.businessName}
+            onChange={handleChange}
+          />
+          {renderFieldError("businessName")}
+        </div>
+      </div>
+    </>
+  );
+
+  const renderAddress = () => (
+    <>
+      {renderSectionIntro(
+        "Address capture",
+        "Use the search bar to auto-fill location data, then fine-tune the plot, street, pincode, and global address fields below.",
+        "Geo-aware"
+      )}
+
+      <div className={fieldClass("field-span-full", "field-surface")}>
+        <label className="form-input-label">Search Address (Auto-fill)</label>
+        <GooglePlacesInput onPlaceSelect={handlePlaceSelect} placeholder="Type business name or address to search..." />
+        <small className={cx("helper-note")}>
+          Selecting from suggestions auto-fills street, pincode, location and coordinates.
+        </small>
+      </div>
+
+      <div className={fieldClass("field-span-full", "field-surface")}>
+        <label className="form-input-label">Live preview</label>
+        <div className={cx("address-preview-row")}>
+          <span className={cx("address-preview-label")}>On search results</span>
+          <p className={cx("address-preview")}>
+            {addressPreview || "Link a location below to see this."}
+          </p>
+        </div>
+        <div className={cx("address-preview-row")}>
+          <span className={cx("address-preview-label")}>On the business page</span>
+          <p className={cx("address-preview")}>
+            {fullAddressPreview || "Fill in the street and pincode to see this."}
+          </p>
+        </div>
+        <small className={cx("helper-note")}>
+          These are produced by the same code the live site uses. If they look right here, they are right.
+        </small>
+        {renderAddressWarnings("masterLocation")}
+      </div>
+
+      <div className={cx("section-grid", "section-grid-2")}>
+        <div className={fieldClass()}>
+          <label htmlFor="plotNumber" className="form-input-label">Plot Number</label>
+          <input type="text" id="plotNumber" name="plotNumber" className={`form-text-input ${fieldErrors.plotNumber ? "error" : ""}`} value={formData.plotNumber} onChange={handleChange} onBlur={handleAddressBlur} placeholder="Door / shop / plot number only" />
+          {renderFieldError("plotNumber")}
+          {renderAddressWarnings("plotNumber")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="street" className="form-input-label">Street</label>
+          <input type="text" id="street" name="street" className={`form-text-input ${fieldErrors.street ? "error" : ""}`} value={formData.street} onChange={handleChange} onBlur={handleAddressBlur} placeholder="Street, area and landmark" />
+          {renderFieldError("street")}
+          {renderAddressWarnings("street")}
+          <small className={cx("helper-note")}>
+            Street only — leave out the door number, district, pincode and state. Those are added automatically.
+          </small>
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="pincode" className="form-input-label">Pincode *</label>
+          <input type="text" id="pincode" name="pincode" className={`form-text-input ${fieldErrors.pincode ? "error" : ""}`} value={formData.pincode} onChange={handleChange} placeholder="Enter 6-digit pincode" required />
+          {renderFieldError("pincode")}
+          {renderAddressWarnings("pincode")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="locationLegacy" className="form-input-label">Location (legacy list)</label>
+          <select
+            id="locationLegacy"
+            name="location"
+            className={`form-select-input ${fieldErrors.location ? "error" : ""}`}
+            value={formData.location}
+            onChange={(e) => {
+              setFormData((prev) => ({ ...prev, location: e.target.value }));
+            }}
+          >
+            <option value="">Select a location</option>
+            {location && location.length > 0 ? (
+              location.map((loc) => {
+                const displayName = loc.city || loc.district;
+                return (
+                  <option key={loc._id} value={displayName}>
+                    {displayName}{loc.state ? ` — ${loc.state}` : ""}
+                  </option>
+                );
+              })
+            ) : (
+              <option disabled>No locations available</option>
+            )}
+          </select>
+          {renderFieldError("location")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="location" className="form-input-label">Location (verified search)</label>
+          <Autocomplete
+            freeSolo
+            id="location"
+            options={masterLocationOptions.filter((loc) => loc.level !== "state")}
+            loading={masterLocationLoading}
+            getOptionLabel={getMasterLocationLabel}
+            inputValue={locationInput}
+            filterOptions={(options) => options}
+            isOptionEqualToValue={(option, value) => option._id === value?._id}
+            onInputChange={(event, newInputValue, reason) => {
+              setLocationInput(newInputValue);
+              if (reason === "input") {
+                setFormData((prev) => ({ ...prev, masterLocation: null }));
+              }
+            }}
+            onChange={(event, newValue) => {
+              if (newValue && typeof newValue === "object") {
+                handleMasterLocationPick(newValue);
+              }
+            }}
+            renderOption={(props, option) => (
+              <li {...props} key={option._id}>
+                <span>
+                  <span style={{ display: "block", fontWeight: 600 }}>{getMasterLocationLabel(option)}</span>
+                  <span style={{ display: "block", fontSize: "12px", color: "#777" }}>{option.hierarchyPath}</span>
+                </span>
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search district, zone, ward, or locality"
+                size="small"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    padding: "6px !important",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  },
+                }}
+              />
+            )}
+          />
+          {formData.masterLocation?.slug && (
+            <small className={cx("helper-note")}>
+              Linked: {[formData.masterLocation.district, formData.masterLocation.zone, formData.masterLocation.ward, formData.masterLocation.locality].filter(Boolean).join(" > ")}
+            </small>
+          )}
+        </div>
+
+        <div className={fieldClass("field-span-full")}>
+          <label htmlFor="globalAddress" className="form-input-label">Global Address</label>
+          <input type="text" id="globalAddress" name="globalAddress" className={`form-text-input ${fieldErrors.globalAddress ? "error" : ""}`} value={formData.globalAddress} onChange={handleChange} />
+          {renderFieldError("globalAddress")}
+        </div>
+      </div>
+    </>
+  );
+
+  const renderContact = () => (
+    <>
+      {renderSectionIntro(
+        "Contact channels",
+        "Place the most useful contact points together so callers, WhatsApp users, and enquiry teams can reach the business quickly.",
+        "4 touchpoints"
+      )}
+
+      <div className={cx("section-grid", "section-grid-2")}>
+        <div className={fieldClass()}>
+          <label htmlFor="email" className="form-input-label">Email</label>
+          <input type="email" id="email" name="email" className={`form-text-input ${fieldErrors.email ? "error" : ""}`} value={formData.email} onChange={handleChange} placeholder="contact@organisation.org" />
+          {renderFieldError("email")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="contact" className="form-input-label">Phone</label>
+          <input type="text" id="contact" name="contact" className={`form-text-input ${fieldErrors.contact ? "error" : ""}`} value={formData.contact} onChange={handleChange} />
+          {renderFieldError("contact")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="contactList" className="form-input-label">Enquiry Number</label>
+          <input type="text" id="contactList" name="contactList" className={`form-text-input ${fieldErrors.contactList ? "error" : ""}`} value={formData.contactList} onChange={handleChange} placeholder="Alternate contact number" />
+          {renderFieldError("contactList")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="whatsappNumber" className="form-input-label">WhatsApp Number</label>
+          <input type="text" id="whatsappNumber" name="whatsappNumber" className={`form-text-input ${fieldErrors.whatsappNumber ? "error" : ""}`} value={formData.whatsappNumber} onChange={handleChange} placeholder="Business WhatsApp number" />
+          {renderFieldError("whatsappNumber")}
+        </div>
+      </div>
+    </>
+  );
+
+  const renderBusinessInfo = () => (
+    <>
+      {renderSectionIntro(
+        "Business details",
+        "Keep the registration and experience details grouped so the profile feels complete and easy to review.",
+        "Trust building"
+      )}
+
+      <div className={cx("section-grid", "section-grid-wide-left")}>
+        <div className={fieldClass("field-span-8")}>
+          <label htmlFor="gstin" className="form-input-label">GSTIN</label>
+          <input type="text" id="gstin" name="gstin" className={`form-text-input ${fieldErrors.gstin ? "error" : ""}`} value={formData.gstin} onChange={handleChange} placeholder="Enter GST registration number" />
+          {renderFieldError("gstin")}
+        </div>
+
+        <div className={fieldClass("field-span-4")}>
+          <label htmlFor="experience" className="form-input-label">Experience (Years)</label>
+          <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} id="experience" name="experience" className={`form-text-input ${fieldErrors.experience ? "error" : ""}`} value={formData.experience} onChange={handleChange} onBlur={handleExperienceBlur} placeholder="Number of years, e.g. 12" />
+          {renderFieldError("experience")}
+          {renderAddressWarnings("experience")}
+          <small className={cx("helper-note")}>
+            Digits only — the "+ years experience" wording is added by the site. Leave blank if unknown.
+          </small>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderLocationWeb = () => (
+    <>
+      {renderSectionIntro(
+        "Location and web",
+        "Use this section to anchor the map, pin coordinates, and website presence together for better discoverability.",
+        "Maps ready"
+      )}
+
+      <div className={cx("section-grid", "section-grid-2")}>
+        <div className={fieldClass("field-span-full")}>
+          <label htmlFor="googleMap" className="form-input-label">Google Map Link</label>
+          <input type="text" id="googleMap" name="googleMap" className={`form-text-input ${fieldErrors.googleMap ? "error" : ""}`} value={formData.googleMap} onChange={handleChange} placeholder="https://maps.google.com/..." />
+          {renderFieldError("googleMap")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="geoLatitude" className="form-input-label">Latitude *</label>
+          <input type="number" id="geoLatitude" className={`form-text-input ${fieldErrors.geoLatitude ? "error" : ""}`} value={formData.geoLocation?.coordinates?.[1] ?? ""} onChange={(e) => handleGeoCoordinateChange(1, e.target.value)} placeholder="Example: 13.0827" step="any" min="-90" max="90" required />
+          {renderFieldError("geoLatitude")}
+        </div>
+
+        <div className={fieldClass()}>
+          <label htmlFor="geoLongitude" className="form-input-label">Longitude *</label>
+          <input type="number" id="geoLongitude" className={`form-text-input ${fieldErrors.geoLongitude ? "error" : ""}`} value={formData.geoLocation?.coordinates?.[0] ?? ""} onChange={(e) => handleGeoCoordinateChange(0, e.target.value)} placeholder="Example: 80.2707" step="any" min="-180" max="180" required />
+          {renderFieldError("geoLongitude")}
+        </div>
+
+        <div className={fieldClass("field-span-full")}>
+          <label htmlFor="website" className="form-input-label">Website</label>
+          <input type="text" id="website" name="website" className={`form-text-input ${fieldErrors.website ? "error" : ""}`} value={formData.website} onChange={handleChange} placeholder="https://example.com" />
+          {renderFieldError("website")}
+        </div>
+      </div>
+    </>
+  );
+
+  const renderSocialMedia = () => (
+    <>
+      {renderSectionIntro(
+        "Social presence",
+        "Show the channels the business already uses. A tidy social block makes the listing feel active and current.",
+        "6 platforms"
+      )}
+
+      <div className={cx("social-media-grid")}>
+        {[
+          { field: "facebook", label: "Facebook" },
+          { field: "instagram", label: "Instagram" },
+          { field: "youtube", label: "YouTube" },
+          { field: "pinterest", label: "Pinterest" },
+          { field: "twitter", label: "Twitter" },
+          { field: "linkedin", label: "LinkedIn" },
+        ].map(({ field, label }) => (
+          <div className={fieldClass("field-compact")} key={field}>
+            <label htmlFor={field} className="form-input-label">{label}</label>
+            <input type="text" id={field} name={field} className={getInputClassName("text-input", field)} value={formData[field]} onChange={handleChange} placeholder={`Your ${label} profile URL`} />
+            {renderFieldError(field)}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
+  const renderBannerDetails = () => (
+    <>
+      {renderSectionIntro(
+        "Brand storytelling",
+        "Use the banner to create a strong first impression, then give the profile a polished description beneath it.",
+        "Visual + copy"
+      )}
+
+      <div className={cx("section-grid", "section-grid-2")}>
+        <div className={fieldClass("field-span-full", "upload-section")}>
+          <div className={cx("upload-panel")}>
+            <div>
+              <label className="form-input-label">Banner Image</label>
+              <p className={cx("upload-panel-copy")}>Choose a clean, high-resolution image that represents the business well.</p>
+            </div>
+            <div className={cx("upload-content")}>
+              <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
+                Upload Image
+                <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+              </Button>
+              {preview && <Avatar src={preview} sx={{ width: 56, height: 56 }} className={cx("preview-avatar")} />}
+            </div>
+          </div>
+          {renderFieldError("bannerImage")}
+        </div>
+
+        <div className={fieldClass("field-span-full", "upload-section")}>
+          <div className={cx("upload-panel")}>
+            <div>
+              <label className="form-input-label">Business Logo</label>
+              <p className={cx("upload-panel-copy")}>Upload the logo in its natural shape. You can fine-tune the crop after selecting it.</p>
+            </div>
+            <div className={cx("upload-content")}>
+              <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
+                Upload Logo
+                <input type="file" accept="image/*" hidden onChange={handleLogoSelect} />
+              </Button>
+              {logoPreview && (
+                <div className={cx("logo-preview")}>
+                  <img src={logoPreview} alt="Business logo preview" className={cx("logo-preview-image")} />
+                  <Button size="small" onClick={handleLogoClear} sx={{ mt: 1 }}>Clear</Button>
+                </div>
+              )}
+            </div>
+          </div>
+          {renderFieldError("logoImage")}
+        </div>
+
+        <div className={fieldClass("field-span-full")}>
+          <label className="form-input-label">Business Details</label>
+          <QuillEditor value={formDataBusinessDetails} onChange={handleBusinessChange} modules={QUILL_MODULES} formats={QUILL_FORMATS} placeholder="Type business details here..." style={{ height: "220px" }} />
+          {renderFieldError("businessDetails")}
+        </div>
+      </div>
+    </>
+  );
+
+  const storedGalleryImages = Array.isArray(formData.businessImages) ? formData.businessImages : [];
+  const galleryImageCount = storedGalleryImages.length + galleryFiles.length;
+
+  // One tile renderer for both halves of the gallery: photos already on the
+  // business and photos staged in this session. Staged ones are outlined so it
+  // is obvious which will only exist after the section is saved.
+  const reorderGallery = (group, from, to) => {
+    if (group === "stored") handleReorderStoredGalleryImage?.(from, to);
+    else handleReorderGalleryFile?.(from, to);
+  };
+
+  const renderGalleryTile = ({ key, group, index, total, src, alt, isNew, onRemove }) => {
+    const isDragging = galleryDrag?.group === group && galleryDrag.index === index;
+    return (
+      <div
+        key={key}
+        draggable
+        onDragStart={() => setGalleryDrag({ group, index })}
+        onDragEnd={() => setGalleryDrag(null)}
+        onDragOver={event => {
+          // Only a tile from the same group is a valid drop target, so the
+          // browser shows "no drop" when dragging across the two.
+          if (galleryDrag?.group === group) event.preventDefault();
+        }}
+        onDrop={event => {
+          event.preventDefault();
+          if (galleryDrag?.group !== group) return;
+          reorderGallery(group, galleryDrag.index, index);
+          setGalleryDrag(null);
+        }}
+        title="Drag to reorder"
+        style={{
+          position: "relative",
+          width: "108px",
+          height: "108px",
+          borderRadius: "10px",
+          overflow: "hidden",
+          border: isNew ? "2px dashed #16a34a" : "1px solid #e5e7eb",
+          background: "#f8fafc",
+          cursor: "grab",
+          opacity: isDragging ? 0.45 : 1,
+        }}
+      >
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          draggable={false}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+        <span
+          style={{
+            position: "absolute",
+            top: 4,
+            left: 4,
+            minWidth: "18px",
+            height: "18px",
+            padding: "0 5px",
+            borderRadius: "9px",
+            background: "rgba(15, 23, 42, 0.72)",
+            color: "#fff",
+            fontSize: "11px",
+            fontWeight: 700,
+            lineHeight: "18px",
+            textAlign: "center",
+          }}
+        >
+          {index + 1}
+        </span>
+        <IconButton
+          size="small"
+          aria-label={`Remove ${alt}`}
+          onClick={onRemove}
+          sx={{
+            position: "absolute",
+            top: 4,
+            right: 4,
+            padding: "2px",
+            backgroundColor: "rgba(255, 255, 255, 0.92)",
+            "&:hover": { backgroundColor: "#fee2e2" },
+          }}
+        >
+          <CloseRoundedIcon sx={{ fontSize: 16, color: "#b91c1c" }} />
+        </IconButton>
+        {/* Dragging is the fast path; these are the one that works on a
+            touchscreen and with a keyboard. */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            justifyContent: "space-between",
+            background: "linear-gradient(transparent, rgba(15, 23, 42, 0.55))",
+          }}
+        >
+          <IconButton
+            size="small"
+            aria-label={`Move ${alt} earlier`}
+            disabled={index === 0}
+            onClick={() => reorderGallery(group, index, index - 1)}
+            sx={{ padding: "2px", color: "#fff", "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" } }}
+          >
+            <ChevronLeftRoundedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={`Move ${alt} later`}
+            disabled={index === total - 1}
+            onClick={() => reorderGallery(group, index, index + 1)}
+            sx={{ padding: "2px", color: "#fff", "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" } }}
+          >
+            <ChevronRightRoundedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </div>
+      </div>
+    );
+  };
+
+  const renderGalleryImages = () => (
+    <>
+      {renderSectionIntro(
+        "Shop gallery",
+        "These photos appear in the gallery on the business detail page, on the website and in the app. Drag a photo, or use the arrows, to set the order they are shown in. The banner stays first; everything here follows it.",
+        `${galleryImageCount} photo${galleryImageCount === 1 ? "" : "s"}`
+      )}
+
+      <div className={cx("section-grid")}>
+        <div className={fieldClass("field-span-full", "upload-section")}>
+          <div className={cx("upload-panel")}>
+            <div>
+              <label className="form-input-label">Gallery Images</label>
+              <p className={cx("upload-panel-copy")}>Pick several at once. Removing a saved photo deletes it from the listing when you save this section. New photos are added at the end &mdash; save, then drag them where you want.</p>
+            </div>
+            <div className={cx("upload-content")}>
+              <Button variant="contained" startIcon={<CloudUploadIcon />} component="label" className={cx("upload-button")}>
+                Upload Images
+                <input type="file" accept="image/*" multiple hidden onChange={handleGalleryUpload} />
+              </Button>
+            </div>
+          </div>
+          {renderFieldError("businessImages")}
+        </div>
+
+        <div className={fieldClass("field-span-full")}>
+          {galleryImageCount === 0 ? (
+            <p className={cx("upload-panel-copy")}>No gallery photos yet. The detail page will fall back to the banner image on its own.</p>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+              {storedGalleryImages.map((src, index) =>
+                renderGalleryTile({
+                  key: `stored-${src}-${index}`,
+                  group: "stored",
+                  index,
+                  total: storedGalleryImages.length,
+                  src,
+                  alt: `gallery photo ${index + 1}`,
+                  isNew: false,
+                  onRemove: () => handleRemoveStoredGalleryImage?.(index),
+                })
+              )}
+              {galleryFiles.map((file, index) =>
+                renderGalleryTile({
+                  key: `new-${file.name}-${index}`,
+                  group: "new",
+                  index,
+                  total: galleryFiles.length,
+                  src: file.preview,
+                  alt: file.name || `new gallery photo ${index + 1}`,
+                  isNew: true,
+                  onRemove: () => handleRemoveGalleryFile?.(index),
+                })
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  const renderOpeningHours = () => (
+    <>
+      {renderSectionIntro(
+        "Working hours",
+        "Keep the time rows easy to scan. Each day sits in a full-width row so the schedule reads like a proper operating table.",
+        "7 days"
+      )}
+
+      <div className={fieldClass("field-span-full", "field-surface")}>
+        <div className={cx("opening-hours-container")}>
+          {formData.openingHours.map((hour, index) => (
+            <div key={hour.day} className={cx("opening-hours-row")} data-closed={hour.isClosed} data-247={hour.is24Hours}>
+              <div className={cx("day-label")}>{hour.day}</div>
+              <div className={cx("time-group")}>
+                <input type="time" value={hour.is24Hours ? "00:00" : hour.open} onChange={(e) => handleOpeningHourChange(index, "open", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} placeholder="Open Time" />
+                <input type="time" value={hour.is24Hours ? "23:59" : hour.close} onChange={(e) => handleOpeningHourChange(index, "close", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} placeholder="Close Time" />
+              </div>
+              <div style={{ justifySelf: "end" }}>
+                <select
+                  value={hour.isClosed ? "closed" : hour.is24Hours ? "24/7" : "open"}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "closed") {
+                      handleOpeningHourChange(index, "isClosed", true);
+                      handleOpeningHourChange(index, "is24Hours", false);
+                    } else if (value === "24/7") {
+                      handleOpeningHourChange(index, "isClosed", false);
+                      handleOpeningHourChange(index, "is24Hours", true);
+                      handleOpeningHourChange(index, "open", "00:00");
+                      handleOpeningHourChange(index, "close", "23:59");
+                    } else {
+                      handleOpeningHourChange(index, "isClosed", false);
+                      handleOpeningHourChange(index, "is24Hours", false);
+                    }
+                  }}
+                  className={cx("select-input")}
+                >
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                  <option value="24/7">24/7</option>
+                </select>
+              </div>
+            </div>
+          ))}
+        </div>
+        {formData.openingHours.map((hour) => (
+          <div key={hour.day}>
+            {renderFieldError(`openingHours.${hour.day}`)}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
+  const renderBadgesVisibility = () => (
+    <>
+      {renderSectionIntro(
+        "Badges & Visibility",
+        "Control how this listing is highlighted"
+      )}
+
+      <div className={cx("section-grid")}>
+        {/* Badge Toggles */}
+        <div className={fieldClass("field-span-full")}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+            {[
+              { key: "isFeatured", label: "⭐ Featured", color: "#d97706", bg: "#fef3c7" },
+              { key: "isSponsored", label: "💎 Sponsored", color: "#7c3aed", bg: "#ede9fe" },
+              { key: "isTrending", label: "🔥 Trending", color: "#dc2626", bg: "#fee2e2" },
+              { key: "isTrust", label: "🛡️ Trusted", color: "#059669", bg: "#d1fae5" },
+            ].map(({ key, label, color, bg }) => {
+              const on = !!formData.badges?.[key];
+              return (
+                <label
+                  key={key}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    border: `1.5px solid ${on ? color : "#e0e0e0"}`,
+                    background: on ? bg : "#fafafa",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    color: on ? color : "#555",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        badges: { ...prev.badges, [key]: e.target.checked },
+                      }))
+                    }
+                    style={{ accentColor: color }}
+                  />
+                  {label}
+                </label>
+              );
+            })}
+
+            {/* Verified Badge */}
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: `1.5px solid ${formData.verification?.isVerified ? "#2563eb" : "#e0e0e0"}`,
+                background: formData.verification?.isVerified ? "#dbeafe" : "#fafafa",
+                cursor: "pointer",
+                userSelect: "none",
+                fontWeight: 600,
+                fontSize: "13px",
+                color: formData.verification?.isVerified ? "#2563eb" : "#555",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={!!formData.verification?.isVerified}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    verification: { ...prev.verification, isVerified: e.target.checked },
+                  }))
+                }
+                style={{ accentColor: "#2563eb" }}
+              />
+              ✅ Verified
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                border: `1.5px solid ${formData.premiumBusiness ? "#0891b2" : "#e0e0e0"}`,
+                background: formData.premiumBusiness ? "#cffafe" : "#fafafa",
+                cursor: "pointer",
+                userSelect: "none",
+                fontWeight: 600,
+                fontSize: "13px",
+                color: formData.premiumBusiness ? "#0e7490" : "#555",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={!!formData.premiumBusiness}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    premiumBusiness: e.target.checked,
+                  }))
+                }
+                style={{ accentColor: "#0891b2" }}
+              />
+              Premium Lead Business
+            </label>
+          </div>
+        </div>
+
+        {/* Priority Score */}
+        <div className={fieldClass("field-span-full")}>
+          <label className="form-input-label">Priority Score</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            className={cx("text-input")}
+            value={formData.badges?.priorityScore ?? 0}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                badges: { ...prev.badges, priorityScore: Number(e.target.value) },
+              }))
+            }
+            placeholder="0–100, higher = boosted in results"
+          />
+          <p className={cx("helper-note")}>Higher scores can surface the listing more prominently in some views.</p>
+        </div>
+
+        {/* Verification Type (conditional) */}
+        {formData.verification?.isVerified && (
+          <div className={fieldClass("field-span-full")}>
+            <label className="form-input-label">Verification Type</label>
+            <select
+              value={formData.verification?.verificationType || "ADMIN"}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  verification: { ...prev.verification, verificationType: e.target.value },
+                }))
+              }
+              className={cx("select-input")}
+            >
+              <option value="ADMIN">Admin Verified</option>
+              <option value="DOCUMENT">Document Verified</option>
+              <option value="AUTO">Auto Verified</option>
+            </select>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  const renderPaymentDetails = () => (
+    <>
+      {renderSectionIntro(
+        "Payment concept",
+        "Record the base amount, 18% GST, total payable, advance paid, and pending amount for this business.",
+        paymentStatusLabel
+      )}
+
+      <div className={cx("payment-concept-panel")}>
+        <div className={cx("payment-concept-header")}>
+          <div>
+            <p className={cx("payment-concept-eyebrow")}>Business Payment Summary</p>
+            <h3 className={cx("payment-concept-title")}>{formData.businessName || "New business"}</h3>
+          </div>
+          <span className={cx("payment-concept-status", `payment-concept-status-${paymentConcept.paymentStatus}`)}>
+            {paymentStatusLabel}
+          </span>
+        </div>
+
+        <div className={cx("payment-concept-metrics")}>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>Base Amount</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.baseAmount)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>GST 18%</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.gstAmount)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>Total Amount Incl. GST</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.totalAmount)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric")}>
+            <span className={cx("payment-concept-metric-label")}>Advance Paid</span>
+            <strong className={cx("payment-concept-metric-value")}>{formatAmount(paymentConcept.advancePaid)}</strong>
+          </div>
+          <div className={cx("payment-concept-metric", "payment-concept-pending")}>
+            <span className={cx("payment-concept-metric-label")}>Pending Amount</span>
+            <strong className={cx("payment-concept-metric-value", "payment-concept-metric-value-pending")}>{formatAmount(paymentConcept.pendingAmount)}</strong>
+          </div>
+        </div>
+
+        <div className={cx("payment-concept-progress")}>
+          <span className={cx("payment-concept-progress-fill")} style={{ width: `${paymentProgress}%` }} />
+        </div>
+
+        <div className={cx("section-grid", "section-grid-2")}>
+          <div className={fieldClass()}>
+            <label htmlFor="paymentBaseAmount" className="form-input-label">Base Amount</label>
+            <input
+              id="paymentBaseAmount"
+              type="number"
+              min="0"
+              className={cx("text-input")}
+              value={paymentConcept.baseAmount}
+              onChange={(event) => updatePaymentConcept({ baseAmount: event.target.value })}
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">GST 18%</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={formatAmount(paymentConcept.gstAmount)}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">Total Amount Incl. GST</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={formatAmount(paymentConcept.totalAmount)}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label htmlFor="paymentAdvancePaid" className="form-input-label">Advance / Paid Amount</label>
+            <input
+              id="paymentAdvancePaid"
+              type="number"
+              min="0"
+              className={cx("text-input")}
+              value={paymentConcept.advancePaid}
+              onChange={(event) => updatePaymentConcept({ advancePaid: event.target.value })}
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">Pending Amount</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={formatAmount(paymentConcept.pendingAmount)}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label htmlFor="paymentMethod" className="form-input-label">Payment Method</label>
+            <select
+              id="paymentMethod"
+              className={cx("select-input")}
+              value={paymentConcept.paymentMethod}
+              onChange={(event) => updatePaymentConcept({ paymentMethod: event.target.value })}
+            >
+              {(paymentMethodOptions || []).map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={fieldClass()}>
+            <label htmlFor="paymentDueDate" className="form-input-label">Payment Due Date</label>
+            <input
+              id="paymentDueDate"
+              type="date"
+              className={cx("text-input")}
+              value={paymentConcept.paymentDueDate}
+              onChange={(event) => updatePaymentConcept({ paymentDueDate: event.target.value })}
+            />
+          </div>
+
+          <div className={fieldClass()}>
+            <label className="form-input-label">Payment Status</label>
+            <input
+              type="text"
+              className={cx("text-input")}
+              value={`${paymentStatusLabel} - ${paymentMethodLabel}`}
+              readOnly
+            />
+          </div>
+
+          <div className={fieldClass("field-span-full")}>
+            <label htmlFor="paymentReference" className="form-input-label">Payment Reference</label>
+            <input
+              id="paymentReference"
+              type="text"
+              className={cx("text-input")}
+              value={paymentConcept.paymentReference}
+              onChange={(event) => updatePaymentConcept({ paymentReference: event.target.value })}
+              placeholder="Transaction ID, receipt number, cheque number, or manual note"
+            />
+          </div>
+
+          <div className={fieldClass("field-span-full")}>
+            <label htmlFor="paymentNotes" className="form-input-label">Internal Payment Notes</label>
+            <textarea
+              id="paymentNotes"
+              className={cx("textarea-input")}
+              value={paymentConcept.notes}
+              onChange={(event) => updatePaymentConcept({ notes: event.target.value })}
+              placeholder="Add any payment follow-up notes for the team"
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const sectionRenderers = {
+    clientBusiness: renderClientBusiness,
+    address: renderAddress,
+    contact: renderContact,
+    businessInfo: renderBusinessInfo,
+    locationWeb: renderLocationWeb,
+    socialMedia: renderSocialMedia,
+    bannerDetails: renderBannerDetails,
+    galleryImages: renderGalleryImages,
+    openingHours: renderOpeningHours,
+    badgesVisibility: renderBadgesVisibility,
+    paymentDetails: renderPaymentDetails,
+  };
+
+  const activeSection_obj = sections.find((s) => s.key === activeSection);
+  const navigation = activeSection_obj && getSectionNavigation ? getSectionNavigation(0, activeSection_obj.key) : null;
+  const isDisabled = activeSection_obj && getSectionIsDisabled ? getSectionIsDisabled(0, activeSection_obj.key) : false;
+
+  return (
+    <>
+      {activeSection_obj && (
+        <div>
+          <BusinessFormSection
+            step={0}
+            sectionKey={activeSection_obj.key}
+            title={activeSection_obj.title}
+            subtitle={activeSection_obj.subtitle}
+            isCollapsed={false}
+            isDisabled={isDisabled}
+            onToggleCollapse={() => {}}
+            showAdvanceButton={!editMode && !!navigation}
+            onAdvance={() => handleSectionAdvance(0, activeSection_obj.key)}
+            advanceLabel={navigation?.label || "Next"}
+            advanceType={navigation?.type === "submit" ? "submit" : "next"}
+            showSaveButton={editMode}
+            onSave={() => saveSectionData(activeSection_obj.key)}
+            isSaving={sectionSavingState[activeSection_obj.key] || false}
+          >
+            {sectionRenderers[activeSection_obj.key]()}
+          </BusinessFormSection>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default BusinessFormStep0;

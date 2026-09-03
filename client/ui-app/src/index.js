@@ -1,13 +1,13 @@
 import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import { store } from './redux/store.js';
-import reportWebVitals from './reportWebVitals';
+import 'shared/styles/index.css';
+import App from 'App.js';
+import { store } from 'state/store.js';
+import reportWebVitals from 'app/reportWebVitals.js';
 import { Provider } from 'react-redux';
-import { DrawerProvider } from './Internals/clientComponent/Drawer/drawerContext.js';
+import { DrawerProvider } from 'features/public/drawer/drawerContext.js';
 import { HelmetProvider } from "react-helmet-async";
-import { setAxiosStore } from './services/axiosInstance.js'; // Initialize axios store reference
-import { scheduleIdleCallback } from './utils/scheduleIdleCallback.js';
+import { setAxiosStore } from 'shared/services/axiosInstance.js'; // Initialize axios store reference
+import { scheduleIdleCallback } from 'shared/utils/scheduleIdleCallback.js';
 
 const CHUNK_RECOVERY_FLAG = 'massclick:chunk-recovery-attempted';
 const CHUNK_ERROR_PATTERN = /Loading (?:CSS )?chunk \d+ failed|ChunkLoadError|Failed to fetch dynamically imported module/i;
@@ -62,7 +62,7 @@ const loadDeferredScripts = async () => {
     const {
       loadGoogleAds,
       loadGoogleTagManager,
-    } = await import('./services/analyticsLoader');
+    } = await import('shared/services/analyticsLoader.js');
     // The Ads gtag runtime also processes the queued GA4 configuration, so a
     // second gtag.js download for GA4 is unnecessary.
     loadGoogleAds();
@@ -72,6 +72,7 @@ const loadDeferredScripts = async () => {
     // Uncomment the next line if ads are re-enabled later.
     // loadAdSense();
   } catch (err) {
+    // Marketing scripts are optional; the app should still render if they fail.
   }
 };
 
