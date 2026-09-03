@@ -8,37 +8,68 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import styles from "./CampaignLinkBuilder.module.css";
 
 const SITE_ORIGIN = "https://massclick.in";
+const PLAY_ORIGIN = "https://play.google.com/store/apps/details";
+const ANDROID_PACKAGE = "com.massclick.massclick";
 
 // Quick-fill chips for the acquisition channels this business actually runs —
 // admin still types the campaign name (e.g. the locality a banner is in).
-const PRESETS = [
+const WEB_PRESETS = [
   { label: "Print banner / QR", source: "banner", medium: "offline" },
   { label: "Meta Ads", source: "meta", medium: "cpc" },
   { label: "Google Ads", source: "google", medium: "cpc" },
   { label: "WhatsApp share", source: "whatsapp", medium: "social" },
 ];
 
-const buildUrl = ({ path, source, medium, campaign, term, content }) => {
+// Play links are for driving *installs*, so the channels differ from web's.
+// "google-play / organic" is what Play stamps on an unattributed store visit,
+// so it is deliberately absent here — you never tag a link with it.
+const PLAY_PRESETS = [
+  { label: "Print banner / QR", source: "banner", medium: "offline" },
+  { label: "Meta Ads", source: "meta", medium: "cpc" },
+  { label: "Google Ads (UAC)", source: "google", medium: "cpc" },
+  { label: "WhatsApp share", source: "whatsapp", medium: "social" },
+  { label: "Influencer", source: "influencer", medium: "referral" },
+];
+
+const utmPairs = ({ source, medium, campaign, term, content }) => [
+  ["utm_source", source],
+  ["utm_medium", medium],
+  ["utm_campaign", campaign],
+  ["utm_term", term],
+  ["utm_content", content],
+].filter(([, value]) => (value || "").trim());
+
+const buildWebUrl = ({ path, ...utm }) => {
   let url;
   try {
     url = new URL((path || "").trim() || "/", SITE_ORIGIN);
   } catch (_) {
     url = new URL(SITE_ORIGIN);
   }
-  const set = (key, value) => {
-    const v = value.trim();
-    if (v) url.searchParams.set(key, v);
-    else url.searchParams.delete(key);
-  };
-  set("utm_source", source);
-  set("utm_medium", medium);
-  set("utm_campaign", campaign);
-  set("utm_term", term);
-  set("utm_content", content);
+  utmPairs(utm).forEach(([key, value]) => url.searchParams.set(key, value.trim()));
   return url.toString();
 };
 
-export default function CampaignLinkBuilder() {
+// Play delivers the whole `referrer` value back to the app verbatim via the
+// Install Referrer library, so the utm_* pairs go in as ONE encoded query
+// string — not as sibling params on the store URL, which Play would drop.
+// InstallReferrerService._parse in the mobile app splits this back apart.
+const buildPlayUrl = (utm) => {
+  const url = new URL(PLAY_ORIGIN);
+  url.searchParams.set("id", ANDROID_PACKAGE);
+  const referrer = utmPairs(utm)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value.trim())}`)
+    .join("&");
+  if (referrer) url.searchParams.set("referrer", referrer);
+  return url.toString();
+};
+
+/// `target` picks what the link points at: "web" builds a massclick.in
+/// landing URL, "play" builds a Play Store link whose install referrer the
+/// mobile app reads back. Both feed the same /site-events/campaigns rollup,
+/// so a campaign name can be shared across the two and compared.
+export default function CampaignLinkBuilder({ target = "web" }) {
+  const isPlay = target === "play";
   const [path, setPath] = useState("/");
   const [source, setSource] = useState("banner");
   const [medium, setMedium] = useState("offline");
@@ -49,8 +80,10 @@ export default function CampaignLinkBuilder() {
   const [copied, setCopied] = useState(false);
 
   const url = useMemo(
-    () => buildUrl({ path, source, medium, campaign, term, content }),
-    [path, source, medium, campaign, term, content]
+    () => (isPlay
+      ? buildPlayUrl({ source, medium, campaign, term, content })
+      : buildWebUrl({ path, source, medium, campaign, term, content })),
+    [isPlay, path, source, medium, campaign, term, content]
   );
 
   // Regenerating the QR is a bit of work — debounce so fast typing doesn't
@@ -81,13 +114,15 @@ export default function CampaignLinkBuilder() {
     <div className={styles.head}>
       <span className={styles.icon}><CampaignRoundedIcon fontSize="small" /></span>
       <div className={styles.headCopy}>
-        <h2 className={styles.title}>Campaign link &amp; QR builder</h2>
-        <p className={styles.subtitle}>Tag a banner, poster, or ad with a source/medium/campaign — scans and clicks show up under Traffic Sources below once it&apos;s live.</p>
+        <h2 className={styles.title}>{isPlay ? "Play Store referral link & QR builder" : "Campaign link & QR builder"}</h2>
+        <p className={styles.subtitle}>{isPlay
+          ? "Tag a Play Store link with a source/medium/campaign. Android stamps it on the install, the app reads it back on first launch, and the installs show up under Install Sources below."
+          : "Tag a banner, poster, or ad with a source/medium/campaign — scans and clicks show up under Traffic Sources below once it's live."}</p>
       </div>
     </div>
 
     <div className={styles.presets}>
-      {PRESETS.map((p) => <Chip
+      {(isPlay ? PLAY_PRESETS : WEB_PRESETS).map((p) => <Chip
         key={p.label} label={p.label} size="small" variant="outlined"
         onClick={() => { setSource(p.source); setMedium(p.medium); }}
         className={styles.preset}
@@ -95,7 +130,7 @@ export default function CampaignLinkBuilder() {
     </div>
 
     <div className={styles.grid}>
-      <TextField size="small" label="Landing path" value={path} onChange={(e) => setPath(e.target.value)} placeholder="/ or /search?location=kk-nagar" className={styles.field} />
+      {!isPlay && <TextField size="small" label="Landing path" value={path} onChange={(e) => setPath(e.target.value)} placeholder="/ or /search?location=kk-nagar" className={styles.field} />}
       <TextField size="small" label="Source" value={source} onChange={(e) => setSource(e.target.value)} placeholder="banner, meta, google…" className={styles.field} />
       <TextField size="small" label="Medium" value={medium} onChange={(e) => setMedium(e.target.value)} placeholder="offline, cpc, social…" className={styles.field} />
       <TextField size="small" label="Campaign" value={campaign} onChange={(e) => setCampaign(e.target.value)} placeholder="kk-nagar-banner, thillai-nagar-banner…" className={styles.field} />

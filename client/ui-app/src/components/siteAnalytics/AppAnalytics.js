@@ -9,10 +9,14 @@
 //   • Devices & browsers is replaced by Platform / App version / OS version:
 //     the app's User-Agent has no browser, and every app row classifies as
 //     device "mobile", so those two filters carry no signal here.
-//   • No Traffic Sources or campaign builder — the app has no referrer and no
-//     UTM landing params until deep linking ships (web-parity P1-15).
+//   • "Traffic Sources" reads as "Install Sources", and the campaign builder
+//     emits Play Store links instead of massclick.in ones. The app has no
+//     referrer of its own, so attribution comes from the Play install
+//     referrer, which AppTracker replays onto every new session — meaning
+//     `visitors` here counts installs and `sessions`/`leads` count what those
+//     installs went on to do.
 //   • No Excel export yet: the shared workbook models a devices/browsers
-//     sheet and a campaigns sheet, neither of which the app produces.
+//     sheet the app has no equivalent for.
 
 import React, { useMemo, useState } from "react";
 import {
@@ -37,6 +41,7 @@ import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import {
   Bar, CartesianGrid, ComposedChart, Legend, Line,
   ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
@@ -47,6 +52,7 @@ import {
   bucketOf, labelOfBucket, number, todayISO,
   useFetch, styles,
 } from "./shared/analyticsPrimitives.js";
+import CampaignLinkBuilder from "./CampaignLinkBuilder.js";
 
 // "All app platforms" is a comma list the server turns into a $in — see
 // dimensionMatch in webAnalyticsHelper.js. Deliberately never includes "web".
@@ -206,6 +212,19 @@ export default function AppAnalytics() {
     { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
   ];
 
+  // Same shape as web's Traffic Sources, but the labels say what these numbers
+  // actually mean for an install: one visitor is one device that installed
+  // from this campaign, and "(direct)" is an install Play could not attribute
+  // (an organic store search, a sideload, or a pre-referrer build).
+  const installSourceColumns = [
+    { key: "source", label: "Source", render: (r) => <span className={styles.mono} title={r.source}>{r.source}</span> },
+    { key: "medium", label: "Medium", render: (r) => r.medium },
+    { key: "campaign", label: "Campaign", render: (r) => <span className={styles.strongCell} title={r.campaign}>{r.campaign}</span> },
+    { key: "visitors", label: "Installs", numeric: true, sortable: true, width: 88, render: (r) => number(r.visitors) },
+    { key: "sessions", label: "Sessions", numeric: true, sortable: true, width: 96, render: (r) => number(r.sessions) },
+    { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
+  ];
+
   const searchColumns = [
     { key: "query", label: "Keyword", render: (r) => <span className={styles.strongCell} title={r.query}>{r.query}</span> },
     { key: "count", label: "Searches", numeric: true, sortable: true, width: 96, render: (r) => number(r.count) },
@@ -307,7 +326,16 @@ export default function AppAnalytics() {
       </div>
     </Paper>
 
+    <CampaignLinkBuilder target="play" />
+
     <div className={styles.grid}>
+      <SectionTable
+        title="Install Sources" tone="indigo" icon={CampaignRoundedIcon}
+        url="/site-events/campaigns" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
+        rowsKey="campaigns" columns={installSourceColumns} defaultSort="visitors" searchPlaceholder="Search source, medium, campaign…"
+        renderSummary={(data) => data ? `${number(data.total)} sources · ${number(data.totals?.visitors)} installs · ${number(data.totals?.leads)} leads.` : "Which Play Store campaign each install came from."}
+      />
+
       <SectionTable
         title="Top Screens" tone="blue" icon={ArticleRoundedIcon}
         url="/site-events/top-pages" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
