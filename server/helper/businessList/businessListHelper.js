@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import businessListModel from "../../model/businessList/businessListModel.js";
+import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
 import SearchLogModel from "../../model/businessList/searchLogModel.js";
 import mongoose from "mongoose";
 import {
@@ -33,8 +34,56 @@ import {
 } from "./businessPublicUrlHelper.js";
 import { PUBLIC_ID_RE } from "./businessUrl.js";
 import { normalizeBusinessWritePayload } from "./normalizeBusinessFields.js";
+import { toPhotoUrls } from "../reviewHelper/reviewHelper.js";
 
 const BUSINESS_PAYMENT_GST_RATE = 18;
+
+/** Ceiling on how many customer photos the detail page's gallery carries. */
+const MAX_CUSTOMER_GALLERY_PHOTOS = 24;
+
+/**
+ * Photos customers attached to their reviews, flattened for the detail page
+ * gallery on web and in the app.
+ *
+ * Kept in its own field rather than merged into `businessImages`: that array is
+ * the business's own curated gallery, it is what the admin form reads and writes
+ * back, and a customer photo appearing there would look deletable from a form
+ * that has no business owning it.
+ *
+ * Only ACTIVE reviews are read, so hiding or reporting a review takes its photos
+ * off the page with it - the moderation the review list already has, reused.
+ */
+const getCustomerGalleryPhotos = async (businessId) => {
+  if (!businessId) return [];
+
+  try {
+    const reviews = await businessReviewModel
+      .find(
+        {
+          businessId,
+          status: "ACTIVE",
+          ratingPhotos: { $exists: true, $ne: [] },
+        },
+        { ratingPhotos: 1, createdAt: 1 },
+      )
+      .sort({ createdAt: -1 })
+      .limit(MAX_CUSTOMER_GALLERY_PHOTOS)
+      .lean();
+
+    const photos = [];
+    for (const review of reviews) {
+      for (const url of toPhotoUrls(review.ratingPhotos)) {
+        if (photos.length >= MAX_CUSTOMER_GALLERY_PHOTOS) return photos;
+        photos.push(url);
+      }
+    }
+    return photos;
+  } catch (error) {
+    // The gallery is decoration on a page that still has to render.
+    console.error("Failed to load customer gallery photos", error);
+    return [];
+  }
+};
 
 const normalizeBusinessPaymentConcept = (source = {}) => {
   const baseAmount = Math.max(Number(source.baseAmount ?? source.totalAmount ?? 0), 0);
@@ -422,6 +471,8 @@ export const findBusinessBySlug = async ({ location, slug, district }) => {
       );
     }
 
+    business.customerImages = await getCustomerGalleryPhotos(business._id);
+
     return business;
   } catch (error) {
     console.error("❌ findBusinessBySlug error:", error);
@@ -502,6 +553,8 @@ export const viewBusinessList = async (identifier) => {
       { version: certificateVersion },
     );
   }
+
+  business.customerImages = await getCustomerGalleryPhotos(business._id);
 
   return business;
 };

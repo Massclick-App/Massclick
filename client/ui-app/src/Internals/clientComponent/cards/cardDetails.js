@@ -276,11 +276,12 @@ const BusinessDetail = React.memo(() => {
       </>;
   }
   const galleryImageSrcs = business.businessImages || [];
+  const customerImageSrcs = business.customerImages || [];
   const fallbackImage = getPlaceholderImage();
-  const firstImage = business.bannerImage || galleryImageSrcs[0] || null;
+  const firstImage = business.bannerImage || galleryImageSrcs[0] || customerImageSrcs[0] || null;
   const bannerImageSrc = mainImage || firstImage || fallbackImage;
   const businessLogoSrc = business.logoImage || firstImage || "";
-  const galleryDisplayImages = Array.from(new Set([business.bannerImage, ...galleryImageSrcs].filter(Boolean)));
+  const galleryDisplayImages = Array.from(new Set([business.bannerImage, ...galleryImageSrcs, ...customerImageSrcs].filter(Boolean)));
   const bannerIndex = mainImage ? Math.max(galleryImageSrcs.indexOf(mainImage), 0) : 0;
   const website = business.website;
   const formattedWebsite = website && website.startsWith("http") ? website : `https://${website}`;
@@ -1181,6 +1182,9 @@ const BusinessDetail = React.memo(() => {
                   <h2>Photo Gallery</h2>
                   <button type="button" onClick={() => { setCurrentSlideIndex(0); setShowFullGallery(true); }}>View All Photos ({galleryDisplayImages.length})</button>
                 </div>
+                {customerImageSrcs.length > 0 && <p className={cx("business-CardDetails-uploadNote")}>
+                    Includes {customerImageSrcs.length} photo{customerImageSrcs.length === 1 ? "" : "s"} shared by customers in their reviews.
+                  </p>}
                 <div className={cx("business-CardDetails-uploadSection")}>
                   <input type="file" ref={fileInputRef} multiple accept="image/*" style={{
                     display: "none"

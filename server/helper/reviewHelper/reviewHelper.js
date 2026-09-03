@@ -210,7 +210,7 @@ export const addReviewHelper = async ({ businessId, reviewData }) => {
  * base64 with keys WITHOUT this would make the browser resolve "businessList/reviews/..."
  * against the site origin and 404 every review photo.
  */
-const toPhotoUrls = (photos) => {
+export const toPhotoUrls = (photos) => {
   if (!Array.isArray(photos)) return [];
   return photos.filter(Boolean).map((value) => {
     if (typeof value !== "string") return "";
