@@ -1,5 +1,4 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
-// src/components/.../MultiStepProfileForm.jsx
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styles from "features/user/edit-profile/EditProfile.module.css";

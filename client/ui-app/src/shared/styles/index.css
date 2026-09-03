@@ -8,7 +8,7 @@
    See: src/shared/styles/css-modules-guidelines.md
 */
 
-@import url('./styles/commonFormFields.module.css');
+@import url('./commonFormFields.module.css');
 
 *,
 *::before,
