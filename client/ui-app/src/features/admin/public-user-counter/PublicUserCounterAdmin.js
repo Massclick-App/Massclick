@@ -278,7 +278,6 @@ const PublicUserCounterAdmin = () => {
             <TextField label="Title" size="small" value={settings.title} onChange={(e) => updateField("title", e.target.value)} />
             <TextField label="Subtitle" size="small" value={settings.subtitle} onChange={(e) => updateField("subtitle", e.target.value)} />
             <TextField label="Starting Count" size="small" value={toInputValue(settings.baseCount)} onChange={(e) => updateField("baseCount", e.target.value)} />
-            <TextField label="New Users Today" size="small" value={toInputValue(settings.todayBaseCount)} onChange={(e) => updateField("todayBaseCount", e.target.value)} />
             <TextField label="Users Online Now" size="small" value={toInputValue(settings.onlineBaseCount)} onChange={(e) => updateField("onlineBaseCount", e.target.value)} />
             <TextField label="Update Every Seconds" size="small" value={toInputValue(settings.intervalSeconds)} onChange={(e) => updateField("intervalSeconds", e.target.value)} />
             <TextField label="Increment Min" size="small" value={toInputValue(settings.incrementMin)} onChange={(e) => updateField("incrementMin", e.target.value)} />
@@ -286,7 +285,7 @@ const PublicUserCounterAdmin = () => {
           </div>
 
           <Alert severity="info">
-            Example: starting count {toInputValue(settings.baseCount) || 0}, increment {toInputValue(settings.incrementMin) || 0} to {toInputValue(settings.incrementMax) || 0}, update every {toInputValue(settings.intervalSeconds) || 30} seconds. Every morning at 7:00 AM it starts again from the Starting Count when daily reset is enabled.
+            Example: starting count {toInputValue(settings.baseCount) || 0}, increment {toInputValue(settings.incrementMin) || 0} to {toInputValue(settings.incrementMax) || 0}, update every {toInputValue(settings.intervalSeconds) || 30} seconds. New Users Since 7 AM is calculated automatically from this growth and resets at 7:00 AM Asia/Kolkata time each day.
           </Alert>
         </Stack>
       </Card>

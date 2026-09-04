@@ -69,6 +69,10 @@ const LocationCoverage = () => {
   const [districtOptions, setDistrictOptions] = useState([]);
   const [zoneOptions, setZoneOptions] = useState([]);
   const categorySearchTimeoutRef = useRef(null);
+  const tableOptionsRef = useRef({ search: "", sortBy: "", sortOrder: "asc" });
+  const [exportType, setExportType] = useState("filtered");
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState("");
 
   const [breakdown, setBreakdown] = useState({ open: false, loading: false, error: "", data: null, locationName: "" });
   const [missingFilter, setMissingFilter] = useState("");
@@ -142,6 +146,125 @@ const LocationCoverage = () => {
     setFilterLiveStatus("all");
     setFilterCategory("");
     setCategoryInput("");
+  };
+
+  const downloadWorkbook = async () => {
+    if (exportType === "category" && !filterCategory) {
+      setExportMessage("Select a category before exporting category coverage.");
+      setFiltersOpen(true);
+      return;
+    }
+
+    setExporting(true);
+    setExportMessage("");
+    try {
+      const pageSize = 500;
+      const exportedRows = [];
+      let pageNo = 1;
+      let exportTotal = 0;
+      const currentTableOptions = tableOptionsRef.current;
+      const selectedMode = COVERAGE_MODES.find((mode) => mode.id === coverageMode)?.businessCoverage || "all";
+      const businessCoverage = exportType === "needs" ? "needs" : selectedMode;
+
+      do {
+        const response = await dispatch(getLocationCoverage({
+          pageNo,
+          pageSize,
+          options: {
+            search: currentTableOptions.search || "",
+            sortBy: currentTableOptions.sortBy || "",
+            sortOrder: currentTableOptions.sortOrder === "desc" ? "desc" : "asc",
+            district: filterDistrict,
+            zone: filterZone,
+            level: filterLevel,
+            status: filterLiveStatus,
+            category: filterCategory,
+            businessCoverage,
+          }
+        }));
+        const pageRows = response?.data || [];
+        exportedRows.push(...pageRows);
+        exportTotal = Number(response?.total || pageRows.length);
+        pageNo += 1;
+        if (!pageRows.length) break;
+      } while (exportedRows.length < exportTotal);
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "MassClick";
+      workbook.created = new Date();
+      const sheet = workbook.addWorksheet("Location Coverage", { views: [{ state: "frozen", ySplit: 1 }] });
+      sheet.columns = [
+        { header: "Location", key: "location", width: 25 },
+        { header: "District", key: "district", width: 20 },
+        { header: "Zone", key: "zone", width: 20 },
+        { header: "Ward", key: "ward", width: 20 },
+        { header: "Locality", key: "locality", width: 24 },
+        { header: "Level", key: "level", width: 13 },
+        { header: "PIN", key: "pincode", width: 14 },
+        { header: "Live Status", key: "liveStatus", width: 14 },
+        { header: "Category", key: "category", width: 28 },
+        { header: "Coverage", key: "coverage", width: 16 },
+        { header: "Business Count", key: "businessCount", width: 16 },
+        { header: "Businesses", key: "businesses", width: 42 },
+        { header: "Full Location Path", key: "fullPlace", width: 55 },
+      ];
+
+      exportedRows.forEach((location) => {
+        const businessCount = Number(location.businessCount || 0);
+        sheet.addRow({
+          location: location.locality || location.ward || location.zone || location.district || "",
+          district: location.district || "",
+          zone: location.zone || "",
+          ward: location.ward || "",
+          locality: location.locality || "",
+          level: location.level || "",
+          pincode: location.pincode || (location.pincodes || []).join(", "),
+          liveStatus: getLocationStatus(location).label,
+          category: filterCategory || "Any category",
+          coverage: businessCount > 0 ? "Has Business" : "No Business",
+          businessCount,
+          businesses: (location.businesses || []).map((business) => business.businessName || "(unnamed)").join(", "),
+          fullPlace: location.hierarchyPath || [location.state, location.district, location.zone, location.ward, location.locality].filter(Boolean).join(" > "),
+        });
+      });
+
+      sheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF97316" } };
+        cell.alignment = { vertical: "middle" };
+      });
+      sheet.getRow(1).height = 24;
+      sheet.autoFilter = { from: "A1", to: "M1" };
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) row.alignment = { vertical: "top", wrapText: true };
+      });
+
+      const filtersSheet = workbook.addWorksheet("Applied Filters");
+      filtersSheet.columns = [{ header: "Filter", key: "filter", width: 24 }, { header: "Value", key: "value", width: 50 }];
+      [
+        ["Export option", exportType === "needs" ? "No Business" : exportType === "category" ? "By Category" : "Current Filtered Results"],
+        ["Search", currentTableOptions.search || "All"], ["Coverage mode", businessCoverage],
+        ["District", filterDistrict || "All"], ["Zone", filterZone || "All"],
+        ["Category", filterCategory || "Any category"], ["Level", filterLevel],
+        ["Live status", filterLiveStatus], ["Exported rows", exportedRows.length],
+      ].forEach(([filter, value]) => filtersSheet.addRow({ filter, value }));
+      filtersSheet.getRow(1).font = { bold: true };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `location-coverage-${exportType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setExportMessage(`${exportedRows.length} filtered location${exportedRows.length === 1 ? "" : "s"} exported.`);
+    } catch (error) {
+      setExportMessage(error.message || "Could not export location coverage.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const columns = [{
@@ -282,12 +405,25 @@ const LocationCoverage = () => {
             <button type="button" className={cx("location-coverage-filter-toggle")} onClick={clearFilters}>
               Clear all
             </button>
+            <div className={cx("location-coverage-export-control")}>
+              <select value={exportType} onChange={(event) => { setExportType(event.target.value); setExportMessage(""); }} aria-label="Excel export option">
+                <option value="filtered">Current filtered results</option>
+                <option value="category">By category</option>
+                <option value="needs">No business locations</option>
+              </select>
+              <button type="button" onClick={downloadWorkbook} disabled={exporting}>
+                {exporting ? <CircularProgress size={15} color="inherit" /> : <Download size={15} />}
+                <span>{exporting ? "Exporting..." : "Export Excel"}</span>
+              </button>
+            </div>
             <div className={cx("location-coverage-toolbar-spacer")} />
             <span className={cx("location-coverage-hint")}>
               Counts reflect businesses linked directly to that location, not rolled up from its sub-areas.
               Up to {businessPreviewLimit} shown per row.
             </span>
           </div>
+
+          {exportMessage && <p className={cx("location-coverage-export-message")} role="status">{exportMessage}</p>}
 
           {activeFilterChips.length > 0 && (
             <div className={cx("location-coverage-chip-row")}>
@@ -391,6 +527,7 @@ const LocationCoverage = () => {
         searchPlaceholder="Search locality, ward, zone, district, pincode"
         refreshKey={tableRefreshKey}
         fetchData={(pageNo, pageSize, options) => {
+          tableOptionsRef.current = options;
           setLoading(true);
           dispatch(getLocationCoverage({
             pageNo,
