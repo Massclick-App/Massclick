@@ -111,6 +111,9 @@ export default function AppAnalytics() {
   }, [filters]);
 
   const filterKey = JSON.stringify(queryFilters);
+  const isIosOnly = filters.platform === "ios";
+  const playInstallFilters = useMemo(() => ({ ...queryFilters, platform: "android" }), [queryFilters]);
+  const playInstallFilterKey = JSON.stringify(playInstallFilters);
 
   const overview = useFetch("/site-events/overview", queryFilters, reloadToken);
   const trends = useFetch("/site-events/trends", queryFilters, reloadToken);
@@ -217,9 +220,9 @@ export default function AppAnalytics() {
   // from this campaign, and "(direct)" is an install Play could not attribute
   // (an organic store search, a sideload, or a pre-referrer build).
   const installSourceColumns = [
-    { key: "source", label: "Source", render: (r) => <span className={styles.mono} title={r.source}>{r.source}</span> },
-    { key: "medium", label: "Medium", render: (r) => r.medium },
-    { key: "campaign", label: "Campaign", render: (r) => <span className={styles.strongCell} title={r.campaign}>{r.campaign}</span> },
+    { key: "source", label: "Source", render: (r) => <span className={styles.mono} title={r.source || "(direct)"}>{r.source || "(direct)"}</span> },
+    { key: "medium", label: "Medium", render: (r) => r.medium || "(none)" },
+    { key: "campaign", label: "Campaign", render: (r) => <span className={styles.strongCell} title={r.campaign || "(not set)"}>{r.campaign || "(not set)"}</span> },
     { key: "visitors", label: "Installs", numeric: true, sortable: true, width: 88, render: (r) => number(r.visitors) },
     { key: "sessions", label: "Sessions", numeric: true, sortable: true, width: 96, render: (r) => number(r.sessions) },
     { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
@@ -328,13 +331,15 @@ export default function AppAnalytics() {
 
     <CampaignLinkBuilder target="play" />
 
+    {isIosOnly && <Alert severity="info" className={styles.alert}>Play Store install referrals are Android-only, so Install Sources is hidden while the iOS filter is selected.</Alert>}
+
     <div className={styles.grid}>
-      <SectionTable
-        title="Install Sources" tone="indigo" icon={CampaignRoundedIcon}
-        url="/site-events/campaigns" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
+      {!isIosOnly && <SectionTable
+        title="Play Store Install Sources" tone="indigo" icon={CampaignRoundedIcon}
+        url="/site-events/campaigns" filters={playInstallFilters} filterKey={playInstallFilterKey} reloadToken={reloadToken}
         rowsKey="campaigns" columns={installSourceColumns} defaultSort="visitors" searchPlaceholder="Search source, medium, campaign…"
-        renderSummary={(data) => data ? `${number(data.total)} sources · ${number(data.totals?.visitors)} installs · ${number(data.totals?.leads)} leads.` : "Which Play Store campaign each install came from."}
-      />
+        renderSummary={(data) => data ? `${number(data.total)} Android sources · ${number(data.totals?.visitors)} installs · ${number(data.totals?.leads)} leads.` : "Which Play Store campaign each Android install came from."}
+      />}
 
       <SectionTable
         title="Top Screens" tone="blue" icon={ArticleRoundedIcon}
