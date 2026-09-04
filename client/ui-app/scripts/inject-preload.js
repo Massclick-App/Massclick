@@ -1,6 +1,6 @@
 /**
  * Post-build: loads local CSS without blocking first paint and preloads the
- * mobile hero's LCP background image using their final content-hashed URLs.
+ * tablet hero's background image using its final content-hashed URL.
  *
  * Runs automatically via the "postbuild" npm script.
  */
@@ -71,7 +71,7 @@ if (fs.existsSync(manifestPath)) {
   if (mobileHeroHref) {
     const preloadTag =
       `<link rel="preload" href="${mobileHeroHref}" as="image" ` +
-      'fetchpriority="high" media="(max-width: 1199px)">';
+      'fetchpriority="low" media="(min-width: 768px) and (max-width: 1199px)">';
 
     if (!html.includes(preloadTag)) {
       html = html.replace("</head>", `  ${preloadTag}\n</head>`);

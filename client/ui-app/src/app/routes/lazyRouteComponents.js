@@ -1,4 +1,5 @@
 import { lazy } from "react";
+import HomePage from "features/public/HomePage.js";
 
 export const AdminPages = {
   Dashboard: lazy(() => import(/* webpackChunkName: "admin-dashboard" */ "app/layout/AdminDashboardLayout.js")),
@@ -54,7 +55,7 @@ export const AdminPages = {
 };
 
 export const PublicPages = {
-  BusinessListing: lazy(() => import(/* webpackChunkName: "home" */ "features/public/HomePage.js")),
+  BusinessListing: HomePage,
   BusinessDetails: lazy(() => import(/* webpackChunkName: "business-detail" */ "features/public/cards/cardDetails.js")),
   EventCarousel: lazy(() => import(/* webpackChunkName: "events" */ "features/public/events/eventCarousel/eventCarousel.js")),
   EventDetails: lazy(() => import(/* webpackChunkName: "event-detail" */ "features/public/events/eventDetails/eventDetails.js")),

@@ -38,6 +38,17 @@ import RouteLoadingFallback from 'shared/components/RouteLoadingFallback.js';
 import { scheduleIdleCallback } from 'shared/utils/scheduleIdleCallback.js';
 import { useDrawer } from 'features/public/drawer/drawerContext.js';
 
+const DEFERRED_CHROME_EVENTS = [
+  "pointerdown",
+  "touchstart",
+  "keydown",
+  "scroll",
+];
+
+const isSmallMobileViewport = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(max-width: 767px)")?.matches;
+
 const {
   Dashboard,
   Login,
@@ -477,18 +488,50 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const idleHandle = scheduleIdleCallback(
-      () => setShowGlobalChrome(true),
-      { timeout: 2500 },
-    );
+    let idleHandle = null;
+    let fallbackTimer = null;
+
+    const showChrome = () => {
+      DEFERRED_CHROME_EVENTS.forEach((eventName) => {
+        window.removeEventListener(eventName, showChrome);
+      });
+      if (fallbackTimer !== null) {
+        window.clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+      setShowGlobalChrome(true);
+    };
+
+    if (isSmallMobileViewport()) {
+      DEFERRED_CHROME_EVENTS.forEach((eventName) => {
+        window.addEventListener(eventName, showChrome, {
+          passive: true,
+          once: true,
+        });
+      });
+      fallbackTimer = window.setTimeout(showChrome, 7000);
+    } else {
+      idleHandle = scheduleIdleCallback(
+        () => setShowGlobalChrome(true),
+        { timeout: 2500 },
+      );
+    }
 
     return () => {
-      if (typeof window.cancelIdleCallback === "function") {
+      DEFERRED_CHROME_EVENTS.forEach((eventName) => {
+        window.removeEventListener(eventName, showChrome);
+      });
+      if (fallbackTimer !== null) {
+        window.clearTimeout(fallbackTimer);
+      }
+      if (idleHandle !== null && typeof window.cancelIdleCallback === "function") {
         window.cancelIdleCallback(idleHandle);
         return;
       }
 
-      window.clearTimeout(idleHandle);
+      if (idleHandle !== null) {
+        window.clearTimeout(idleHandle);
+      }
     };
   }, []);
 

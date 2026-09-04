@@ -120,7 +120,14 @@ const AppInstallPrompt = () => {
       <div className={cx("installGrabber")} aria-hidden="true" />
 
       <div className={cx("installContent")}>
-        <img className={cx("installIcon")} src="/android-chrome-192x192.png" alt="" />
+        <img
+          className={cx("installIcon")}
+          src="/favicon-32x32.png"
+          alt=""
+          width="48"
+          height="48"
+          decoding="async"
+        />
         <div className={cx("installCopy")}>
           <h2 id="massclick-install-title">Get the Massclick app</h2>
           <p>Open listings, leads, and marketing tools faster from your phone.</p>

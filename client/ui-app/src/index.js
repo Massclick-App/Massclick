@@ -90,7 +90,8 @@ root.render(
 // Marketing tags are kept off the initial render/LCP path. They start on the
 // first real user interaction, or after a 6s idle fallback so sessions with
 // no interaction (bounces, bots) still get tracked.
-const MARKETING_IDLE_FALLBACK_MS = 6000;
+const MARKETING_IDLE_FALLBACK_MS =
+  window.matchMedia?.("(max-width: 767px)")?.matches ? 12000 : 6000;
 let marketingScriptsStarted = false;
 let marketingIdleFallbackTimer = null;
 
