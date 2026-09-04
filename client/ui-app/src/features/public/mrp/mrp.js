@@ -433,7 +433,7 @@ function AllBusinessesModal({ open, close, businesses, loading, viewBusiness }) 
             <BriefcaseBusiness />
           </div>
           <div>
-            <span>MassClick Network India</span>
+            <span>Mass Network India</span>
             <h2 id="directory-title">Business Directory</h2>
             <p>Discover and connect with verified businesses in your network.</p>
           </div>
@@ -774,7 +774,7 @@ export default function MRPPage() {
               <h2>
                 {greeting}, {firstName} 👋
               </h2>
-              <h1>Welcome to MassClick Network India</h1>
+              <h1>Welcome to Mass Network India</h1>
               <p>Build connections. Grow your business. Get quality leads.</p>
               <div className={cx("hero-group-line")}><b>{activeBusinesses}</b><span>business partners in your group</span><i /><b>{responseCount}</b><span>network connections</span></div>
             </div>

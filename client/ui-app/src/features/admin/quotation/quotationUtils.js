@@ -41,7 +41,7 @@ export const whyChooseMassClick = [
     tamilText: "Popular Categories மற்றும் Trending Searches-ல் இடம்பெறும் வணிகங்களுக்கு அதிக பார்வையும் அதிக Lead-களும் கிடைக்கும்.",
   },
   {
-    title: "MNI (MassClick Network India)",
+    title: "MNI (Mass Network India)",
     text: "Connect with verified businesses across industries to create partnerships, referrals, and new business opportunities.",
     tamilText: "பல்வேறு துறைகளில் உள்ள சரிபார்க்கப்பட்ட வணிகர்களுடன் இணைந்து புதிய வணிக வாய்ப்புகள் மற்றும் Referral-களை உருவாக்கலாம்.",
   },
