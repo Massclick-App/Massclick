@@ -125,6 +125,7 @@ export const invalidateCategoryDisplaySettingsCache = async () => {
       'home-category-v2:*',        // GET /api/v2/category/home
       'home-mobile-category-v2:*', // GET /api/v2/category/home-mobile + mobile-service-cards
       'category-v2:*',             // GET /api/v2/category/sub/:parentSlug
+      'category-group-v2:*',       // GET /api/v2/category/group/:parentSlug
       'district-category-v2:*',    // GET /api/v2/category/district — carries category images
     ];
     // Controller-level cache keys, as PATTERNS rather than an explicit list.

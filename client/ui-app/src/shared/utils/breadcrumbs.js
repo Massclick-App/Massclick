@@ -79,6 +79,13 @@ const buildLocationCrumbs = ({
  * @param {string} [args.locationName]
  * @param {string} [args.categorySlug]
  * @param {string} [args.categoryName]
+ * @param {string} [args.groupSlug] - sub-category group (3rd tier), shown
+ *   between category and subcategory. Addressed by the SAME flat single-slug
+ *   URL scheme as category/subcategory (buildCategoryPath has no
+ *   category+group+subcategory shape — a group is just another slug in
+ *   /district/:slug), so its crumb path is `${districtPath}/${groupSlug}`,
+ *   not nested under the category's own path.
+ * @param {string} [args.groupName]
  * @param {string} [args.subcategorySlug] - only meaningful alongside
  *   category; a subcategory with no category is not a URL this scheme
  *   produces.
@@ -101,6 +108,8 @@ export const buildCrumbs = ({
   locationName,
   categorySlug,
   categoryName,
+  groupSlug,
+  groupName,
   subcategorySlug,
   subcategoryName,
   businessName,
@@ -144,6 +153,13 @@ export const buildCrumbs = ({
     } else {
       crumbs.push({ name: categoryLabel, path: pathSoFar });
     }
+  }
+
+  if (groupSlug) {
+    // Flat path, same collapsing scheme as a subcategory leaf — not nested
+    // under the category's own path (see the JSDoc note above).
+    pathSoFar = `${districtPath}/${toSlug(groupSlug)}`;
+    crumbs.push({ name: groupName || toTitleCase(groupSlug), path: pathSoFar });
   }
 
   if (subcategorySlug) {

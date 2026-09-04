@@ -8,12 +8,15 @@ import {
   getV2ServiceCardsAction,
   getV2MobileServiceCardsAction,
   getV2SubCategoriesAction,
+  getV2SubCategoryGroupsAction,
   getV2ParentOfSubCategoryAction,
   getV2DistrictCategoriesAction,
   getV2PopularSearchesAction,
   getV2TopTouristAction,
   getV2PopularCategoryContentAction,
   uploadHomeSectionImageAction,
+  getCategoryGroupAssignmentAction,
+  updateCategoryGroupAssignmentAction,
 } from "../controller/categoryDisplaySettings/categoryDisplaySettingsController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { cacheMiddleware } from "../middleware/cacheMiddleware.js";
@@ -27,6 +30,7 @@ const homeMobileCategoryCache = cacheMiddleware({ expirySeconds: 7200, keyPrefix
 // business counts per district, which change as listings are added, paused,
 // or removed, not a curated set that only changes on an admin edit.
 const districtCategoryCache = cacheMiddleware({ expirySeconds: 900, keyPrefix: "district-category-v2" });
+const categoryGroupCache = cacheMiddleware({ expirySeconds: 3600, keyPrefix: "category-group-v2" });
 
 // Admin CRUD
 router.get("/api/admin/category-display-settings", oauthAuthentication, getCategoryDisplaySettingsAction);
@@ -39,6 +43,7 @@ router.get("/api/v2/category/popular", homeCategoryCache, getV2PopularCategories
 router.get("/api/v2/category/service-cards", homeCategoryCache, getV2ServiceCardsAction);
 router.get("/api/v2/category/mobile-service-cards", homeMobileCategoryCache, getV2MobileServiceCardsAction);
 router.get("/api/v2/category/sub/:parentSlug", categoryCache, getV2SubCategoriesAction);
+router.get("/api/v2/category/group/:parentSlug", categoryGroupCache, getV2SubCategoryGroupsAction);
 router.get("/api/v2/category/parent-of/:subcategorySlug", categoryCache, getV2ParentOfSubCategoryAction);
 // Categories with live businesses in a district, paginated. See
 // getV2DistrictCategoriesAction for why this is separate from /category/home.
@@ -50,5 +55,11 @@ router.get("/api/v2/home/top-tourist",              homeCategoryCache, getV2TopT
 router.get("/api/v2/home/popular-category-content", homeCategoryCache, getV2PopularCategoryContentAction);
 
 router.post("/api/admin/home-section/upload-image", oauthAuthentication, uploadHomeSectionImageAction);
+
+// Single-category group assignment (Category.js UX convenience) — see the
+// controller for why these use targeted array updates instead of the
+// whole-document admin PUT above.
+router.get("/api/admin/category/:slug/group-assignment", oauthAuthentication, getCategoryGroupAssignmentAction);
+router.put("/api/admin/category/:slug/group-assignment", oauthAuthentication, updateCategoryGroupAssignmentAction);
 
 export default router;

@@ -18,6 +18,15 @@ const categoryDisplaySettingsSchema = new mongoose.Schema(
         subCategoryNames: { type: [String], default: [] },
       },
     ],
+    subCategoryGroupMapping: [
+      {
+        parentSlug:       { type: String },
+        groupName:        { type: String },
+        groupSlug:        { type: String },
+        groupIcon:        { type: String, default: "" },
+        subCategoryNames: { type: [String], default: [] },
+      },
+    ],
     popularSearchCards: [
       {
         title:      { type: String },

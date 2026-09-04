@@ -6,7 +6,7 @@ import { Helmet } from "react-helmet-async";
 import StickySearchBar from "features/public/sticky-search-bar/StickySearchBar.js";
 import { handleImageError } from "shared/utils/placeholderImage.js";
 import styles from "features/public/categories/categories.module.css";
-import { fetchDistrictCategories, resetDistrictCategories, fetchSubCategories } from "state/actions/categoryAction.js";
+import { fetchDistrictCategories, resetDistrictCategories, fetchSubCategories, fetchSubCategoryGroups } from "state/actions/categoryAction.js";
 import { buildCategoryPath, navigateToSearchResult } from "shared/utils/searchResultNavigation.js";
 import {
   formatUrlText,
@@ -58,6 +58,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   } = useRenderNearViewport();
   const {
     subCategories = [],
+    subCategoryGroups = [],
     loading,
     districtCategories = [],
     districtCategoriesTotal = 0,
@@ -78,6 +79,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const isLocationLanding = mode === "locationLanding" || routeContext?.routeType === "locationLanding";
   const isDirectoryLanding = isDistrictLanding || isLocationLanding;
   const categorySlug = routeContext?.categorySlug || categoryParam || "";
+  const groupSlug = routeContext?.groupSlug || "";
   const districtSlug = routeContext?.districtSlug || districtContext?.slug || "";
   const districtName = routeContext?.districtName || districtContext?.name || formatUrlText(districtSlug);
   const locationSlug = routeContext?.locationSlug || locationParam || "";
@@ -85,7 +87,25 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const routeCanonicalPath = routeContext?.canonicalPath || "";
   const locationLabel = routeContext?.locationName || (districtSlug ? districtName : formatUrlText(locationSlug));
   const categoryLabel = categorySlug ? formatUrlText(categorySlug) : "Categories";
-  const listingItems = isDirectoryLanding ? districtCategories : subCategories;
+
+  // Sub-category groups (3rd tier) — additive: a category with no group data
+  // (subCategoryGroups stays []) falls straight through to the existing flat
+  // subCategories path below, unchanged.
+  const activeGroup = groupSlug ? subCategoryGroups.find((g) => g.groupSlug === groupSlug) : null;
+  const isGroupListingView = !isDirectoryLanding && !groupSlug && subCategoryGroups.length > 0;
+  const isGroupDetailView = !isDirectoryLanding && Boolean(groupSlug);
+  const groupLabel = activeGroup?.groupName || (groupSlug ? formatUrlText(groupSlug) : "");
+  // What the page is actually ABOUT right now — the group's own name once
+  // drilled into one, otherwise the category (unchanged today).
+  const pageLabel = isGroupDetailView && groupLabel ? groupLabel : categoryLabel;
+
+  const listingItems = isDirectoryLanding
+    ? districtCategories
+    : isGroupListingView
+      ? subCategoryGroups.map((g) => ({ _id: g.groupSlug, name: g.groupName, slug: g.groupSlug, icon: g.groupIcon }))
+      : isGroupDetailView
+        ? (activeGroup?.subCategories || [])
+        : subCategories;
   // Initial/replace load only — "load more" (districtCategoriesLoadingMore)
   // must not trigger this, or every infinite-scroll page load would swap the
   // whole grid for a spinner instead of appending below what's already shown.
@@ -135,6 +155,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
 
     if (categorySlug) {
       dispatch(fetchSubCategories(categorySlug));
+    }
+  }, [dispatch, isDirectoryLanding, categorySlug]);
+
+  // Parallel to the fetch above — cheap/cached, resolves to [] for any
+  // category with no group data, which is what keeps a 2-level category's
+  // page identical to before this feature existed.
+  useEffect(() => {
+    if (isDirectoryLanding) return;
+
+    if (categorySlug) {
+      dispatch(fetchSubCategoryGroups(categorySlug));
     }
   }, [dispatch, isDirectoryLanding, categorySlug]);
 
@@ -293,6 +324,13 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         locationSlug,
         locationPath,
         categorySlug,
+        // A group is addressed by the same flat single-slug scheme as a
+        // subcategory (buildCategoryPath collapses to whichever of
+        // category/subcategory is more specific) — passing it as
+        // subcategorySlug here produces the correct /district/groupSlug
+        // canonical for the group-detail view; absent (undefined) for every
+        // other view, so this is a no-op when there's no group.
+        subcategorySlug: isGroupDetailView ? groupSlug : undefined,
         isDistrictScope: Boolean(districtSlug && !locationSlug),
       }));
   const categoryPageUrl = `https://massclick.in${pagePath === "/" ? "" : pagePath}`;
@@ -305,9 +343,9 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         robots: "index, follow",
       }
     : {
-        title: `${categoryLabel} in ${locationLabel} | Subcategories | Massclick`,
-        description: `Browse all ${categoryLabel} subcategories in ${locationLabel}. Find and explore verified businesses in your area.`,
-        keywords: `${categoryLabel}, ${categoryLabel} in ${locationLabel}, ${categoryLabel} subcategories`,
+        title: `${pageLabel} in ${locationLabel} | Subcategories | Massclick`,
+        description: `Browse all ${pageLabel} subcategories in ${locationLabel}. Find and explore verified businesses in your area.`,
+        keywords: `${pageLabel}, ${pageLabel} in ${locationLabel}, ${pageLabel} subcategories`,
         canonical: categoryPageUrl,
         robots: "index, follow",
       };
@@ -326,6 +364,8 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         locationName: locationLabel,
         categorySlug: isDirectoryLanding ? "" : categorySlug,
         categoryName: categoryLabel,
+        groupSlug: isDirectoryLanding || !isGroupDetailView ? "" : groupSlug,
+        groupName: groupLabel,
       })
     : [
         { name: "Home", path: "/" },
@@ -356,11 +396,11 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     })),
     isDirectoryLanding
       ? `Categories in ${isLocationLanding ? locationLabel : districtName}`
-      : `${categoryLabel} subcategories in ${locationLabel}`,
+      : `${pageLabel} subcategories in ${locationLabel}`,
     seoContent?.excerpt || (
       isDirectoryLanding
         ? `Browse services in ${isLocationLanding ? locationLabel : districtName}`
-        : `Browse ${categoryLabel} options in ${locationLabel}`
+        : `Browse ${pageLabel} options in ${locationLabel}`
     ),
   );
 
@@ -391,7 +431,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           )}
           <div className={cx("category-header")}>
             <h1 className={cx("category-title")}>
-              {isDirectoryLanding ? `Explore Services in ${isLocationLanding ? locationLabel : districtName}` : `${categoryLabel} in ${locationLabel}`}
+              {isDirectoryLanding ? `Explore Services in ${isLocationLanding ? locationLabel : districtName}` : `${pageLabel} in ${locationLabel}`}
             </h1>
 
             <input

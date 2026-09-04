@@ -226,6 +226,8 @@ const FIELD_HELP = {
     "Primary categories are top-level. Sub categories need a parent sub category type.",
   sub_category_type:
     "Choose the parent group for a sub category so it is organized correctly.",
+  category_grouping:
+    "Place this category under a parent, optionally inside a named group (e.g. Restaurants → Indian Flavours → Biryani). Saves independently of the form below.",
   keywords:
     "Add search phrases customers might type. These help category suggestions and matching.",
   title: "The page or card title shown in the admin and public detail views.",
@@ -461,6 +463,22 @@ export default function Category() {
   const [preview, setPreview] = useState(null);
   const [liveImagePreview, setLiveImagePreview] = useState(null);
   const [editMode, setEditMode] = useState(false);
+
+  // Category grouping (hierarchy placement) — saved independently via the
+  // scoped /admin/category/:slug/group-assignment endpoints, not the main
+  // category save. Only meaningful for an already-saved category (needs a
+  // real slug the server can look up).
+  const [parentPickerOptions, setParentPickerOptions] = useState([]);
+  const [groupAssignment, setGroupAssignment] = useState(null); // committed {parentSlug, groupSlug, groupName} | null
+  const [groupDraftParent, setGroupDraftParent] = useState(null); // {name, slug} | null
+  const [groupDraftGroup, setGroupDraftGroup] = useState(null); // {groupSlug, groupName} | null — null = flat, no group
+  const [groupOptionsForParent, setGroupOptionsForParent] = useState([]);
+  const [groupAssignmentLoading, setGroupAssignmentLoading] = useState(false);
+  const [groupAssignmentSaving, setGroupAssignmentSaving] = useState(false);
+  const [groupAssignmentMsg, setGroupAssignmentMsg] = useState({
+    type: "",
+    text: "",
+  });
   const [activeView, setActiveView] = useState("list");
   const [deleteConfirm, setDeleteConfirm] = useState({
     open: false,
@@ -521,6 +539,99 @@ export default function Category() {
   useEffect(() => {
     dispatch(getAllCategory());
   }, [dispatch]);
+  useEffect(() => {
+    axiosInstance
+      .get(`${API_URL}/category/all`)
+      .then((res) => setParentPickerOptions(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setParentPickerOptions([]));
+  }, []);
+
+  // Fetches the groups that already exist under a parent, so the "Group"
+  // picker below can offer them instead of the admin retyping an existing
+  // group's name (which would create a duplicate group with a different slug).
+  const loadGroupOptionsForParent = async (parentSlug) => {
+    if (!parentSlug) {
+      setGroupOptionsForParent([]);
+      return;
+    }
+    try {
+      const res = await axiosInstance.get(`${API_URL}/v2/category/group/${parentSlug}`);
+      setGroupOptionsForParent(
+        Array.isArray(res.data)
+          ? res.data.map((g) => ({ groupSlug: g.groupSlug, groupName: g.groupName }))
+          : [],
+      );
+    } catch (err) {
+      setGroupOptionsForParent([]);
+    }
+  };
+
+  const loadGroupAssignment = async (slug) => {
+    if (!slug) {
+      setGroupAssignment(null);
+      setGroupDraftParent(null);
+      setGroupDraftGroup(null);
+      setGroupOptionsForParent([]);
+      return;
+    }
+    setGroupAssignmentLoading(true);
+    setGroupAssignmentMsg({ type: "", text: "" });
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await axiosInstance.get(
+        `${API_URL}/admin/category/${slug}/group-assignment`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const assignment = res.data?.data || null;
+      setGroupAssignment(assignment);
+      if (assignment) {
+        const parentOption = parentPickerOptions.find((c) => c.slug === assignment.parentSlug);
+        setGroupDraftParent(parentOption || { name: assignment.parentSlug, slug: assignment.parentSlug });
+        setGroupDraftGroup(
+          assignment.groupSlug
+            ? { groupSlug: assignment.groupSlug, groupName: assignment.groupName }
+            : null,
+        );
+        await loadGroupOptionsForParent(assignment.parentSlug);
+      } else {
+        setGroupDraftParent(null);
+        setGroupDraftGroup(null);
+        setGroupOptionsForParent([]);
+      }
+    } catch (err) {
+      setGroupAssignment(null);
+    } finally {
+      setGroupAssignmentLoading(false);
+    }
+  };
+
+  const handleSaveGroupAssignment = async () => {
+    if (!formData.slug || !groupDraftParent) return;
+    setGroupAssignmentSaving(true);
+    setGroupAssignmentMsg({ type: "", text: "" });
+    try {
+      const token = localStorage.getItem("accessToken");
+      const body = {
+        parentSlug: groupDraftParent.slug,
+        groupSlug: groupDraftGroup?.groupSlug || "",
+      };
+      if (groupDraftGroup?.groupSlug) body.groupName = groupDraftGroup.groupName;
+      const res = await axiosInstance.put(
+        `${API_URL}/admin/category/${formData.slug}/group-assignment`,
+        body,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setGroupAssignment(res.data?.data || null);
+      setGroupAssignmentMsg({ type: "success", text: "Grouping saved." });
+    } catch (err) {
+      setGroupAssignmentMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to save grouping.",
+      });
+    } finally {
+      setGroupAssignmentSaving(false);
+    }
+  };
   useEffect(() => {
     const imageFilterActive =
       webImageFilter !== "all" || mobileImageFilter !== "all";
@@ -751,6 +862,7 @@ export default function Category() {
     // Legacy preview
     setPreview(row.categoryImage || null);
     setLiveImagePreview(row.liveImage || null);
+    loadGroupAssignment(row.slug);
   };
   const handleDelete = (row) => {
     setDeleteConfirm({
@@ -1204,6 +1316,11 @@ export default function Category() {
     setPreview(null);
     setLiveImagePreview(null);
     setEditMode(false);
+    setGroupAssignment(null);
+    setGroupDraftParent(null);
+    setGroupDraftGroup(null);
+    setGroupOptionsForParent([]);
+    setGroupAssignmentMsg({ type: "", text: "" });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
   const doSave = () => {
@@ -1607,6 +1724,142 @@ export default function Category() {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {formData.categoryType === "Sub Category" && (
+                <div
+                  className={cx(
+                    "category-form-input-group category-col-span-all",
+                  )}
+                >
+                  <label className={cx("category-input-label label-with-help")}>
+                    <span>Category Grouping</span>
+                    <HelpHint text={FIELD_HELP.category_grouping} />
+                  </label>
+
+                  {!editMode ? (
+                    <Typography sx={{ fontSize: "0.8rem", color: "#8A857E" }}>
+                      Save this category first — grouping needs an existing category to attach to.
+                    </Typography>
+                  ) : (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "flex-start",
+                        gap: 1.5,
+                        p: 1.5,
+                        border: "1px solid #ECE8E0",
+                        borderRadius: 1.5,
+                        bgcolor: "#FBFAF7",
+                      }}
+                    >
+                      <Autocomplete
+                        size="small"
+                        options={parentPickerOptions}
+                        getOptionLabel={(o) => (typeof o === "string" ? o : o.name || "")}
+                        isOptionEqualToValue={(o, v) => o.slug === v.slug}
+                        value={groupDraftParent}
+                        loading={groupAssignmentLoading}
+                        onChange={(_, v) => {
+                          setGroupDraftParent(v);
+                          setGroupDraftGroup(null);
+                          loadGroupOptionsForParent(v?.slug);
+                        }}
+                        sx={{ minWidth: 220, flex: "1 1 220px" }}
+                        renderInput={(params) => (
+                          <TextField {...params} label="Parent category" placeholder="Search parent…" />
+                        )}
+                      />
+
+                      <Autocomplete
+                        size="small"
+                        freeSolo
+                        disabled={!groupDraftParent}
+                        options={groupOptionsForParent}
+                        getOptionLabel={(o) =>
+                          typeof o === "string" ? o : o.groupName || ""
+                        }
+                        isOptionEqualToValue={(o, v) => o.groupSlug === v.groupSlug}
+                        value={groupDraftGroup}
+                        inputValue={groupDraftGroup?.groupName || ""}
+                        onInputChange={(_, v, reason) => {
+                          if (reason === "input") {
+                            setGroupDraftGroup(
+                              v
+                                ? {
+                                    groupSlug: v
+                                      .toLowerCase()
+                                      .trim()
+                                      .replace(/[^a-z0-9]+/g, "-")
+                                      .replace(/(^-|-$)+/g, ""),
+                                    groupName: v,
+                                  }
+                                : null,
+                            );
+                          }
+                        }}
+                        onChange={(_, v) => {
+                          if (!v) return setGroupDraftGroup(null);
+                          if (typeof v === "string") {
+                            setGroupDraftGroup({
+                              groupSlug: v
+                                .toLowerCase()
+                                .trim()
+                                .replace(/[^a-z0-9]+/g, "-")
+                                .replace(/(^-|-$)+/g, ""),
+                              groupName: v,
+                            });
+                          } else {
+                            setGroupDraftGroup(v);
+                          }
+                        }}
+                        sx={{ minWidth: 220, flex: "1 1 220px" }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Group (optional)"
+                            placeholder="e.g. Indian Flavours — leave blank for none"
+                          />
+                        )}
+                      />
+
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={!groupDraftParent || groupAssignmentSaving}
+                        onClick={handleSaveGroupAssignment}
+                        sx={{
+                          textTransform: "none",
+                          bgcolor: "#ff8c00",
+                          "&:hover": { bgcolor: "#D97800" },
+                          alignSelf: "center",
+                        }}
+                      >
+                        {groupAssignmentSaving ? "Saving…" : "Save grouping"}
+                      </Button>
+
+                      <Box sx={{ flexBasis: "100%" }}>
+                        {groupAssignment && (
+                          <Typography sx={{ fontSize: "0.75rem", color: "#8A857E" }}>
+                            Currently: {groupAssignment.parentSlug}
+                            {groupAssignment.groupSlug ? ` › ${groupAssignment.groupName}` : " (no group)"}
+                          </Typography>
+                        )}
+                        {groupAssignmentMsg.text && (
+                          <Typography
+                            sx={{
+                              fontSize: "0.75rem",
+                              color: groupAssignmentMsg.type === "error" ? "#B9261E" : "#1F7A4D",
+                            }}
+                          >
+                            {groupAssignmentMsg.text}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  )}
                 </div>
               )}
 

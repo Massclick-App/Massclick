@@ -591,6 +591,215 @@ function MappingAccordion({
     </Card>;
 }
 
+// ── Sub-category groups (3rd tier: parent → group → sub-category names) ─────
+// Structurally a nested copy of MappingAccordion: same header/body shape,
+// one level deeper. groupSlug is derived read-only from groupName (unlike
+// MappingAccordion's free-typed parentSlug) since it's load-bearing for
+// routing — an admin retyping it could break a live URL.
+function SubCategoryGroupAccordion({
+  group,
+  defaultOpen,
+  allCategories,
+  pickerLoading,
+  onUpdate,
+  onRemove
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return <Card variant="outlined" className={cx("mapping-accordion")}>
+      <Box onClick={() => setOpen(o => !o)} className={cx("mapping-accordion__header")}>
+        <ChevronRightIcon className={cx(`mapping-accordion__chevron ${open ? "mapping-accordion__chevron--open" : ""}`)} />
+        <Typography className={cx("mapping-accordion__slug-prefix")}>/group/</Typography>
+        <TextField size="small" value={group.groupName} placeholder="Group name (e.g. Indian Flavours)" onClick={e => e.stopPropagation()} onChange={e => {
+        const name = e.target.value;
+        onUpdate("groupName", name);
+        onUpdate("groupSlug", name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, ""));
+      }} sx={{
+        minWidth: 240,
+        "& .MuiOutlinedInput-root": {
+          fontSize: 13,
+          "& fieldset": {
+            borderColor: T.line
+          },
+          "&.Mui-focused fieldset": {
+            borderColor: T.accent + " !important"
+          }
+        }
+      }} />
+        {group.groupSlug && <Typography sx={{
+        fontFamily: T.mono,
+        fontSize: 11,
+        color: T.ink3
+      }}>/{group.groupSlug}</Typography>}
+        <Chip label={`${group.subCategoryNames?.length || 0} names`} size="small" variant="outlined" sx={{
+        borderColor: T.line,
+        color: T.ink2,
+        fontSize: 11,
+        height: 24
+      }} />
+        <Tooltip title="Remove group">
+          <IconButton size="small" onClick={e => {
+          e.stopPropagation();
+          onRemove();
+        }} sx={{
+          ml: "auto",
+          color: T.ink3,
+          "&:hover": {
+            color: T.red,
+            bgcolor: T.redTint
+          }
+        }}>
+            <DeleteOutlineIcon sx={{
+            fontSize: 18
+          }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+      <Collapse in={open}>
+        <Box className={cx("mapping-accordion__body")}>
+          <Box sx={{
+          mb: 2
+        }}>
+            <Typography sx={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: T.ink3,
+            mb: 0.75,
+            textTransform: "uppercase",
+            letterSpacing: "0.03em"
+          }}>
+              Group icon
+            </Typography>
+            <ImageUploader imageKey={group.groupIcon} folder="home-sections/subcategory-group" onUploaded={key => onUpdate("groupIcon", key)} />
+          </Box>
+          <OrderedList items={group.subCategoryNames || []} useCategories allCategories={allCategories} pickerLoading={pickerLoading} placeholder="Search and select categories…" onAdd={n => onUpdate("subCategoryNames", [...(group.subCategoryNames || []), n])} onRemove={i => onUpdate("subCategoryNames", (group.subCategoryNames || []).filter((_, j) => j !== i))} onMove={(f, t) => onUpdate("subCategoryNames", moveItem(group.subCategoryNames || [], f, t))} />
+        </Box>
+      </Collapse>
+    </Card>;
+}
+
+// Outer accordion, one per distinct parentSlug — a pure UI grouping over the
+// flat subCategoryGroupMapping array (persisted shape stays flat, one row
+// per (parentSlug, groupSlug) pair; see groupedByParent below).
+function ParentGroupSection({
+  parentSlug,
+  groups,
+  allCategories,
+  pickerLoading,
+  onUpdateGroup,
+  onRemoveGroup,
+  onAddGroup,
+  onRemoveParent
+}) {
+  const [open, setOpen] = useState(true);
+  const parentName = allCategories?.find(c => c.slug === parentSlug)?.name || parentSlug;
+  return <Card variant="outlined" className={cx("parent-group-section")}>
+      <Box onClick={() => setOpen(o => !o)} className={cx("parent-group-section__header")}>
+        <ChevronRightIcon className={cx(`mapping-accordion__chevron ${open ? "mapping-accordion__chevron--open" : ""}`)} />
+        <Typography sx={{
+        fontWeight: 700,
+        fontSize: 14,
+        color: T.ink
+      }}>{parentName}</Typography>
+        <Typography className={cx("mapping-accordion__slug-prefix")}>/{parentSlug}</Typography>
+        <Chip label={`${groups.length} group${groups.length === 1 ? "" : "s"}`} size="small" variant="outlined" sx={{
+        borderColor: T.line,
+        color: T.ink2,
+        fontSize: 11,
+        height: 24
+      }} />
+        <Tooltip title="Remove this parent and all its groups">
+          <IconButton size="small" onClick={e => {
+          e.stopPropagation();
+          onRemoveParent();
+        }} sx={{
+          ml: "auto",
+          color: T.ink3,
+          "&:hover": {
+            color: T.red,
+            bgcolor: T.redTint
+          }
+        }}>
+            <DeleteOutlineIcon sx={{
+            fontSize: 18
+          }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
+      <Collapse in={open}>
+        <Box className={cx("parent-group-section__body")}>
+          {groups.map((g, i) => <SubCategoryGroupAccordion key={g._index} group={g} defaultOpen={i === 0} allCategories={allCategories} pickerLoading={pickerLoading} onUpdate={(field, val) => onUpdateGroup(g._index, field, val)} onRemove={() => onRemoveGroup(g._index)} />)}
+          <Button variant="outlined" startIcon={<AddIcon />} onClick={onAddGroup} sx={{
+          textTransform: "none",
+          borderColor: T.line2,
+          color: T.ink2,
+          "&:hover": {
+            bgcolor: T.surface2,
+            borderColor: T.line2
+          }
+        }}>
+            Add group
+          </Button>
+        </Box>
+      </Collapse>
+    </Card>;
+}
+
+// Autocomplete for adding a new parent section to the group editor — a
+// dedicated component rather than reusing Picker, since Picker's onAdd
+// passes a NAME into a flat string list; this needs the category's SLUG to
+// key a new groupedByParent section.
+function AddParentPicker({
+  allCategories,
+  excludeSlugs,
+  onAdd
+}) {
+  const [val, setVal] = useState("");
+  const options = (allCategories || []).filter(c => !excludeSlugs.has(c.slug));
+  return <Autocomplete size="small" options={options} getOptionLabel={o => typeof o === "string" ? o : o.name} isOptionEqualToValue={(o, v) => o.slug === v.slug} value={null} inputValue={val} onInputChange={(_, v, reason) => {
+    if (reason === "reset") return;
+    setVal(v);
+  }} onChange={(_, v) => {
+    if (v && typeof v === "object") {
+      onAdd(v.slug);
+      setVal("");
+    }
+  }} blurOnSelect renderOption={(props, option) => <Box component="li" {...props} sx={{
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 1,
+    fontSize: 13
+  }}>
+          <span>{option.name}</span>
+          <Typography sx={{
+      fontFamily: T.mono,
+      fontSize: 11,
+      color: T.ink3
+    }}>{option.slug || ""}</Typography>
+        </Box>} renderInput={params => <TextField {...params} placeholder="Search a category to add as a parent…" InputProps={{
+    ...params.InputProps,
+    startAdornment: <InputAdornment position="start">
+                <SearchIcon sx={{
+        fontSize: 16,
+        color: T.ink3
+      }} />
+              </InputAdornment>,
+    sx: {
+      bgcolor: T.surface,
+      fontSize: 13,
+      "& fieldset": {
+        borderColor: T.line2
+      },
+      "&:hover fieldset": {
+        borderColor: T.line2
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: T.accent + " !important",
+        borderWidth: "1px !important"
+      }
+    }
+  }} />} />;
+}
+
 // ── Overview card ────────────────────────────────────────────────────────────
 // ── Segmented toggle (Desktop / Mobile) ──────────────────────────────────────
 function ViewToggle({
@@ -779,6 +988,7 @@ export default function CategoryDisplaySettings() {
   const [popularCategories, setPopularCategories] = useState([]);
   const [serviceCardSections, setServiceCardSections] = useState([]);
   const [subCategoryMapping, setSubCategoryMapping] = useState([]);
+  const [subCategoryGroupMapping, setSubCategoryGroupMapping] = useState([]);
   const [popularSearchCards, setPopularSearchCards] = useState([]);
   const [topTouristPlaces, setTopTouristPlaces] = useState([]);
   const [popularCategoryTabs, setPopularCategoryTabs] = useState([]);
@@ -813,6 +1023,7 @@ export default function CategoryDisplaySettings() {
         mobileItems: []
       }],
       subCategoryMapping: settings.subCategoryMapping || [],
+      subCategoryGroupMapping: settings.subCategoryGroupMapping || [],
       popularSearchCards: settings.popularSearchCards || [],
       topTouristPlaces: settings.topTouristPlaces || [],
       popularCategoryTabs: settings.popularCategoryTabs || [],
@@ -824,6 +1035,7 @@ export default function CategoryDisplaySettings() {
     setPopularCategories(next.popularCategories);
     setServiceCardSections(next.serviceCardSections);
     setSubCategoryMapping(next.subCategoryMapping);
+    setSubCategoryGroupMapping(next.subCategoryGroupMapping);
     setPopularSearchCards(next.popularSearchCards);
     setTopTouristPlaces(next.topTouristPlaces);
     setPopularCategoryTabs(next.popularCategoryTabs);
@@ -837,12 +1049,13 @@ export default function CategoryDisplaySettings() {
     popularCategories,
     serviceCardSections,
     subCategoryMapping,
+    subCategoryGroupMapping,
     popularSearchCards,
     topTouristPlaces,
     popularCategoryTabs,
     popularCategoryServices,
     popularCategoryLinkSections
-  }), [homeFeaturedDesktop, homeFeaturedMobile, popularCategories, serviceCardSections, subCategoryMapping, popularSearchCards, topTouristPlaces, popularCategoryTabs, popularCategoryServices, popularCategoryLinkSections]);
+  }), [homeFeaturedDesktop, homeFeaturedMobile, popularCategories, serviceCardSections, subCategoryMapping, subCategoryGroupMapping, popularSearchCards, topTouristPlaces, popularCategoryTabs, popularCategoryServices, popularCategoryLinkSections]);
   const dirty = snapshot !== null && JSON.stringify(current) !== snapshot;
   const handleSave = async () => {
     try {
@@ -869,6 +1082,7 @@ export default function CategoryDisplaySettings() {
     setPopularCategories(s.popularCategories);
     setServiceCardSections(s.serviceCardSections);
     setSubCategoryMapping(s.subCategoryMapping);
+    setSubCategoryGroupMapping(s.subCategoryGroupMapping);
     setPopularSearchCards(s.popularSearchCards);
     setTopTouristPlaces(s.topTouristPlaces);
     setPopularCategoryTabs(s.popularCategoryTabs);
@@ -917,6 +1131,41 @@ export default function CategoryDisplaySettings() {
     subCategoryNames: []
   }]);
   const removeMapping = i => setSubCategoryMapping(p => p.filter((_, j) => j !== i));
+
+  // Persisted shape stays flat (one row per parentSlug+groupSlug pair, same
+  // shape-style as subCategoryMapping) — grouping by parent here is a pure
+  // UI convenience for the nested-accordion editor, not a schema change.
+  const groupedByParent = useMemo(() => {
+    const map = new Map();
+    subCategoryGroupMapping.forEach((entry, index) => {
+      if (!map.has(entry.parentSlug)) map.set(entry.parentSlug, []);
+      map.get(entry.parentSlug).push({
+        ...entry,
+        _index: index
+      });
+    });
+    return map;
+  }, [subCategoryGroupMapping]);
+  const updateGroupMapping = useCallback((index, field, value) => {
+    setSubCategoryGroupMapping(prev => {
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        [field]: value
+      };
+      return next;
+    });
+  }, []);
+  const addGroupMapping = parentSlug => setSubCategoryGroupMapping(p => [...p, {
+    parentSlug,
+    groupName: "",
+    groupSlug: "",
+    groupIcon: "",
+    subCategoryNames: []
+  }]);
+  const removeGroupMapping = i => setSubCategoryGroupMapping(p => p.filter((_, j) => j !== i));
+  const removeParentGroups = parentSlug => setSubCategoryGroupMapping(p => p.filter(row => row.parentSlug !== parentSlug));
+
   if (loading) {
     return <Box sx={{
       display: "flex",
@@ -930,6 +1179,7 @@ export default function CategoryDisplaySettings() {
   // ── Overview cards data ─────────────────────────────────────────────────
   const totalServiceItems = serviceCardSections.reduce((a, x) => a + (x.desktopItems?.length || 0) + (x.mobileItems?.length || 0), 0);
   const totalSubItems = subCategoryMapping.reduce((a, x) => a + (x.subCategoryNames?.length || 0), 0);
+  const totalGroupNames = subCategoryGroupMapping.reduce((a, x) => a + (x.subCategoryNames?.length || 0), 0);
   const cards = [{
     id: "home",
     label: "Home featured",
@@ -978,6 +1228,18 @@ export default function CategoryDisplaySettings() {
     detail: `${totalSubItems} sub-items`,
     accent: T.blue,
     accentTint: T.blueTint
+  }, {
+    id: "subGroups",
+    label: "Sub-Category Groups",
+    desc: "3rd-tier grouping",
+    icon: <FolderOutlinedIcon sx={{
+      fontSize: 18
+    }} />,
+    stat: groupedByParent.size,
+    statLabel: "parents",
+    detail: `${subCategoryGroupMapping.length} groups · ${totalGroupNames} names`,
+    accent: T.purple,
+    accentTint: T.purpleTint
   }, {
     id: "popularSearchCards",
     label: "Popular Searches",
@@ -1314,6 +1576,102 @@ export default function CategoryDisplaySettings() {
             }}>
                   Add parent slug
                 </Button>
+              </Box>}
+
+            {/* Sub-Category Groups (3rd tier) */}
+            {open === "subGroups" && <Box sx={{
+            mx: 0
+          }}>
+                <Stack direction="row" spacing={1.5} sx={{
+              p: 1.5,
+              bgcolor: T.surface2,
+              border: `1px solid ${T.line}`,
+              borderRadius: 1.25,
+              mb: 2.25,
+              fontSize: 12.5,
+              color: T.ink2,
+              alignItems: "flex-start"
+            }}>
+                  <Box sx={{
+                width: 22,
+                height: 22,
+                borderRadius: 0.75,
+                bgcolor: T.purpleTint,
+                color: T.purple,
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0
+              }}>
+                    <InfoOutlinedIcon sx={{
+                  fontSize: 14
+                }} />
+                  </Box>
+                  <Box>
+                    Groups a parent category&apos;s sub-categories into named buckets — e.g.{" "}
+                    <Box component="b" sx={{
+                  color: T.ink
+                }}>
+                      Restaurants
+                    </Box>{" "}
+                    →{" "}
+                    <Box component="b" sx={{
+                  color: T.ink
+                }}>
+                      Indian Flavours
+                    </Box>{" "}
+                    → Biryani, Chettinad, South Indian. Used by{" "}
+                    <Box component="code" sx={{
+                  fontFamily: T.mono,
+                  fontSize: 11.5,
+                  px: 0.5,
+                  bgcolor: T.surface,
+                  border: `1px solid ${T.line}`,
+                  borderRadius: 0.5
+                }}>
+                      /api/v2/category/group/:parentSlug
+                    </Box>
+                    . Purely additive — a category with no groups here still works exactly as before via Sub-categories above.
+                  </Box>
+                </Stack>
+
+                {groupedByParent.size === 0 && <Box sx={{
+              p: 2.5,
+              textAlign: "center",
+              border: `1px dashed ${T.line2}`,
+              borderRadius: 1.5,
+              bgcolor: T.surface2,
+              mb: 2
+            }}>
+                    <Typography sx={{
+                color: T.ink2,
+                fontWeight: 500,
+                fontSize: 13
+              }}>No groups yet</Typography>
+                    <Typography sx={{
+                color: T.ink3,
+                fontSize: 12.5
+              }}>
+                      Add a parent category below to start grouping its sub-categories.
+                    </Typography>
+                  </Box>}
+
+                {[...groupedByParent.entries()].map(([parentSlug, groups]) => <ParentGroupSection key={parentSlug} parentSlug={parentSlug} groups={groups} allCategories={allCategories} pickerLoading={pickerLoading} onUpdateGroup={(index, field, val) => updateGroupMapping(index, field, val)} onRemoveGroup={index => removeGroupMapping(index)} onAddGroup={() => addGroupMapping(parentSlug)} onRemoveParent={() => removeParentGroups(parentSlug)} />)}
+
+                <Box sx={{
+              mt: groupedByParent.size > 0 ? 2.5 : 0
+            }}>
+                  <Typography sx={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: T.ink3,
+                mb: 0.75,
+                textTransform: "uppercase",
+                letterSpacing: "0.03em"
+              }}>
+                    Add a parent category
+                  </Typography>
+                  <AddParentPicker allCategories={allCategories} excludeSlugs={new Set(groupedByParent.keys())} onAdd={slug => addGroupMapping(slug)} />
+                </Box>
               </Box>}
 
             {/* Popular Search Cards */}

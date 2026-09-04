@@ -1,5 +1,6 @@
 import categoryDisplaySettingsModel from "../../model/categoryDisplaySettings/categoryDisplaySettingsModel.js";
 import { categoriesData } from "../../utils/sub-categoriesData.js";
+import { subCategoryGroupsData } from "../../utils/sub-category-groups-data.js";
 
 // The authoritative answer to "is this category browsable at the top level"
 // is NOT categoryModel's `categoryType` field. Verified against
@@ -50,6 +51,18 @@ export const getSubCategoryNameSet = async () => {
     }
   }
 
+  // A name that lives only inside a group (e.g. "Biryani" under Restaurants
+  // → Indian Flavours) is still somebody's child and must not be treated as
+  // top-level — union in group members the same way as flat mapping members.
+  const groupMapping = settings?.subCategoryGroupMapping?.length > 0
+    ? settings.subCategoryGroupMapping
+    : Object.entries(subCategoryGroupsData).flatMap(([parentSlug, groups]) => groups);
+  for (const { subCategoryNames } of groupMapping) {
+    for (const name of subCategoryNames || []) {
+      names.add(normalize(name));
+    }
+  }
+
   subCategoryNameSetCache = names;
   subCategoryNameSetCacheAt = now;
   return names;
@@ -60,6 +73,74 @@ export const getSubCategoryNameSet = async () => {
 export const invalidateSubCategoryNameCache = () => {
   subCategoryNameSetCache = null;
   subCategoryNameSetCacheAt = 0;
+};
+
+// ─── Sub-category groups (3rd tier: parent → group → subcategory names) ───
+// Same settings-first-then-hardcoded-fallback resolution as getSubCategoryNameSet
+// above, and the same short-TTL cache shape — kept as its own cache rather than
+// folded into the one above because callers of this need the full group
+// objects (name/slug/icon), not just a flat name set.
+
+let subCategoryGroupLookupCache = null;
+let subCategoryGroupLookupCacheAt = 0;
+
+// parentSlug → [{ groupSlug, groupName, groupIcon, subCategoryNames }]
+export const getSubCategoryGroupLookup = async () => {
+  const now = Date.now();
+  if (subCategoryGroupLookupCache && now - subCategoryGroupLookupCacheAt < CACHE_TTL_MS) {
+    return subCategoryGroupLookupCache;
+  }
+
+  const settings = await categoryDisplaySettingsModel.findOne().lean();
+  const rows = settings?.subCategoryGroupMapping?.length > 0
+    ? settings.subCategoryGroupMapping
+    : Object.entries(subCategoryGroupsData).flatMap(([parentSlug, groups]) =>
+        (groups || []).map((g) => ({ parentSlug, ...g }))
+      );
+
+  const lookup = {};
+  for (const { parentSlug, groupSlug, groupName, groupIcon, subCategoryNames } of rows) {
+    if (!lookup[parentSlug]) lookup[parentSlug] = [];
+    lookup[parentSlug].push({
+      groupSlug,
+      groupName,
+      groupIcon: groupIcon || "",
+      subCategoryNames: subCategoryNames || [],
+    });
+  }
+
+  subCategoryGroupLookupCache = lookup;
+  subCategoryGroupLookupCacheAt = now;
+  return lookup;
+};
+
+// Call after an admin edit to subCategoryGroupMapping so the change is
+// visible immediately instead of waiting out the TTL.
+export const invalidateSubCategoryGroupCache = () => {
+  subCategoryGroupLookupCache = null;
+  subCategoryGroupLookupCacheAt = 0;
+};
+
+// Resolves a bare group slug against the group lookup, searching across
+// EVERY parent — unlike a subcategory (which only ever needs a reverse
+// lookup for breadcrumb purposes, see getV2ParentOfSubCategoryAction), a
+// group's own slug IS how it's addressed in the URL: this app's URL scheme
+// collapses every drill-down to a single flat slug per segment
+// (buildCategoryPath's finalCategorySlug = subcategorySlug || categorySlug —
+// there is no /:category/:group/:subcategory shape anywhere in this app), so
+// classifyLocationRouteSegments needs "does this 1-segment slug belong to
+// some group, and if so which parent is it under" with no parent slug
+// given up front. Returns null (fast, one lookup miss across a small map)
+// for any slug that isn't a group — the no-op path for every category with
+// no group data, and for a plain top-level/subcategory slug.
+export const matchGroupBySlug = async (groupSlug) => {
+  if (!groupSlug) return null;
+  const lookup = await getSubCategoryGroupLookup();
+  for (const [parentSlug, groups] of Object.entries(lookup)) {
+    const match = groups.find((g) => g.groupSlug === groupSlug);
+    if (match) return { parentSlug, ...match };
+  }
+  return null;
 };
 
 // A category NAME (not slug) is top-level if it isn't registered as anyone's

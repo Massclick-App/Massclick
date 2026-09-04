@@ -7,6 +7,7 @@ import {
 
   FETCH_HOME_CATEGORY_REQUEST, FETCH_HOME_CATEGORY_SUCCESS, FETCH_HOME_CATEGORY_FAILURE,
   FETCH_SUB_CATEGORY_REQUEST, FETCH_SUB_CATEGORY_SUCCESS, FETCH_SUB_CATEGORY_FAILURE,
+  FETCH_SUB_CATEGORY_GROUPS_REQUEST, FETCH_SUB_CATEGORY_GROUPS_SUCCESS, FETCH_SUB_CATEGORY_GROUPS_FAILURE,
   FETCH_DISTRICT_CATEGORIES_REQUEST, FETCH_DISTRICT_CATEGORIES_SUCCESS, FETCH_DISTRICT_CATEGORIES_FAILURE,
   FETCH_DISTRICT_CATEGORIES_MORE_REQUEST, FETCH_DISTRICT_CATEGORIES_MORE_SUCCESS, FETCH_DISTRICT_CATEGORIES_MORE_FAILURE,
   RESET_DISTRICT_CATEGORIES,
@@ -22,6 +23,7 @@ const initialState = {
   category: [],
   homeCategories: [],
   subCategories: [],
+  subCategoryGroups: [],
   districtCategories: [],
   districtCategoriesTotal: 0,
   districtCategoriesPage: 0,
@@ -53,6 +55,7 @@ export default function categoryReducer(state = initialState, action) {
     case DELETE_CATEGORY_REQUEST:
     case FETCH_HOME_CATEGORY_REQUEST:
     case FETCH_SUB_CATEGORY_REQUEST:
+    case FETCH_SUB_CATEGORY_GROUPS_REQUEST:
     case FETCH_POPULAR_CATEGORY_REQUEST:
     case FETCH_SERVICE_CARDS_REQUEST:
     case FETCH_POPULAR_SEARCHES_REQUEST:
@@ -182,6 +185,23 @@ export default function categoryReducer(state = initialState, action) {
         ...state,
         loading: false,
         subCategories: [],
+        error: action.payload,
+      };
+
+    // ================= SUB CATEGORY GROUPS (3rd tier) =================
+    case FETCH_SUB_CATEGORY_GROUPS_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        subCategoryGroups: action.payload,
+        error: null,
+      };
+
+    case FETCH_SUB_CATEGORY_GROUPS_FAILURE:
+      return {
+        ...state,
+        loading: false,
+        subCategoryGroups: [],
         error: action.payload,
       };
 

@@ -6,6 +6,7 @@ import {
   getLocationUrlPath,
   getLocationUrlSegment,
 } from "./locationSlug.js";
+import { matchGroupBySlug } from "../category/categoryHierarchyHelper.js";
 
 export const LOCATION_CATEGORY_SEPARATOR = "-in-";
 
@@ -365,8 +366,31 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
     };
   }
 
-  if (parts.length === 1 && (await isKnownCategorySlug(parts[0]))) {
-    return { type: "districtCategory", categorySlug: parts[0], subcategorySlug: null };
+  if (parts.length === 1) {
+    if (await isKnownCategorySlug(parts[0])) {
+      return { type: "districtCategory", categorySlug: parts[0], subcategorySlug: null };
+    }
+
+    // Not a category slug — check whether it's a GROUP's own slug (e.g.
+    // /trichy/indian-flavours). Groups have no multi-segment URL shape of
+    // their own (this app's URL scheme never carries both a category and a
+    // subcategory as separate segments — see buildCategoryPath's
+    // finalCategorySlug collapsing), so a group is addressed by exactly the
+    // same single flat slug a top-level category or a subcategory is.
+    // Resolving it here rewrites the bare group slug into its real parent's
+    // categorySlug + a groupSlug, so every downstream consumer (CategoryRouter's
+    // hasSubcategories gate, CategoriesPage's group-listing/detail render)
+    // works off the real parent exactly as it already does for a plain
+    // 2-level category — no new render path needed for this case.
+    const group = await matchGroupBySlug(parts[0]);
+    if (group) {
+      return {
+        type: "districtCategory",
+        categorySlug: group.parentSlug,
+        groupSlug: group.groupSlug,
+        subcategorySlug: null,
+      };
+    }
   }
 
   if (

@@ -13,7 +13,12 @@ import {
   resolveLocationSearchScope,
   resolveRouteLocation,
 } from "../../helper/location/locationResolver.js";
-import { getSubCategoryNameSet } from "../../helper/category/categoryHierarchyHelper.js";
+import {
+  getSubCategoryNameSet,
+  invalidateSubCategoryNameCache,
+  invalidateSubCategoryGroupCache,
+} from "../../helper/category/categoryHierarchyHelper.js";
+import { subCategoryGroupsData } from "../../utils/sub-category-groups-data.js";
 
 // ─── Fallback arrays (copied from categoryController.js) ──────────────────────
 
@@ -78,6 +83,23 @@ const buildSubCatLookup = (settings) => {
   return categoriesData;
 };
 
+/** Build a parentSlug → [{groupSlug, groupName, groupIcon, subCategoryNames}] lookup, same settings-first-then-hardcoded resolution as buildSubCatLookup. */
+const buildSubCatGroupLookup = (settings) => {
+  if (settings?.subCategoryGroupMapping?.length > 0) {
+    const lookup = {};
+    settings.subCategoryGroupMapping.forEach(({ parentSlug, groupSlug, groupName, groupIcon, subCategoryNames }) => {
+      if (!lookup[parentSlug]) lookup[parentSlug] = [];
+      lookup[parentSlug].push({ groupSlug, groupName, groupIcon: groupIcon || "", subCategoryNames: subCategoryNames || [] });
+    });
+    return lookup;
+  }
+  const lookup = {};
+  Object.entries(subCategoryGroupsData).forEach(([parentSlug, groups]) => {
+    lookup[parentSlug] = groups || [];
+  });
+  return lookup;
+};
+
 // ─── Admin: GET ───────────────────────────────────────────────────────────────
 
 export const getCategoryDisplaySettingsAction = async (req, res) => {
@@ -104,6 +126,7 @@ export const updateCategoryDisplaySettingsAction = async (req, res) => {
       popularCategories,
       serviceCardSections,
       subCategoryMapping,
+      subCategoryGroupMapping,
       popularSearchCards,
       topTouristPlaces,
       popularCategoryTabs,
@@ -142,6 +165,28 @@ export const updateCategoryDisplaySettingsAction = async (req, res) => {
       if (!Array.isArray(subCategoryMapping))
         return res.status(400).json({ success: false, message: "subCategoryMapping must be an array" });
       updates.subCategoryMapping = subCategoryMapping;
+    }
+
+    if (subCategoryGroupMapping !== undefined) {
+      if (!Array.isArray(subCategoryGroupMapping))
+        return res.status(400).json({ success: false, message: "subCategoryGroupMapping must be an array" });
+      // groupSlug is load-bearing for routing (unlike the purely
+      // presentational sibling fields above) — two groups under the same
+      // parent colliding on slug would make two different admin-authored
+      // groups resolve to the same URL, so this one field gets a deeper
+      // check than the shallow Array.isArray every other field gets.
+      const seenPairs = new Set();
+      for (const row of subCategoryGroupMapping) {
+        const pairKey = `${row?.parentSlug || ""}::${row?.groupSlug || ""}`;
+        if (seenPairs.has(pairKey)) {
+          return res.status(400).json({
+            success: false,
+            message: `Duplicate group slug "${row?.groupSlug}" under parent "${row?.parentSlug}" — group slugs must be unique per parent category.`,
+          });
+        }
+        seenPairs.add(pairKey);
+      }
+      updates.subCategoryGroupMapping = subCategoryGroupMapping;
     }
 
     if (popularSearchCards !== undefined) {
@@ -186,6 +231,8 @@ export const updateCategoryDisplaySettingsAction = async (req, res) => {
     ).lean();
 
     await invalidateCategoryDisplaySettingsCache();
+    invalidateSubCategoryNameCache();
+    invalidateSubCategoryGroupCache();
 
     return res.status(200).json({ success: true, data: saved });
   } catch (error) {
@@ -208,14 +255,20 @@ export const getV2HomeCategoriesAction = async (req, res) => {
       : FALLBACK_HOME_DESKTOP;
 
     const subCatLookup = buildSubCatLookup(settings);
+    const subCatGroupLookup = buildSubCatGroupLookup(settings);
     const categories = await categoryModel.find({ isActive: true }).lean();
     const map = new Map(categories.map((cat) => [normalize(cat.category), cat]));
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
       const categoryKey = found?.slug || normalize(name).toLowerCase().replace(/\s+/g, "-");
-      const hasSubcategories = !!subCatLookup[categoryKey];
-      const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
+      const groups = subCatGroupLookup[categoryKey] || [];
+      // A group-only parent (no flat subCategoryMapping row) still drills
+      // down — without the groups OR here, CategoryRouter would send it
+      // straight to SearchResults and the group tier would never render.
+      const hasSubcategories = !!subCatLookup[categoryKey] || groups.length > 0;
+      const subCategoryCount = (subCatLookup[categoryKey]?.length || 0)
+        + groups.reduce((sum, g) => sum + (g.subCategoryNames?.length || 0), 0);
 
       return found
         ? {
@@ -252,14 +305,17 @@ export const getV2MobileHomeCategoriesAction = async (req, res) => {
       : FALLBACK_HOME_MOBILE;
 
     const subCatLookup = buildSubCatLookup(settings);
+    const subCatGroupLookup = buildSubCatGroupLookup(settings);
     const categories = await categoryModel.find({ isActive: true }).lean();
     const map = new Map(categories.map((cat) => [normalize(cat.category), cat]));
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
       const categoryKey = found?.slug || normalize(name).toLowerCase().replace(/\s+/g, "-");
-      const hasSubcategories = !!subCatLookup[categoryKey];
-      const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
+      const groups = subCatGroupLookup[categoryKey] || [];
+      const hasSubcategories = !!subCatLookup[categoryKey] || groups.length > 0;
+      const subCategoryCount = (subCatLookup[categoryKey]?.length || 0)
+        + groups.reduce((sum, g) => sum + (g.subCategoryNames?.length || 0), 0);
 
       return found
         ? {
@@ -303,14 +359,17 @@ export const getV2PopularCategoriesAction = async (req, res) => {
       : FALLBACK_POPULAR;
 
     const subCatLookup = buildSubCatLookup(settings);
+    const subCatGroupLookup = buildSubCatGroupLookup(settings);
     const categories = await categoryModel.find({ isActive: true }).lean();
     const map = new Map(categories.map((cat) => [normalize(cat.category), cat]));
 
     const ordered = order.map((name) => {
       const found = map.get(normalize(name));
       const categoryKey = found?.slug || normalize(name).toLowerCase().replace(/\s+/g, "-");
-      const hasSubcategories = !!subCatLookup[categoryKey];
-      const subCategoryCount = subCatLookup[categoryKey]?.length || 0;
+      const groups = subCatGroupLookup[categoryKey] || [];
+      const hasSubcategories = !!subCatLookup[categoryKey] || groups.length > 0;
+      const subCategoryCount = (subCatLookup[categoryKey]?.length || 0)
+        + groups.reduce((sum, g) => sum + (g.subCategoryNames?.length || 0), 0);
 
       return found
         ? {
@@ -526,6 +585,86 @@ export const getV2SubCategoriesAction = async (req, res) => {
   }
 };
 
+// ─── V2: Sub-Category Groups (3rd tier) ────────────────────────────────────────
+// Given a parent's slug, returns its groups (if any), each with its
+// subcategory names resolved the same way getV2SubCategoriesAction resolves
+// a flat list — DB-backed where a matching categoryModel doc exists, else a
+// same-shaped fallback item built from the admin-entered name. Returns []
+// (not an error) for any parent with no group data — the response a 2-level
+// category gets today, and every existing caller of GET /v2/category/sub/
+// is completely untouched by this endpoint's existence.
+export const getV2SubCategoryGroupsAction = async (req, res) => {
+  try {
+    const { parentSlug } = req.params;
+
+    const settings = await categoryDisplaySettingsModel.findOne().lean();
+    const groupLookup = buildSubCatGroupLookup(settings);
+
+    const normalizeSlug = (text = "") =>
+      text.toLowerCase().trim().replace(/[-_\s]+/g, " ");
+
+    const cleanText = (text = "") =>
+      text.toLowerCase().trim()
+        .replace(/[-_\s]+/g, " ")
+        .replace(/\bcontractors\b/g, "contractor")
+        .replace(/\s+/g, " ");
+
+    const matchedKey = Object.keys(groupLookup).find((key) => {
+      const current = normalizeSlug(key);
+      const incoming = normalizeSlug(parentSlug);
+      return current === incoming || current === incoming + "s" || current + "s" === incoming;
+    });
+
+    const groups = matchedKey ? groupLookup[matchedKey] : [];
+    if (!groups.length) return res.json([]);
+
+    const allowedKeys = new Set(groups.flatMap((g) => g.subCategoryNames || []).map(cleanText));
+    const data = await categoryModel.find({ isActive: true }).lean();
+    const docByCleanKey = new Map();
+    data.forEach((item) => {
+      const key = cleanText(item.category);
+      if (allowedKeys.has(key) && !docByCleanKey.has(key)) docByCleanKey.set(key, item);
+    });
+
+    const resolveNames = (names) => {
+      const items = (names || []).map((name, index) => {
+        const doc = docByCleanKey.get(cleanText(name));
+        return doc
+          ? {
+              _id: doc._id,
+              name: doc.category,
+              slug: doc.slug,
+              icon: doc.categoryImageKey ? assetUrl(doc.categoryImageKey, { version: doc.updatedAt }) : "",
+              liveImage: doc.liveImageKey ? assetUrl(doc.liveImageKey, { version: doc.updatedAt }) : null,
+            }
+          : {
+              _id: index + 1,
+              name,
+              slug: name.toLowerCase().replace(/\s+/g, "-"),
+              icon: "",
+              liveImage: null,
+            };
+      });
+      const seenSlugs = new Set();
+      return items
+        .filter((item) => (seenSlugs.has(item.slug) ? false : (seenSlugs.add(item.slug), true)))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    };
+
+    const result = groups.map((g) => ({
+      groupSlug: g.groupSlug,
+      groupName: g.groupName,
+      groupIcon: g.groupIcon ? assetUrl(g.groupIcon, { version: settings?.updatedAt }) : "",
+      subCategories: resolveNames(g.subCategoryNames),
+    }));
+
+    return res.json(result);
+  } catch (error) {
+    console.error("getV2SubCategoryGroupsAction error:", error);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 // ─── V2: Parent-of-subcategory (reverse lookup) ────────────────────────────────
 // Given a subcategory slug, resolves the parentSlug it actually belongs to
 // per the same dynamic subCategoryMapping used above. Used to validate
@@ -538,6 +677,7 @@ export const getV2ParentOfSubCategoryAction = async (req, res) => {
 
     const settings = await categoryDisplaySettingsModel.findOne().lean();
     const subCatLookup = buildSubCatLookup(settings);
+    const subCatGroupLookup = buildSubCatGroupLookup(settings);
 
     const cleanText = (text = "") =>
       text.toLowerCase().trim()
@@ -548,9 +688,27 @@ export const getV2ParentOfSubCategoryAction = async (req, res) => {
     const category = await categoryModel.findOne({ slug: subcategorySlug, isActive: true }).lean();
     const targetName = category ? cleanText(category.category) : cleanText(subcategorySlug.replace(/-/g, " "));
 
-    const parentSlug = Object.keys(subCatLookup).find((key) =>
+    let parentSlug = Object.keys(subCatLookup).find((key) =>
       subCatLookup[key].some((item) => cleanText(item.name) === targetName)
     ) || null;
+
+    // A subcategory that lives only inside a group (not the flat mapping)
+    // isn't found above — search the group lookup too, additive: only runs
+    // when the flat search missed, and only ever adds groupSlug/groupName,
+    // never changes parentSlug's meaning for the existing flat case.
+    let groupSlug = null;
+    let groupName = null;
+    if (!parentSlug) {
+      for (const [pSlug, groups] of Object.entries(subCatGroupLookup)) {
+        const match = groups.find((g) => (g.subCategoryNames || []).some((n) => cleanText(n) === targetName));
+        if (match) {
+          parentSlug = pSlug;
+          groupSlug = match.groupSlug;
+          groupName = match.groupName;
+          break;
+        }
+      }
+    }
 
     // parentSlug alone isn't enough to render a breadcrumb crumb — title-
     // casing the slug client-side breaks on "&", "and", and acronyms
@@ -566,6 +724,8 @@ export const getV2ParentOfSubCategoryAction = async (req, res) => {
     return res.json({
       parentSlug,
       parentName: parentCategoryDoc?.category || null,
+      groupSlug,
+      groupName,
     });
   } catch (error) {
     console.error("getV2ParentOfSubCategoryAction error:", error);
@@ -814,6 +974,119 @@ export const getV2PopularCategoryContentAction = async (req, res) => {
   } catch (error) {
     console.error("getV2PopularCategoryContentAction error:", error);
     return res.status(500).send({ message: error.message });
+  }
+};
+
+// ─── Admin: single-category group assignment (Category.js UX) ─────────────────
+// Lets the category edit page assign/move a category's hierarchy placement
+// (flat subCategoryMapping, or a subCategoryGroupMapping group) without
+// opening the big Category Display Settings panel. Writes use targeted Mongo
+// update operators ($pull / $addToSet / $push on specific array paths)
+// instead of a whole-document GET+PUT, so this can't clobber — or be
+// clobbered by — an admin concurrently editing that panel's full settings
+// document.
+
+export const getCategoryGroupAssignmentAction = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const category = await categoryModel.findOne({ slug, isActive: true }).lean();
+    if (!category) return res.status(404).json({ success: false, message: "Category not found" });
+
+    const settings = await categoryDisplaySettingsModel.findOne().lean();
+    const name = category.category;
+
+    const flatRow = (settings?.subCategoryMapping || []).find((row) =>
+      (row.subCategoryNames || []).includes(name)
+    );
+    if (flatRow) {
+      return res.json({ success: true, data: { parentSlug: flatRow.parentSlug, groupSlug: null, groupName: null } });
+    }
+
+    const groupRow = (settings?.subCategoryGroupMapping || []).find((row) =>
+      (row.subCategoryNames || []).includes(name)
+    );
+    if (groupRow) {
+      return res.json({
+        success: true,
+        data: { parentSlug: groupRow.parentSlug, groupSlug: groupRow.groupSlug, groupName: groupRow.groupName },
+      });
+    }
+
+    return res.json({ success: true, data: null });
+  } catch (error) {
+    console.error("getCategoryGroupAssignmentAction error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateCategoryGroupAssignmentAction = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { parentSlug, groupSlug = "", groupName = "" } = req.body;
+
+    if (!parentSlug) {
+      return res.status(400).json({ success: false, message: "parentSlug is required" });
+    }
+
+    const category = await categoryModel.findOne({ slug, isActive: true }).lean();
+    if (!category) return res.status(404).json({ success: false, message: "Category not found" });
+    const name = category.category;
+
+    // Ensure the singleton settings doc exists before any array op below —
+    // mirrors getCategoryDisplaySettingsAction's create-if-missing behavior.
+    await categoryDisplaySettingsModel.findOneAndUpdate({}, {}, { upsert: true });
+
+    // Clear any prior placement first — a subcategory belongs to exactly one
+    // parent/group at a time, so reassigning must remove the old placement
+    // before adding the new one. $[] applies to every array element, so this
+    // is one atomic op per field regardless of how many rows exist.
+    await categoryDisplaySettingsModel.updateOne(
+      {},
+      {
+        $pull: {
+          "subCategoryMapping.$[].subCategoryNames": name,
+          "subCategoryGroupMapping.$[].subCategoryNames": name,
+        },
+      }
+    );
+
+    if (groupSlug) {
+      const pushed = await categoryDisplaySettingsModel.updateOne(
+        { subCategoryGroupMapping: { $elemMatch: { parentSlug, groupSlug } } },
+        { $addToSet: { "subCategoryGroupMapping.$.subCategoryNames": name } }
+      );
+      if (pushed.matchedCount === 0) {
+        if (!groupName) {
+          return res.status(400).json({ success: false, message: "groupName is required to create a new group" });
+        }
+        await categoryDisplaySettingsModel.updateOne(
+          {},
+          { $push: { subCategoryGroupMapping: { parentSlug, groupSlug, groupName, groupIcon: "", subCategoryNames: [name] } } }
+        );
+      }
+    } else {
+      const pushed = await categoryDisplaySettingsModel.updateOne(
+        { "subCategoryMapping.parentSlug": parentSlug },
+        { $addToSet: { "subCategoryMapping.$.subCategoryNames": name } }
+      );
+      if (pushed.matchedCount === 0) {
+        await categoryDisplaySettingsModel.updateOne(
+          {},
+          { $push: { subCategoryMapping: { parentSlug, subCategoryNames: [name] } } }
+        );
+      }
+    }
+
+    await categoryDisplaySettingsModel.updateOne({}, { $set: { updatedBy: req.authUser?.email || "admin" } });
+
+    await invalidateCategoryDisplaySettingsCache();
+    invalidateSubCategoryNameCache();
+    invalidateSubCategoryGroupCache();
+
+    return res.json({ success: true, data: { parentSlug, groupSlug: groupSlug || null } });
+  } catch (error) {
+    console.error("updateCategoryGroupAssignmentAction error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

@@ -40,6 +40,7 @@ export const buildDistrictCategoryContext = ({
   district,
   category,
   subcategory,
+  group,
   // Defaults to the same "!subcategory" convention every existing caller
   // relies on (a bare category with no subcategory is always a known
   // top-level category by the time it reaches here). Callers passing
@@ -70,6 +71,7 @@ export const buildDistrictCategoryContext = ({
     locationName: district?.name || formatUrlText(district?.slug || ""),
     categorySlug: category || "",
     subcategorySlug: subcategory || "",
+    groupSlug: group || "",
     isKnownCategory,
   };
   return context;
