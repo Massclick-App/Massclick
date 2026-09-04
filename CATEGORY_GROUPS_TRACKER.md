@@ -56,15 +56,15 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 - [x] `categoryReducer.js` — state + cases
 
 ## 8. Verification (see plan for full steps)
-- [ ] Admin create-group flow
-- [ ] Backend endpoint direct hit
-- [ ] Customer drill-down (3 URLs)
-- [ ] Hard-refresh each URL
-- [ ] Regression check (Hotels, Rent And Hire unaffected)
+- [x] Admin create-group flow — real test group added: Restaurants → "indian restaurants" → bbq/millet/seafood restaurants
+- [x] Backend endpoint direct hit — `/v2/category/group/restaurants`, `/v2/location/resolve` (bare group slug), `/v2/category/parent-of/:slug` all confirmed on dev
+- [x] Customer drill-down — full 3-level click-through confirmed by user: `/trichy/restaurants` (group tile) → group detail (3 cuisine names) → search results
+- [ ] Hard-refresh each URL directly (not yet confirmed — only in-app nav clicked so far)
+- [ ] Regression check (Hotels, Rent And Hire unaffected) — API-level confirmed (`hasSubcategories: false` unchanged); UI look at e.g. `/trichy/hotels` not yet confirmed
 
 ## 9. Backfill (final, manual, only where grouping is obvious)
-- [ ] Restaurants (cuisine groups)
+- [~] Restaurants — one real group live on dev ("indian restaurants"); more cuisine groups optional
 - [ ] Review other categories — skip if no clean grouping exists
 
 ---
-Last updated: 2026-09-04 — plan approved, implementation starting.
+Last updated: 2026-09-04 — full 3-level click-through confirmed working on dev (group listing → group detail → search results). Feature is functionally verified. Left open: a hard-refresh check on each URL (exercises the server-side resolver instead of client-side nav) and a quick look at an unrelated 2-level category page for peace of mind. Backfill (more real groups) is discretionary from here.

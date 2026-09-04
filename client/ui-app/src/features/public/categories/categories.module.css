@@ -247,6 +247,73 @@
   margin-top: 6px;
 }
 
+/* GROUP GRID (tier 2: sub-category groups) — deliberately different from
+   .category-grid above: large photo-forward cards instead of small
+   icon+label tiles, so a "collection you drill into further" reads
+   differently from a leaf item you click straight through to search
+   (matches the site's existing "Featured Collections" visual language). */
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+  animation: fadeIn 0.4s ease;
+}
+
+.group-card {
+  position: relative;
+  height: 180px;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+  background-color: #e2e8f0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.group-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+}
+
+.group-card:active {
+  transform: translateY(-3px);
+}
+
+/* Rotating gradient fallback for a group with no uploaded image — cycles by
+   grid position, not a random pick, so the palette stays stable per render. */
+.group-card--gradient-0 { background-image: linear-gradient(135deg, #e1580f, #b8430b); }
+.group-card--gradient-1 { background-image: linear-gradient(135deg, #1e6fba, #123a5c); }
+.group-card--gradient-2 { background-image: linear-gradient(135deg, #1f7a4d, #123d27); }
+.group-card--gradient-3 { background-image: linear-gradient(135deg, #7e59c7, #402d66); }
+.group-card--gradient-4 { background-image: linear-gradient(135deg, #b7791f, #6b4712); }
+
+.group-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.15) 55%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 18px;
+}
+
+.group-card__title {
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.group-card__count {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
 /* CATEGORY COUNT */
 .category-count {
   font-size: 0.85rem;
@@ -470,6 +537,11 @@
   .category-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
+
+  .group-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
 }
 
 @media (max-width: 992px) {
@@ -485,9 +557,18 @@
     width: 56px;
     height: 56px;
   }
-  
+
   .category-title {
     font-size: 2.2rem;
+  }
+
+  .group-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 18px;
+  }
+
+  .group-card {
+    height: 160px;
   }
 }
 
@@ -516,7 +597,29 @@
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: var(--grid-gap);
   }
-  
+
+  .group-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+  }
+
+  .group-card {
+    height: 140px;
+    border-radius: 12px;
+  }
+
+  .group-card__overlay {
+    padding: 14px;
+  }
+
+  .group-card__title {
+    font-size: 0.92rem;
+  }
+
+  .group-card__count {
+    font-size: 0.72rem;
+  }
+
   .category-icon {
     width: 52px;
     height: 52px;
@@ -555,7 +658,16 @@
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: var(--grid-gap);
   }
-  
+
+  .group-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .group-card {
+    height: 120px;
+  }
+
   .category-icon {
     width: 48px;
     height: 48px;

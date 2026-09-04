@@ -98,11 +98,14 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   // What the page is actually ABOUT right now — the group's own name once
   // drilled into one, otherwise the category (unchanged today).
   const pageLabel = isGroupDetailView && groupLabel ? groupLabel : categoryLabel;
+  // Group tiles are collections you drill into further, not a leaf you click
+  // straight through to search — worth its own noun in the loading/count/empty copy.
+  const listingKind = isDirectoryLanding ? "categories" : isGroupListingView ? "collections" : "subcategories";
 
   const listingItems = isDirectoryLanding
     ? districtCategories
     : isGroupListingView
-      ? subCategoryGroups.map((g) => ({ _id: g.groupSlug, name: g.groupName, slug: g.groupSlug, icon: g.groupIcon }))
+      ? subCategoryGroups.map((g) => ({ _id: g.groupSlug, name: g.groupName, slug: g.groupSlug, icon: g.groupIcon, count: g.subCategories?.length || 0 }))
       : isGroupDetailView
         ? (activeGroup?.subCategories || [])
         : subCategories;
@@ -436,7 +439,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
 
             <input
               type="text"
-              placeholder={isDirectoryLanding ? "Search categories..." : "Search subcategories..."}
+              placeholder={isDirectoryLanding ? "Search categories..." : isGroupListingView ? "Search collections..." : "Search subcategories..."}
               className={cx("category-search")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -448,13 +451,13 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
             {isInitialLoading && (
               <div className={cx("category-loading")}>
                 <div className={cx("spinner")} />
-                <p>Loading {isDirectoryLanding ? "categories" : "subcategories"}...</p>
+                <p>Loading {listingKind}...</p>
               </div>
             )}
 
             {!isInitialLoading && filteredCategories.length === 0 && (
               <div className={cx("category-empty")}>
-                <p className={cx("empty-text")}>No {isDirectoryLanding ? "categories" : "subcategories"} found</p>
+                <p className={cx("empty-text")}>No {listingKind} found</p>
                 {search && <p className={cx("empty-subtext")}>Try a different search term</p>}
               </div>
             )}
@@ -462,42 +465,76 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
             {!isInitialLoading && filteredCategories.length > 0 && (
               <>
                 <p className={cx("category-count")}>
-                  {isDirectoryLanding ? districtCategoriesTotal : filteredCategories.length} {isDirectoryLanding ? "categories" : "subcategories"} available
+                  {isDirectoryLanding ? districtCategoriesTotal : filteredCategories.length} {listingKind} available
                 </p>
-                <div className={cx("category-grid")}>
-                  {filteredCategories.map((item, index) => (
-                    <div
-                      key={item._id || index}
-                      className={cx("category-item")}
-                      onClick={() => handleClick(item)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          handleClick(item);
-                        }
-                      }}
-                      aria-label={`View ${item.name}`}
-                    >
-                      <img
-                        className={cx("category-icon")}
-                        src={item.icon}
-                        alt={item.name}
-                        width="48"
-                        height="48"
-                        loading="lazy"
-                        decoding="async"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          handleImageError(e);
+
+                {isGroupListingView ? (
+                  // Tier 2 (groups) — deliberately different from the leaf
+                  // grid below: a group is a collection you drill into
+                  // further, not a leaf you click straight through to
+                  // search, so it gets a bigger, photo-forward card instead
+                  // of the small icon+label tile. Falls back to a rotating
+                  // gradient (cycling every 5 cards) for any group with no
+                  // uploaded image — true for most groups today.
+                  <div className={cx("group-grid")}>
+                    {filteredCategories.map((item, index) => (
+                      <div
+                        key={item._id || index}
+                        className={cx(`group-card ${item.icon ? "" : `group-card--gradient-${index % 5}`}`)}
+                        style={item.icon ? { backgroundImage: `url(${item.icon})` } : undefined}
+                        onClick={() => handleClick(item)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleClick(item);
+                          }
                         }}
-                      />
-                      <span className={cx("category-text")}>
-                        {formatUrlText(item.name)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        aria-label={`View ${item.name}`}
+                      >
+                        <div className={cx("group-card__overlay")}>
+                          <span className={cx("group-card__title")}>{formatUrlText(item.name)}</span>
+                          <span className={cx("group-card__count")}>{item.count} {item.count === 1 ? "category" : "categories"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={cx("category-grid")}>
+                    {filteredCategories.map((item, index) => (
+                      <div
+                        key={item._id || index}
+                        className={cx("category-item")}
+                        onClick={() => handleClick(item)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleClick(item);
+                          }
+                        }}
+                        aria-label={`View ${item.name}`}
+                      >
+                        <img
+                          className={cx("category-icon")}
+                          src={item.icon}
+                          alt={item.name}
+                          width="48"
+                          height="48"
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            handleImageError(e);
+                          }}
+                        />
+                        <span className={cx("category-text")}>
+                          {formatUrlText(item.name)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {isDirectoryLanding && districtCategoriesHasMore && (
                   <div ref={infiniteScrollSentinelRef} className={cx("category-scroll-sentinel")}>
