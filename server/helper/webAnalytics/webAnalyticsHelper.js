@@ -880,6 +880,10 @@ export const getCampaigns = async (query) => {
                 campaign: {
                     $cond: ["$hasUtm", { $cond: [{ $ne: ["$utmCampaign", ""] }, "$utmCampaign", "(not set)"] }, "(direct)"],
                 },
+                // Kept raw rather than defaulted to "(not set)": most links set no
+                // term at all, so a placeholder would be noise in every row. The
+                // dashboards render an empty term as a dash.
+                term: "$utmTerm",
             },
         },
         ...(q
@@ -890,6 +894,7 @@ export const getCampaigns = async (query) => {
                               { source: { $regex: escapeRegex(q), $options: "i" } },
                               { medium: { $regex: escapeRegex(q), $options: "i" } },
                               { campaign: { $regex: escapeRegex(q), $options: "i" } },
+                              { term: { $regex: escapeRegex(q), $options: "i" } },
                           ],
                       },
                   },
@@ -897,14 +902,14 @@ export const getCampaigns = async (query) => {
             : []),
         {
             $group: {
-                _id: { source: "$source", medium: "$medium", campaign: "$campaign", deviceId: "$deviceId" },
+                _id: { source: "$source", medium: "$medium", campaign: "$campaign", term: "$term", deviceId: "$deviceId" },
                 sessions: { $sum: 1 },
                 leads: { $sum: "$leads" },
             },
         },
         {
             $group: {
-                _id: { source: "$_id.source", medium: "$_id.medium", campaign: "$_id.campaign" },
+                _id: { source: "$_id.source", medium: "$_id.medium", campaign: "$_id.campaign", term: "$_id.term" },
                 sessions: { $sum: "$sessions" },
                 visitors: { $sum: 1 },
                 leads: { $sum: "$leads" },
@@ -922,6 +927,7 @@ export const getCampaigns = async (query) => {
                             source: "$_id.source",
                             medium: "$_id.medium",
                             campaign: "$_id.campaign",
+                            term: "$_id.term",
                             sessions: 1,
                             visitors: 1,
                             leads: 1,

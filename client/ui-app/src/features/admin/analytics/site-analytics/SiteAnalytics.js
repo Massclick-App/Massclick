@@ -314,6 +314,9 @@ export default function SiteAnalytics() {
     { key: "source", label: "Source", render: (r) => <span className={styles.mono} title={r.source}>{r.source}</span> },
     { key: "medium", label: "Medium", render: (r) => r.medium },
     { key: "campaign", label: "Campaign", render: (r) => <span className={styles.strongCell} title={r.campaign}>{r.campaign}</span> },
+    // Shown because /site-events/campaigns now groups by term as well: without
+    // this column two rows differing only by term would look like duplicates.
+    { key: "term", label: "Term", render: (r) => r.term || "—" },
     { key: "sessions", label: "Sessions", numeric: true, sortable: true, width: 96, render: (r) => number(r.sessions) },
     { key: "visitors", label: "Visitors", numeric: true, sortable: true, width: 92, render: (r) => number(r.visitors) },
     { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
@@ -455,7 +458,7 @@ export default function SiteAnalytics() {
       <SectionTable
         title="Traffic Sources" tone="indigo" icon={CampaignRoundedIcon}
         url="/site-events/campaigns" filters={queryFilters} filterKey={filterKey} reloadToken={reloadToken}
-        rowsKey="campaigns" columns={campaignColumns} defaultSort="sessions" searchPlaceholder="Search source, medium, campaign…"
+        rowsKey="campaigns" columns={campaignColumns} defaultSort="sessions" searchPlaceholder="Search source, medium, campaign, term…"
         onRowClick={(row) => setDrill({
           key: `campaign-${row.source}-${row.medium}-${row.campaign}`,
           label: `${row.source} / ${row.medium} / ${row.campaign}`,

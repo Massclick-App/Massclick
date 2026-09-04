@@ -223,6 +223,7 @@ export default function AppAnalytics() {
     { key: "source", label: "Source", render: (r) => <span className={styles.mono} title={r.source || "(direct)"}>{r.source || "(direct)"}</span> },
     { key: "medium", label: "Medium", render: (r) => r.medium || "(none)" },
     { key: "campaign", label: "Campaign", render: (r) => <span className={styles.strongCell} title={r.campaign || "(not set)"}>{r.campaign || "(not set)"}</span> },
+    { key: "term", label: "Term", render: (r) => r.term || "—" },
     { key: "visitors", label: "Installs", numeric: true, sortable: true, width: 88, render: (r) => number(r.visitors) },
     { key: "sessions", label: "Sessions", numeric: true, sortable: true, width: 96, render: (r) => number(r.sessions) },
     { key: "leads", label: "Leads", numeric: true, sortable: true, width: 82, render: (r) => number(r.leads) },
@@ -337,7 +338,7 @@ export default function AppAnalytics() {
       {!isIosOnly && <SectionTable
         title="Play Store Install Sources" tone="indigo" icon={CampaignRoundedIcon}
         url="/site-events/campaigns" filters={playInstallFilters} filterKey={playInstallFilterKey} reloadToken={reloadToken}
-        rowsKey="campaigns" columns={installSourceColumns} defaultSort="visitors" searchPlaceholder="Search source, medium, campaign…"
+        rowsKey="campaigns" columns={installSourceColumns} defaultSort="visitors" searchPlaceholder="Search source, medium, campaign, term…"
         renderSummary={(data) => data ? `${number(data.total)} Android sources · ${number(data.totals?.visitors)} installs · ${number(data.totals?.leads)} leads.` : "Which Play Store campaign each Android install came from."}
       />}
 
