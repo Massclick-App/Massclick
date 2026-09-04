@@ -232,6 +232,7 @@ export const fetchSubCategoryGroups = (parentSlug) => async (dispatch) => {
       `${API_URL}/v2/category/group/${parentSlug}`
     );
 
+    // response.data = { parent: {title, description, webHero}, groups: [...] }
     dispatch({
       type: FETCH_SUB_CATEGORY_GROUPS_SUCCESS,
       payload: response.data

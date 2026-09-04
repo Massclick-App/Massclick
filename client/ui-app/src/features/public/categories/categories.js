@@ -37,6 +37,14 @@ const cx = createScopedClassNames(styles);
 const sanitizeSeoHtml = (html = "") =>
   html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
 
+// Deterministic (not random) so the banner's gradient fallback doesn't shift
+// between renders — same palette rotation the group cards already use.
+const hashIndex = (str = "", mod = 5) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 1000003;
+  return Math.abs(hash) % mod;
+};
+
 const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const {
     district: districtParam,
@@ -59,6 +67,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const {
     subCategories = [],
     subCategoryGroups = [],
+    subCategoryGroupsParent = {},
     loading,
     districtCategories = [],
     districtCategoriesTotal = 0,
@@ -221,6 +230,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   useEffect(() => {
     if (!categorySlug || !locationLabel) return;
 
+    // Tier 2 (group-listing) isn't meant to rank at all — see fallbackSeo's
+    // noindex below — so skip the fetch entirely rather than let a stale
+    // admin-configured SEO override for the flat "restaurants" category page
+    // (same categorySlug, different view) win over the noindex fallback.
+    // Still clear whatever SEO data a PREVIOUS page left in Redux, or that
+    // stale record would render here regardless of this effect not running.
+    if (isGroupListingView) {
+      dispatch({ type: CLEAR_SEO_META });
+      return;
+    }
+
     dispatch({ type: CLEAR_SEO_META });
     dispatch(fetchSeoMeta({
       pageType: "category",
@@ -232,17 +252,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       ...(routeCanonicalPath ? { canonicalPath: routeCanonicalPath } : {}),
       ...(districtSlug ? { district: districtSlug } : {}),
     }));
-  }, [dispatch, categorySlug, districtSlug, locationLabel, locationPath, locationSlug, routeCanonicalPath]);
+  }, [dispatch, categorySlug, districtSlug, locationLabel, locationPath, locationSlug, routeCanonicalPath, isGroupListingView]);
 
   useEffect(() => {
-    if (!categorySlug) return;
+    if (!categorySlug || isGroupListingView) return;
 
     dispatch(fetchSeoPageContentMeta({
       pageType: "category",
       category: categorySlug.replace(/-/g, " "),
       ...(locationLabel ? { location: locationLabel } : {}),
     }));
-  }, [dispatch, categorySlug, locationLabel]);
+  }, [dispatch, categorySlug, locationLabel, isGroupListingView]);
 
   // District landing's listingItems are already server-filtered by
   // debouncedSearch (see the fetch effect above) — re-filtering client-side
@@ -255,6 +275,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       : listingItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())),
     [search, listingItems, isDirectoryLanding],
   );
+
+  // Tier-2 "quick jump" strip: every leaf item across every group, flattened
+  // and deduped, so someone who doesn't want to browse by group can still
+  // go straight to a specific type without an extra click through tier 3.
+  const allGroupMembers = useMemo(() => {
+    if (!isGroupListingView) return [];
+    const seen = new Set();
+    return subCategoryGroups
+      .flatMap((g) => g.subCategories || [])
+      .filter((item) => (seen.has(item.slug) ? false : (seen.add(item.slug), true)));
+  }, [isGroupListingView, subCategoryGroups]);
 
   const handleClick = (sub) => {
     const itemSlug = sub.slug || slugFromText(sub.name);
@@ -350,7 +381,10 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         description: `Browse all ${pageLabel} subcategories in ${locationLabel}. Find and explore verified businesses in your area.`,
         keywords: `${pageLabel}, ${pageLabel} in ${locationLabel}, ${pageLabel} subcategories`,
         canonical: categoryPageUrl,
-        robots: "index, follow",
+        // Tier 2 (group-listing) isn't meant to rank itself — noindex — but
+        // still passes crawl equity through to the tier-3/leaf pages it
+        // links to, which DO want to be indexed — follow.
+        robots: isGroupListingView ? "noindex, follow" : "index, follow",
       };
   const seoContent = seoPageContents?.[0];
   const sanitizedPageContent = seoContent?.pageContent
@@ -419,33 +453,58 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     <>
       <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
-      <Helmet>
-        {itemListSchema && <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>}
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
-      </Helmet>
+      {/* Tier 2 (group-listing) deliberately carries no structured data —
+          it isn't meant to rank itself, see fallbackSeo's noindex above. */}
+      {!isGroupListingView && (
+        <Helmet>
+          {itemListSchema && <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>}
+          <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+        </Helmet>
+      )}
 
       <div className={cx("category-page")}>
         <StickySearchBar />
         <div className={cx("category-container")}>
-          {breadcrumbItems.length > 0 && (
+          {!isGroupListingView && breadcrumbItems.length > 0 && (
             <div className={cx("category-breadcrumbs")}>
               <Breadcrumbs items={breadcrumbItems} />
             </div>
           )}
-          <div className={cx("category-header")}>
-            <h1 className={cx("category-title")}>
-              {isDirectoryLanding ? `Explore Services in ${isLocationLanding ? locationLabel : districtName}` : `${pageLabel} in ${locationLabel}`}
-            </h1>
+          {isGroupListingView ? (
+            // Tier 2's own hero — replaces the plain title+search header
+            // rather than sitting alongside it, so there's one glorified
+            // heading treatment instead of a plain title stacked on a fancy
+            // banner. Real photo when the category has one uploaded
+            // (categoryImages.webHero — already admin-editable, unused
+            // elsewhere on this page), else the same gradient rotation the
+            // group cards below use, keyed by category so it's stable.
+            <div
+              className={cx(`group-banner ${subCategoryGroupsParent.webHero ? "" : `group-card--gradient-${hashIndex(categorySlug)}`}`)}
+              style={subCategoryGroupsParent.webHero ? { backgroundImage: `url(${subCategoryGroupsParent.webHero})` } : undefined}
+            >
+              <div className={cx("group-banner__overlay")}>
+                <h1 className={cx("group-banner__title")}>{subCategoryGroupsParent.title || pageLabel}</h1>
+                {subCategoryGroupsParent.description && (
+                  <p className={cx("group-banner__subtitle")}>{subCategoryGroupsParent.description}</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className={cx("category-header")}>
+              <h1 className={cx("category-title")}>
+                {isDirectoryLanding ? `Explore Services in ${isLocationLanding ? locationLabel : districtName}` : `${pageLabel} in ${locationLabel}`}
+              </h1>
 
-            <input
-              type="text"
-              placeholder={isDirectoryLanding ? "Search categories..." : isGroupListingView ? "Search collections..." : "Search subcategories..."}
-              className={cx("category-search")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search categories"
-            />
-          </div>
+              <input
+                type="text"
+                placeholder={isDirectoryLanding ? "Search categories..." : "Search subcategories..."}
+                className={cx("category-search")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search categories"
+              />
+            </div>
+          )}
 
           <div className={cx("category-content")}>
             {isInitialLoading && (
@@ -536,6 +595,51 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
                   </div>
                 )}
 
+                {isGroupListingView && allGroupMembers.length > 0 && (
+                  // Secondary, lower-key path straight to a leaf item for
+                  // anyone who doesn't want to browse by group — reuses the
+                  // existing small icon+label tile (not the photo-card
+                  // style above) so it visibly reads as the shortcut, not
+                  // a second hero section competing with the groups.
+                  <div className={cx("group-quick-jump")}>
+                    <p className={cx("group-quick-jump__heading")}>Or go straight to a type</p>
+                    <div className={cx("category-grid")}>
+                      {allGroupMembers.map((item, index) => (
+                        <div
+                          key={item._id || index}
+                          className={cx("category-item")}
+                          onClick={() => handleClick(item)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyPress={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              handleClick(item);
+                            }
+                          }}
+                          aria-label={`View ${item.name}`}
+                        >
+                          <img
+                            className={cx("category-icon")}
+                            src={item.icon}
+                            alt={item.name}
+                            width="48"
+                            height="48"
+                            loading="lazy"
+                            decoding="async"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              handleImageError(e);
+                            }}
+                          />
+                          <span className={cx("category-text")}>
+                            {formatUrlText(item.name)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {isDirectoryLanding && districtCategoriesHasMore && (
                   <div ref={infiniteScrollSentinelRef} className={cx("category-scroll-sentinel")}>
                     {districtCategoriesLoadingMore && (
@@ -551,7 +655,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           </div>
         </div>
 
-        {!isDirectoryLanding && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
+        {!isDirectoryLanding && !isGroupListingView && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
           <div className={cx("seo-outer-wrapper")}>
             <div className={cx("seo-article-wrapper")}>
               <article className={cx("seo-article")}>

@@ -314,6 +314,63 @@
   margin-top: 4px;
 }
 
+/* GROUP BANNER (tier 2's own hero, replaces .category-header for that view) */
+.group-banner {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  border-radius: 20px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-color: #e2e8f0;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
+}
+
+.group-banner__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.1) 60%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 36px 40px;
+}
+
+.group-banner__title {
+  color: #ffffff;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: capitalize;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  margin: 0;
+}
+
+.group-banner__subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 400;
+  margin: 10px 0 0;
+  max-width: 640px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* GROUP QUICK-JUMP (secondary strip, below the group cards) */
+.group-quick-jump {
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 1px solid #eef1f5;
+}
+
+.group-quick-jump__heading {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0 0 24px;
+}
+
 /* CATEGORY COUNT */
 .category-count {
   font-size: 0.85rem;
@@ -570,6 +627,14 @@
   .group-card {
     height: 160px;
   }
+
+  .group-banner {
+    height: 220px;
+  }
+
+  .group-banner__title {
+    font-size: 1.8rem;
+  }
 }
 
 @media (max-width: 768px) {
@@ -620,6 +685,28 @@
     font-size: 0.72rem;
   }
 
+  .group-banner {
+    height: 190px;
+    border-radius: 16px;
+  }
+
+  .group-banner__overlay {
+    padding: 24px 24px;
+  }
+
+  .group-banner__title {
+    font-size: 1.5rem;
+  }
+
+  .group-banner__subtitle {
+    font-size: 0.88rem;
+  }
+
+  .group-quick-jump {
+    margin-top: 36px;
+    padding-top: 28px;
+  }
+
   .category-icon {
     width: 52px;
     height: 52px;
@@ -666,6 +753,19 @@
 
   .group-card {
     height: 120px;
+  }
+
+  .group-banner {
+    height: 160px;
+    border-radius: 14px;
+  }
+
+  .group-banner__overlay {
+    padding: 18px;
+  }
+
+  .group-banner__title {
+    font-size: 1.25rem;
   }
 
   .category-icon {

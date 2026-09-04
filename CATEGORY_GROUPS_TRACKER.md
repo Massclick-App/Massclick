@@ -68,3 +68,13 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ---
 Last updated: 2026-09-04 — full 3-level click-through confirmed working on dev (group listing → group detail → search results). Feature is functionally verified. Left open: a hard-refresh check on each URL (exercises the server-side resolver instead of client-side nav) and a quick look at an unrelated 2-level category page for peace of mind. Backfill (more real groups) is discretionary from here.
+
+## 10. Tier-2 redesign (group-listing view only — not committed yet)
+- [x] Backend: `getV2SubCategoryGroupsAction` now returns `{parent: {title, description, webHero}, groups: [...]}`
+- [x] Redux: `subCategoryGroupsParent` unpacked in reducer
+- [x] No SEO for tier 2: breadcrumbs UI, JSON-LD schemas, and the FAQ/article block all skipped; robots forced to `noindex, follow`; SEO fetch effects gated + CLEAR_SEO_META dispatched to avoid a stale record leaking through (SeoMeta prefers seoData over fallback when non-empty)
+- [x] Banner: reuses existing `categoryModel.categoryImages.webHero`/`title`/`description` (no new schema/admin work), gradient fallback via the same 5-color rotation as group cards
+- [x] Search box removed for tier 2
+- [x] Quick-jump strip: all group members flattened+deduped, shown below the group grid in the existing small-tile style
+- [ ] Not yet visually verified (lint-clean, logic traced, but no eyes on it) — needs a look on dev once committed/deployed
+- [ ] Not committed

@@ -616,7 +616,7 @@ export const getV2SubCategoryGroupsAction = async (req, res) => {
     });
 
     const groups = matchedKey ? groupLookup[matchedKey] : [];
-    if (!groups.length) return res.json([]);
+    if (!groups.length) return res.json({ parent: {}, groups: [] });
 
     const allowedKeys = new Set(groups.flatMap((g) => g.subCategoryNames || []).map(cleanText));
     const data = await categoryModel.find({ isActive: true }).lean();
@@ -658,7 +658,24 @@ export const getV2SubCategoryGroupsAction = async (req, res) => {
       subCategories: resolveNames(g.subCategoryNames),
     }));
 
-    return res.json(result);
+    // Parent's own hero/title/description — carried alongside the groups so
+    // the tier-2 (group-listing) page can show a real banner instead of a
+    // dedicated banner field the admin would have to fill in separately.
+    // webHero already exists on every category (categorySchema.js's
+    // "1200x400 horizontal banner" field) and is editable today via the
+    // admin Category.js form — this just gives it a consumer here.
+    const parentDoc = data.find((d) => d.slug === matchedKey);
+    const parent = parentDoc
+      ? {
+          title: parentDoc.title || parentDoc.category,
+          description: parentDoc.description || "",
+          webHero: parentDoc.categoryImages?.webHero
+            ? assetUrl(parentDoc.categoryImages.webHero, { version: parentDoc.updatedAt })
+            : "",
+        }
+      : {};
+
+    return res.json({ parent, groups: result });
   } catch (error) {
     console.error("getV2SubCategoryGroupsAction error:", error);
     return res.status(500).json({ message: error.message });

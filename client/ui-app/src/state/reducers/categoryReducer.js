@@ -24,6 +24,7 @@ const initialState = {
   homeCategories: [],
   subCategories: [],
   subCategoryGroups: [],
+  subCategoryGroupsParent: {},
   districtCategories: [],
   districtCategoriesTotal: 0,
   districtCategoriesPage: 0,
@@ -193,7 +194,8 @@ export default function categoryReducer(state = initialState, action) {
       return {
         ...state,
         loading: false,
-        subCategoryGroups: action.payload,
+        subCategoryGroups: action.payload.groups || [],
+        subCategoryGroupsParent: action.payload.parent || {},
         error: null,
       };
 
@@ -202,6 +204,7 @@ export default function categoryReducer(state = initialState, action) {
         ...state,
         loading: false,
         subCategoryGroups: [],
+        subCategoryGroupsParent: {},
         error: action.payload,
       };
 
