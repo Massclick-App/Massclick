@@ -837,6 +837,8 @@ export const getCampaigns = async (query) => {
                 utmSource: { $max: { $ifNull: ["$utm.source", ""] } },
                 utmMedium: { $max: { $ifNull: ["$utm.medium", ""] } },
                 utmCampaign: { $max: { $ifNull: ["$utm.campaign", ""] } },
+                utmTerm: { $max: { $ifNull: ["$utm.term", ""] } },
+                utmContent: { $max: { $ifNull: ["$utm.content", ""] } },
                 referrer: { $max: { $ifNull: ["$referrer", ""] } },
                 deviceId: { $first: "$deviceId" },
                 leads: { $sum: { $cond: [{ $in: ["$biz.action", [...LEAD_ACTIONS]] }, 1, 0] } },
@@ -844,7 +846,18 @@ export const getCampaigns = async (query) => {
         },
         {
             $addFields: {
-                hasUtm: { $or: [{ $ne: ["$utmSource", ""] }, { $ne: ["$utmMedium", ""] }, { $ne: ["$utmCampaign", ""] }] },
+                // term and content count too: a link tagged with only utm_term is still
+                // a tagged link, and leaving them out silently filed those sessions
+                // under "(direct)" alongside genuinely untagged traffic.
+                hasUtm: {
+                    $or: [
+                        { $ne: ["$utmSource", ""] },
+                        { $ne: ["$utmMedium", ""] },
+                        { $ne: ["$utmCampaign", ""] },
+                        { $ne: ["$utmTerm", ""] },
+                        { $ne: ["$utmContent", ""] },
+                    ],
+                },
                 hasReferrer: { $ne: ["$referrer", ""] },
             },
         },
@@ -1116,12 +1129,25 @@ export const getVisitorDetails = async (query = {}) => {
                     utmSource: { $max: { $ifNull: ["$utm.source", ""] } },
                     utmMedium: { $max: { $ifNull: ["$utm.medium", ""] } },
                     utmCampaign: { $max: { $ifNull: ["$utm.campaign", ""] } },
+                    utmTerm: { $max: { $ifNull: ["$utm.term", ""] } },
+                    utmContent: { $max: { $ifNull: ["$utm.content", ""] } },
                     referrer: { $max: { $ifNull: ["$referrer", ""] } },
                 },
             },
             {
                 $addFields: {
-                    hasUtm: { $or: [{ $ne: ["$utmSource", ""] }, { $ne: ["$utmMedium", ""] }, { $ne: ["$utmCampaign", ""] }] },
+                    // term and content count too: a link tagged with only utm_term is still
+                // a tagged link, and leaving them out silently filed those sessions
+                // under "(direct)" alongside genuinely untagged traffic.
+                hasUtm: {
+                    $or: [
+                        { $ne: ["$utmSource", ""] },
+                        { $ne: ["$utmMedium", ""] },
+                        { $ne: ["$utmCampaign", ""] },
+                        { $ne: ["$utmTerm", ""] },
+                        { $ne: ["$utmContent", ""] },
+                    ],
+                },
                     hasReferrer: { $ne: ["$referrer", ""] },
                 },
             },
