@@ -31,12 +31,6 @@ const GooglePlayGlyph = () => (
   </svg>
 );
 
-const AppleGlyph = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor">
-    <path d="M16.365 1.43c0 1.14-.417 2.06-1.25 2.86-.98.94-2.06 1.48-3.24 1.4-.056-1.11.44-2.06 1.31-2.85.83-.76 2.06-1.35 3.18-1.41Zm3.86 15.42c-.42.98-.9 1.84-1.53 2.71-.9 1.23-1.83 2.45-3.28 2.48-1.42.03-1.88-.84-3.51-.84-1.63 0-2.14.81-3.48.87-1.4.05-2.47-1.32-3.38-2.55-1.85-2.5-3.28-7.06-1.37-10.14 1-1.57 2.68-2.56 4.51-2.59 1.4-.03 2.72.94 3.57.94.85 0 2.46-1.16 4.14-.99.71.03 2.7.29 3.98 2.18-.1.06-2.37 1.38-2.35 4.11.02 3.27 2.87 4.36 2.7 4.42Z" />
-  </svg>
-);
-
 const Footer = () => {
   const FooterLink = ({ children, to = "#" }) => (
     <li className={cx("footer-link-item")}>
@@ -115,7 +109,7 @@ const Footer = () => {
           </p>
           <div className={cx("store-badges")}>
             <a
-              href="https://play.google.com"
+              href="https://play.google.com/store/apps/details?id=com.massclick.massclick"
               target="_blank"
               rel="noopener noreferrer"
               className={cx("store-badge")}
@@ -125,19 +119,6 @@ const Footer = () => {
               <span className={cx("store-badge-text")}>
                 <span className={cx("store-badge-eyebrow")}>GET IT ON</span>
                 <span className={cx("store-badge-title")}>Google Play</span>
-              </span>
-            </a>
-            <a
-              href="https://www.apple.com/app-store/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cx("store-badge")}
-              aria-label="Download on the App Store"
-            >
-              <AppleGlyph />
-              <span className={cx("store-badge-text")}>
-                <span className={cx("store-badge-eyebrow")}>Download on the</span>
-                <span className={cx("store-badge-title")}>App Store</span>
               </span>
             </a>
           </div>
