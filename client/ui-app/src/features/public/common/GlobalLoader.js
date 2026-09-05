@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import Lottie from 'lottie-react';
 import { Box } from '@mui/material';
 import loaderAnimation from 'assets/lottie/loading.json';
 
+// Authored at 30fps/181 frames (~6s). lottie-react has no declarative speed
+// prop -- lottie-web's playback rate is only settable imperatively via
+// setSpeed() through lottieRef, so this bumps it to ~3s without re-exporting
+// or hand-editing the animation's frame data.
+const PLAYBACK_SPEED = 2;
+
 const GlobalLoader = ({ size = 350, message = '' }) => {
+  const lottieRef = useRef(null);
+
+  useEffect(() => {
+    lottieRef.current?.setSpeed(PLAYBACK_SPEED);
+  }, []);
+
   const loaderElement = (
     <Box
       sx={{
@@ -32,6 +44,7 @@ const GlobalLoader = ({ size = 350, message = '' }) => {
       >
         <Box sx={{ width: size, height: size }}>
           <Lottie
+            lottieRef={lottieRef}
             animationData={loaderAnimation}
             loop={true}
             autoplay={true}
