@@ -16,6 +16,7 @@ import {
 } from "../helper/businessList/businessUrl.js";
 import { appendDiscoveryLinkHeaders } from "../config/apiCatalog.js";
 import { STATIC_PAGES, SKIP_SEO_ROUTES } from "../config/ssrConfig.js";
+import { isServableUrlSegment } from "../utils/urlSegment.js";
 import { getCache, setCache } from "../utils/redisClient.js";
 import { slugify } from "../slugify.js";
 import { classifyMiddleSegment } from "../helper/location/urlSegmentClassifier.js";
@@ -132,7 +133,13 @@ const buildCategoryPath = ({
     });
   }
 
-  const segments = [locationSlug, subcategorySlug || categorySlug];
+  // slugify() each segment rather than echoing the raw URL text back out. This
+  // is the legacy (no-district) shape, and it is what fed the crawl loop: a raw
+  // "%20" arriving in the path was emitted verbatim into this page's own
+  // canonical, then re-slugified into "-20" by the next hop. Canonicalising here
+  // makes the emitted URL a fixed point — the same input can no longer produce a
+  // longer output on each round-trip.
+  const segments = [slugify(locationSlug), slugify(subcategorySlug || categorySlug)];
   return `/${segments.filter(Boolean).join("/")}`;
 };
 
@@ -325,8 +332,11 @@ const buildCategoryBreadcrumbCrumbs = (route) => {
 
   return [
     { name: "Home", path: "/" },
+    // slugify() the emitted href for the same reason as buildCategoryPath above:
+    // this breadcrumb is a real crawlable <a>, so echoing the raw segment here is
+    // what handed Googlebot the next, longer URL in the loop.
     ...(route.locationSlug
-      ? [{ name: route.locationName, path: `/${route.locationSlug}` }]
+      ? [{ name: route.locationName, path: `/${slugify(route.locationSlug)}` }]
       : []),
     ...(route.subcategorySlug && route.categorySlug
       ? [{
@@ -390,6 +400,30 @@ export async function ssrMiddleware(req, res) {
 
     const firstSegment = parts[0] || "";
     const secondSegment = parts[1] || "";
+
+    // Hard-404 malformed category-shaped URLs before any DB work happens.
+    //
+    // These can only be crawler-invented (see isServableUrlSegment): nothing we
+    // render links to them. Returning 200 with a generic shell is a soft 404 —
+    // it is precisely what convinced Googlebot this URL space was legitimate and
+    // worth crawling deeper, at one full businesslists collection scan each.
+    //
+    // The SPA shell is still sent as the body so a human who lands here gets a
+    // usable page; only the status changes. Routes with their own handling
+    // (business pages, dashboard, blog, static pages) are excluded — their
+    // segments carry ObjectIds and other non-slug shapes by design.
+    // Single-segment junk is included: the longest URL observed in the crawl
+    // (949 chars of repeated "20") had no second segment, and would otherwise
+    // still self-canonicalise below.
+    const isSeoRoute =
+      Boolean(firstSegment) &&
+      !SKIP_SEO_ROUTES.has(firstSegment) &&
+      !STATIC_PAGES[firstSegment] &&
+      firstSegment !== "blog";
+
+    if (isSeoRoute && !parts.every(isServableUrlSegment)) {
+      return res.status(404).send(html);
+    }
 
     let seo = null;
     let blogDoc = null;
@@ -532,10 +566,15 @@ export async function ssrMiddleware(req, res) {
           : `${categoryName}, ${locationName}, best ${categoryName} in ${locationName}`
         : fallbackKeywords)
     );
+    // Canonicalise the self-referential fallback rather than echoing req.path
+    // verbatim: req.path is not percent-decoded, so a crawler-invented path with
+    // literal "%20" in it would otherwise emit itself as its own canonical and
+    // assert that the junk URL is the authoritative one.
+    const canonicalPathFromRequest = `/${parts.map(slugify).filter(Boolean).join("/")}`;
     const canonical = escapeHtml(
       isCategoryPage
         ? categoryRoute.canonicalUrl
-        : seo?.canonical || `https://massclick.in${req.path}`
+        : seo?.canonical || `https://massclick.in${canonicalPathFromRequest}`
     );
 
     const h1 = isBlogPage

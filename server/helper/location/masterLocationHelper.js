@@ -414,6 +414,13 @@ export const listDistinctMasterLocationValues = async ({
   return values.filter(Boolean).sort((a, b) => a.localeCompare(b));
 };
 
+// A real place name is short. Anything past this is crawler-invented text that
+// cannot match a location, but still costs an isActive index scan plus a regex
+// filter over every active location — and one $and regex clause PER TOKEN, so
+// long junk multiplies the cost. Bounding it here protects every caller.
+const MAX_SEARCH_TERM_LENGTH = 80;
+const MAX_SEARCH_TERM_TOKENS = 10;
+
 // Resolve free text ("kk nagar", "manaparai", "trichy") to a location, then
 // expose its slug so callers can prefix-match businesses at any hierarchy level.
 // Ranked exact > prefix > substring match first, so a term like "mettu" surfaces
@@ -421,11 +428,12 @@ export const listDistinctMasterLocationValues = async ({
 // instead of results being decided by which district's slug sorts first.
 export const searchMasterLocation = async (text, limit = 10) => {
   const term = (text || "").toLowerCase().trim();
-  if (!term) return [];
+  if (!term || term.length > MAX_SEARCH_TERM_LENGTH) return [];
   const hierarchyTokens = term
     .split(/\s+/)
     .map((token) => token.trim())
     .filter(Boolean);
+  if (hierarchyTokens.length > MAX_SEARCH_TERM_TOKENS) return [];
   const hierarchyTokenMatch = {
     $and: hierarchyTokens.map((token) => ({
       hierarchyPath: {
@@ -441,8 +449,13 @@ export const searchMasterLocation = async (text, limit = 10) => {
         isActive: true,
         $or: [
           { keywords: term },
-          { keywords: { $regex: term, $options: "i" } },
-          { slug: { $regex: slugify(term), $options: "i" } },
+          // escapeRegex: `term` is user/crawler text straight off a URL. The
+          // hierarchyPath clause above already escaped its tokens; this one did
+          // not, making it the injection/ReDoS path. slugify() output is
+          // [a-z0-9-] and carries no metacharacters, but escape it too so the
+          // rule here is "every $regex is escaped", with no exceptions to audit.
+          { keywords: { $regex: escapeRegex(term), $options: "i" } },
+          { slug: { $regex: escapeRegex(slugify(term)), $options: "i" } },
           { pincode: term },
           hierarchyTokenMatch,
         ],
