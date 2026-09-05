@@ -188,8 +188,11 @@ const createMaintenanceModeError = (config) => {
 // Request interceptor - add token to headers and show loader
 axiosInstance.interceptors.request.use(
   (config) => {
-    activeRequests++;
+    // showGlobalLoader() only dispatches when activeRequests is still 0 (this
+    // is the first concurrent request) -- it must run before the increment
+    // below, or the count is never 0 at check-time and SHOW never fires.
     showGlobalLoader();
+    activeRequests++;
 
     // Don't add token to relogin endpoint (it uses refresh token).
     // Also preserve explicit Authorization headers, such as public client tokens.
