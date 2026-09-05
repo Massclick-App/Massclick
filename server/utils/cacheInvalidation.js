@@ -46,8 +46,23 @@ export const invalidateCategoryCache = async () => {
     const results = await Promise.all(
       patterns.map(pattern => deleteCachePattern(pattern))
     );
+    // This function is called after ANY category create/update/delete/image
+    // upload (categoryController.js, categoryImageController.js) — but the v2
+    // middleware-cached endpoints (category-v2, category-group-v2,
+    // home-category-v2, home-mobile-category-v2, district-category-v2) were
+    // added later in categoryDisplaySettingsController.js and never wired into
+    // THIS function's pattern list, only into the separate display-settings
+    // invalidation below. Concretely: uploading a category's webHero image
+    // updates the DB instantly but the group-listing page kept serving its
+    // cached (pre-upload) response for up to an hour, since nothing told
+    // Redis that category-derived v2 data had changed. Delegating here
+    // instead of duplicating the pattern list is deliberate — it's the same
+    // kind of drift this function's own history already hit once (see the
+    // v1-key comment above), and a plain second list would just drift again
+    // the next time a v2 cache is added.
+    const v2Result = await invalidateCategoryDisplaySettingsCache();
     await logger.info(`Invalidated category cache - patterns: ${patterns.join(', ')}`);
-    return results.every(r => r === true);
+    return results.every(r => r === true) && v2Result;
   } catch (error) {
     await logger.error("Error invalidating category cache", error);
     return false;
