@@ -596,6 +596,10 @@ export const FETCH_SUB_CATEGORY_REQUEST = "FETCH_SUB_CATEGORY_REQUEST";
 export const FETCH_SUB_CATEGORY_SUCCESS = "FETCH_SUB_CATEGORY_SUCCESS";
 export const FETCH_SUB_CATEGORY_FAILURE = "FETCH_SUB_CATEGORY_FAILURE";
 
+export const FETCH_SUB_CATEGORY_GROUPS_REQUEST = "FETCH_SUB_CATEGORY_GROUPS_REQUEST";
+export const FETCH_SUB_CATEGORY_GROUPS_SUCCESS = "FETCH_SUB_CATEGORY_GROUPS_SUCCESS";
+export const FETCH_SUB_CATEGORY_GROUPS_FAILURE = "FETCH_SUB_CATEGORY_GROUPS_FAILURE";
+
 // DISTRICT CATEGORIES (paginated, infinite scroll) — separate loading state
 // from the ones above: "load more" must not hide the grid already on screen,
 // which the shared `loading` flag those reuse would do (categories.js reads

@@ -167,6 +167,33 @@
   background-color: var(--color-surface-2);
 }
 
+/* ── Parent group section (outer accordion, one per parent category) ───────── */
+.parent-group-section {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--color-surface-2);
+}
+
+.parent-group-section__header {
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  background-color: var(--color-surface);
+}
+
+.parent-group-section__header:hover {
+  background-color: var(--color-surface-2);
+}
+
+.parent-group-section__body {
+  padding: 1.5rem;
+  border-top: 1px solid var(--color-line-2);
+}
+
 /* ── Ordered list ─────────────────────────────────────────────────────────── */
 .ordered-list__empty {
   padding: 2.5rem;

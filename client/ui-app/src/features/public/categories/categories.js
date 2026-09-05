@@ -1,12 +1,13 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
-import React, { lazy, Suspense, useState, useMemo, useEffect } from "react";
+import React, { lazy, Suspense, useState, useMemo, useEffect, useRef } from "react";
+import { Search, ArrowLeft, ArrowRight } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
 import StickySearchBar from "features/public/sticky-search-bar/StickySearchBar.js";
 import { handleImageError } from "shared/utils/placeholderImage.js";
 import styles from "features/public/categories/categories.module.css";
-import { fetchDistrictCategories, resetDistrictCategories, fetchSubCategories } from "state/actions/categoryAction.js";
+import { fetchDistrictCategories, resetDistrictCategories, fetchSubCategories, fetchSubCategoryGroups } from "state/actions/categoryAction.js";
 import { buildCategoryPath, navigateToSearchResult } from "shared/utils/searchResultNavigation.js";
 import {
   formatUrlText,
@@ -37,6 +38,14 @@ const cx = createScopedClassNames(styles);
 const sanitizeSeoHtml = (html = "") =>
   html.replace(/<h1(\s[^>]*)?>/gi, "<h2>").replace(/<\/h1>/gi, "</h2>");
 
+// Deterministic (not random) so the banner's gradient fallback doesn't shift
+// between renders — same palette rotation the group cards already use.
+const hashIndex = (str = "", mod = 5) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 1000003;
+  return Math.abs(hash) % mod;
+};
+
 const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const {
     district: districtParam,
@@ -46,6 +55,8 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [search, setSearch] = useState("");
+  const groupGridRef = useRef(null);
+  const [groupScroll, setGroupScroll] = useState({ previous: false, next: false });
   const [districtContext, setDistrictContext] = useState(
     routeContext?.districtSlug
       ? { slug: routeContext.districtSlug, name: routeContext.districtName }
@@ -58,6 +69,8 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   } = useRenderNearViewport();
   const {
     subCategories = [],
+    subCategoryGroups = [],
+    subCategoryGroupsParent = {},
     loading,
     districtCategories = [],
     districtCategoriesTotal = 0,
@@ -78,6 +91,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const isLocationLanding = mode === "locationLanding" || routeContext?.routeType === "locationLanding";
   const isDirectoryLanding = isDistrictLanding || isLocationLanding;
   const categorySlug = routeContext?.categorySlug || categoryParam || "";
+  const groupSlug = routeContext?.groupSlug || "";
   const districtSlug = routeContext?.districtSlug || districtContext?.slug || "";
   const districtName = routeContext?.districtName || districtContext?.name || formatUrlText(districtSlug);
   const locationSlug = routeContext?.locationSlug || locationParam || "";
@@ -85,7 +99,28 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const routeCanonicalPath = routeContext?.canonicalPath || "";
   const locationLabel = routeContext?.locationName || (districtSlug ? districtName : formatUrlText(locationSlug));
   const categoryLabel = categorySlug ? formatUrlText(categorySlug) : "Categories";
-  const listingItems = isDirectoryLanding ? districtCategories : subCategories;
+
+  // Sub-category groups (3rd tier) — additive: a category with no group data
+  // (subCategoryGroups stays []) falls straight through to the existing flat
+  // subCategories path below, unchanged.
+  const activeGroup = groupSlug ? subCategoryGroups.find((g) => g.groupSlug === groupSlug) : null;
+  const isGroupListingView = !isDirectoryLanding && !groupSlug && subCategoryGroups.length > 0;
+  const isGroupDetailView = !isDirectoryLanding && Boolean(groupSlug);
+  const groupLabel = activeGroup?.groupName || (groupSlug ? formatUrlText(groupSlug) : "");
+  // What the page is actually ABOUT right now — the group's own name once
+  // drilled into one, otherwise the category (unchanged today).
+  const pageLabel = isGroupDetailView && groupLabel ? groupLabel : categoryLabel;
+  // Group tiles are collections you drill into further, not a leaf you click
+  // straight through to search — worth its own noun in the loading/count/empty copy.
+  const listingKind = isDirectoryLanding ? "categories" : isGroupListingView ? "collections" : "subcategories";
+
+  const listingItems = isDirectoryLanding
+    ? districtCategories
+    : isGroupListingView
+      ? subCategoryGroups.map((g) => ({ _id: g.groupSlug, name: g.groupName, slug: g.groupSlug, icon: g.groupIcon, count: g.subCategories?.length || 0 }))
+      : isGroupDetailView
+        ? (activeGroup?.subCategories || [])
+        : subCategories;
   // Initial/replace load only — "load more" (districtCategoriesLoadingMore)
   // must not trigger this, or every infinite-scroll page load would swap the
   // whole grid for a spinner instead of appending below what's already shown.
@@ -138,6 +173,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     }
   }, [dispatch, isDirectoryLanding, categorySlug]);
 
+  // Parallel to the fetch above — cheap/cached, resolves to [] for any
+  // category with no group data, which is what keeps a 2-level category's
+  // page identical to before this feature existed.
+  useEffect(() => {
+    if (isDirectoryLanding) return;
+
+    if (categorySlug) {
+      dispatch(fetchSubCategoryGroups(categorySlug));
+    }
+  }, [dispatch, isDirectoryLanding, categorySlug]);
+
   // Debounced so switching districts or typing in the search box doesn't
   // fire a request per keystroke — only once typing pauses.
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -187,6 +233,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   useEffect(() => {
     if (!categorySlug || !locationLabel) return;
 
+    // Tier 2 (group-listing) isn't meant to rank at all — see fallbackSeo's
+    // noindex below — so skip the fetch entirely rather than let a stale
+    // admin-configured SEO override for the flat "restaurants" category page
+    // (same categorySlug, different view) win over the noindex fallback.
+    // Still clear whatever SEO data a PREVIOUS page left in Redux, or that
+    // stale record would render here regardless of this effect not running.
+    if (isGroupListingView) {
+      dispatch({ type: CLEAR_SEO_META });
+      return;
+    }
+
     dispatch({ type: CLEAR_SEO_META });
     dispatch(fetchSeoMeta({
       pageType: "category",
@@ -198,17 +255,17 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       ...(routeCanonicalPath ? { canonicalPath: routeCanonicalPath } : {}),
       ...(districtSlug ? { district: districtSlug } : {}),
     }));
-  }, [dispatch, categorySlug, districtSlug, locationLabel, locationPath, locationSlug, routeCanonicalPath]);
+  }, [dispatch, categorySlug, districtSlug, locationLabel, locationPath, locationSlug, routeCanonicalPath, isGroupListingView]);
 
   useEffect(() => {
-    if (!categorySlug) return;
+    if (!categorySlug || isGroupListingView) return;
 
     dispatch(fetchSeoPageContentMeta({
       pageType: "category",
       category: categorySlug.replace(/-/g, " "),
       ...(locationLabel ? { location: locationLabel } : {}),
     }));
-  }, [dispatch, categorySlug, locationLabel]);
+  }, [dispatch, categorySlug, locationLabel, isGroupListingView]);
 
   // District landing's listingItems are already server-filtered by
   // debouncedSearch (see the fetch effect above) — re-filtering client-side
@@ -221,6 +278,32 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       : listingItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())),
     [search, listingItems, isDirectoryLanding],
   );
+
+  useEffect(() => {
+    const grid = groupGridRef.current;
+    if (!grid || !isGroupListingView) return;
+    const updateScroll = () => setGroupScroll({
+      previous: grid.scrollLeft > 1,
+      next: grid.scrollLeft + grid.clientWidth < grid.scrollWidth - 1,
+    });
+    updateScroll();
+    grid.addEventListener("scroll", updateScroll, { passive: true });
+    const observer = new ResizeObserver(updateScroll);
+    observer.observe(grid);
+    return () => {
+      grid.removeEventListener("scroll", updateScroll);
+      observer.disconnect();
+    };
+  }, [isGroupListingView, isInitialLoading, filteredCategories.length]);
+
+  const scrollGroups = (direction) => {
+    const grid = groupGridRef.current;
+    if (!grid) return;
+    grid.scrollBy({
+      left: direction * grid.clientWidth,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+    });
+  };
 
   const handleClick = (sub) => {
     const itemSlug = sub.slug || slugFromText(sub.name);
@@ -293,6 +376,13 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         locationSlug,
         locationPath,
         categorySlug,
+        // A group is addressed by the same flat single-slug scheme as a
+        // subcategory (buildCategoryPath collapses to whichever of
+        // category/subcategory is more specific) — passing it as
+        // subcategorySlug here produces the correct /district/groupSlug
+        // canonical for the group-detail view; absent (undefined) for every
+        // other view, so this is a no-op when there's no group.
+        subcategorySlug: isGroupDetailView ? groupSlug : undefined,
         isDistrictScope: Boolean(districtSlug && !locationSlug),
       }));
   const categoryPageUrl = `https://massclick.in${pagePath === "/" ? "" : pagePath}`;
@@ -305,11 +395,14 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         robots: "index, follow",
       }
     : {
-        title: `${categoryLabel} in ${locationLabel} | Subcategories | Massclick`,
-        description: `Browse all ${categoryLabel} subcategories in ${locationLabel}. Find and explore verified businesses in your area.`,
-        keywords: `${categoryLabel}, ${categoryLabel} in ${locationLabel}, ${categoryLabel} subcategories`,
+        title: `${pageLabel} in ${locationLabel} | Subcategories | Massclick`,
+        description: `Browse all ${pageLabel} subcategories in ${locationLabel}. Find and explore verified businesses in your area.`,
+        keywords: `${pageLabel}, ${pageLabel} in ${locationLabel}, ${pageLabel} subcategories`,
         canonical: categoryPageUrl,
-        robots: "index, follow",
+        // Tier 2 (group-listing) isn't meant to rank itself — noindex — but
+        // still passes crawl equity through to the tier-3/leaf pages it
+        // links to, which DO want to be indexed — follow.
+        robots: isGroupListingView ? "noindex, follow" : "index, follow",
       };
   const seoContent = seoPageContents?.[0];
   const sanitizedPageContent = seoContent?.pageContent
@@ -326,6 +419,8 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
         locationName: locationLabel,
         categorySlug: isDirectoryLanding ? "" : categorySlug,
         categoryName: categoryLabel,
+        groupSlug: isDirectoryLanding || !isGroupDetailView ? "" : groupSlug,
+        groupName: groupLabel,
       })
     : [
         { name: "Home", path: "/" },
@@ -356,11 +451,11 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     })),
     isDirectoryLanding
       ? `Categories in ${isLocationLanding ? locationLabel : districtName}`
-      : `${categoryLabel} subcategories in ${locationLabel}`,
+      : `${pageLabel} subcategories in ${locationLabel}`,
     seoContent?.excerpt || (
       isDirectoryLanding
         ? `Browse services in ${isLocationLanding ? locationLabel : districtName}`
-        : `Browse ${categoryLabel} options in ${locationLabel}`
+        : `Browse ${pageLabel} options in ${locationLabel}`
     ),
   );
 
@@ -376,88 +471,185 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     <>
       <SeoMeta seoData={seoMetaData} fallback={fallbackSeo} />
 
-      <Helmet>
-        {itemListSchema && <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>}
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
-      </Helmet>
+      {/* Tier 2 (group-listing) deliberately carries no structured data —
+          it isn't meant to rank itself, see fallbackSeo's noindex above. */}
+      {!isGroupListingView && (
+        <Helmet>
+          {itemListSchema && <script type="application/ld+json">{JSON.stringify(itemListSchema)}</script>}
+          <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+        </Helmet>
+      )}
 
       <div className={cx("category-page")}>
         <StickySearchBar />
         <div className={cx("category-container")}>
-          {breadcrumbItems.length > 0 && (
+          {!isGroupListingView && !isGroupDetailView && breadcrumbItems.length > 0 && (
             <div className={cx("category-breadcrumbs")}>
               <Breadcrumbs items={breadcrumbItems} />
             </div>
           )}
-          <div className={cx("category-header")}>
-            <h1 className={cx("category-title")}>
-              {isDirectoryLanding ? `Explore Services in ${isLocationLanding ? locationLabel : districtName}` : `${categoryLabel} in ${locationLabel}`}
-            </h1>
+          {isGroupListingView ? (
+            // Tier 2's own hero — replaces the plain title+search header
+            // rather than sitting alongside it, so there's one glorified
+            // heading treatment instead of a plain title stacked on a fancy
+            // banner. Real photo when the category has one uploaded
+            // (categoryImages.webHero — already admin-editable, unused
+            // elsewhere on this page), else the same gradient rotation the
+            // group cards below use, keyed by category so it's stable.
+            <div
+              className={cx(`group-banner ${subCategoryGroupsParent.webHero ? "" : `group-card--gradient-${hashIndex(categorySlug)}`}`)}
+              style={subCategoryGroupsParent.webHero ? { backgroundImage: `url(${subCategoryGroupsParent.webHero})` } : undefined}
+            >
+              <div className={cx("group-banner__overlay")}>
+                <h1 className={cx("group-banner__title")}>{subCategoryGroupsParent.title || pageLabel}</h1>
+                {subCategoryGroupsParent.description && (
+                  <p className={cx("group-banner__subtitle")}>{subCategoryGroupsParent.description}</p>
+                )}
+              </div>
+            </div>
+          ) : isGroupDetailView ? (
+            // Tier 3 uses the group's dedicated banner beside its breadcrumb
+            // and heading, with the subcategory search immediately below.
+            <>
+              <div className={cx("leaf-hero")}>
+                {breadcrumbItems.length > 0 && (
+                  <div className={cx("leaf-hero__breadcrumbs")}>
+                    <Breadcrumbs items={breadcrumbItems} />
+                  </div>
+                )}
+                <div className={cx("leaf-banner__text")}>
+                  <h1 className={cx("leaf-banner__title")}>{pageLabel} in {locationLabel}</h1>
+                  <p className={cx("leaf-banner__subtitle")}>Explore {pageLabel.toLowerCase()} and discover local businesses in {locationLabel}</p>
+                </div>
+                {activeGroup?.groupBanner ? (
+                  <img className={cx("leaf-banner__image")} src={activeGroup.groupBanner} alt="" />
+                ) : (
+                  <div className={cx("leaf-banner__image-fallback")} aria-hidden="true" />
+                )}
+              </div>
+              <div className={cx("leaf-search")}>
+                <Search className={cx("leaf-search__icon")} size={18} aria-hidden="true" />
+                <input
+                  type="text"
+                  placeholder="Search subcategories..."
+                  className={cx("leaf-search__input")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search categories"
+                />
+              </div>
+            </>
+          ) : (
+            <div className={cx("category-header")}>
+              <h1 className={cx("category-title")}>
+                {isDirectoryLanding ? `Explore Services in ${isLocationLanding ? locationLabel : districtName}` : `${pageLabel} in ${locationLabel}`}
+              </h1>
 
-            <input
-              type="text"
-              placeholder={isDirectoryLanding ? "Search categories..." : "Search subcategories..."}
-              className={cx("category-search")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search categories"
-            />
-          </div>
+              <input
+                type="text"
+                placeholder={isDirectoryLanding ? "Search categories..." : "Search subcategories..."}
+                className={cx("category-search")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search categories"
+              />
+            </div>
+          )}
 
           <div className={cx("category-content")}>
             {isInitialLoading && (
               <div className={cx("category-loading")}>
                 <div className={cx("spinner")} />
-                <p>Loading {isDirectoryLanding ? "categories" : "subcategories"}...</p>
+                <p>Loading {listingKind}...</p>
               </div>
             )}
 
             {!isInitialLoading && filteredCategories.length === 0 && (
               <div className={cx("category-empty")}>
-                <p className={cx("empty-text")}>No {isDirectoryLanding ? "categories" : "subcategories"} found</p>
+                <p className={cx("empty-text")}>No {listingKind} found</p>
                 {search && <p className={cx("empty-subtext")}>Try a different search term</p>}
               </div>
             )}
 
             {!isInitialLoading && filteredCategories.length > 0 && (
               <>
-                <p className={cx("category-count")}>
-                  {isDirectoryLanding ? districtCategoriesTotal : filteredCategories.length} {isDirectoryLanding ? "categories" : "subcategories"} available
-                </p>
-                <div className={cx("category-grid")}>
-                  {filteredCategories.map((item, index) => (
-                    <div
-                      key={item._id || index}
-                      className={cx("category-item")}
-                      onClick={() => handleClick(item)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          handleClick(item);
-                        }
-                      }}
-                      aria-label={`View ${item.name}`}
-                    >
-                      <img
-                        className={cx("category-icon")}
-                        src={item.icon}
-                        alt={item.name}
-                        width="48"
-                        height="48"
-                        loading="lazy"
-                        decoding="async"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          handleImageError(e);
-                        }}
-                      />
-                      <span className={cx("category-text")}>
-                        {formatUrlText(item.name)}
-                      </span>
+                {!isGroupListingView && <p className={cx("category-count")}>
+                  {isDirectoryLanding ? districtCategoriesTotal : filteredCategories.length} {listingKind} available
+                </p>}
+
+                {isGroupListingView ? (
+                  <section className={cx("group-section")} aria-labelledby="group-section-title">
+                    <div className={cx("group-section__header")}>
+                      <div className={cx("group-section__intro")}>
+                        <h2 id="group-section-title" className={cx("group-section__title")}>Explore by Style</h2>
+                        <p className={cx("group-section__subtitle")}>
+                          {categorySlug === "restaurants" ? "Find the perfect dining experience for your mood" : `Find the right ${categoryLabel.toLowerCase()} for your needs`}
+                        </p>
+                      </div>
+                      <div className={cx("group-section__controls")}>
+                        <button type="button" className={cx("group-section__nav")} onClick={() => scrollGroups(-1)} disabled={!groupScroll.previous} aria-label="Previous collections" aria-controls="category-group-grid">
+                          <ArrowLeft size={16} aria-hidden="true" />
+                        </button>
+                        <button type="button" className={cx("group-section__nav")} onClick={() => scrollGroups(1)} disabled={!groupScroll.next} aria-label="Next collections" aria-controls="category-group-grid">
+                          <ArrowRight size={16} aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div id="category-group-grid" ref={groupGridRef} className={cx("group-grid")}>
+                      {filteredCategories.map((item, index) => (
+                        <button
+                          type="button"
+                          key={item._id || index}
+                          className={cx(`group-card ${item.icon ? "" : `group-card--gradient-${index % 5}`}`)}
+                          style={item.icon ? { backgroundImage: `url(${item.icon})` } : undefined}
+                          onClick={() => handleClick(item)}
+                          aria-label={`View ${item.name}`}
+                        >
+                          <span className={cx("group-card__overlay")}>
+                            <span className={cx("group-card__title")}>{formatUrlText(item.name)}</span>
+                            <span className={cx("group-card__count")}>{item.count} {item.count === 1 ? "category" : "categories"}</span>
+                          </span>
+                          <span className={cx("group-card__arrow")} aria-hidden="true"><ArrowRight size={14} /></span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : (
+                  <div className={cx("category-grid")}>
+                    {filteredCategories.map((item, index) => (
+                      <div
+                        key={item._id || index}
+                        className={cx("category-item")}
+                        onClick={() => handleClick(item)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleClick(item);
+                          }
+                        }}
+                        aria-label={`View ${item.name}`}
+                      >
+                        <img
+                          className={cx("category-icon")}
+                          src={item.icon}
+                          alt={item.name}
+                          width="48"
+                          height="48"
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            handleImageError(e);
+                          }}
+                        />
+                        <span className={cx("category-text")}>
+                          {formatUrlText(item.name)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {isDirectoryLanding && districtCategoriesHasMore && (
                   <div ref={infiniteScrollSentinelRef} className={cx("category-scroll-sentinel")}>
@@ -474,7 +666,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           </div>
         </div>
 
-        {!isDirectoryLanding && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
+        {!isDirectoryLanding && !isGroupListingView && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
           <div className={cx("seo-outer-wrapper")}>
             <div className={cx("seo-article-wrapper")}>
               <article className={cx("seo-article")}>
@@ -519,4 +711,3 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
 };
 
 export default CategoriesPage;
-

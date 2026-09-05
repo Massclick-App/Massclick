@@ -247,6 +247,328 @@
   margin-top: 6px;
 }
 
+/* Tier 2 collections: a compact photo strip with captions and no badges. */
+.group-section {
+  min-width: 0;
+  padding-top: 24px;
+}
+
+.group-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.group-section__intro {
+  min-width: 0;
+  border-left: 4px solid #ff7300;
+  padding-left: 12px;
+}
+
+.group-section__title {
+  margin: 0;
+  color: #0b1948;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.group-section__subtitle {
+  margin: 3px 0 0;
+  color: #77839b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.group-section__controls {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.group-section__nav {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #e5e9f0;
+  border-radius: 50%;
+  background: #f4f6fa;
+  color: #132553;
+  cursor: pointer;
+}
+
+.group-section__nav:hover:not(:disabled) {
+  background: #fff0e5;
+  border-color: #ffc79f;
+}
+
+.group-section__nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.group-section__nav:focus-visible,
+.group-card:focus-visible {
+  outline: 2px solid #ff7300;
+  outline-offset: 2px;
+}
+
+.group-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 64px) / 5);
+  gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 4px 2px 10px;
+  animation: fadeIn 0.4s ease;
+}
+
+.group-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.group-card {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 132px;
+  aspect-ratio: 1.92;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  font: inherit;
+  text-align: left;
+  scroll-snap-align: start;
+  overflow: hidden;
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+  background-color: #e2e8f0;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.group-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.18);
+}
+
+.group-card:active {
+  transform: translateY(0);
+}
+
+/* Rotating gradient fallback for a group with no uploaded image — cycles by
+   grid position, not a random pick, so the palette stays stable per render. */
+.group-card--gradient-0 { background-image: linear-gradient(135deg, #e1580f, #b8430b); }
+.group-card--gradient-1 { background-image: linear-gradient(135deg, #1e6fba, #123a5c); }
+.group-card--gradient-2 { background-image: linear-gradient(135deg, #1f7a4d, #123d27); }
+.group-card--gradient-3 { background-image: linear-gradient(135deg, #7e59c7, #402d66); }
+.group-card--gradient-4 { background-image: linear-gradient(135deg, #b7791f, #6b4712); }
+
+.group-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.64) 26%, rgba(0, 0, 0, 0.05) 70%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 12px 42px 12px 14px;
+}
+
+.group-card__title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.group-card__count {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+
+.group-card__arrow {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  color: #fff;
+}
+
+/* GROUP BANNER (tier 2's own hero, replaces .category-header for that view).
+   No breadcrumb sits above this (tier 2 drops them entirely), so this is
+   the very first thing in .category-container — margin-top is its own
+   clearance from StickySearchBar (position:sticky, z-index:1100 — see the
+   .leaf-hero comment for why insufficient clearance here reads as the
+   banner sitting flush under the header). */
+.group-banner {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  margin-top: 28px;
+  border-radius: 20px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-color: #e2e8f0;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
+}
+
+.group-banner__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.1) 60%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 36px 40px;
+}
+
+.group-banner__title {
+  color: #ffffff;
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: capitalize;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  margin: 0;
+}
+
+.group-banner__subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 400;
+  margin: 10px 0 0;
+  max-width: 640px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Tier 3: a compact, unboxed hero aligned with the content below it. */
+.leaf-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  column-gap: clamp(24px, 3vw, 48px);
+  min-height: 140px;
+  padding: 24px var(--side-padding) 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.leaf-hero__breadcrumbs {
+  grid-column: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.leaf-banner__text {
+  grid-column: 1;
+  align-self: center;
+  min-width: 0;
+  padding-bottom: 20px;
+}
+
+.leaf-banner__title {
+  color: #080e3d;
+  font-size: clamp(24px, 1.9vw, 32px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: capitalize;
+  letter-spacing: -0.02em;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.leaf-banner__subtitle {
+  color: #4b5878;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+/* Artwork spans both rows; its dimensions never push the title downward. */
+.leaf-banner__image {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: end;
+  justify-self: end;
+  display: block;
+  width: 100%;
+  max-width: 620px;
+  height: 124px;
+  object-fit: contain;
+  object-position: right bottom;
+}
+
+/* Missing artwork leaves a quiet decorative glow instead of a solid box. */
+.leaf-banner__image-fallback {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: end;
+  width: 100%;
+  height: 124px;
+  background: radial-gradient(ellipse at 65% 90%, #fff1df, transparent 70%);
+}
+
+.leaf-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 12px var(--side-padding) 20px;
+}
+
+.leaf-search__icon {
+  position: absolute;
+  left: 18px;
+  color: #7b87a1;
+  pointer-events: none;
+}
+
+.leaf-search__input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 11px 18px 11px 48px;
+  border: 1px solid #dfe4ee;
+  border-radius: 24px;
+  background: #fff;
+  color: #080e3d;
+  font: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.leaf-search__input::placeholder {
+  color: #8994ad;
+}
+
+.leaf-search__input:focus-visible {
+  outline: 2px solid #ff6b00;
+  outline-offset: 2px;
+  border-color: #ff6b00;
+}
+
 /* CATEGORY COUNT */
 .category-count {
   font-size: 0.85rem;
@@ -470,6 +792,10 @@
   .category-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
+
+  .group-grid {
+    grid-auto-columns: calc((100% - 48px) / 4);
+  }
 }
 
 @media (max-width: 992px) {
@@ -485,9 +811,26 @@
     width: 56px;
     height: 56px;
   }
-  
+
   .category-title {
     font-size: 2.2rem;
+  }
+
+  .group-grid {
+    grid-auto-columns: calc((100% - 32px) / 3);
+  }
+
+  .group-banner {
+    height: 220px;
+  }
+
+  .group-banner__title {
+    font-size: 1.8rem;
+  }
+
+  .leaf-hero {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    column-gap: 20px;
   }
 }
 
@@ -516,16 +859,63 @@
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: var(--grid-gap);
   }
-  
+
+  .group-grid {
+    grid-auto-columns: calc((100% - 16px) / 2);
+  }
+
+  .group-banner {
+    height: 190px;
+    border-radius: 16px;
+  }
+
+  .group-banner__overlay {
+    padding: 24px 24px;
+  }
+
+  .group-banner__title {
+    font-size: 1.5rem;
+  }
+
+  .group-banner__subtitle {
+    font-size: 0.88rem;
+  }
+
+  .leaf-hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding-top: 20px;
+  }
+
+  .leaf-banner__text {
+    padding-bottom: 12px;
+  }
+
+  .leaf-banner__image {
+    grid-column: 1;
+    grid-row: auto;
+    width: min(100%, 480px);
+    max-width: 100%;
+    height: 100px;
+  }
+
+  .leaf-banner__image-fallback {
+    display: none;
+  }
+
+  .leaf-search__input {
+    font-size: 1rem;
+  }
+
   .category-icon {
     width: 52px;
     height: 52px;
   }
-  
+
   .category-text {
     font-size: 0.85rem;
   }
-  
+
   .category-title {
     font-size: 1.8rem;
     margin-bottom: 20px;
@@ -555,16 +945,46 @@
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: var(--grid-gap);
   }
-  
+
+  .group-grid {
+    grid-auto-columns: 82%;
+    gap: 12px;
+  }
+
+  .group-section__title {
+    font-size: 20px;
+  }
+
+  .group-banner {
+    height: 160px;
+    border-radius: 14px;
+  }
+
+  .group-banner__overlay {
+    padding: 18px;
+  }
+
+  .group-banner__title {
+    font-size: 1.25rem;
+  }
+
+  .leaf-banner__title {
+    font-size: 1.5rem;
+  }
+
+  .leaf-banner__subtitle {
+    font-size: 0.88rem;
+  }
+
   .category-icon {
     width: 48px;
     height: 48px;
   }
-  
+
   .category-text {
     font-size: 0.8rem;
   }
-  
+
   .category-title {
     font-size: 1.5rem;
     margin-bottom: 18px;

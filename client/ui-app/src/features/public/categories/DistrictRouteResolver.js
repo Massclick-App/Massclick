@@ -72,6 +72,7 @@ const DistrictRouteResolver = () => {
               district: districtSummary,
               category: classification.categorySlug || p2,
               subcategory: classification.subcategorySlug || "",
+              group: classification.groupSlug || "",
             }),
           });
           return;
