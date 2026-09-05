@@ -23,7 +23,8 @@ const categoryDisplaySettingsSchema = new mongoose.Schema(
         parentSlug:       { type: String },
         groupName:        { type: String },
         groupSlug:        { type: String },
-        groupIcon:        { type: String, default: "" },
+        groupIcon:        { type: String, default: "" }, // tier-2 card background
+        groupBanner:      { type: String, default: "" }, // tier-3 (this group's detail page) header banner — separate image, own upload
         subCategoryNames: { type: [String], default: [] },
       },
     ],

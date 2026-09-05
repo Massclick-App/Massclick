@@ -83,13 +83,13 @@ const buildSubCatLookup = (settings) => {
   return categoriesData;
 };
 
-/** Build a parentSlug → [{groupSlug, groupName, groupIcon, subCategoryNames}] lookup, same settings-first-then-hardcoded resolution as buildSubCatLookup. */
+/** Build a parentSlug → [{groupSlug, groupName, groupIcon, groupBanner, subCategoryNames}] lookup, same settings-first-then-hardcoded resolution as buildSubCatLookup. */
 const buildSubCatGroupLookup = (settings) => {
   if (settings?.subCategoryGroupMapping?.length > 0) {
     const lookup = {};
-    settings.subCategoryGroupMapping.forEach(({ parentSlug, groupSlug, groupName, groupIcon, subCategoryNames }) => {
+    settings.subCategoryGroupMapping.forEach(({ parentSlug, groupSlug, groupName, groupIcon, groupBanner, subCategoryNames }) => {
       if (!lookup[parentSlug]) lookup[parentSlug] = [];
-      lookup[parentSlug].push({ groupSlug, groupName, groupIcon: groupIcon || "", subCategoryNames: subCategoryNames || [] });
+      lookup[parentSlug].push({ groupSlug, groupName, groupIcon: groupIcon || "", groupBanner: groupBanner || "", subCategoryNames: subCategoryNames || [] });
     });
     return lookup;
   }
@@ -655,6 +655,9 @@ export const getV2SubCategoryGroupsAction = async (req, res) => {
       groupSlug: g.groupSlug,
       groupName: g.groupName,
       groupIcon: g.groupIcon ? assetUrl(g.groupIcon, { version: settings?.updatedAt }) : "",
+      // Separate from groupIcon (the tier-2 card background) — this is the
+      // group's OWN tier-3 detail-page header banner, own dedicated upload.
+      groupBanner: g.groupBanner ? assetUrl(g.groupBanner, { version: settings?.updatedAt }) : "",
       subCategories: resolveNames(g.subCategoryNames),
     }));
 

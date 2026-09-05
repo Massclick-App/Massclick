@@ -656,21 +656,36 @@ function SubCategoryGroupAccordion({
       </Box>
       <Collapse in={open}>
         <Box className={cx("mapping-accordion__body")}>
-          <Box sx={{
+          <Stack direction="row" spacing={3} sx={{
           mb: 2
         }}>
-            <Typography sx={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: T.ink3,
-            mb: 0.75,
-            textTransform: "uppercase",
-            letterSpacing: "0.03em"
-          }}>
-              Group icon
-            </Typography>
-            <ImageUploader imageKey={group.groupIcon} folder="home-sections/subcategory-group" onUploaded={key => onUpdate("groupIcon", key)} />
-          </Box>
+            <Box>
+              <Typography sx={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: T.ink3,
+              mb: 0.75,
+              textTransform: "uppercase",
+              letterSpacing: "0.03em"
+            }}>
+                Group icon (tier-2 card)
+              </Typography>
+              <ImageUploader imageKey={group.groupIcon} folder="home-sections/subcategory-group" onUploaded={key => onUpdate("groupIcon", key)} />
+            </Box>
+            <Box>
+              <Typography sx={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: T.ink3,
+              mb: 0.75,
+              textTransform: "uppercase",
+              letterSpacing: "0.03em"
+            }}>
+                Detail page banner (tier-3)
+              </Typography>
+              <ImageUploader imageKey={group.groupBanner} folder="home-sections/subcategory-group-banner" onUploaded={key => onUpdate("groupBanner", key)} />
+            </Box>
+          </Stack>
           <OrderedList items={group.subCategoryNames || []} useCategories allCategories={allCategories} pickerLoading={pickerLoading} placeholder="Search and select categories…" onAdd={n => onUpdate("subCategoryNames", [...(group.subCategoryNames || []), n])} onRemove={i => onUpdate("subCategoryNames", (group.subCategoryNames || []).filter((_, j) => j !== i))} onMove={(f, t) => onUpdate("subCategoryNames", moveItem(group.subCategoryNames || [], f, t))} />
         </Box>
       </Collapse>
@@ -1161,6 +1176,7 @@ export default function CategoryDisplaySettings() {
     groupName: "",
     groupSlug: "",
     groupIcon: "",
+    groupBanner: "",
     subCategoryNames: []
   }]);
   const removeGroupMapping = i => setSubCategoryGroupMapping(p => p.filter((_, j) => j !== i));

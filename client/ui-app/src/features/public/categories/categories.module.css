@@ -357,6 +357,55 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* LEAF BANNER (tier 3's own header — light side-by-side layout, distinct
+   from tier 2's full-bleed overlay treatment above) */
+.leaf-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  width: 100%;
+  min-height: 180px;
+  padding: 36px 40px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fff8f0, #fdeee0);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  margin-bottom: 8px;
+}
+
+.leaf-banner__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.leaf-banner__title {
+  color: #14110f;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: capitalize;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.leaf-banner__subtitle {
+  color: #6b6560;
+  font-size: 1rem;
+  font-weight: 400;
+  margin: 10px 0 0;
+}
+
+.leaf-banner__image {
+  flex-shrink: 0;
+  width: 220px;
+  height: 150px;
+  border-radius: 16px;
+  background-size: cover;
+  background-position: center;
+  background-color: #e2e8f0;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
 /* CATEGORY COUNT */
 .category-count {
   font-size: 0.85rem;
@@ -621,6 +670,19 @@
   .group-banner__title {
     font-size: 1.8rem;
   }
+
+  .leaf-banner {
+    padding: 28px 32px;
+  }
+
+  .leaf-banner__title {
+    font-size: 1.7rem;
+  }
+
+  .leaf-banner__image {
+    width: 180px;
+    height: 130px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -688,6 +750,22 @@
     font-size: 0.88rem;
   }
 
+  .leaf-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .leaf-banner__title {
+    font-size: 1.4rem;
+  }
+
+  .leaf-banner__image {
+    width: 100%;
+    height: 140px;
+  }
+
   .category-icon {
     width: 52px;
     height: 52px;
@@ -749,15 +827,32 @@
     font-size: 1.25rem;
   }
 
+  .leaf-banner {
+    padding: 20px;
+    border-radius: 14px;
+  }
+
+  .leaf-banner__title {
+    font-size: 1.25rem;
+  }
+
+  .leaf-banner__subtitle {
+    font-size: 0.88rem;
+  }
+
+  .leaf-banner__image {
+    height: 120px;
+  }
+
   .category-icon {
     width: 48px;
     height: 48px;
   }
-  
+
   .category-text {
     font-size: 0.8rem;
   }
-  
+
   .category-title {
     font-size: 1.5rem;
     margin-bottom: 18px;

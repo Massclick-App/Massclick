@@ -478,6 +478,36 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
                 )}
               </div>
             </div>
+          ) : isGroupDetailView ? (
+            // Tier 3's own header — a light side-by-side banner (title+
+            // subtitle left, a dedicated image right), NOT the tier-2
+            // treatment: this uses groupBanner, a separate upload from
+            // groupIcon (the tier-2 card's own photo) — the group's tier-2
+            // card and its tier-3 page intentionally don't have to show the
+            // same image. Search stays here (unlike tier 2) since this page
+            // wasn't asked to drop it.
+            <>
+              <div className={cx("leaf-banner")}>
+                <div className={cx("leaf-banner__text")}>
+                  <h1 className={cx("leaf-banner__title")}>{pageLabel}</h1>
+                  <p className={cx("leaf-banner__subtitle")}>{categoryLabel} in {locationLabel}</p>
+                </div>
+                <div
+                  className={cx(`leaf-banner__image ${activeGroup?.groupBanner ? "" : `group-card--gradient-${hashIndex(groupSlug)}`}`)}
+                  style={activeGroup?.groupBanner ? { backgroundImage: `url(${activeGroup.groupBanner})` } : undefined}
+                />
+              </div>
+              <div className={cx("category-header")}>
+                <input
+                  type="text"
+                  placeholder="Search subcategories..."
+                  className={cx("category-search")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search categories"
+                />
+              </div>
+            </>
           ) : (
             <div className={cx("category-header")}>
               <h1 className={cx("category-title")}>

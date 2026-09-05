@@ -76,5 +76,12 @@ Last updated: 2026-09-04 — full 3-level click-through confirmed working on dev
 - [x] Banner: reuses existing `categoryModel.categoryImages.webHero`/`title`/`description` (no new schema/admin work), gradient fallback via the same 5-color rotation as group cards
 - [x] Search box removed for tier 2
 - [x] Quick-jump strip: all group members flattened+deduped, shown below the group grid in the existing small-tile style
+- [x] Removed per user feedback — didn't work visually, competed with the group cards
 - [ ] Not yet visually verified (lint-clean, logic traced, but no eyes on it) — needs a look on dev once committed/deployed
-- [ ] Not committed
+
+## 11. Tier-3 (group-detail) header banner + real cache-invalidation fix
+- [x] New `groupBanner` field on `subCategoryGroupMapping` — separate from `groupIcon` (tier-2 card image), own admin upload
+- [x] Tier-3 header redesigned: light side-by-side banner (title+subtitle left, groupBanner image right), gradient fallback, search box kept (not removed like tier 2)
+- [x] Real bug fix: `invalidateCategoryCache()` (runs after every category update/image upload) never cleared the v2 middleware caches — now delegates to `invalidateCategoryDisplaySettingsCache()` so a webHero/category edit shows up immediately instead of waiting out the cache TTL
+- [ ] Not committed — everything in this section still needs `git add`/commit
+- [ ] Not visually verified — needs a `groupBanner` uploaded for a real group, then a look at that group's tier-3 page, after redeploy
