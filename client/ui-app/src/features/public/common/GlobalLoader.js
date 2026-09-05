@@ -6,9 +6,9 @@ import loaderAnimation from 'assets/lottie/loading.json';
 
 // Authored at 30fps/181 frames (~6s). lottie-react has no declarative speed
 // prop -- lottie-web's playback rate is only settable imperatively via
-// setSpeed() through lottieRef, so this bumps it to ~3s without re-exporting
-// or hand-editing the animation's frame data.
-const PLAYBACK_SPEED = 2;
+// setSpeed() through lottieRef, so this bumps it to ~1.5s without
+// re-exporting or hand-editing the animation's frame data.
+const PLAYBACK_SPEED = 4;
 
 const GlobalLoader = ({ size = 350, message = '' }) => {
   const lottieRef = useRef(null);
@@ -26,11 +26,10 @@ const GlobalLoader = ({ size = 350, message = '' }) => {
         right: 0,
         bottom: 0,
         zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        backdropFilter: 'blur(2px)',
+        pointerEvents: 'none',
       }}
     >
       <Box
@@ -52,7 +51,19 @@ const GlobalLoader = ({ size = 350, message = '' }) => {
           />
         </Box>
         {message && (
-          <Box sx={{ fontSize: 24, color: '#fff', fontWeight: 700, textAlign: 'center', mt: 3 }}>
+          // Was white-on-dark-overlay; with the overlay gone this needs to
+          // read against the page itself, so a dark color plus a light halo
+          // keeps it legible regardless of what's behind it.
+          <Box
+            sx={{
+              fontSize: 24,
+              color: '#1a1a1a',
+              fontWeight: 700,
+              textAlign: 'center',
+              mt: 3,
+              textShadow: '0 1px 6px rgba(255, 255, 255, 0.9)',
+            }}
+          >
             {message}
           </Box>
         )}
