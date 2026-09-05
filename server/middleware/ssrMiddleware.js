@@ -20,7 +20,10 @@ import { isServableUrlSegment } from "../utils/urlSegment.js";
 import { getCache, setCache } from "../utils/redisClient.js";
 import { slugify } from "../slugify.js";
 import { classifyMiddleSegment } from "../helper/location/urlSegmentClassifier.js";
-import { resolveDistrictBySlug } from "../helper/location/locationResolver.js";
+import {
+  isServableFirstSegment,
+  resolveDistrictBySlug,
+} from "../helper/location/locationResolver.js";
 import {
   getDistrictDisplayName,
   getDistrictUrlSlug,
@@ -422,6 +425,25 @@ export async function ssrMiddleware(req, res) {
       firstSegment !== "blog";
 
     if (isSeoRoute && !parts.every(isServableUrlSegment)) {
+      return res.status(404).send(html);
+    }
+
+    // Second guard: well-formed but non-existent location segments.
+    //
+    // The shape guard above cannot catch these — "trichytrichytrichymodakurichi"
+    // has no percent-encoding, no hyphens to count and only a 4-digit run, so it
+    // looks structurally identical to a real slug. They are the residue of the
+    // crawl loop (Google still working through URLs it discovered before the
+    // loop was closed) and each one falls through to the legacy free-text branch
+    // in findBusinessesByCategory, costing a full businesslists collection scan.
+    // Measured at 12.8% of all SEO-routed requests.
+    //
+    // Restricted to multi-segment paths on purpose: 98% of this junk is
+    // multi-segment, while single-segment paths include real SPA routes
+    // (/events, /claim-rewards, /user_feed) that are not locations at all and
+    // must keep rendering. A district or location first segment is required only
+    // once a second segment claims this is a category page.
+    if (isSeoRoute && secondSegment && !(await isServableFirstSegment(firstSegment))) {
       return res.status(404).send(html);
     }
 

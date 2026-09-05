@@ -1,4 +1,5 @@
 import masterLocationModel from "../../model/locationModel/masterLocationModel.js";
+import businessListModel from "../../model/businessList/businessListModel.js";
 import { searchMasterLocation } from "./masterLocationHelper.js";
 import { slugify as publicSlugify } from "../../slugify.js";
 import {
@@ -283,6 +284,62 @@ export const getAllDistrictDocs = async () => {
 export const invalidateDistrictDocsCache = () => {
   districtDocsCache = null;
   districtDocsCacheAt = 0;
+  firstSegmentSlugCache = null;
+  firstSegmentSlugCacheAt = 0;
+};
+
+let firstSegmentSlugCache = null;
+let firstSegmentSlugCacheAt = 0;
+const FIRST_SEGMENT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Every slug that can legitimately appear as the FIRST path segment of a
+// public URL. Four sources, because the router accepts all four:
+//   - district name and urlAlias  (/trichy/...)
+//   - active publicLocationSlug   (/thillai-nagar/...)
+//   - legacy free-text business `location` (/mannargudi/...) — still emitted by
+//     sitemap-legacy-locations.xml for businesses with no masterLocation link,
+//     so these are real pages and must not 404.
+//
+// Used by ssrMiddleware to hard-404 category-shaped URLs whose location segment
+// resolves to nothing. Without it those fall through to the legacy free-text
+// branch in findBusinessesByCategory and cost a full businesslists collection
+// scan each — 12.8% of all SEO-routed traffic was doing exactly that, from a
+// backlog of crawler-invented URLs like "trichytrichytrichymodakurichi" that are
+// too well-formed for the shape guard in utils/urlSegment.js to reject.
+//
+// ~11k slugs, so cheap to hold in memory, and read on every multi-segment request.
+export const getServableFirstSegments = async () => {
+  const now = Date.now();
+  if (firstSegmentSlugCache && now - firstSegmentSlugCacheAt < FIRST_SEGMENT_CACHE_TTL_MS) {
+    return firstSegmentSlugCache;
+  }
+
+  const [districts, aliases, locationSlugs, legacyLocations] = await Promise.all([
+    masterLocationModel.distinct("district", {}),
+    masterLocationModel.distinct("urlAlias", {}),
+    masterLocationModel.distinct("publicLocationSlug", { isActive: true }),
+    businessListModel.distinct("location", { isActive: true, businessesLive: true }),
+  ]);
+
+  const slugs = new Set();
+  for (const value of [...districts, ...aliases, ...locationSlugs, ...legacyLocations]) {
+    const slug = publicSlugify(value || "");
+    if (slug) slugs.add(slug);
+  }
+
+  firstSegmentSlugCache = slugs;
+  firstSegmentSlugCacheAt = now;
+  return slugs;
+};
+
+// Re-slugifies the incoming segment before the lookup: real districts do get
+// requested with different casing (e.g. "/Theni/general-doctor" appears in the
+// access log), and 404ing those would break live pages.
+export const isServableFirstSegment = async (segment = "") => {
+  const slug = publicSlugify(segment || "");
+  if (!slug) return false;
+  const slugs = await getServableFirstSegments();
+  return slugs.has(slug);
 };
 
 // Matches `urlAlias` first (e.g. "trichy" -> Tiruchirappalli), then falls
