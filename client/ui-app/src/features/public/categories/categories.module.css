@@ -357,20 +357,6 @@
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* GROUP QUICK-JUMP (secondary strip, below the group cards) */
-.group-quick-jump {
-  margin-top: 48px;
-  padding-top: 40px;
-  border-top: 1px solid #eef1f5;
-}
-
-.group-quick-jump__heading {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #64748b;
-  margin: 0 0 24px;
-}
-
 /* CATEGORY COUNT */
 .category-count {
   font-size: 0.85rem;
@@ -702,20 +688,15 @@
     font-size: 0.88rem;
   }
 
-  .group-quick-jump {
-    margin-top: 36px;
-    padding-top: 28px;
-  }
-
   .category-icon {
     width: 52px;
     height: 52px;
   }
-  
+
   .category-text {
     font-size: 0.85rem;
   }
-  
+
   .category-title {
     font-size: 1.8rem;
     margin-bottom: 20px;

@@ -276,17 +276,6 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
     [search, listingItems, isDirectoryLanding],
   );
 
-  // Tier-2 "quick jump" strip: every leaf item across every group, flattened
-  // and deduped, so someone who doesn't want to browse by group can still
-  // go straight to a specific type without an extra click through tier 3.
-  const allGroupMembers = useMemo(() => {
-    if (!isGroupListingView) return [];
-    const seen = new Set();
-    return subCategoryGroups
-      .flatMap((g) => g.subCategories || [])
-      .filter((item) => (seen.has(item.slug) ? false : (seen.add(item.slug), true)));
-  }, [isGroupListingView, subCategoryGroups]);
-
   const handleClick = (sub) => {
     const itemSlug = sub.slug || slugFromText(sub.name);
 
@@ -592,51 +581,6 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
                         </span>
                       </div>
                     ))}
-                  </div>
-                )}
-
-                {isGroupListingView && allGroupMembers.length > 0 && (
-                  // Secondary, lower-key path straight to a leaf item for
-                  // anyone who doesn't want to browse by group — reuses the
-                  // existing small icon+label tile (not the photo-card
-                  // style above) so it visibly reads as the shortcut, not
-                  // a second hero section competing with the groups.
-                  <div className={cx("group-quick-jump")}>
-                    <p className={cx("group-quick-jump__heading")}>Or go straight to a type</p>
-                    <div className={cx("category-grid")}>
-                      {allGroupMembers.map((item, index) => (
-                        <div
-                          key={item._id || index}
-                          className={cx("category-item")}
-                          onClick={() => handleClick(item)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              handleClick(item);
-                            }
-                          }}
-                          aria-label={`View ${item.name}`}
-                        >
-                          <img
-                            className={cx("category-icon")}
-                            src={item.icon}
-                            alt={item.name}
-                            width="48"
-                            height="48"
-                            loading="lazy"
-                            decoding="async"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              handleImageError(e);
-                            }}
-                          />
-                          <span className={cx("category-text")}>
-                            {formatUrlText(item.name)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
 
