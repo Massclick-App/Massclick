@@ -1,5 +1,6 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import React, { lazy, Suspense, useState, useMemo, useEffect } from "react";
+import { Search } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
@@ -454,7 +455,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       <div className={cx("category-page")}>
         <StickySearchBar />
         <div className={cx("category-container")}>
-          {!isGroupListingView && breadcrumbItems.length > 0 && (
+          {!isGroupListingView && !isGroupDetailView && breadcrumbItems.length > 0 && (
             <div className={cx("category-breadcrumbs")}>
               <Breadcrumbs items={breadcrumbItems} />
             </div>
@@ -479,29 +480,31 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
               </div>
             </div>
           ) : isGroupDetailView ? (
-            // Tier 3's own header — a light side-by-side banner (title+
-            // subtitle left, a dedicated image right), NOT the tier-2
-            // treatment: this uses groupBanner, a separate upload from
-            // groupIcon (the tier-2 card's own photo) — the group's tier-2
-            // card and its tier-3 page intentionally don't have to show the
-            // same image. Search stays here (unlike tier 2) since this page
-            // wasn't asked to drop it.
+            // Tier 3 uses the group's dedicated banner beside its breadcrumb
+            // and heading, with the subcategory search immediately below.
             <>
-              <div className={cx("leaf-banner")}>
+              <div className={cx("leaf-hero")}>
+                {breadcrumbItems.length > 0 && (
+                  <div className={cx("leaf-hero__breadcrumbs")}>
+                    <Breadcrumbs items={breadcrumbItems} />
+                  </div>
+                )}
                 <div className={cx("leaf-banner__text")}>
-                  <h1 className={cx("leaf-banner__title")}>{pageLabel}</h1>
-                  <p className={cx("leaf-banner__subtitle")}>{categoryLabel} in {locationLabel}</p>
+                  <h1 className={cx("leaf-banner__title")}>{pageLabel} in {locationLabel}</h1>
+                  <p className={cx("leaf-banner__subtitle")}>Explore {pageLabel.toLowerCase()} and discover local businesses in {locationLabel}</p>
                 </div>
-                <div
-                  className={cx(`leaf-banner__image ${activeGroup?.groupBanner ? "" : `group-card--gradient-${hashIndex(groupSlug)}`}`)}
-                  style={activeGroup?.groupBanner ? { backgroundImage: `url(${activeGroup.groupBanner})` } : undefined}
-                />
+                {activeGroup?.groupBanner ? (
+                  <img className={cx("leaf-banner__image")} src={activeGroup.groupBanner} alt="" />
+                ) : (
+                  <div className={cx("leaf-banner__image-fallback")} aria-hidden="true" />
+                )}
               </div>
-              <div className={cx("category-header")}>
+              <div className={cx("leaf-search")}>
+                <Search className={cx("leaf-search__icon")} size={18} aria-hidden="true" />
                 <input
                   type="text"
                   placeholder="Search subcategories..."
-                  className={cx("category-search")}
+                  className={cx("leaf-search__input")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   aria-label="Search categories"
@@ -674,4 +677,3 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
 };
 
 export default CategoriesPage;
-
