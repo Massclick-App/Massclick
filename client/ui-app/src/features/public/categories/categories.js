@@ -1,6 +1,6 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
-import React, { lazy, Suspense, useState, useMemo, useEffect } from "react";
-import { Search } from "lucide-react";
+import React, { lazy, Suspense, useState, useMemo, useEffect, useRef } from "react";
+import { Search, ArrowLeft, ArrowRight } from "lucide-react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Helmet } from "react-helmet-async";
@@ -55,6 +55,8 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [search, setSearch] = useState("");
+  const groupGridRef = useRef(null);
+  const [groupScroll, setGroupScroll] = useState({ previous: false, next: false });
   const [districtContext, setDistrictContext] = useState(
     routeContext?.districtSlug
       ? { slug: routeContext.districtSlug, name: routeContext.districtName }
@@ -276,6 +278,32 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
       : listingItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase())),
     [search, listingItems, isDirectoryLanding],
   );
+
+  useEffect(() => {
+    const grid = groupGridRef.current;
+    if (!grid || !isGroupListingView) return;
+    const updateScroll = () => setGroupScroll({
+      previous: grid.scrollLeft > 1,
+      next: grid.scrollLeft + grid.clientWidth < grid.scrollWidth - 1,
+    });
+    updateScroll();
+    grid.addEventListener("scroll", updateScroll, { passive: true });
+    const observer = new ResizeObserver(updateScroll);
+    observer.observe(grid);
+    return () => {
+      grid.removeEventListener("scroll", updateScroll);
+      observer.disconnect();
+    };
+  }, [isGroupListingView, isInitialLoading, filteredCategories.length]);
+
+  const scrollGroups = (direction) => {
+    const grid = groupGridRef.current;
+    if (!grid) return;
+    grid.scrollBy({
+      left: direction * grid.clientWidth,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+    });
+  };
 
   const handleClick = (sub) => {
     const itemSlug = sub.slug || slugFromText(sub.name);
@@ -545,41 +573,47 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
 
             {!isInitialLoading && filteredCategories.length > 0 && (
               <>
-                <p className={cx("category-count")}>
+                {!isGroupListingView && <p className={cx("category-count")}>
                   {isDirectoryLanding ? districtCategoriesTotal : filteredCategories.length} {listingKind} available
-                </p>
+                </p>}
 
                 {isGroupListingView ? (
-                  // Tier 2 (groups) — deliberately different from the leaf
-                  // grid below: a group is a collection you drill into
-                  // further, not a leaf you click straight through to
-                  // search, so it gets a bigger, photo-forward card instead
-                  // of the small icon+label tile. Falls back to a rotating
-                  // gradient (cycling every 5 cards) for any group with no
-                  // uploaded image — true for most groups today.
-                  <div className={cx("group-grid")}>
-                    {filteredCategories.map((item, index) => (
-                      <div
-                        key={item._id || index}
-                        className={cx(`group-card ${item.icon ? "" : `group-card--gradient-${index % 5}`}`)}
-                        style={item.icon ? { backgroundImage: `url(${item.icon})` } : undefined}
-                        onClick={() => handleClick(item)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            handleClick(item);
-                          }
-                        }}
-                        aria-label={`View ${item.name}`}
-                      >
-                        <div className={cx("group-card__overlay")}>
-                          <span className={cx("group-card__title")}>{formatUrlText(item.name)}</span>
-                          <span className={cx("group-card__count")}>{item.count} {item.count === 1 ? "category" : "categories"}</span>
-                        </div>
+                  <section className={cx("group-section")} aria-labelledby="group-section-title">
+                    <div className={cx("group-section__header")}>
+                      <div className={cx("group-section__intro")}>
+                        <h2 id="group-section-title" className={cx("group-section__title")}>Explore by Style</h2>
+                        <p className={cx("group-section__subtitle")}>
+                          {categorySlug === "restaurants" ? "Find the perfect dining experience for your mood" : `Find the right ${categoryLabel.toLowerCase()} for your needs`}
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                      <div className={cx("group-section__controls")}>
+                        <button type="button" className={cx("group-section__nav")} onClick={() => scrollGroups(-1)} disabled={!groupScroll.previous} aria-label="Previous collections" aria-controls="category-group-grid">
+                          <ArrowLeft size={16} aria-hidden="true" />
+                        </button>
+                        <button type="button" className={cx("group-section__nav")} onClick={() => scrollGroups(1)} disabled={!groupScroll.next} aria-label="Next collections" aria-controls="category-group-grid">
+                          <ArrowRight size={16} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                    <div id="category-group-grid" ref={groupGridRef} className={cx("group-grid")}>
+                      {filteredCategories.map((item, index) => (
+                        <button
+                          type="button"
+                          key={item._id || index}
+                          className={cx(`group-card ${item.icon ? "" : `group-card--gradient-${index % 5}`}`)}
+                          style={item.icon ? { backgroundImage: `url(${item.icon})` } : undefined}
+                          onClick={() => handleClick(item)}
+                          aria-label={`View ${item.name}`}
+                        >
+                          <span className={cx("group-card__overlay")}>
+                            <span className={cx("group-card__title")}>{formatUrlText(item.name)}</span>
+                            <span className={cx("group-card__count")}>{item.count} {item.count === 1 ? "category" : "categories"}</span>
+                          </span>
+                          <span className={cx("group-card__arrow")} aria-hidden="true"><ArrowRight size={14} /></span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
                 ) : (
                   <div className={cx("category-grid")}>
                     {filteredCategories.map((item, index) => (
