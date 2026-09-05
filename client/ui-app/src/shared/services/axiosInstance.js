@@ -45,20 +45,37 @@ export const setAxiosStore = (reduxStore) => {
   store = reduxStore;
 };
 
+// Most requests resolve well under this -- dispatching SHOW immediately
+// made the loader flash on every fast request, which read as worse UX than
+// no loader at all. Only requests still in flight past this delay actually
+// show it; anything faster is cancelled below before it ever fires.
+const LOADER_SHOW_DELAY_MS = 400;
+let pendingShowTimeout = null;
+
 const showGlobalLoader = () => {
-  try {
-    if (store && activeRequests === 0) {
-      store.dispatch({ type: 'SHOW_GLOBAL_LOADER', payload: { message: 'Loading...' } });
-    }
-  } catch (error) {
-    }
+  // Only the first concurrent request schedules a show, and only once --
+  // guards against multiple overlapping requests each queuing their own timeout.
+  if (activeRequests !== 0 || pendingShowTimeout) return;
+  pendingShowTimeout = setTimeout(() => {
+    pendingShowTimeout = null;
+    try {
+      store?.dispatch({ type: 'SHOW_GLOBAL_LOADER', payload: { message: 'Loading...' } });
+    } catch (error) {
+      }
+  }, LOADER_SHOW_DELAY_MS);
 };
 
 const hideGlobalLoader = () => {
+  if (activeRequests !== 0) return; // other concurrent requests still in flight
+  if (pendingShowTimeout) {
+    // Every request finished before the delay elapsed -- the loader was
+    // never shown, so there's nothing to hide, just the pending show to cancel.
+    clearTimeout(pendingShowTimeout);
+    pendingShowTimeout = null;
+    return;
+  }
   try {
-    if (store && activeRequests === 0) {
-      store.dispatch({ type: 'HIDE_GLOBAL_LOADER' });
-    }
+    store?.dispatch({ type: 'HIDE_GLOBAL_LOADER' });
   } catch (error) {
     }
 };
@@ -188,8 +205,11 @@ const createMaintenanceModeError = (config) => {
 // Request interceptor - add token to headers and show loader
 axiosInstance.interceptors.request.use(
   (config) => {
-    activeRequests++;
+    // showGlobalLoader() only dispatches when activeRequests is still 0 (this
+    // is the first concurrent request) -- it must run before the increment
+    // below, or the count is never 0 at check-time and SHOW never fires.
     showGlobalLoader();
+    activeRequests++;
 
     // Don't add token to relogin endpoint (it uses refresh token).
     // Also preserve explicit Authorization headers, such as public client tokens.

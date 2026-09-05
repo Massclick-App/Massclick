@@ -593,6 +593,23 @@ export const viewAllBusiness = async () => {
   return updatedBusinesses;
 };
 
+// A real location label is short and few-worded ("Thillai Nagar 10th Cross").
+// Text far past that shape is crawler-invented and cannot resolve to any
+// location — but it would still reach the legacy free-text branch below and
+// cost a full businesslists collection scan (~11.7k docs) per call. Treating it
+// as unusable up front skips both that scan and the fuzzy resolveLocationForSearch
+// lookup. This is a backstop independent of the SSR 404 guard in
+// ssrMiddleware.js, so it also covers the /api/businesslist/category caller.
+const MAX_LOCATION_TEXT_LENGTH = 80;
+const MAX_LOCATION_TEXT_TOKENS = 10;
+
+const isPlausibleLocationText = (value = "") => {
+  const text = String(value || "").trim();
+  if (!text || text.length > MAX_LOCATION_TEXT_LENGTH) return false;
+  if (text.split(/\s+/).length > MAX_LOCATION_TEXT_TOKENS) return false;
+  return true;
+};
+
 // `locationContext` replaces the old bare `district` string param — it was
 // never actually a district, it was whatever free text a district-picker
 // dropdown sent, resolved fuzzily via resolveLocationForSearch. Now takes:
@@ -610,11 +627,16 @@ export const findBusinessesByCategory = async (category, locationContext = {}) =
   const escapeRegex = (value = "") =>
     String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+  // escapeRegex on both: `category` arrives straight off a URL segment, so an
+  // unescaped value here is a regex-injection / ReDoS vector, not just a
+  // correctness bug (a literal "." or "(" would silently match the wrong rows).
+  const escapedCategory = escapeRegex(category);
+
   const matchQuery = {
     businessesLive: true,
     $or: [
-      { category: { $regex: category, $options: "i" } },
-      { keywords: { $regex: category, $options: "i" } },
+      { category: { $regex: escapedCategory, $options: "i" } },
+      { keywords: { $regex: escapedCategory, $options: "i" } },
     ],
   };
   let resolvedLocation = null;
@@ -634,7 +656,8 @@ export const findBusinessesByCategory = async (category, locationContext = {}) =
   const hasUsableLocationText =
     locationText &&
     locationText !== "All Districts" &&
-    locationText !== "Enter location manually...";
+    locationText !== "Enter location manually..." &&
+    isPlausibleLocationText(locationText);
 
   if (!resolvedLocation && !districtScopeDoc && hasUsableLocationText) {
     resolvedLocation = await resolveLocationForSearch(locationText).catch(() => null);
@@ -733,15 +756,20 @@ export const findBusinessesByCategory = async (category, locationContext = {}) =
     ];
   } else if (hasUsableLocationText) {
     // Nothing resolved from free text either — legacy last-resort: regex the
-    // raw typed text across several free-text fields directly.
+    // raw typed text across several free-text fields directly. None of these
+    // fields are indexed for this shape, so this branch is a full collection
+    // scan by nature; isPlausibleLocationText above is what keeps junk out of it.
+    // escapeRegex is required here too — this was the only $regex in this file
+    // taking user text unescaped, ten lines below where escapeRegex is defined.
+    const escapedLocationText = escapeRegex(locationText);
     matchQuery.$and = [
       {
         $or: [
-          { district: { $regex: locationText, $options: "i" } },
-          { location: { $regex: locationText, $options: "i" } },
-          { locationDetails: { $regex: locationText, $options: "i" } },
-          { street: { $regex: locationText, $options: "i" } },
-          { pincode: { $regex: locationText, $options: "i" } },
+          { district: { $regex: escapedLocationText, $options: "i" } },
+          { location: { $regex: escapedLocationText, $options: "i" } },
+          { locationDetails: { $regex: escapedLocationText, $options: "i" } },
+          { street: { $regex: escapedLocationText, $options: "i" } },
+          { pincode: { $regex: escapedLocationText, $options: "i" } },
         ],
       },
     ];

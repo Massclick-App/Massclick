@@ -421,9 +421,9 @@
    banner sitting flush under the header). */
 .group-banner {
   position: relative;
-  width: 100%;
+  width: auto;
   height: 280px;
-  margin-top: 28px;
+  margin: 28px var(--side-padding) 0;
   border-radius: 20px;
   overflow: hidden;
   background-size: cover;

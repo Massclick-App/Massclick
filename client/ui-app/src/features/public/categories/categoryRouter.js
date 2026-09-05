@@ -34,6 +34,7 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
 
   const [resolvedCategory, setResolvedCategory] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [prefetchedResults, setPrefetchedResults] = useState(null);
   const [resolvedRouteContext, setResolvedRouteContext] = useState(routeContext);
 
@@ -87,6 +88,8 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
         setCategories(response.data || []);
       } catch (error) {
         setCategories([]);
+      } finally {
+        setCategoriesLoaded(true);
       }
     };
     fetchCategories();
@@ -207,12 +210,28 @@ const CategoryRouter = ({ routeContext = null } = {}) => {
     dispatch
   ]);
 
-  if (
+  // A bare category URL (no subcategory, not a free-text search) is the one
+  // case whose render depends on hasSubcategories() — which itself depends
+  // on the categories fetch above. Clicking a category from the homepage
+  // grid (featureService.js) passes categoryName in nav state, which sets
+  // resolvedCategory almost immediately (see loadCategory's effect) — well
+  // before that fetch resolves. Without this gate, hasSubcategories()
+  // reads the still-empty categories array as "false", so this renders
+  // SearchResults first and then swaps to CategoriesPage a moment later
+  // once the fetch resolves and hasSubcategories flips to true — a visible
+  // flash to search results and back. Waiting here only delays this one
+  // ambiguous case; free-text search and subcategory search below never
+  // depended on hasSubcategories and render exactly as before.
+  const isCategoryLandingCandidate =
     !isSearchFlow &&
     resolvedRouteContext?.categorySlug &&
-    !resolvedRouteContext?.subcategorySlug &&
-    hasSubcategories(resolvedRouteContext.categorySlug)
-  ) {
+    !resolvedRouteContext?.subcategorySlug;
+
+  if (isCategoryLandingCandidate && !categoriesLoaded) {
+    return null;
+  }
+
+  if (isCategoryLandingCandidate && hasSubcategories(resolvedRouteContext.categorySlug)) {
     return (
       <Suspense fallback={null}>
         <CategoriesPage routeContext={resolvedRouteContext} />
