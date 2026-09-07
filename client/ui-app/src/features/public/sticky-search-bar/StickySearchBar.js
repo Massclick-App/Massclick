@@ -440,7 +440,7 @@ const StickySearchBar = ({
             </div>
             <div className={cx("brandingText")}>
               <button type="button" className={cx("logo-button", "logo-button--brand")} onClick={goHome} aria-label="Go to Massclick home">
-                <img src="/Massclick-India01.svg" alt="Massclick India" className={cx("brandLogo")} width="180" height="44" decoding="async" loading="eager" />
+                <img src="/banner-image.png" alt="Massclick India" className={cx("brandLogo")} width="180" height="60" decoding="async" loading="eager" />
               </button>
             </div>
           </div>

@@ -106,15 +106,19 @@
     transform: translateY(-4px);
 }
 
-.logo-text {
-    font-size: 2rem;
-    font-weight: 900;
-    letter-spacing: -1.2px;
-    color: var(--footer-text-primary);
+.footer-brand-logo {
+    display: inline-flex;
+    align-items: center;
+    width: min(240px, 100%);
+    text-decoration: none;
 }
 
-.brand-accent {
-    color: var(--footer-brand-orange);
+.footer-brand-image {
+    width: 100%;
+    max-width: none;
+    height: auto;
+    display: block;
+    object-fit: contain;
 }
 
 .logo-tagline {
@@ -235,8 +239,12 @@
         gap: 28px;
     }
 
-    .logo-text {
-        font-size: 1.8rem;
+    .footer-brand-image {
+        width: 100%;
+    }
+
+    .footer-brand-logo {
+        width: min(220px, 100%);
     }
 
     .store-badges {
