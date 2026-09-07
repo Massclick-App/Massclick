@@ -45,9 +45,16 @@ const Footer = () => {
     <footer className={cx("footer-container")}>
       <div className={cx("footer-inner")}>
         <div className={cx("footer-section brand-section")}>
-          <div className={cx("logo-text")}>
-            Mass<span className={cx("brand-accent")}>click</span>®
-          </div>
+          <Link to="/" className={cx("footer-brand-logo")} aria-label="Massclick home">
+            <img
+              src="/Massclick-India01.svg"
+              alt="Massclick India"
+              className={cx("footer-brand-image")}
+              width="180"
+              height="44"
+              decoding="async"
+            />
+          </Link>
           <p className={cx("logo-tagline")}>
             Discover the best businesses, services, places &amp; offers near
             you with MassClick.

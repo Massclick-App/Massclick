@@ -106,15 +106,18 @@
     transform: translateY(-4px);
 }
 
-.logo-text {
-    font-size: 2rem;
-    font-weight: 900;
-    letter-spacing: -1.2px;
-    color: var(--footer-text-primary);
+.footer-brand-logo {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    text-decoration: none;
 }
 
-.brand-accent {
-    color: var(--footer-brand-orange);
+.footer-brand-image {
+    width: min(180px, 100%);
+    height: auto;
+    display: block;
+    object-fit: contain;
 }
 
 .logo-tagline {
@@ -235,8 +238,8 @@
         gap: 28px;
     }
 
-    .logo-text {
-        font-size: 1.8rem;
+    .footer-brand-image {
+        width: min(164px, 100%);
     }
 
     .store-badges {
