@@ -47,11 +47,11 @@ const Footer = () => {
         <div className={cx("footer-section brand-section")}>
           <Link to="/" className={cx("footer-brand-logo")} aria-label="Massclick home">
             <img
-              src="/Massclick-India01.svg"
+              src="/banner-image.png"
               alt="Massclick India"
               className={cx("footer-brand-image")}
-              width="180"
-              height="44"
+              width="240"
+              height="80"
               decoding="async"
             />
           </Link>

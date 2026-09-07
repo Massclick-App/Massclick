@@ -109,12 +109,13 @@
 .footer-brand-logo {
     display: inline-flex;
     align-items: center;
-    width: fit-content;
+    width: min(240px, 100%);
     text-decoration: none;
 }
 
 .footer-brand-image {
-    width: min(180px, 100%);
+    width: 100%;
+    max-width: none;
     height: auto;
     display: block;
     object-fit: contain;
@@ -239,7 +240,11 @@
     }
 
     .footer-brand-image {
-        width: min(164px, 100%);
+        width: 100%;
+    }
+
+    .footer-brand-logo {
+        width: min(220px, 100%);
     }
 
     .store-badges {
