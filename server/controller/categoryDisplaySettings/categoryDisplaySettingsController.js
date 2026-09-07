@@ -523,6 +523,7 @@ export const getV2SubCategoriesAction = async (req, res) => {
 
     const settings = await categoryDisplaySettingsModel.findOne().lean();
     const subCatLookup = buildSubCatLookup(settings);
+    const subCatGroupLookup = buildSubCatGroupLookup(settings);
 
 
     const normalizeSlug = (text = "") =>
@@ -534,13 +535,28 @@ export const getV2SubCategoriesAction = async (req, res) => {
         .replace(/\bcontractors\b/g, "contractor")
         .replace(/\s+/g, " ");
 
-    const matchedKey = Object.keys(subCatLookup).find((key) => {
+    const matchesParent = (key) => {
       const current = normalizeSlug(key);
       const incoming = normalizeSlug(parentSlug);
       return current === incoming || current === incoming + "s" || current + "s" === incoming;
-    });
+    };
 
-    const selectedCategories = matchedKey ? subCatLookup[matchedKey] : [];
+    const matchedKey = Object.keys(subCatLookup).find(matchesParent);
+    const matchedGroupKey = Object.keys(subCatGroupLookup).find(matchesParent);
+
+    // A parent fully migrated to the 3rd-tier group structure has no flat
+    // subCategoryMapping entry left -- flatten its groups' subcategory names
+    // in here so this endpoint (every existing caller of GET /v2/category/sub/,
+    // including the mobile app's subcategory sheet, which has no concept of
+    // groups) keeps getting the same flat list shape it always has.
+    const groupNames = matchedGroupKey
+      ? subCatGroupLookup[matchedGroupKey].flatMap((g) => g.subCategoryNames || [])
+      : [];
+
+    const selectedCategories = [
+      ...(matchedKey ? subCatLookup[matchedKey] : []),
+      ...groupNames.map((name) => ({ name })),
+    ];
     const allowedNames = selectedCategories.map((i) => cleanText(i.name));
 
     const data = await categoryModel.find({ isActive: true }).lean();
