@@ -5,6 +5,11 @@
  * All functions return valid schema.org JSON-LD objects or null if data insufficient
  */
 import { buildBusinessPath, buildCategoryPath } from "shared/utils/searchResultNavigation.js";
+import {
+  COMPANY_ADDRESS,
+  COMPANY_EMAIL,
+  COMPANY_LEGAL_NAME,
+} from "shared/utils/companyIdentity.js";
 
 /**
  * Site-wide identity constants.
@@ -177,23 +182,27 @@ export const generateOrganizationSchema = () => {
     "@type": "Organization",
     "@id": ORGANIZATION_ID,
     name: "Massclick",
+    // Registered entity per the MCA Certificate of Incorporation (09-Jul-2026).
+    // Keep in sync with shared/utils/companyIdentity.js.
+    legalName: COMPANY_LEGAL_NAME,
     url: SITE_ORIGIN,
     logo: `${SITE_ORIGIN}/logo.png`,
     description: "Find trusted local businesses near you with reviews, ratings, and contact details",
     foundingDate: "2018",
+    email: COMPANY_EMAIL,
     address: {
       "@type": "PostalAddress",
-      streetAddress: "SLK Complex, 166/9, Rani Mangammal Saalai, Renga Nagar, Krishna Moorthy Nagar, K K Nagar",
-      addressLocality: "Tiruchirappalli",
-      addressRegion: "Tamil Nadu",
-      postalCode: "620021",
-      addressCountry: "IN",
+      streetAddress: COMPANY_ADDRESS.street,
+      addressLocality: COMPANY_ADDRESS.locality,
+      addressRegion: COMPANY_ADDRESS.region,
+      postalCode: COMPANY_ADDRESS.postalCode,
+      addressCountry: COMPANY_ADDRESS.countryCode,
     },
     contactPoint: {
       "@type": "ContactPoint",
       telephone: "+919789104201",
       contactType: "Customer Service",
-      email: "support@massclick.in",
+      email: COMPANY_EMAIL,
       areaServed: "IN",
       availableLanguage: ["English", "Tamil"],
     },
@@ -201,6 +210,7 @@ export const generateOrganizationSchema = () => {
       "https://www.instagram.com/massclick.in",
       "https://www.facebook.com/massClicks",
       "https://www.linkedin.com/company/massclick/",
+      "https://x.com/massclick_mc",
       "https://www.youtube.com/@Mass360Business",
       "https://play.google.com/store/apps/details?id=com.massclick.massclick",
     ],

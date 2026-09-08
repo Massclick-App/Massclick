@@ -1201,10 +1201,10 @@ const buildLlmsData = async () => {
 };
 
 const LLMS_COMPANY_SECTION = `## Company
-Massclick, founded 2018.
-Address: SLK Complex, 166/9, Rani Mangammal Saalai, K K Nagar, Tiruchirappalli, Tamil Nadu 620021, India
-Contact: support@massclick.in | +91 97891 04201
-Social: instagram.com/massclick_ | facebook.com/massClicks | linkedin.com/company/massclick`;
+Massclick, founded 2018. Operated by MassClick Technologies Private Limited (CIN U62090TN2026PTC195081).
+Registered Office: No. 166/9, SLK Complex, Renga Nagar, Mangammal Salai, K.K. Nagar, Tiruchirappalli, Tamil Nadu 620021, India
+Contact: admin@massclick.in | +91 97891 04201
+Social: instagram.com/massclick.in | facebook.com/massClicks | linkedin.com/company/massclick | x.com/massclick_mc`;
 
 const sendLlmsText = (res, text) => {
   res.type("text/plain; charset=utf-8");

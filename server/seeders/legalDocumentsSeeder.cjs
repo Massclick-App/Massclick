@@ -12,18 +12,24 @@
 
 const mongoose = require("mongoose");
 
-const DEFAULT_URI =
-  "mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin";
-
+// No default connection string on purpose — the old one pointed at 127.0.0.1:27018
+// on the massclick box, whose mongod was decommissioned in the 2026-08-15 cutover,
+// so it silently failed to reach anything. The caller names the database, every time.
 const uriFlagIndex = process.argv.indexOf("--uri");
 const MONGO_URI =
-  (uriFlagIndex !== -1 && process.argv[uriFlagIndex + 1]) ||
-  process.env.MONGO_URI ||
-  DEFAULT_URI;
+  (uriFlagIndex !== -1 && process.argv[uriFlagIndex + 1]) || process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error(
+    "Missing connection string. Pass --uri <uri> or set MONGO_URI.\n" +
+      "  Dev is reachable on 127.0.0.1:27019 via `ssh massclick-mongodb`."
+  );
+  process.exit(1);
+}
 
 const COLLECTION = "legal_documents";
 const EFFECTIVE_DATE = new Date("2026-07-29T00:00:00.000Z");
-const CONTACT_EMAIL = "support@massclick.in";
+const CONTACT_EMAIL = "admin@massclick.in";
 
 const privacyPolicySections = [
   {
@@ -71,7 +77,7 @@ const privacyPolicySections = [
     heading: "Lead Sharing and WhatsApp Communications",
     body: `<p><strong>a.</strong> Massclick operates a two-way lead generation service. When you search for a category, tap a category card, or submit an enquiry after logging in, an enquiry ("Lead") is generated based on the interest you have expressed.</p>
 <p><strong>b.</strong> As part of this service, your name, mobile number, location and the category or service you searched for may be shared — including over WhatsApp and SMS — with registered businesses that match your enquiry, so that they can respond to your requirement. Correspondingly, the name, contact details and address of matching businesses may be shared with you.</p>
-<p><strong>c.</strong> For business members of MNI (Massclick Network India), business requirements and contact details submitted may be shared with other verified business members in the relevant category for business-to-business networking.</p>
+<p><strong>c.</strong> For business members of MNI (Mass Network India), business requirements and contact details submitted may be shared with other verified business members in the relevant category for business-to-business networking.</p>
 <p><strong>d.</strong> By logging in and using the search, enquiry or MNI features, you consent to this sharing. If you do not want your details shared with businesses, do not submit enquiries, or contact us at ${CONTACT_EMAIL} to opt out.</p>
 <p><strong>e.</strong> Once your details have been shared with a business — or a business's details with you — any further communication is directly between the two of you. We encourage all parties to communicate responsibly, but Massclick is not responsible for conduct that takes place outside the Platform.</p>`,
   },
@@ -158,7 +164,7 @@ const termsSections = [
 <li><strong>"Listing"</strong> means the profile of a business published on the Platform, including its name, category, address, contact details, images and other content.</li>
 <li><strong>"Lead"</strong> means an enquiry generated when a User expresses interest in a category, service or business.</li>
 <li><strong>"User Content"</strong> means any content you submit to the Platform, including listings, images, reviews, ratings, feed posts, enquiries and feedback.</li>
-<li><strong>"MNI"</strong> means Massclick Network India, our business-to-business networking programme for verified Business Users.</li>
+<li><strong>"MNI"</strong> means Mass Network India, our business-to-business networking programme for verified Business Users.</li>
 </ul>`,
   },
   {

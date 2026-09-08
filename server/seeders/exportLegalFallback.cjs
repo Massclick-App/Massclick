@@ -15,18 +15,25 @@ const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
 
-const DEFAULT_URI =
-  "mongodb://admin:Massclick123@127.0.0.1:27018/massClick_dev?authSource=admin";
-
+// No default connection string on purpose — the old one pointed at 127.0.0.1:27018
+// on the massclick box, whose mongod was decommissioned in the 2026-08-15 cutover,
+// so it silently failed to reach anything. Same convention as prodDevSync.js and
+// snapshotCollections.js: the caller names the database, every time.
 const uriFlagIndex = process.argv.indexOf("--uri");
 const MONGO_URI =
-  (uriFlagIndex !== -1 && process.argv[uriFlagIndex + 1]) ||
-  process.env.MONGO_URI ||
-  DEFAULT_URI;
+  (uriFlagIndex !== -1 && process.argv[uriFlagIndex + 1]) || process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error(
+    "Missing connection string. Pass --uri <uri> or set MONGO_URI.\n" +
+      "  Dev is reachable on 127.0.0.1:27019 via `ssh massclick-mongodb`."
+  );
+  process.exit(1);
+}
 
 const OUTPUT_PATH = path.resolve(
   __dirname,
-  "../../client/ui-app/src/Internals/clientComponent/footer/legalFallbackContent.js"
+  "../../client/ui-app/src/features/public/footer/legalFallbackContent.js"
 );
 
 const run = async () => {

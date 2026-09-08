@@ -13,7 +13,7 @@ import StickySearchBar from "features/public/sticky-search-bar/StickySearchBar.j
 import styles from "features/public/footer/delete-account/deleteAccount.module.css";
 
 const cx = createScopedClassNames(styles);
-const SUPPORT_EMAIL = "support@massclick.in";
+const SUPPORT_EMAIL = "admin@massclick.in";
 
 const fallbackSeo = {
   title: "Delete your Massclick account",

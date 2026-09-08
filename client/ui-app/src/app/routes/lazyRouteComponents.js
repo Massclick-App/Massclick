@@ -127,6 +127,9 @@ export const FOOTER_ROUTES = [
   { path: "testimonials", Component: FooterPages.Testimonials },
   { path: "feedbacks", Component: FooterPages.FeedbackComponent },
   { path: "customercare", Component: FooterPages.CustomerCareComponent },
+  // Compliance reviewers (WhatsApp Business API, payment gateways) look for a
+  // page literally at /contact-us, so alias it onto the same component.
+  { path: "contact-us", Component: FooterPages.CustomerCareComponent },
   { path: "portfolio", Component: FooterPages.Portfolio },
   { path: "terms", Component: FooterPages.TermsAndConditions },
   { path: "privacy", Component: FooterPages.PrivacyPolicy },

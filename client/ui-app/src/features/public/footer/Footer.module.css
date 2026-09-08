@@ -180,6 +180,50 @@
     font-weight: 700;
 }
 
+.footer-legal {
+    border-top: 1px solid var(--footer-border-soft);
+    max-width: var(--footer-max-width);
+    margin: auto;
+    padding: 18px var(--footer-padding-h);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    font-size: 0.76rem;
+    line-height: 1.55;
+    color: var(--footer-text-secondary);
+}
+
+.footer-legal-name {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: var(--footer-text-primary);
+}
+
+.footer-legal-line {
+    margin: 0;
+}
+
+.footer-legal-address {
+    margin: 0;
+    max-width: 620px;
+    font-style: normal;
+}
+
+.footer-legal-link {
+    color: var(--footer-brand-orange);
+    text-decoration: none;
+    transition: opacity var(--footer-transition);
+}
+
+.footer-legal-link:hover {
+    opacity: 0.75;
+    text-decoration: underline;
+}
+
 .footer-bottom {
     border-top: 1px solid var(--footer-border-soft);
     padding: 14px 18px;
