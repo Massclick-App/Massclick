@@ -258,14 +258,18 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
   }, [dispatch, categorySlug, districtSlug, locationLabel, locationPath, locationSlug, routeCanonicalPath, isGroupListingView]);
 
   useEffect(() => {
-    if (!categorySlug || isGroupListingView) return;
+    // Tier-2 (group listing) keeps its meta/robots suppressed above (it's
+    // deliberately a non-SEO landing surface), but the on-page content block
+    // itself is still wanted here -- only the fetch key differs, so a
+    // group-listing page gets the SAME content its plain category page would.
+    if (!categorySlug) return;
 
     dispatch(fetchSeoPageContentMeta({
       pageType: "category",
       category: categorySlug.replace(/-/g, " "),
       ...(locationLabel ? { location: locationLabel } : {}),
     }));
-  }, [dispatch, categorySlug, locationLabel, isGroupListingView]);
+  }, [dispatch, categorySlug, locationLabel]);
 
   // District landing's listingItems are already server-filtered by
   // debouncedSearch (see the fetch effect above) — re-filtering client-side
@@ -666,7 +670,7 @@ const CategoriesPage = ({ routeContext = null, mode = "category" } = {}) => {
           </div>
         </div>
 
-        {!isDirectoryLanding && !isGroupListingView && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
+        {!isDirectoryLanding && !seoContentLoading && (sanitizedPageContent || hasFaq) && (
           <div className={cx("seo-outer-wrapper")}>
             <div className={cx("seo-article-wrapper")}>
               <article className={cx("seo-article")}>

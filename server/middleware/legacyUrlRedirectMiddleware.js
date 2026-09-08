@@ -306,11 +306,14 @@ const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => 
   let target = null;
 
   if (classification?.type === "location") {
+    // Same groupSlug precedence as the districtCategory branch below -- a
+    // locality-scoped group URL (e.g. /trichy/specialty-restaurants-in-srirangam)
+    // also classifies with categorySlug rewritten to its parent.
     target = await buildCanonicalLocationCategoryPath({
       districtDoc,
       districtSlug,
       locationDoc: classification.locationDoc,
-      categorySlug: classification.categorySlug,
+      categorySlug: classification.groupSlug || classification.categorySlug,
     });
   } else if (classification?.type === "locationLanding") {
     target = buildLocationPath({
@@ -332,7 +335,7 @@ const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => 
     target = buildLocationCategoryPath({
       districtDoc,
       districtSlug,
-      categorySlug: classification.categorySlug,
+      categorySlug: classification.groupSlug || classification.categorySlug,
     });
   }
 

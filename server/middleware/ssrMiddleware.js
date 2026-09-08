@@ -198,7 +198,7 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       locationDoc = classification.locationDoc;
       locationSlug = locationDoc?.publicLocationSlug || "";
       locationPath = locationDoc ? getLocationUrlPath(locationDoc) : "";
-      categorySlug = classification.categorySlug || "";
+      categorySlug = classification.groupSlug || classification.categorySlug || "";
     } else if (classification.type === "locationLanding") {
       locationDoc = classification.locationDoc;
       locationSlug = locationDoc?.publicLocationSlug || "";
@@ -211,7 +211,7 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       categorySlug = classification.groupSlug || classification.subcategorySlug || classification.categorySlug || secondSegment;
       subcategorySlug = "";
     } else if (classification.type === "unresolvedLocation") {
-      categorySlug = classification.categorySlug;
+      categorySlug = classification.groupSlug || classification.categorySlug;
       subcategorySlug = "";
     } else {
       categorySlug = secondSegment;
