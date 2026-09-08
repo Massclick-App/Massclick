@@ -319,10 +319,14 @@ const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => 
       locationDoc: classification.locationDoc,
     });
   } else if (classification?.type === "districtCategory") {
+    // groupSlug takes priority -- a bare group URL (e.g. /trichy/specialty-restaurants)
+    // classifies with categorySlug rewritten to its PARENT (see matchGroupBySlug in
+    // categoryHierarchyHelper.js), so falling through to categorySlug here silently
+    // canonicalized every group-detail page away to its parent category.
     target = buildLocationCategoryPath({
       districtDoc,
       districtSlug,
-      categorySlug: classification.subcategorySlug || classification.categorySlug,
+      categorySlug: classification.groupSlug || classification.subcategorySlug || classification.categorySlug,
     });
   } else if (classification?.type === "unresolvedLocation") {
     target = buildLocationCategoryPath({
