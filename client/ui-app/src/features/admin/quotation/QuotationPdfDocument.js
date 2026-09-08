@@ -93,7 +93,7 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
             <LocationOnIcon /> {quotation.businessAddress || "Tamil Nadu, India"}
           </span>
           <span className={cx("companyLine")}>
-            <EmailIcon /> {quotation.businessEmail || "support@massclick.in"}
+            <EmailIcon /> {quotation.businessEmail || "admin@massclick.in"}
           </span>
         </div>
         <div className={cx("metaRight")}>
@@ -333,7 +333,7 @@ export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, 
             <LocalPhoneIcon /> {quotation.businessPhone || "+91 9789104201"}
           </span>
           <span>
-            <EmailIcon /> {quotation.businessEmail || "support@massclick.in"}
+            <EmailIcon /> {quotation.businessEmail || "admin@massclick.in"}
           </span>
           <span>
             <LanguageIcon /> www.massclick.in
@@ -422,7 +422,7 @@ export const QuotationPdfPage2 = ({ innerRef, quotation, logoSrc }) => (
           <LocalPhoneIcon /> {quotation.businessPhone || "+91 9789104201"}
         </span>
         <span>
-          <EmailIcon /> {quotation.businessEmail || "support@massclick.in"}
+          <EmailIcon /> {quotation.businessEmail || "admin@massclick.in"}
         </span>
         <span>
           <LanguageIcon /> www.massclick.in

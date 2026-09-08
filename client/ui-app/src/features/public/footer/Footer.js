@@ -8,6 +8,12 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import {
+  COMPANY_ADDRESS_LINE,
+  COMPANY_CIN,
+  COMPANY_EMAIL,
+  COMPANY_LEGAL_NAME,
+} from "shared/utils/companyIdentity.js";
 const cx = createScopedClassNames(styles);
 
 const GooglePlayGlyph = () => (
@@ -70,10 +76,20 @@ const Footer = () => {
             <a href="https://youtube.com/@mass_click" aria-label="YouTube">
               <YouTubeIcon fontSize="small" />
             </a>
-            <a href="https://twitter.com" aria-label="Twitter">
+            <a
+              href="https://x.com/massclick_mc"
+              aria-label="X (formerly Twitter)"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <TwitterIcon fontSize="small" />
             </a>
-            <a href="https://www.linkedin.com" aria-label="LinkedIn">
+            <a
+              href="https://www.linkedin.com/company/massclick/"
+              aria-label="LinkedIn"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <LinkedInIcon fontSize="small" />
             </a>
           </div>
@@ -101,7 +117,7 @@ const Footer = () => {
         <div className={cx("footer-section")}>
           <h3 className={cx("footer-heading")}>Help &amp; Support</h3>
           <ul className={cx("footer-link-list")}>
-            <FooterLink to="/customercare">Customer Support</FooterLink>
+            <FooterLink to="/contact-us">Contact Us</FooterLink>
             <FooterLink to="/terms">Terms &amp; Conditions</FooterLink>
             <FooterLink to="/privacy">Privacy Policy</FooterLink>
             <FooterLink to="/deleteaccount">Delete Account</FooterLink>
@@ -131,8 +147,23 @@ const Footer = () => {
           </div>
         </div>
       </div>
+      <div className={cx("footer-legal")}>
+        <p className={cx("footer-legal-name")}>{COMPANY_LEGAL_NAME}</p>
+        <p className={cx("footer-legal-line")}>CIN: {COMPANY_CIN}</p>
+        <address className={cx("footer-legal-address")}>
+          Registered Office: {COMPANY_ADDRESS_LINE}
+        </address>
+        <p className={cx("footer-legal-line")}>
+          Email:{" "}
+          <a className={cx("footer-legal-link")} href={`mailto:${COMPANY_EMAIL}`}>
+            {COMPANY_EMAIL}
+          </a>
+        </p>
+      </div>
       <div className={cx("footer-bottom")}>
-        <span>© {new Date().getFullYear()} Massclick. All rights reserved.</span>
+        <span>
+          © {new Date().getFullYear()} {COMPANY_LEGAL_NAME}. All rights reserved.
+        </span>
         <span className={cx("footer-bottom-made")}>Made with ❤ in India</span>
       </div>
     </footer>

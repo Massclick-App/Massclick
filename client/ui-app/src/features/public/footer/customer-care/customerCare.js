@@ -12,8 +12,18 @@ import SeoMeta from "features/public/seo/seoMeta.js";
 import { fetchSeoMeta } from "state/actions/seoAction.js";
 import { useDispatch, useSelector } from "react-redux";
 import { Box, Drawer } from "@mui/material";
+import EmailIcon from "@mui/icons-material/Email";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 import OTPLoginModal from "features/public/auth/AddBusinessModal.js";
 import CustomerChatPanel from "shared/components/chat/CustomerChatPanel.js";
+import {
+  COMPANY_ADDRESS,
+  COMPANY_CIN,
+  COMPANY_EMAIL,
+  COMPANY_LEGAL_NAME,
+  COMPANY_PHONE,
+  COMPANY_WHATSAPP,
+} from "shared/utils/companyIdentity.js";
 const cx = createScopedClassNames(styles);
 const whatsappCommunityUrl = process.env.REACT_APP_WHATSAPP_COMMUNITY_URL || "https://chat.whatsapp.com/LPgedrPJv3TKzHlxsUrJhl";
 const carePillars = [{
@@ -152,6 +162,44 @@ const CustomerCareComponent = () => {
 
                 <div className={cx("care-grid-container")}>
                     {carePillars.map(pillar => <CareCard key={pillar.id} pillar={pillar} onStartChat={handleStartChat} />)}
+                </div>
+
+                <div className={cx("registered-office")}>
+                    <h3 className={cx("registered-office-title")}>Registered Office</h3>
+                    <p className={cx("registered-office-entity")}>{COMPANY_LEGAL_NAME}</p>
+                    <p className={cx("registered-office-cin")}>CIN: {COMPANY_CIN}</p>
+
+                    <div className={cx("registered-office-rows")}>
+                        <div className={cx("registered-office-row")}>
+                            <LocationOnIcon className={cx("registered-office-icon")} />
+                            <address className={cx("registered-office-address")}>
+                                {COMPANY_ADDRESS.street},<br />
+                                {COMPANY_ADDRESS.locality}, {COMPANY_ADDRESS.region} {COMPANY_ADDRESS.postalCode},<br />
+                                {COMPANY_ADDRESS.country}
+                            </address>
+                        </div>
+
+                        <div className={cx("registered-office-row")}>
+                            <EmailIcon className={cx("registered-office-icon")} />
+                            <a className={cx("registered-office-link")} href={`mailto:${COMPANY_EMAIL}`}>
+                                {COMPANY_EMAIL}
+                            </a>
+                        </div>
+
+                        <div className={cx("registered-office-row")}>
+                            <CallIcon className={cx("registered-office-icon")} />
+                            <a className={cx("registered-office-link")} href={`tel:${COMPANY_PHONE.replace(/[^0-9+]/g, "")}`}>
+                                {COMPANY_PHONE}
+                            </a>
+                        </div>
+
+                        <div className={cx("registered-office-row")}>
+                            <WhatsAppIcon className={cx("registered-office-icon")} />
+                            <a className={cx("registered-office-link")} href={`https://wa.me/${COMPANY_WHATSAPP}`} target="_blank" rel="noopener noreferrer">
+                                +91 73586 73203
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </section>
             <Drawer anchor="right" open={chatOpen} onClose={() => setChatOpen(false)} sx={{ zIndex: 1300 }}>
