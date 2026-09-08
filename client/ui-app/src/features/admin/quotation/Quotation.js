@@ -73,7 +73,7 @@ const createEmptyForm = () => ({
   customerAddress: "",
   businessName: "MassClick",
   businessPhone: "",
-  businessEmail: "support@massclick.in",
+  businessEmail: "admin@massclick.in",
   businessAddress: "Tamil Nadu, India",
   issueDate: todayIso(),
   validUntil: addDaysIso(15),

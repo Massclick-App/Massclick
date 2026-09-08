@@ -7,7 +7,7 @@
  *
  *   node server/seeders/exportLegalFallback.cjs
  *
- * Snapshot taken: 2026-07-29T12:52:54.086Z
+ * Snapshot taken: 2026-09-08T07:46:44.396Z
  */
 
 export const LEGAL_FALLBACK_DOCUMENTS = {
@@ -17,7 +17,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
     "title": "Privacy Policy",
     "summary": "How Massclick collects, uses, shares and protects your personal information across our website and mobile app, and the choices and rights you have over it.",
     "effectiveDate": "2026-07-29T00:00:00.000Z",
-    "contactEmail": "support@massclick.in",
+    "contactEmail": "admin@massclick.in",
     "sections": [
       {
         "key": "scope-of-this-policy",
@@ -42,7 +42,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "lead-sharing-and-whatsapp-communications",
         "heading": "Lead Sharing and WhatsApp Communications",
-        "body": "<p><strong>a.</strong> Massclick operates a two-way lead generation service. When you search for a category, tap a category card, or submit an enquiry after logging in, an enquiry (\"Lead\") is generated based on the interest you have expressed.</p>\n<p><strong>b.</strong> As part of this service, your name, mobile number, location and the category or service you searched for may be shared — including over WhatsApp and SMS — with registered businesses that match your enquiry, so that they can respond to your requirement. Correspondingly, the name, contact details and address of matching businesses may be shared with you.</p>\n<p><strong>c.</strong> For business members of MNI (Mass Network India), business requirements and contact details submitted may be shared with other verified business members in the relevant category for business-to-business networking.</p>\n<p><strong>d.</strong> By logging in and using the search, enquiry or MNI features, you consent to this sharing. If you do not want your details shared with businesses, do not submit enquiries, or contact us at support@massclick.in to opt out.</p>\n<p><strong>e.</strong> Once your details have been shared with a business — or a business's details with you — any further communication is directly between the two of you. We encourage all parties to communicate responsibly, but Massclick is not responsible for conduct that takes place outside the Platform.</p>"
+        "body": "<p><strong>a.</strong> Massclick operates a two-way lead generation service. When you search for a category, tap a category card, or submit an enquiry after logging in, an enquiry (\"Lead\") is generated based on the interest you have expressed.</p>\n<p><strong>b.</strong> As part of this service, your name, mobile number, location and the category or service you searched for may be shared — including over WhatsApp and SMS — with registered businesses that match your enquiry, so that they can respond to your requirement. Correspondingly, the name, contact details and address of matching businesses may be shared with you.</p>\n<p><strong>c.</strong> For business members of MNI (Mass Network India), business requirements and contact details submitted may be shared with other verified business members in the relevant category for business-to-business networking.</p>\n<p><strong>d.</strong> By logging in and using the search, enquiry or MNI features, you consent to this sharing. If you do not want your details shared with businesses, do not submit enquiries, or contact us at admin@massclick.in to opt out.</p>\n<p><strong>e.</strong> Once your details have been shared with a business — or a business's details with you — any further communication is directly between the two of you. We encourage all parties to communicate responsibly, but Massclick is not responsible for conduct that takes place outside the Platform.</p>"
       },
       {
         "key": "cookies-and-similar-technologies",
@@ -82,7 +82,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "children-s-privacy",
         "heading": "Children's Privacy",
-        "body": "<p>The Platform is not intended for children under the age of 18, and we do not knowingly collect personal information from them. If we become aware that we have inadvertently collected personal information from a child under 18, we will take reasonable steps to delete it from our records. If you believe a child has provided us with personal information, please contact us at support@massclick.in.</p>"
+        "body": "<p>The Platform is not intended for children under the age of 18, and we do not knowingly collect personal information from them. If we become aware that we have inadvertently collected personal information from a child under 18, we will take reasonable steps to delete it from our records. If you believe a child has provided us with personal information, please contact us at admin@massclick.in.</p>"
       },
       {
         "key": "third-party-links-and-content",
@@ -97,7 +97,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "grievances-and-contact-us",
         "heading": "Grievances and Contact Us",
-        "body": "<p>If you have any question, concern, complaint or request regarding this Policy or the handling of your personal information, contact our Grievance Officer:</p>\n<p><strong>Grievance Officer, Massclick</strong><br />\nEmail: <a href=\"mailto:support@massclick.in\">support@massclick.in</a></p>\n<p>We aim to acknowledge every grievance within 24 hours and to resolve it within the timelines prescribed under the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023.</p>\n<p>By using the Massclick website or mobile application, you acknowledge that you have read and understood this Privacy Policy.</p>"
+        "body": "<p>If you have any question, concern, complaint or request regarding this Policy or the handling of your personal information, contact our Grievance Officer:</p>\n<p><strong>Grievance Officer, Massclick</strong><br />\nEmail: <a href=\"mailto:admin@massclick.in\">admin@massclick.in</a></p>\n<p>We aim to acknowledge every grievance within 24 hours and to resolve it within the timelines prescribed under the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023.</p>\n<p>By using the Massclick website or mobile application, you acknowledge that you have read and understood this Privacy Policy.</p>"
       }
     ]
   },
@@ -107,7 +107,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
     "title": "Terms & Conditions",
     "summary": "The agreement between you and Massclick covering how you may use our website and mobile app, what we do and do not take responsibility for, and how disputes are handled.",
     "effectiveDate": "2026-07-29T00:00:00.000Z",
-    "contactEmail": "support@massclick.in",
+    "contactEmail": "admin@massclick.in",
     "sections": [
       {
         "key": "acceptance-of-these-terms",
@@ -127,7 +127,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "your-account-and-otp-login",
         "heading": "Your Account and OTP Login",
-        "body": "<p><strong>a.</strong> Access to certain features requires an account. Registration and login are verified through a One-Time Password (OTP) sent to your mobile number. You agree to provide accurate, current and complete information and to keep it up to date.</p>\n<p><strong>b.</strong> You are responsible for everything that happens under your account and for keeping your OTP and registered device secure. Massclick will never ask you for your OTP over a call, SMS or WhatsApp message. Treat any such request as fraudulent.</p>\n<p><strong>c.</strong> Notify us immediately at support@massclick.in if you become aware of unauthorised use of your account. We are not liable for loss arising from your failure to keep your credentials secure.</p>\n<p><strong>d.</strong> One mobile number may be linked to one User account. Creating accounts by automated means, or to circumvent a suspension, is prohibited.</p>"
+        "body": "<p><strong>a.</strong> Access to certain features requires an account. Registration and login are verified through a One-Time Password (OTP) sent to your mobile number. You agree to provide accurate, current and complete information and to keep it up to date.</p>\n<p><strong>b.</strong> You are responsible for everything that happens under your account and for keeping your OTP and registered device secure. Massclick will never ask you for your OTP over a call, SMS or WhatsApp message. Treat any such request as fraudulent.</p>\n<p><strong>c.</strong> Notify us immediately at admin@massclick.in if you become aware of unauthorised use of your account. We are not liable for loss arising from your failure to keep your credentials secure.</p>\n<p><strong>d.</strong> One mobile number may be linked to one User account. Creating accounts by automated means, or to circumvent a suspension, is prohibited.</p>"
       },
       {
         "key": "nature-of-the-platform",
@@ -142,7 +142,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "leads-enquiries-and-business-networking",
         "heading": "Leads, Enquiries and Business Networking",
-        "body": "<p><strong>a.</strong> Massclick operates a two-way lead service. When you search a category, tap a category card or submit an enquiry while logged in, a Lead is generated from the interest you have expressed.</p>\n<p><strong>b.</strong> Your name, mobile number, location and the category you searched for may be shared — including over WhatsApp and SMS — with matching registered businesses so they can respond. The details of matching businesses may likewise be shared with you. For MNI members, business requirements may be shared with other verified members in the relevant category.</p>\n<p><strong>c.</strong> By using the search, enquiry or MNI features while logged in, you consent to this sharing. If you do not want your details shared, do not submit enquiries, or contact us at support@massclick.in to opt out.</p>\n<p><strong>d.</strong> Business Users must use Lead data only to respond to the enquiry it relates to. Selling, renting, transferring or bulk-marketing to Lead contacts, or contacting them after being asked to stop, is prohibited and will result in termination.</p>\n<p><strong>e.</strong> We do not guarantee any number, quality or conversion rate of Leads. Leads are provided on an as-available basis.</p>"
+        "body": "<p><strong>a.</strong> Massclick operates a two-way lead service. When you search a category, tap a category card or submit an enquiry while logged in, a Lead is generated from the interest you have expressed.</p>\n<p><strong>b.</strong> Your name, mobile number, location and the category you searched for may be shared — including over WhatsApp and SMS — with matching registered businesses so they can respond. The details of matching businesses may likewise be shared with you. For MNI members, business requirements may be shared with other verified members in the relevant category.</p>\n<p><strong>c.</strong> By using the search, enquiry or MNI features while logged in, you consent to this sharing. If you do not want your details shared, do not submit enquiries, or contact us at admin@massclick.in to opt out.</p>\n<p><strong>d.</strong> Business Users must use Lead data only to respond to the enquiry it relates to. Selling, renting, transferring or bulk-marketing to Lead contacts, or contacting them after being asked to stop, is prohibited and will result in termination.</p>\n<p><strong>e.</strong> We do not guarantee any number, quality or conversion rate of Leads. Leads are provided on an as-available basis.</p>"
       },
       {
         "key": "reviews-ratings-and-user-content",
@@ -157,7 +157,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "refunds-and-cancellations",
         "heading": "Refunds and Cancellations",
-        "body": "<p><strong>a.</strong> Refunds and cancellations are governed by our Refund Policy, which forms part of these Terms.</p>\n<p><strong>b.</strong> Digital services activated on payment — including memberships, promoted placement and advertising — are generally non-refundable once live, except where we have failed to deliver a paid service, or where a refund is required by law.</p>\n<p><strong>c.</strong> Where a refund is approved, it is credited to the original payment instrument. Timelines depend on your bank or payment provider.</p>\n<p><strong>d.</strong> To raise a refund request, contact support@massclick.in with your order ID and the reason for the request.</p>"
+        "body": "<p><strong>a.</strong> Refunds and cancellations are governed by our Refund Policy, which forms part of these Terms.</p>\n<p><strong>b.</strong> Digital services activated on payment — including memberships, promoted placement and advertising — are generally non-refundable once live, except where we have failed to deliver a paid service, or where a refund is required by law.</p>\n<p><strong>c.</strong> Where a refund is approved, it is credited to the original payment instrument. Timelines depend on your bank or payment provider.</p>\n<p><strong>d.</strong> To raise a refund request, contact admin@massclick.in with your order ID and the reason for the request.</p>"
       },
       {
         "key": "prohibited-conduct",
@@ -167,7 +167,7 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "intellectual-property",
         "heading": "Intellectual Property",
-        "body": "<p><strong>a.</strong> The Platform and everything in it other than User Content — including the Massclick name and logo, software, design, layout, graphics, compilations and databases — is owned by Massclick or its licensors and is protected by intellectual property law.</p>\n<p><strong>b.</strong> You may use the Platform only as permitted by these Terms. You may not copy, modify, distribute, sell, lease, reverse engineer or create derivative works from any part of it without our prior written consent.</p>\n<p><strong>c.</strong> Trade marks, logos and brand names belonging to businesses listed on the Platform remain the property of their respective owners and are displayed for identification purposes only.</p>\n<p><strong>d.</strong> If you believe content on the Platform infringes your rights, write to support@massclick.in with details of the content, your rights and your contact information, and we will act in accordance with applicable law.</p>"
+        "body": "<p><strong>a.</strong> The Platform and everything in it other than User Content — including the Massclick name and logo, software, design, layout, graphics, compilations and databases — is owned by Massclick or its licensors and is protected by intellectual property law.</p>\n<p><strong>b.</strong> You may use the Platform only as permitted by these Terms. You may not copy, modify, distribute, sell, lease, reverse engineer or create derivative works from any part of it without our prior written consent.</p>\n<p><strong>c.</strong> Trade marks, logos and brand names belonging to businesses listed on the Platform remain the property of their respective owners and are displayed for identification purposes only.</p>\n<p><strong>d.</strong> If you believe content on the Platform infringes your rights, write to admin@massclick.in with details of the content, your rights and your contact information, and we will act in accordance with applicable law.</p>"
       },
       {
         "key": "third-party-content-and-links",
@@ -197,12 +197,12 @@ export const LEGAL_FALLBACK_DOCUMENTS = {
       {
         "key": "grievance-redressal",
         "heading": "Grievance Redressal",
-        "body": "<p>In accordance with the Information Technology Act, 2000 and the rules made under it, complaints about content on the Platform or about your use of it may be sent to our Grievance Officer:</p>\n<p><strong>Grievance Officer, Massclick</strong><br />\nEmail: <a href=\"mailto:support@massclick.in\">support@massclick.in</a></p>\n<p>Please include your name and contact details, a description of the complaint, the URL or listing concerned, and any supporting material. We aim to acknowledge complaints within 24 hours and to resolve them within 15 days of receipt.</p>"
+        "body": "<p>In accordance with the Information Technology Act, 2000 and the rules made under it, complaints about content on the Platform or about your use of it may be sent to our Grievance Officer:</p>\n<p><strong>Grievance Officer, Massclick</strong><br />\nEmail: <a href=\"mailto:admin@massclick.in\">admin@massclick.in</a></p>\n<p>Please include your name and contact details, a description of the complaint, the URL or listing concerned, and any supporting material. We aim to acknowledge complaints within 24 hours and to resolve them within 15 days of receipt.</p>"
       },
       {
         "key": "governing-law-and-jurisdiction",
         "heading": "Governing Law and Jurisdiction",
-        "body": "<p><strong>a.</strong> These Terms and any dispute arising out of or relating to them or to the Platform are governed by the laws of India, without regard to conflict-of-law principles.</p>\n<p><strong>b.</strong> The courts at Tiruchirappalli (Trichy), Tamil Nadu have exclusive jurisdiction over any such dispute.</p>\n<p><strong>c.</strong> Before commencing proceedings, both parties agree to attempt in good faith to resolve the dispute by writing to support@massclick.in and allowing 30 days for a resolution.</p>"
+        "body": "<p><strong>a.</strong> These Terms and any dispute arising out of or relating to them or to the Platform are governed by the laws of India, without regard to conflict-of-law principles.</p>\n<p><strong>b.</strong> The courts at Tiruchirappalli (Trichy), Tamil Nadu have exclusive jurisdiction over any such dispute.</p>\n<p><strong>c.</strong> Before commencing proceedings, both parties agree to attempt in good faith to resolve the dispute by writing to admin@massclick.in and allowing 30 days for a resolution.</p>"
       },
       {
         "key": "general",

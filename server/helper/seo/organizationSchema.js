@@ -30,15 +30,19 @@ export const buildOrganizationSchema = () => ({
   "@type": "Organization",
   "@id": ORGANIZATION_ID,
   name: "Massclick",
+  // Registered entity per the MCA Certificate of Incorporation (09-Jul-2026).
+  // Keep in sync with client/ui-app/src/shared/utils/companyIdentity.js.
+  legalName: "MassClick Technologies Private Limited",
   url: SITE_ORIGIN,
   logo: `${SITE_ORIGIN}/logo.png`,
   description:
     "Find trusted local businesses near you with reviews, ratings, and contact details",
   foundingDate: "2018",
+  email: "admin@massclick.in",
   address: {
     "@type": "PostalAddress",
     streetAddress:
-      "SLK Complex, 166/9, Rani Mangammal Saalai, Renga Nagar, Krishna Moorthy Nagar, K K Nagar",
+      "No. 166/9, SLK Complex, Renga Nagar, Mangammal Salai, K.K. Nagar",
     addressLocality: "Tiruchirappalli",
     addressRegion: "Tamil Nadu",
     postalCode: "620021",
@@ -48,7 +52,7 @@ export const buildOrganizationSchema = () => ({
     "@type": "ContactPoint",
     telephone: "+919789104201",
     contactType: "Customer Service",
-    email: "support@massclick.in",
+    email: "admin@massclick.in",
     areaServed: "IN",
     availableLanguage: ["English", "Tamil"],
   },
@@ -58,6 +62,7 @@ export const buildOrganizationSchema = () => ({
     "https://www.instagram.com/massclick.in",
     "https://www.facebook.com/massClicks",
     "https://www.linkedin.com/company/massclick/",
+    "https://x.com/massclick_mc",
     "https://www.youtube.com/@Mass360Business",
     "https://play.google.com/store/apps/details?id=com.massclick.massclick",
   ],

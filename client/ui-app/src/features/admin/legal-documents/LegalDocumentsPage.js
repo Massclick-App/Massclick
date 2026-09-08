@@ -87,7 +87,7 @@ const blankForm = (type) => ({
   title: DOCUMENT_TYPES.find((item) => item.value === type)?.label || "",
   summary: "",
   effectiveDate: new Date().toISOString().slice(0, 10),
-  contactEmail: "support@massclick.in",
+  contactEmail: "admin@massclick.in",
   changeNote: "",
   sections: [emptySection()],
 });
@@ -585,7 +585,7 @@ export default function LegalDocuments() {
                     onChange={(event) =>
                       updateField("contactEmail", event.target.value)
                     }
-                    placeholder="support@massclick.in"
+                    placeholder="admin@massclick.in"
                   />
                 </label>
 
