@@ -82,6 +82,7 @@ export const buildLocationCategoryContext = ({
   location,
   category,
   subcategory,
+  group,
   canonicalPath,
   routeType = subcategory ? "locationSubcategory" : "locationCategory",
 } = {}) => {
@@ -95,6 +96,7 @@ export const buildLocationCategoryContext = ({
     locationName: location?.name || formatUrlText(location?.slug || ""),
     categorySlug: category || "",
     subcategorySlug: subcategory || "",
+    groupSlug: group || "",
     canonicalPath: canonicalPath || "",
     isKnownCategory: Boolean(category) && !subcategory,
   };

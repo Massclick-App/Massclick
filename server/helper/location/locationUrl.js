@@ -332,6 +332,19 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
   const categoryInLocation = await splitLocationCategorySegment(lastSegment);
 
   if (categoryInLocation) {
+    // splitLocationCategorySegment's fallback naively splits at the last
+    // "-in-" without validating the prefix against real category docs, so a
+    // GROUP's own slug (never in categoryModel) lands here as an opaque
+    // categorySlug exactly like a real category would. Resolve it the same
+    // way the bare 1-segment branch below does, so a group's combined
+    // "<group>-in-<location>" URL carries its groupSlug too.
+    const isRealCategoryInLocation = await isKnownCategorySlug(categoryInLocation.categorySlug);
+    const groupInLocation = !isRealCategoryInLocation
+      ? await matchGroupBySlug(categoryInLocation.categorySlug)
+      : null;
+    const categoryInLocationSlug = groupInLocation ? groupInLocation.parentSlug : categoryInLocation.categorySlug;
+    const categoryInLocationGroup = groupInLocation ? { groupSlug: groupInLocation.groupSlug } : {};
+
     const { locationDoc, canonicalize } = await resolveLocationPathAllowingLegacyDuplicateZone(
       districtDoc,
       [...parts.slice(0, -1), categoryInLocation.locationSlug],
@@ -341,7 +354,8 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
       return {
         type: "location",
         locationDoc,
-        categorySlug: categoryInLocation.categorySlug,
+        categorySlug: categoryInLocationSlug,
+        ...categoryInLocationGroup,
         ...(canonicalize ? { canonicalize: true } : {}),
       };
     }
@@ -355,14 +369,16 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
       return {
         type: "location",
         locationDoc: shortLocationDoc,
-        categorySlug: categoryInLocation.categorySlug,
+        categorySlug: categoryInLocationSlug,
+        ...categoryInLocationGroup,
       };
     }
 
     return {
       type: "unresolvedLocation",
       attemptedLocationText: categoryInLocation.locationSlug,
-      categorySlug: categoryInLocation.categorySlug,
+      categorySlug: categoryInLocationSlug,
+      ...categoryInLocationGroup,
     };
   }
 
@@ -432,6 +448,33 @@ export const classifyLocationRouteSegments = async ({ districtDoc, segments = []
           attemptedLocationText: parts[0],
           categorySlug: parts[parts.length - 1],
         };
+  }
+
+  // Mirrors the isKnownCategorySlug branch just above, for a bare GROUP slug
+  // (e.g. /trichy/srirangam/specialty-restaurants) instead of a real
+  // category. Groups have no combined "<group>-in-<location>" URL of their
+  // own yet, so canonicalize into that same shape real categories already
+  // use rather than leaving this classified as "unknown".
+  if (parts.length >= 2) {
+    const trailingGroup = await matchGroupBySlug(parts[parts.length - 1]);
+    if (trailingGroup) {
+      const legacyLocationDoc = await resolveLegacyLocationSlugWithinDistrict(districtDoc, parts[0]);
+      return legacyLocationDoc
+        ? {
+            type: "location",
+            locationDoc: legacyLocationDoc,
+            categorySlug: trailingGroup.parentSlug,
+            groupSlug: trailingGroup.groupSlug,
+            legacyParentSlug: parts.length === 3 ? parts[1] : null,
+            canonicalize: true,
+          }
+        : {
+            type: "unresolvedLocation",
+            attemptedLocationText: parts[0],
+            categorySlug: trailingGroup.parentSlug,
+            groupSlug: trailingGroup.groupSlug,
+          };
+    }
   }
 
   return { type: "unknown", attemptedText: parts.join("/") };
