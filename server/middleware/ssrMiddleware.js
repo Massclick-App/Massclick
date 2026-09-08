@@ -205,7 +205,10 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       locationPath = locationDoc ? getLocationUrlPath(locationDoc) : "";
       isLocationLanding = true;
     } else if (classification.type === "districtCategory") {
-      categorySlug = classification.subcategorySlug || classification.categorySlug || secondSegment;
+      // Same groupSlug precedence as legacyUrlRedirectMiddleware.js's identical
+      // branch -- without it, a group-detail page's canonical tag pointed at its
+      // parent category instead of itself.
+      categorySlug = classification.groupSlug || classification.subcategorySlug || classification.categorySlug || secondSegment;
       subcategorySlug = "";
     } else if (classification.type === "unresolvedLocation") {
       categorySlug = classification.categorySlug;
