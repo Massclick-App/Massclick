@@ -316,12 +316,18 @@ export const resolveRouteLocationAction = async (req, res) => {
             // its own breadcrumb/URL builders already work with (see
             // client/ui-app/src/utils/breadcrumbs.js).
             const locationDoc = classification.locationDoc;
+            // groupSlug takes priority -- a locality-scoped group URL classifies
+            // with categorySlug already rewritten to its parent (see
+            // matchGroupBySlug in categoryHierarchyHelper.js), same as the
+            // districtCategory case below. Without this the client never
+            // learned a group was involved at all, since this branch reshapes
+            // the response instead of forwarding `classification` as-is.
             const canonicalPath = classification.type === "location"
                 ? await buildCanonicalLocationCategoryPath({
                     districtDoc,
                     districtSlug: districtSummary.slug,
                     locationDoc,
-                    categorySlug: classification.categorySlug,
+                    categorySlug: classification.groupSlug || classification.categorySlug,
                 })
                 : "";
             return res.send({
@@ -336,6 +342,7 @@ export const resolveRouteLocationAction = async (req, res) => {
                         level: locationDoc.level,
                     },
                     categorySlug: classification.categorySlug,
+                    ...(classification.groupSlug ? { groupSlug: classification.groupSlug } : {}),
                     ...(canonicalPath ? { canonicalPath } : {}),
                     canonicalize: Boolean(classification.canonicalize),
                 },
