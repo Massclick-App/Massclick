@@ -1,3 +1,4 @@
+import { formatBusinessHours } from "shared/utils/businessHours.js";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -4018,7 +4019,7 @@ const BusinessList = React.memo(() => {
                   {formData.openingHours.map((hour, idx) => (
                     <Box key={idx} sx={{ p: 1, backgroundColor: "#f5f5f5", borderRadius: 0.5, fontSize: "0.85rem" }}>
                       <strong>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][idx]}</strong>
-                      {hour.is24Hours ? " - 24/7" : hour.isClosed ? " - Closed" : ` - ${hour.open} to ${hour.close}`}
+                      {` - ${formatBusinessHours(hour)}`}
                     </Box>
                   ))}
                 </Box>

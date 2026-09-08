@@ -1,3 +1,5 @@
+import { formatBusinessHours } from "shared/utils/businessHours.js";
+import Time12HourInput from "shared/components/Time12HourInput.js";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 // BusinessDetail.jsx
 import React, { useEffect, useState, useRef } from "react";
@@ -314,12 +316,12 @@ const BusinessDetail = React.memo(() => {
     const todayName = daysOfWeek[todayIndex];
     const todayHour = business.openingHours.find(h => h.day === todayName);
     if (!todayHour) return "Open hours not available";
-    return todayHour.isClosed ? "Closed today" : `${todayHour.open} - ${todayHour.close}`;
+    return todayHour.isClosed ? "Closed today" : formatBusinessHours(todayHour);
   };
   const getCollapsedHoursSummary = () => {
     if (!business.openingHours || business.openingHours.length === 0) return "Open hours not available";
-    const openDays = business.openingHours.filter(h => !h.isClosed && h.open && h.close);
-    const summary = openDays.slice(0, 2).map(h => `${h.day.substring(0, 3)}: ${h.open} - ${h.close}`).join(", ");
+    const openDays = business.openingHours.filter(h => !h.isClosed && (h.is24Hours || (h.open && h.close)));
+    const summary = openDays.slice(0, 2).map(h => `${h.day.substring(0, 3)}: ${formatBusinessHours(h)}`).join(", ");
     return summary || getTodayHours();
   };
   const getFullHoursList = () => {
@@ -1320,7 +1322,7 @@ const BusinessDetail = React.memo(() => {
                   {getFullHoursList().map(hour => <div key={hour.day} className={cx("business-CardDetails-hoursRow")}>
                       <span>{hour.day}</span>
                       <span className={cx(hour.isClosed ? "business-CardDetails-hoursValue--closed" : "business-CardDetails-hoursValue--open")}>
-                        {hour.isClosed ? "Closed" : `${hour.open} - ${hour.close}`}
+                        {formatBusinessHours(hour)}
                       </span>
                     </div>)}
                 </div>}
@@ -1392,7 +1394,7 @@ const BusinessDetail = React.memo(() => {
                 {(getFullHoursList().length ? getFullHoursList() : daysOfWeek.map(day => ({ day, isClosed: true }))).map(hour => <div key={hour.day}>
                     <span>{hour.day}</span>
                     <strong className={cx(hour.isClosed ? "business-CardDetails-v2Closed" : "business-CardDetails-v2Open")}>
-                      {hour.isClosed ? "Closed" : hour.is24Hours ? "Open 24 hours" : `${hour.open} - ${hour.close}`}
+                      {formatBusinessHours(hour)}
                     </strong>
                   </div>)}
               </div>
@@ -1560,10 +1562,10 @@ const BusinessDetail = React.memo(() => {
             </label>
             <div className={cx("business-CardDetails-formGrid")}>
               <label>Opens
-                <input type="time" value={timingSuggestion.openingTime} onChange={e => setTimingSuggestion({ ...timingSuggestion, openingTime: e.target.value })} required />
+                <Time12HourInput label="Opening time" value={timingSuggestion.openingTime} onChange={value => setTimingSuggestion({ ...timingSuggestion, openingTime: value })} />
               </label>
               <label>Closes
-                <input type="time" value={timingSuggestion.closingTime} onChange={e => setTimingSuggestion({ ...timingSuggestion, closingTime: e.target.value })} required />
+                <Time12HourInput label="Closing time" value={timingSuggestion.closingTime} onChange={value => setTimingSuggestion({ ...timingSuggestion, closingTime: value })} />
               </label>
             </div>
             <label>Additional note (optional)
