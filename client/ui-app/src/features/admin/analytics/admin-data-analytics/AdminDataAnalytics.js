@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
+  Checkbox,
   Box,
   Button,
   Chip,
   InputAdornment,
   LinearProgress,
-  MenuItem,
   Paper,
   Stack,
   Table,
@@ -20,7 +21,6 @@ import {
   Typography,
 } from "@mui/material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import axiosInstance from "shared/services/axiosInstance.js";
@@ -399,7 +399,7 @@ const compactFilterBarSx = {
 
 const compactFieldSx = {
   "& .MuiOutlinedInput-root": {
-    height: 38,
+    minHeight: 38,
     borderRadius: 2.5,
     bgcolor: "#ffffff",
   },
@@ -422,7 +422,9 @@ export default function AdminDataAnalytics() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const locationLabel = selectedLocations.length ? selectedLocations.join(", ") : "All locations";
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -453,7 +455,7 @@ export default function AdminDataAnalytics() {
 
   useEffect(() => {
     setPage(0);
-  }, [search, selectedLocation]);
+  }, [search, selectedLocations, selectedCategories]);
 
   const masterLocationMap = useMemo(() => buildMasterLocationMap(data.locations), [data.locations]);
 
@@ -461,15 +463,27 @@ export default function AdminDataAnalytics() {
     const values = Array.from(masterLocationMap.values()).sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: "base" })
     );
-    return ["all", ...values];
+    return values;
   }, [masterLocationMap]);
+
+  const categoryOptions = useMemo(() => {
+    const categories = new Map();
+    data.categories.forEach((row) => {
+      const category = getCategoryName(row);
+      if (!categories.has(normalizeText(category))) categories.set(normalizeText(category), category);
+    });
+    return Array.from(categories.values()).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" })
+    );
+  }, [data.categories]);
 
   const combinedRows = useMemo(() => {
     const seoCounts = new Map();
     const businessCounts = new Map();
     const warningMap = new Map();
     const categoryMap = new Map();
-    const selectedLocationKey = normalizeText(selectedLocation);
+    const locationKeys = new Set(selectedLocations.map(normalizeText));
+    const categoryKeys = new Set(selectedCategories.map(normalizeText));
 
     const collectWarning = (scopedKey, warning) => {
       if (!warning) return;
@@ -482,36 +496,30 @@ export default function AdminDataAnalytics() {
       const category = getCategoryName(row);
       const categoryKey = normalizeText(category);
       const matchedLocation = matchLocationToMaster(getLocationName(row), masterLocationMap);
-      const scopedKey = `${categoryKey}::${selectedLocation === "all" ? "all" : selectedLocationKey}`;
+      const scopedKey = categoryKey;
 
-      if (selectedLocation !== "all" && normalizeText(matchedLocation.canonical) !== selectedLocationKey) {
+      if (locationKeys.size > 0 && !locationKeys.has(normalizeText(matchedLocation.canonical))) {
         return;
       }
 
       seoCounts.set(scopedKey, (seoCounts.get(scopedKey) || 0) + 1);
       collectWarning(scopedKey, matchedLocation.warning);
 
-      if (selectedLocation === "all") {
-        collectWarning(`${categoryKey}::all`, matchedLocation.warning);
-      }
     });
 
     data.businesslist.forEach((row) => {
       const category = getCategoryName(row);
       const categoryKey = normalizeText(category);
       const matchedLocation = matchLocationToMaster(getLocationName(row), masterLocationMap);
-      const scopedKey = `${categoryKey}::${selectedLocation === "all" ? "all" : selectedLocationKey}`;
+      const scopedKey = categoryKey;
 
-      if (selectedLocation !== "all" && normalizeText(matchedLocation.canonical) !== selectedLocationKey) {
+      if (locationKeys.size > 0 && !locationKeys.has(normalizeText(matchedLocation.canonical))) {
         return;
       }
 
       businessCounts.set(scopedKey, (businessCounts.get(scopedKey) || 0) + 1);
       collectWarning(scopedKey, matchedLocation.warning);
 
-      if (selectedLocation === "all") {
-        collectWarning(`${categoryKey}::all`, matchedLocation.warning);
-      }
     });
 
     data.categories.forEach((row) => {
@@ -534,14 +542,14 @@ export default function AdminDataAnalytics() {
 
     return Array.from(categoryMap.values())
       .map((item) => {
-        const key = `${normalizeText(item.category)}::${selectedLocation === "all" ? "all" : selectedLocationKey}`;
+        const key = normalizeText(item.category);
         const businessCount = businessCounts.get(key) || 0;
         const metaSeoCount = seoCounts.get(key) || 0;
         const locationWarning = Array.from(warningMap.get(key) || []).join(" | ") || "OK";
 
         return {
           category: item.category,
-          location: selectedLocation === "all" ? "All locations" : selectedLocation,
+          location: locationLabel,
           businessCount,
           metaSeoCount,
           coverage: getCoverageLabel(businessCount, metaSeoCount),
@@ -550,6 +558,7 @@ export default function AdminDataAnalytics() {
         };
       })
       .filter((row) => {
+        if (categoryKeys.size > 0 && !categoryKeys.has(normalizeText(row.category))) return false;
         if (!search) return true;
         return normalizeText(row.category).includes(normalizeText(search));
       })
@@ -559,7 +568,7 @@ export default function AdminDataAnalytics() {
           b.metaSeoCount - a.metaSeoCount ||
           a.category.localeCompare(b.category, undefined, { sensitivity: "base" })
       );
-  }, [data.businesslist, data.categories, data.seo, masterLocationMap, search, selectedLocation]);
+  }, [data.businesslist, data.categories, data.seo, masterLocationMap, search, selectedLocations, selectedCategories, locationLabel]);
 
   const paginatedRows = useMemo(() => {
     const start = page * rowsPerPage;
@@ -593,11 +602,12 @@ export default function AdminDataAnalytics() {
     }));
 
     exportExcelReport({
-      fileName: `category-coverage-${selectedLocation === "all" ? "all-locations" : selectedLocation}.xls`,
+      fileName: `category-coverage-${selectedLocations.length ? "selected-locations" : "all-locations"}.xls`,
       title: "Category Coverage by Location",
       subtitle: "Business count and Meta SEO count in one combined export, matched against master locations.",
       filters: [
-        { label: "Location", value: selectedLocation === "all" ? "All locations" : selectedLocation },
+        { label: "Locations", value: locationLabel },
+        { label: "Categories", value: selectedCategories.length ? selectedCategories.join(", ") : "All categories" },
         { label: "Search", value: search || "All categories" },
         { label: "Rows", value: formatNumber(rows.length) },
       ],
@@ -612,7 +622,7 @@ export default function AdminDataAnalytics() {
       ],
       rows,
     });
-  }, [combinedRows, search, selectedLocation]);
+  }, [combinedRows, search, selectedLocations, selectedCategories, locationLabel]);
 
   return (
     <Box sx={{ width: "100%", p: { xs: 1.5, md: 2 }, bgcolor: "#ffffff", minHeight: "100%" }}>
@@ -705,27 +715,42 @@ export default function AdminDataAnalytics() {
             }}
           />
 
-          <TextField
-            select
-            label="Location"
-            value={selectedLocation}
-            onChange={(event) => setSelectedLocation(event.target.value)}
+          {[
+            { label: "Locations", options: locationOptions, value: selectedLocations, onChange: setSelectedLocations, placeholder: "All locations" },
+            { label: "Categories", options: categoryOptions, value: selectedCategories, onChange: setSelectedCategories, placeholder: "All categories" },
+          ].map((filter) => (
+            <Autocomplete
+              key={filter.label}
+              multiple
+              disableCloseOnSelect
+              size="small"
+              options={filter.options}
+              value={filter.value}
+              onChange={(_, values) => filter.onChange(values)}
+              limitTags={3}
+              sx={{ ...compactFieldSx, flex: "1 1 280px", minWidth: { xs: "100%", md: 260 } }}
+              renderOption={(props, option, { selected }) => {
+                const { key, ...optionProps } = props;
+                return (
+                  <li key={key} {...optionProps}>
+                    <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
+                    {option}
+                  </li>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label={filter.label} placeholder={filter.value.length ? "" : filter.placeholder} />
+              )}
+            />
+          ))}
+          <Button
             size="small"
-            sx={{
-              ...compactFieldSx,
-              flex: "0 1 240px",
-              minWidth: { xs: "100%", md: 220 },
-            }}
+            onClick={() => { setSearch(""); setSelectedLocations([]); setSelectedCategories([]); }}
+            disabled={!search && !selectedLocations.length && !selectedCategories.length}
+            sx={{ textTransform: "none" }}
           >
-            {locationOptions.map((location) => (
-              <MenuItem key={location} value={location}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <PublicRoundedIcon sx={{ fontSize: 16, color: "#7a8699" }} />
-                  {location === "all" ? "All locations" : location}
-                </Box>
-              </MenuItem>
-            ))}
-          </TextField>
+            Clear filters
+          </Button>
         </Box>
 
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.75 }}>

@@ -1,3 +1,4 @@
+import Time12HourInput from "shared/components/Time12HourInput.js";
 import React from "react";
 import { Button, Avatar, Autocomplete, TextField } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -878,8 +879,8 @@ const BusinessFormStep0 = ({
             <div key={hour.day} className={cx("opening-hours-row")} data-closed={hour.isClosed} data-247={hour.is24Hours}>
               <div className={cx("day-label")}>{hour.day}</div>
               <div className={cx("time-group")}>
-                <input type="time" value={hour.is24Hours ? "00:00" : hour.open} onChange={(e) => handleOpeningHourChange(index, "open", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} placeholder="Open Time" />
-                <input type="time" value={hour.is24Hours ? "23:59" : hour.close} onChange={(e) => handleOpeningHourChange(index, "close", e.target.value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} placeholder="Close Time" />
+                <Time12HourInput value={hour.is24Hours ? "00:00" : hour.open} onChange={(value) => handleOpeningHourChange(index, "open", value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} label={`${hour.day} opening time`} />
+                <Time12HourInput value={hour.is24Hours ? "23:59" : hour.close} onChange={(value) => handleOpeningHourChange(index, "close", value)} disabled={hour.isClosed || hour.is24Hours} className={getInputClassName("text-input", `openingHours.${hour.day}`)} label={`${hour.day} closing time`} />
               </div>
               <div style={{ justifySelf: "end" }}>
                 <select
