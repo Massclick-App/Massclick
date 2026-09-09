@@ -1,10 +1,10 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getLeadReport } from "state/actions/mrpAction.js";
-import styles from "features/public/mrp/mrpKpiChart/mrpChartKpi.module.css";
+import { getLeadReport } from "state/actions/mniAction.js";
+import styles from "features/public/mni/mniKpiChart/mniChartKpi.module.css";
 const cx = createScopedClassNames(styles);
-export default function MRPChartKPI({
+export default function MNIChartKPI({
   group,
   category = ""
 }) {
@@ -17,7 +17,7 @@ export default function MRPChartKPI({
     leadReport,
     leadReportLoading,
     leadReportError
-  } = useSelector(state => state.mrp || {});
+  } = useSelector(state => state.mni || {});
   useEffect(() => {
     if (!group) return;
 
@@ -34,13 +34,13 @@ export default function MRPChartKPI({
     return val;
   };
   if (leadReportLoading) {
-    return <div className={cx("mrp-chart-kpi-loading")}>
+    return <div className={cx("mni-chart-kpi-loading")}>
       <div className={cx("kpi-state-spinner")}></div>
       <p>Loading lead report...</p>
     </div>;
   }
   if (leadReportError) {
-    return <div className={cx("mrp-chart-kpi-error")}>
+    return <div className={cx("mni-chart-kpi-error")}>
       <div className={cx("kpi-state-icon")}>⚠️</div>
       <p>
         {typeof leadReportError === "string" ? leadReportError : leadReportError?.message || "Failed to load lead report"}
@@ -48,7 +48,7 @@ export default function MRPChartKPI({
     </div>;
   }
   if (!leadReport || !Array.isArray(leadReport.data) || !leadReport.data.length) {
-    return <div className={cx("mrp-chart-kpi-empty")}>
+    return <div className={cx("mni-chart-kpi-empty")}>
       <div className={cx("kpi-state-icon")}>📊</div>
       <p>No lead report data yet</p>
       <span>Data will appear once requirements are published in your group.</span>

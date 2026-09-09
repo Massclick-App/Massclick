@@ -1,10 +1,10 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import styles from "features/public/mrp/mrpChart/mrpCategoryChart.module.css";
+import styles from "features/public/mni/mniChart/mniCategoryChart.module.css";
 const cx = createScopedClassNames(styles);
 ChartJS.register(ArcElement, Tooltip, Legend);
-export default function MRPCategoryChart({
+export default function MNICategoryChart({
   data = []
 }) {
   const categoryMap = data.reduce((acc, item) => {
@@ -48,8 +48,8 @@ export default function MRPCategoryChart({
       }
     }
   };
-  return <div className={cx("mrp-category-chart-wrapper")}>
-      <div className={cx("mrp-category-chart-inner")}>
+  return <div className={cx("mni-category-chart-wrapper")}>
+      <div className={cx("mni-category-chart-inner")}>
         <Doughnut data={chartData} options={options} />
       </div>
     </div>;

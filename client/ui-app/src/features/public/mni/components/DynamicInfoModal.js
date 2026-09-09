@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { ArrowRight, CheckCircle2, X } from "lucide-react";
-import styles from "features/public/mrp/components/dynamicInfoModal.module.css";
+import styles from "features/public/mni/components/dynamicInfoModal.module.css";
 
 export default function DynamicInfoModal({ open, onClose, icon: Icon, tone = "blue", eyebrow = "Dashboard insight", title, description, value, valueLabel, status, stats = [], items = [], itemsTitle = "Recent activity", itemsCaption, steps = [], note, action, children }) {
   useEffect(() => {

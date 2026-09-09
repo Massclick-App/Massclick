@@ -1,5 +1,5 @@
 import { BadgeCheck, Building2, Camera, CheckCircle2, ClipboardCheck, FileCheck2, IdCard, MapPin, ShieldCheck, UserCheck, Users } from "lucide-react";
-import styles from "features/public/mrp/components/verifiedNetworkContent.module.css";
+import styles from "features/public/mni/components/verifiedNetworkContent.module.css";
 
 const Check = ({ children }) => <li><CheckCircle2 />{children}</li>;
 

@@ -1,12 +1,12 @@
 import axiosInstance from 'shared/services/axiosInstance.js';
 import {
-  FETCH_MRP_REQUEST, FETCH_MRP_SUCCESS, FETCH_MRP_FAILURE,
-  CREATE_MRP_REQUEST, CREATE_MRP_SUCCESS, CREATE_MRP_FAILURE,
-  EDIT_MRP_REQUEST, EDIT_MRP_SUCCESS, EDIT_MRP_FAILURE,
-  DELETE_MRP_REQUEST, DELETE_MRP_SUCCESS, DELETE_MRP_FAILURE,
-  SEARCH_MRP_BUSINESS_REQUEST, SEARCH_MRP_BUSINESS_SUCCESS, SEARCH_MRP_BUSINESS_FAILURE,
-  SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE,
-  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE,
+  FETCH_MNI_REQUEST, FETCH_MNI_SUCCESS, FETCH_MNI_FAILURE,
+  CREATE_MNI_REQUEST, CREATE_MNI_SUCCESS, CREATE_MNI_FAILURE,
+  EDIT_MNI_REQUEST, EDIT_MNI_SUCCESS, EDIT_MNI_FAILURE,
+  DELETE_MNI_REQUEST, DELETE_MNI_SUCCESS, DELETE_MNI_FAILURE,
+  SEARCH_MNI_BUSINESS_REQUEST, SEARCH_MNI_BUSINESS_SUCCESS, SEARCH_MNI_BUSINESS_FAILURE,
+  SEARCH_MNI_CATEGORY_REQUEST, SEARCH_MNI_CATEGORY_SUCCESS, SEARCH_MNI_CATEGORY_FAILURE,
+  SEND_MNI_LEADS_REQUEST, SEND_MNI_LEADS_SUCCESS, SEND_MNI_LEADS_FAILURE,
   FETCH_MNI_LEADS_REQUEST, FETCH_MNI_LEADS_SUCCESS, FETCH_MNI_LEADS_FAILURE,
   FETCH_BUSINESS_PROFILE_BY_PHONE_REQUEST, FETCH_BUSINESS_PROFILE_BY_PHONE_SUCCESS, FETCH_BUSINESS_PROFILE_BY_PHONE_FAILURE,
   FETCH_LEAD_REPORT_REQUEST, FETCH_LEAD_REPORT_SUCCESS, FETCH_LEAD_REPORT_FAILURE
@@ -52,11 +52,11 @@ export const getMniLeads = (params = {}) => async (dispatch) => {
   }
 };
 
-export const getAllMRP =
+export const getAllMNI =
   ({ pageNo = 1, pageSize = 10, options = {} } = {}) =>
     async (dispatch) => {
 
-      dispatch({ type: FETCH_MRP_REQUEST });
+      dispatch({ type: FETCH_MNI_REQUEST });
 
       try {
         const token = await getValidToken(dispatch);
@@ -74,7 +74,7 @@ export const getAllMRP =
         );
 
         dispatch({
-          type: FETCH_MRP_SUCCESS,
+          type: FETCH_MNI_SUCCESS,
           payload: {
             data: response.data.data,
             total: response.data.total,
@@ -85,26 +85,26 @@ export const getAllMRP =
 
       } catch (error) {
         dispatch({
-          type: FETCH_MRP_FAILURE,
+          type: FETCH_MNI_FAILURE,
           payload: error.response?.data || error.message
         });
       }
     };
 
-export const createMRP = (mrpData) => async (dispatch) => {
-  dispatch({ type: CREATE_MRP_REQUEST });
+export const createMNI = (mniData) => async (dispatch) => {
+  dispatch({ type: CREATE_MNI_REQUEST });
 
   try {
     const token = await dispatch(getClientToken());
 
     const response = await axiosInstance.post(
       `${API_URL}/mrpdata/create`,
-      mrpData,
+      mniData,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
     dispatch({
-      type: CREATE_MRP_SUCCESS,
+      type: CREATE_MNI_SUCCESS,
       payload: response.data.data
     });
 
@@ -112,27 +112,27 @@ export const createMRP = (mrpData) => async (dispatch) => {
 
   } catch (error) {
     dispatch({
-      type: CREATE_MRP_FAILURE,
+      type: CREATE_MNI_FAILURE,
       payload: error.response?.data || error.message
     });
     throw error;
   }
 };
 
-export const editMRP = (id, mrpData) => async (dispatch) => {
-  dispatch({ type: EDIT_MRP_REQUEST });
+export const editMNI = (id, mniData) => async (dispatch) => {
+  dispatch({ type: EDIT_MNI_REQUEST });
 
   try {
     const token = await getValidToken(dispatch);
 
     const response = await axiosInstance.put(
       `${API_URL}/mrpdata/update/${id}`,
-      mrpData,
+      mniData,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
     dispatch({
-      type: EDIT_MRP_SUCCESS,
+      type: EDIT_MNI_SUCCESS,
       payload: response.data.data
     });
 
@@ -140,15 +140,15 @@ export const editMRP = (id, mrpData) => async (dispatch) => {
 
   } catch (error) {
     dispatch({
-      type: EDIT_MRP_FAILURE,
+      type: EDIT_MNI_FAILURE,
       payload: error.response?.data || error.message
     });
     throw error;
   }
 };
 
-export const deleteMRP = (id) => async (dispatch) => {
-  dispatch({ type: DELETE_MRP_REQUEST });
+export const deleteMNI = (id) => async (dispatch) => {
+  dispatch({ type: DELETE_MNI_REQUEST });
 
   try {
     const token = await getValidToken(dispatch);
@@ -159,21 +159,21 @@ export const deleteMRP = (id) => async (dispatch) => {
     );
 
     dispatch({
-      type: DELETE_MRP_SUCCESS,
+      type: DELETE_MNI_SUCCESS,
       payload: data
     });
 
   } catch (error) {
     dispatch({
-      type: DELETE_MRP_FAILURE,
+      type: DELETE_MNI_FAILURE,
       payload: error.response?.data || error.message
     });
     throw error;
   }
 };
 
-export const searchMrpBusiness = (searchText) => async (dispatch) => {
-  dispatch({ type: SEARCH_MRP_BUSINESS_REQUEST });
+export const searchMniBusiness = (searchText) => async (dispatch) => {
+  dispatch({ type: SEARCH_MNI_BUSINESS_REQUEST });
 
   try {
     const token = await dispatch(getClientToken());
@@ -184,7 +184,7 @@ export const searchMrpBusiness = (searchText) => async (dispatch) => {
     );
 
     dispatch({
-      type: SEARCH_MRP_BUSINESS_SUCCESS,
+      type: SEARCH_MNI_BUSINESS_SUCCESS,
       payload: response.data
     });
 
@@ -192,15 +192,15 @@ export const searchMrpBusiness = (searchText) => async (dispatch) => {
 
   } catch (error) {
     dispatch({
-      type: SEARCH_MRP_BUSINESS_FAILURE,
+      type: SEARCH_MNI_BUSINESS_FAILURE,
       payload: error.response?.data || error.message
     });
     throw error;
   }
 };
 
-export const searchMrpCategory = (searchText) => async (dispatch) => {
-  dispatch({ type: SEARCH_MRP_CATEGORY_REQUEST });
+export const searchMniCategory = (searchText) => async (dispatch) => {
+  dispatch({ type: SEARCH_MNI_CATEGORY_REQUEST });
 
   try {
     const token = await dispatch(getClientToken());
@@ -211,7 +211,7 @@ export const searchMrpCategory = (searchText) => async (dispatch) => {
     );
 
     dispatch({
-      type: SEARCH_MRP_CATEGORY_SUCCESS,
+      type: SEARCH_MNI_CATEGORY_SUCCESS,
       payload: response.data
     });
 
@@ -219,22 +219,22 @@ export const searchMrpCategory = (searchText) => async (dispatch) => {
 
   } catch (error) {
     dispatch({
-      type: SEARCH_MRP_CATEGORY_FAILURE,
+      type: SEARCH_MNI_CATEGORY_FAILURE,
       payload: error.response?.data || error.message
     });
     throw error;
   }
 };
 
-export const sendMrpLeads = (mrpId) => async (dispatch) => {
+export const sendMniLeads = (mniId) => async (dispatch) => {
 
-  dispatch({ type: SEND_MRP_LEADS_REQUEST });
+  dispatch({ type: SEND_MNI_LEADS_REQUEST });
 
   try {
     const token = await getValidToken(dispatch);
 
     const response = await axiosInstance.post(
-      `${API_URL}/mrpdata/send-leads/${mrpId}`,
+      `${API_URL}/mrpdata/send-leads/${mniId}`,
       {},
       {
         headers: { Authorization: `Bearer ${token}` }
@@ -242,7 +242,7 @@ export const sendMrpLeads = (mrpId) => async (dispatch) => {
     );
 
     dispatch({
-      type: SEND_MRP_LEADS_SUCCESS,
+      type: SEND_MNI_LEADS_SUCCESS,
       payload: response.data
     });
 
@@ -251,7 +251,7 @@ export const sendMrpLeads = (mrpId) => async (dispatch) => {
   } catch (error) {
 
     dispatch({
-      type: SEND_MRP_LEADS_FAILURE,
+      type: SEND_MNI_LEADS_FAILURE,
       payload: error.response?.data || error.message
     });
 

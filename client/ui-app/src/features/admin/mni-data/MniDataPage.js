@@ -1,19 +1,19 @@
 import React, { useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { getAllMRP } from 'state/actions/mrpAction.js';
+import { getAllMNI } from 'state/actions/mniAction.js';
 import CustomizedTable from 'shared/components/table/CustomizedTable.js';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, Grid } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-export default function MRPDatas() {
+export default function MNIDatas() {
   const dispatch = useDispatch();
   const {
-    mrpList = [],
+    mniList = [],
     total = 0
-  } = useSelector(state => state.mrp || {});
+  } = useSelector(state => state.mni || {});
   const [selectedItem, setSelectedItem] = useState(null);
   const [openDetails, setOpenDetails] = useState(false);
   const handleFetchData = useCallback((pageNo, pageSize, options) => {
-    dispatch(getAllMRP({
+    dispatch(getAllMNI({
       pageNo,
       pageSize,
       search: options.search,
@@ -91,7 +91,7 @@ export default function MRPDatas() {
         </Button>
   }];
   return <>
-      <CustomizedTable title="MNI Responses" columns={columns} data={mrpList} total={total} fetchData={handleFetchData} enableSearch={true} enableStatusFilter={false} />
+      <CustomizedTable title="MNI Responses" columns={columns} data={mniList} total={total} fetchData={handleFetchData} enableSearch={true} enableStatusFilter={false} />
 
       {/* Details Modal */}
       <Dialog open={openDetails} onClose={handleCloseDetails} maxWidth="sm" fullWidth PaperProps={{

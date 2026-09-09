@@ -428,9 +428,9 @@
 /* ══════════════════════════════════════
    STATE CARDS
 ══════════════════════════════════════ */
-.mrp-chart-kpi-loading,
-.mrp-chart-kpi-error,
-.mrp-chart-kpi-empty {
+.mni-chart-kpi-loading,
+.mni-chart-kpi-error,
+.mni-chart-kpi-empty {
   padding: 36px 24px;
   border-radius: 20px;
   text-align: center;
@@ -440,17 +440,17 @@
   gap: 10px;
 }
 
-.mrp-chart-kpi-loading {
+.mni-chart-kpi-loading {
   background: #f8fafc;
   border: 1px solid rgba(226,232,240,.95);
 }
 
-.mrp-chart-kpi-error {
+.mni-chart-kpi-error {
   background: #fef2f2;
   border: 1px solid #fecaca;
 }
 
-.mrp-chart-kpi-empty {
+.mni-chart-kpi-empty {
   background: #f8fafc;
   border: 1px dashed rgba(99,102,241,.25);
 }
@@ -468,22 +468,22 @@
 
 @keyframes kpi-spin { to { transform: rotate(360deg); } }
 
-.mrp-chart-kpi-loading p,
-.mrp-chart-kpi-empty p {
+.mni-chart-kpi-loading p,
+.mni-chart-kpi-empty p {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
   color: #0f172a;
 }
 
-.mrp-chart-kpi-error p {
+.mni-chart-kpi-error p {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: #991b1b;
 }
 
-.mrp-chart-kpi-empty span {
+.mni-chart-kpi-empty span {
   font-size: 13px;
   color: #64748b;
   line-height: 1.5;

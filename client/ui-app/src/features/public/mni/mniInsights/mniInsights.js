@@ -1,8 +1,8 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
-import { getBusinessProfileByPhone } from "state/actions/mrpAction.js";
+import { getBusinessProfileByPhone } from "state/actions/mniAction.js";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import styles from "features/public/mrp/mrpInsights/mrpInsights.module.css";
+import styles from "features/public/mni/mniInsights/mniInsights.module.css";
 import { ASSET_BASE_URL } from "shared/utils/imageUrlHelper.js";
 const cx = createScopedClassNames(styles);
 export default function MNILeadsInsights({
@@ -14,7 +14,7 @@ export default function MNILeadsInsights({
     businessProfile = null,
     businessProfileLoading,
     businessProfileError
-  } = useSelector(state => state.mrp || {});
+  } = useSelector(state => state.mni || {});
   useEffect(() => {
     // "leads" view piggybacks on data fetched by "profile" view
     if (view === "leads") return;
@@ -53,23 +53,23 @@ export default function MNILeadsInsights({
   // ── Shared loading / error / empty states ──
 
   if (businessProfileLoading) {
-    return <div className={cx("mrp-insights")}>
-        <div className={cx("mrp-insights-loading")}>
+    return <div className={cx("mni-insights")}>
+        <div className={cx("mni-insights-loading")}>
           <div className={cx("spinner")}></div>
           <p>Loading business profile...</p>
         </div>
       </div>;
   }
   if (businessProfileError || error) {
-    return <div className={cx("mrp-insights")}>
-        <div className={cx("mrp-insights-error")}>
+    return <div className={cx("mni-insights")}>
+        <div className={cx("mni-insights-error")}>
           <p>⚠️ Error: {businessProfileError || error}</p>
         </div>
       </div>;
   }
   if (!businessProfile) {
-    return <div className={cx("mrp-insights")}>
-        <div className={cx("mrp-insights-empty")}>
+    return <div className={cx("mni-insights")}>
+        <div className={cx("mni-insights-empty")}>
           <p>No business profile found</p>
         </div>
       </div>;
@@ -91,8 +91,8 @@ export default function MNILeadsInsights({
 
   // ── Profile view (row 1 right) ──
   if (view === "profile") {
-    return <div className={cx("mrp-insights mrp-insights--profile")}>
-        <div className={cx("mrp-insights-header")}>
+    return <div className={cx("mni-insights mni-insights--profile")}>
+        <div className={cx("mni-insights-header")}>
           <h3>Business Profile</h3>
           <span>{location?.toUpperCase()}</span>
         </div>
@@ -167,7 +167,7 @@ export default function MNILeadsInsights({
 
   // ── Leads view (row 2 right) ──
   if (view === "leads") {
-    return <div className={cx("mrp-insights mrp-insights--leads")}>
+    return <div className={cx("mni-insights mni-insights--leads")}>
         {sentLeads.length > 0 ? <div className={cx("sent-leads-section")}>
             <h3 className={cx("sent-leads-title")}>Sent Leads
               <span className={cx("sent-leads-count")}>{sentLeads.length}</span>
@@ -211,8 +211,8 @@ export default function MNILeadsInsights({
   }
 
   // ── Default: full view ──
-  return <div className={cx("mrp-insights")}>
-      <div className={cx("mrp-insights-header")}>
+  return <div className={cx("mni-insights")}>
+      <div className={cx("mni-insights-header")}>
         <h3>📊 Business Profile</h3>
         <span>{location?.toUpperCase()}</span>
       </div>
