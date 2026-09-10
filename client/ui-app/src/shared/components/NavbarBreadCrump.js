@@ -18,6 +18,7 @@ const StyledBreadcrumbs = styled(Breadcrumbs)(({ theme }) => ({
 
 // Map your routes to readable names
 const routeNames = {
+  '/dashboard': 'Dashboard',
   '/dashboard/home': 'Home',
   '/dashboard/category': 'Category',
   '/dashboard/location': 'Location',
