@@ -50,6 +50,7 @@ import { getBusinessReviews } from "state/actions/reviewAction.js";
 import GlobalSkeleton from "features/public/globalSkeleton.js";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "state/actions/favoriteAction.js";
 import { generateLocalBusinessSchema } from "shared/utils/seoSchemaGenerators.js";
+import { buildBusinessSeoMeta, districtLabelFromSlug } from "shared/utils/businessSeoMeta.js";
 import { trackBusinessView, trackBusinessClick } from "shared/utils/webTracker.js";
 import { buildBusinessPath, buildCategoryPath } from "shared/utils/searchResultNavigation.js";
 import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "shared/utils/breadcrumbs.js";
@@ -843,8 +844,13 @@ const BusinessDetail = React.memo(() => {
       ];
   const breadcrumbSchema = crumbsToJsonLd(breadcrumbCrumbs, "https://massclick.in", canonicalPath);
   const breadcrumbItems = crumbsToUiItems(breadcrumbCrumbs);
+  const businessSeo = buildBusinessSeoMeta({ business, districtLabel: districtLabelFromSlug(district) });
   return <>
       <Helmet>
+        <title>{businessSeo.title}</title>
+        <meta name="description" content={businessSeo.description} />
+        <meta property="og:title" content={businessSeo.title} />
+        <meta property="og:description" content={businessSeo.description} />
         <link rel="canonical" href={canonicalUrl} />
         {localBusinessSchema && <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>}
         {breadcrumbSchema && <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>}
