@@ -347,6 +347,13 @@ export const getSeoMeta = async ({ pageType, category, location, district, locat
       await logger.seoDebug('Step 2: NOT found');
     }
 
+    // A district page (no location) must resolve to that district's own row.
+    // A district can also hold locality rows (same category + district,
+    // locationKey = the locality), and without this pin findOne returns
+    // whichever one storage order puts first — a Thillai Nagar title on the
+    // /trichy/ page. District rows always carry locationKey === district.
+    const districtLocationKey = safeDistrict ? safeDistrict.replace(/[^a-z0-9]/g, "") : null;
+
     // ===============================
     // 🔥 3. CATEGORY ONLY (ONLY if NO location given, but WITH district if provided)
     // ===============================
@@ -356,7 +363,10 @@ export const getSeoMeta = async ({ pageType, category, location, district, locat
         category: safeCategory,
         isActive: true,
       };
-      if (safeDistrict) query3.district = safeDistrict;
+      if (safeDistrict) {
+        query3.district = safeDistrict;
+        query3.locationKey = districtLocationKey;
+      }
 
       await logger.seoDebug('Step 3: Trying CATEGORY ONLY (no location given)', { pageType: safePageType, category: safeCategory, district: safeDistrict });
       seo = await seoModel.findOne(query3).lean();
@@ -379,7 +389,10 @@ export const getSeoMeta = async ({ pageType, category, location, district, locat
         category: { $regex: flexibleCategory, $options: "i" },
         isActive: true,
       };
-      if (safeDistrict) query4.district = safeDistrict;
+      if (safeDistrict) {
+        query4.district = safeDistrict;
+        query4.locationKey = districtLocationKey;
+      }
 
       await logger.seoDebug('Step 4: Trying FLEXIBLE CATEGORY ONLY (no location given)', { pageType: safePageType, categoryRegex: flexibleCategory, district: safeDistrict });
       seo = await seoModel.findOne(query4).lean();

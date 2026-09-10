@@ -85,7 +85,7 @@ const {
   SiteAnalytics,
   AppAnalytics,
   BusinessPersonReport,
-  MRPDatas,
+  MNIDatas,
   FCMMarketing,
   SystemSettings,
   CategoryDisplaySettings,
@@ -126,7 +126,7 @@ const {
 const {
   UserDashboardPage,
   UserEditProfilePage,
-  UserMRPPage,
+  UserMNIPage,
   UserMarketingMaterialsPage,
   UserFavoritesPage,
   UserCustomerServicePage,
@@ -270,7 +270,7 @@ function AppRoutes({
           <Route path="/user_edit-user-profile" element={<UserEditProfilePage mode="user" />} />
           <Route
             path="/user_mni"
-            element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMRPPage /> : <Navigate to="/user_dashboard" replace />}
+            element={isBusinessPeopleUser(getStoredCustomerUser()) ? <UserMNIPage /> : <Navigate to="/user_dashboard" replace />}
           />
           <Route
             path="/user_marketing-materials"
@@ -367,7 +367,7 @@ function AppRoutes({
                 <Route path="event-advertisement" element={<EventAdvertisement />} />
                 <Route path="event-creation" element={<EventCreation />} />
                 <Route path="massclick-events" element={<MassclickEvent />} />
-                <Route path="mni-data" element={<MRPDatas />} />
+                <Route path="mni-data" element={<MNIDatas />} />
                 <Route path="terms-conditions-data" element={<TermsAndConditionsDatas />} />
                 <Route path="legal-documents" element={<LegalDocuments />} />
                 <Route path="hiring" element={<HiringAdmin />} />

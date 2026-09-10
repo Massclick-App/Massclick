@@ -1,5 +1,5 @@
 import { BadgeCheck, Ban, BriefcaseBusiness, Building2, Eye, MapPin, Network, RefreshCw, Tags, Target, TrendingUp, UserRoundCheck, Users } from "lucide-react";
-import styles from "features/public/mrp/components/groupCreationContent.module.css";
+import styles from "features/public/mni/components/groupCreationContent.module.css";
 
 const Flow = ({ name, group }) => <div className={styles.flow}><b>{name}</b><span><MapPin />Trichy</span><i>+</i><span><Tags />Restaurant</span><em>→</em><strong>{group}</strong></div>;
 

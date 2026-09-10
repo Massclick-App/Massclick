@@ -1,18 +1,18 @@
 import {
-  FETCH_MRP_REQUEST, FETCH_MRP_SUCCESS, FETCH_MRP_FAILURE,
-  CREATE_MRP_REQUEST, CREATE_MRP_SUCCESS, CREATE_MRP_FAILURE,
-  EDIT_MRP_REQUEST, EDIT_MRP_SUCCESS, EDIT_MRP_FAILURE,
-  DELETE_MRP_REQUEST, DELETE_MRP_SUCCESS, DELETE_MRP_FAILURE,
-  SEARCH_MRP_BUSINESS_REQUEST, SEARCH_MRP_BUSINESS_SUCCESS, SEARCH_MRP_BUSINESS_FAILURE,
-  SEARCH_MRP_CATEGORY_REQUEST, SEARCH_MRP_CATEGORY_SUCCESS, SEARCH_MRP_CATEGORY_FAILURE,
-  SEND_MRP_LEADS_REQUEST, SEND_MRP_LEADS_SUCCESS, SEND_MRP_LEADS_FAILURE,
+  FETCH_MNI_REQUEST, FETCH_MNI_SUCCESS, FETCH_MNI_FAILURE,
+  CREATE_MNI_REQUEST, CREATE_MNI_SUCCESS, CREATE_MNI_FAILURE,
+  EDIT_MNI_REQUEST, EDIT_MNI_SUCCESS, EDIT_MNI_FAILURE,
+  DELETE_MNI_REQUEST, DELETE_MNI_SUCCESS, DELETE_MNI_FAILURE,
+  SEARCH_MNI_BUSINESS_REQUEST, SEARCH_MNI_BUSINESS_SUCCESS, SEARCH_MNI_BUSINESS_FAILURE,
+  SEARCH_MNI_CATEGORY_REQUEST, SEARCH_MNI_CATEGORY_SUCCESS, SEARCH_MNI_CATEGORY_FAILURE,
+  SEND_MNI_LEADS_REQUEST, SEND_MNI_LEADS_SUCCESS, SEND_MNI_LEADS_FAILURE,
   FETCH_MNI_LEADS_REQUEST, FETCH_MNI_LEADS_SUCCESS, FETCH_MNI_LEADS_FAILURE,
   FETCH_BUSINESS_PROFILE_BY_PHONE_REQUEST, FETCH_BUSINESS_PROFILE_BY_PHONE_SUCCESS, FETCH_BUSINESS_PROFILE_BY_PHONE_FAILURE,
   FETCH_LEAD_REPORT_REQUEST, FETCH_LEAD_REPORT_SUCCESS, FETCH_LEAD_REPORT_FAILURE
 } from 'state/actions/userActionTypes.js';
 
 const initialState = {
-  mrpList: [],
+  mniList: [],
   total: 0,
   pageNo: 1,
   pageSize: 10,
@@ -37,62 +37,62 @@ const initialState = {
   businessProfileError: null
 };
 
-export default function mrpReducer(state = initialState, action) {
+export default function mniReducer(state = initialState, action) {
   switch (action.type) {
 
     /* ===============================
-       MRP CRUD
+       MNI CRUD
     ============================== */
 
-    case FETCH_MRP_REQUEST:
-    case CREATE_MRP_REQUEST:
-    case EDIT_MRP_REQUEST:
-    case DELETE_MRP_REQUEST:
+    case FETCH_MNI_REQUEST:
+    case CREATE_MNI_REQUEST:
+    case EDIT_MNI_REQUEST:
+    case DELETE_MNI_REQUEST:
       return {
         ...state,
         loading: true,
         error: null
       };
 
-    case FETCH_MRP_SUCCESS:
+    case FETCH_MNI_SUCCESS:
       return {
         ...state,
         loading: false,
-        mrpList: action.payload.data,
+        mniList: action.payload.data,
         total: action.payload.total,
         pageNo: action.payload.pageNo,
         pageSize: action.payload.pageSize
       };
 
-    case CREATE_MRP_SUCCESS:
+    case CREATE_MNI_SUCCESS:
       return {
         ...state,
         loading: false,
-        mrpList: [action.payload, ...state.mrpList]
+        mniList: [action.payload, ...state.mniList]
       };
 
-    case EDIT_MRP_SUCCESS:
+    case EDIT_MNI_SUCCESS:
       return {
         ...state,
         loading: false,
-        mrpList: state.mrpList.map(item =>
+        mniList: state.mniList.map(item =>
           item._id === action.payload._id ? action.payload : item
         )
       };
 
-    case DELETE_MRP_SUCCESS:
+    case DELETE_MNI_SUCCESS:
       return {
         ...state,
         loading: false,
-        mrpList: state.mrpList.filter(
+        mniList: state.mniList.filter(
           item => item._id !== action.payload._id
         )
       };
 
-    case FETCH_MRP_FAILURE:
-    case CREATE_MRP_FAILURE:
-    case EDIT_MRP_FAILURE:
-    case DELETE_MRP_FAILURE:
+    case FETCH_MNI_FAILURE:
+    case CREATE_MNI_FAILURE:
+    case EDIT_MNI_FAILURE:
+    case DELETE_MNI_FAILURE:
       return {
         ...state,
         loading: false,
@@ -103,30 +103,30 @@ export default function mrpReducer(state = initialState, action) {
        SEARCH
     ============================== */
 
-    case SEARCH_MRP_BUSINESS_REQUEST:
-    case SEARCH_MRP_CATEGORY_REQUEST:
+    case SEARCH_MNI_BUSINESS_REQUEST:
+    case SEARCH_MNI_CATEGORY_REQUEST:
       return {
         ...state,
         loading: true,
         error: null
       };
 
-    case SEARCH_MRP_BUSINESS_SUCCESS:
+    case SEARCH_MNI_BUSINESS_SUCCESS:
       return {
         ...state,
         loading: false,
         businessSearchResults: action.payload
       };
 
-    case SEARCH_MRP_CATEGORY_SUCCESS:
+    case SEARCH_MNI_CATEGORY_SUCCESS:
       return {
         ...state,
         loading: false,
         categorySearchResults: action.payload
       };
 
-    case SEARCH_MRP_BUSINESS_FAILURE:
-    case SEARCH_MRP_CATEGORY_FAILURE:
+    case SEARCH_MNI_BUSINESS_FAILURE:
+    case SEARCH_MNI_CATEGORY_FAILURE:
       return {
         ...state,
         loading: false,
@@ -137,20 +137,20 @@ export default function mrpReducer(state = initialState, action) {
        SEND LEADS
     ============================== */
 
-    case SEND_MRP_LEADS_REQUEST:
+    case SEND_MNI_LEADS_REQUEST:
       return {
         ...state,
         leadSending: true,
         error: null
       };
 
-    case SEND_MRP_LEADS_SUCCESS:
+    case SEND_MNI_LEADS_SUCCESS:
       return {
         ...state,
         leadSending: false
       };
 
-    case SEND_MRP_LEADS_FAILURE:
+    case SEND_MNI_LEADS_FAILURE:
       return {
         ...state,
         leadSending: false,

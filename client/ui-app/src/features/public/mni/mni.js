@@ -3,13 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSnackbar } from "shared/components/snackbar/SnackbarProvider.js";
 import { Activity, ArrowRight, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, ChevronDown, ClipboardList, Eye, Filter, Grid2X2, Layers3, MapPin, MessageCircle, MessageSquare, Phone, Plus, Search, Star, Target, Users, X } from "lucide-react";
 import StickySearchBar from "features/public/sticky-search-bar/StickySearchBar.js";
-import { createMRP, getAllMRP, getBusinessProfileByPhone, getLeadReport, sendMrpLeads } from "state/actions/mrpAction.js";
+import { createMNI, getAllMNI, getBusinessProfileByPhone, getLeadReport, sendMniLeads } from "state/actions/mniAction.js";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
-import styles from "features/public/mrp/mrp.module.css";
-import DynamicInfoModal from "features/public/mrp/components/DynamicInfoModal.js";
-import DynamicTooltip from "features/public/mrp/components/DynamicTooltip.js";
-import GroupCreationContent from "features/public/mrp/components/GroupCreationContent.js";
-import VerifiedNetworkContent from "features/public/mrp/components/VerifiedNetworkContent.js";
+import styles from "features/public/mni/mni.module.css";
+import DynamicInfoModal from "features/public/mni/components/DynamicInfoModal.js";
+import DynamicTooltip from "features/public/mni/components/DynamicTooltip.js";
+import GroupCreationContent from "features/public/mni/components/GroupCreationContent.js";
+import VerifiedNetworkContent from "features/public/mni/components/VerifiedNetworkContent.js";
 import { ASSET_BASE_URL } from "shared/utils/imageUrlHelper.js";
 
 const cx = createScopedClassNames(styles);
@@ -55,7 +55,7 @@ function Illustration() {
 function RequirementModal({ open, close, user, profile, groupCategories = [], groupName }) {
   const dispatch = useDispatch();
   const { enqueueSnackbar } = useSnackbar();
-  const { loading } = useSelector((state) => state.mrp || {});
+  const { loading } = useSelector((state) => state.mni || {});
   const [form, setForm] = useState({
     organizationId: "",
     categoryId: "",
@@ -77,9 +77,9 @@ function RequirementModal({ open, close, user, profile, groupCategories = [], gr
   const submit = async (e) => {
     e.preventDefault();
     try {
-      const created = await dispatch(createMRP(form));
-      if (created?._id) await dispatch(sendMrpLeads(created._id));
-      dispatch(getAllMRP({ pageSize: 100 }));
+      const created = await dispatch(createMNI(form));
+      if (created?._id) await dispatch(sendMniLeads(created._id));
+      dispatch(getAllMNI({ pageSize: 100 }));
       enqueueSnackbar("Requirement published successfully", {
         variant: "success",
       });
@@ -97,7 +97,7 @@ function RequirementModal({ open, close, user, profile, groupCategories = [], gr
         <header className={cx("requirement-modal-header")}><span className={cx("modal-icon")}><ClipboardList /></span><div><small>MNI Network Request</small><h2>Publish New Requirement</h2><p>Reach verified businesses with one clear request.</p></div><button type="button" className={cx("modal-close")} onClick={close} aria-label="Close publish requirement"><X size={19} /></button></header>
         <div className={cx("requirement-progress")}><div className={cx("active")}><b>1</b><span>Requirement</span></div><i/><div><b>2</b><span>Network match</span></div><i/><div><b>3</b><span>Publish</span></div></div>
         <div className={cx("requirement-form-body")}>
-        {!form.organizationId && <div className={cx("mrp-error")}>Your account is not linked to a business profile.</div>}
+        {!form.organizationId && <div className={cx("mni-error")}>Your account is not linked to a business profile.</div>}
         <div className={cx("requirement-form-grid")}>
         <label className={cx("modal-category requirement-field")}><span><Layers3/>Group service category <em>{groupCategories.length} in Group {groupName}</em></span><div className={cx("requirement-input requirement-select")}><Layers3/><select value={form.categoryId} onChange={event => setForm(v => ({ ...v, categoryId:event.target.value }))} required><option value="">Choose from {groupCategories.length} group categories</option>{groupCategories.map(category => <option key={category} value={category}>{category}</option>)}</select><ChevronDown/></div><small>Only categories represented by verified businesses in your MNI group are available.</small>
         </label>
@@ -624,9 +624,9 @@ function AllBusinessesModal({ open, close, businesses, loading, viewBusiness }) 
   );
 }
 
-export default function MRPPage() {
+export default function MNIPage() {
   const dispatch = useDispatch();
-  const { businessProfile, mrpList = [], total = 0, leadReport, loading, businessProfileLoading, leadReportLoading } = useSelector((state) => state.mrp || {});
+  const { businessProfile, mniList = [], total = 0, leadReport, loading, businessProfileLoading, leadReportLoading } = useSelector((state) => state.mni || {});
   const [modal, setModal] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -645,7 +645,7 @@ export default function MRPPage() {
     }
   }, []);
   useEffect(() => {
-    dispatch(getAllMRP({ pageSize: 100 }));
+    dispatch(getAllMNI({ pageSize: 100 }));
     const phone = localStorage.getItem("mobileNumber") || user?.mobileNumber1 || user?.mobileNumber;
     if (phone) dispatch(getBusinessProfileByPhone(phone)).catch(() => {});
   }, [dispatch, user]);
@@ -678,7 +678,7 @@ export default function MRPPage() {
       icon: ClipboardList,
       label: "Total Requirements",
       value: total,
-      detail: `${mrpList.filter((x) => x?.isActive !== false).length} active`,
+      detail: `${mniList.filter((x) => x?.isActive !== false).length} active`,
       color: "blue",
     },
     {
@@ -712,15 +712,15 @@ export default function MRPPage() {
   ];
   const categoryCounts = useMemo(() => {
     const counts = {};
-    [...mrpList, ...sentLeads].forEach((item) => {
+    [...mniList, ...sentLeads].forEach((item) => {
       const name = item?.categoryId || item?.leadCategory || item?.category || "Other";
       counts[name] = (counts[name] || 0) + 1;
     });
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
-  }, [mrpList, sentLeads]);
-  const categoryRecords = useMemo(() => selectedCategory ? [...mrpList, ...sentLeads].filter(item => String(item?.categoryId || item?.leadCategory || item?.category || "Other").toLowerCase() === selectedCategory.toLowerCase()) : [], [selectedCategory, mrpList, sentLeads]);
+  }, [mniList, sentLeads]);
+  const categoryRecords = useMemo(() => selectedCategory ? [...mniList, ...sentLeads].filter(item => String(item?.categoryId || item?.leadCategory || item?.category || "Other").toLowerCase() === selectedCategory.toLowerCase()) : [], [selectedCategory, mniList, sentLeads]);
   const categories = useMemo(() => [...new Set(reportBusinesses.map((x) => x?.senderCategory).filter(Boolean))], [reportBusinesses]);
   const locations = useMemo(() => [...new Set(reportBusinesses.map((x) => x?.senderLocation).filter(Boolean))], [reportBusinesses]);
   const businesses = useMemo(
@@ -738,13 +738,13 @@ export default function MRPPage() {
     start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
     const counts = Array(7).fill(0);
-    mrpList.forEach((item) => {
+    mniList.forEach((item) => {
       const date = dateOf(item);
       const index = Math.floor((date - start) / 86400000);
       if (index >= 0 && index < 7) counts[index] += 1;
     });
     return counts;
-  }, [mrpList]);
+  }, [mniList]);
   const maxTrend = Math.max(...weeklyCounts, 1);
   const trendPoints = weeklyCounts.map((count, index) => `${8 + index * 49.3},${112 - (count / maxTrend) * 85}`).join(" ");
   const firstName = (user.fullName || user.name || user.firstName || "Member").split(" ")[0];
@@ -1129,7 +1129,7 @@ export default function MRPPage() {
         </div>
       </main>
       <RequirementModal open={modal} close={() => setModal(false)} user={user} profile={businessProfile} groupCategories={categories} groupName={groupName} />
-      <MetricDetailsModal metric={selectedMetric} close={() => setSelectedMetric(null)} requirements={mrpList} leads={sentLeads} businesses={reportBusinesses} profile={businessProfile} openBusinesses={() => setShowAllBusinesses(true)} />
+      <MetricDetailsModal metric={selectedMetric} close={() => setSelectedMetric(null)} requirements={mniList} leads={sentLeads} businesses={reportBusinesses} profile={businessProfile} openBusinesses={() => setShowAllBusinesses(true)} />
       <DynamicInfoModal open={Boolean(selectedCategory)} onClose={() => setSelectedCategory("")} icon={Layers3} tone="purple" eyebrow="Category-specific results" title={`${selectedCategory} responses`} description={`Every available ${selectedCategory} requirement and lead is listed below with its related business and activity details.`} value={categoryRecords.length} valueLabel={`Total ${selectedCategory} results`} status="Live category data" stats={[{label:"Businesses",value:new Set(categoryRecords.map(item => item?.senderBusinessName || item?.receiverBusinessName || item?.businessName).filter(Boolean)).size},{label:"Active records",value:categoryRecords.filter(item => item?.isActive !== false).length},{label:"Locations",value:new Set(categoryRecords.map(item => item?.location || item?.senderLocation || item?.receiverLocation).filter(Boolean)).size}]} items={categoryRecords.map((item,index) => ({ title:item?.senderBusinessName || item?.receiverBusinessName || item?.businessName || item?.organizationName || `Result ${index+1}`, subtitle:[item?.leadCategory || item?.category || selectedCategory,item?.senderLocation || item?.receiverLocation || item?.location].filter(Boolean).join(" · "), value:relativeTime(dateOf(item)) }))} />
       <NetworkGuideModal type={networkGuide} close={() => setNetworkGuide(null)} groupName={groupName} businessCount={activeBusinesses} />
       <AllBusinessesModal open={showAllBusinesses} close={() => setShowAllBusinesses(false)} businesses={reportBusinesses} loading={leadReportLoading} viewBusiness={setSelectedBusiness} />
