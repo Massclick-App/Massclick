@@ -10,6 +10,7 @@ import {
 import { getSeoBlogMetaBySlug } from "../helper/seo/seoOnpageBlogHelper.js";
 import { getSeoPageContentMetaService } from "../helper/seo/seoPageContentHelper.js";
 import { findBusinessesByCategory } from "../helper/businessList/businessListHelper.js";
+import { buildBusinessSeoMeta, findBusinessForSeo } from "../helper/businessList/businessSeoMeta.js";
 import {
   getBusinessUrlSlug,
   buildBusinessPath as buildCanonicalBusinessPath,
@@ -457,6 +458,7 @@ export async function ssrMiddleware(req, res) {
     let isCategoryPage = false;
     let isBlogPage = false;
     let categoryRoute = null;
+    let businessDoc = null;
 
     let fallbackTitle = "Massclick - Local Business Search Platform";
     let fallbackDescription = "Find trusted local businesses, services, and professionals near you on Massclick.";
@@ -503,6 +505,19 @@ export async function ssrMiddleware(req, res) {
       fallbackTitle = pg.title;
       fallbackDescription = pg.description;
       fallbackKeywords = pg.keywords;
+
+    } else if (firstSegment === "business" && parts.length === 3) {
+      // Business detail page (/business/:district/:slug-:publicId). "business"
+      // stays in SKIP_SEO_ROUTES so the category router never sees it; its
+      // meta is resolved here instead of falling through to the site default.
+      businessDoc = await findBusinessForSeo(parts[2]).catch(() => null);
+      if (businessDoc) {
+        const businessPath = buildCanonicalBusinessPath({ districtSlug: secondSegment, business: businessDoc });
+        seo = {
+          ...buildBusinessSeoMeta({ business: businessDoc, districtLabel: titleCase(slugToText(secondSegment)) }),
+          ...(businessPath ? { canonical: `https://massclick.in${businessPath}` } : {}),
+        };
+      }
 
     } else if (!SKIP_SEO_ROUTES.has(firstSegment) && secondSegment) {
       categoryRoute = await resolveCategoryRouteContext(parts);
@@ -608,7 +623,9 @@ export async function ssrMiddleware(req, res) {
         ? isLocationLandingPage
           ? `Local Businesses in ${locationName}`
           : `${categoryName} in ${locationName}`
-        : (seo?.title || fallbackTitle);
+        : businessDoc
+          ? (businessDoc.businessName || seo?.title || fallbackTitle)
+          : (seo?.title || fallbackTitle);
 
     const breadcrumbCrumbs = isBlogPage
       ? buildBlogCrumbs({ title: blogDoc?.heading || h1 })
