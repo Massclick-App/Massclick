@@ -18,7 +18,7 @@ and protected from look-alike categories. Route: `/dashboard/paid-category-seo`.
 
 ## Checklist
 
-- [x] Phase 0 — Data fix: 5 `geoglist` businesses → `geologist` (dev done 2026-09-10; prod pending)
+- [x] Phase 0 — Data fix: 5 `geoglist` businesses → `geologist` (dev + prod done 2026-09-10)
 - [x] Phase 1 — Schema: `categories.seoProtectedTerms: [String]`
 - [x] Phase 2 — Server helper `helper/seo/paidSeoConsoleHelper.js` (overview, detail, gaps, conflicts, upsert row, business SEO, protected terms, cache purge)
 - [x] Phase 3 — Controller `controller/seo/paidSeoConsoleController.js` + routes in `seoRoutes.js` (all `oauthAuthentication`)
