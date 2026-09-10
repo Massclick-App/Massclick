@@ -48,6 +48,7 @@ import FolderCopyIcon from "@mui/icons-material/FolderCopyOutlined";
 import DynamicFeedIcon from "@mui/icons-material/DynamicFeedOutlined";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
+import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import { fetchChatUnreadCount, getAdminChatToken } from "shared/services/chatService.js";
 import { connectSocket } from "shared/services/socketService.js";
 import { getAuthSnapshot } from "app/auth/authStore.js";
@@ -82,6 +83,7 @@ const MENU_SECTIONS = [
       { text: "Pages", icon: ArticleIcon, path: "/dashboard/seopagecontent" },
       { text: "Blogs", icon: NewspaperIcon, path: "/dashboard/seopagecontentblogs" },
       { text: "SEO Templates", icon: ArticleIcon, path: "/dashboard/seotemplates" },
+      { text: "Paid SEO", icon: WorkspacePremiumIcon, path: "/dashboard/paid-category-seo" },
       { text: "Authors", icon: CategoryIcon, path: "/dashboard/authors" },
     ],
   },

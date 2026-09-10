@@ -1,0 +1,540 @@
+/* ===========================
+   Paid Category SEO console (orange admin theme, matches Location Coverage)
+   Owns only .paid-seo-* classes — no parent/child targeting of other components.
+   =========================== */
+
+.paid-seo-page {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+  background-color: #f8f9fb;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.paid-seo-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 4px 16px;
+}
+
+.paid-seo-page-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.paid-seo-page-subtitle {
+  max-width: 680px;
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+/* ---------- KPI tiles ---------- */
+
+.paid-seo-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.paid-seo-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background-color: #fff;
+}
+
+.paid-seo-kpi-label {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.paid-seo-kpi-value {
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.paid-seo-kpi-hint {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.paid-seo-tone-green { color: #15803d; }
+.paid-seo-tone-amber { color: #b45309; }
+.paid-seo-tone-red { color: #b91c1c; }
+.paid-seo-tone-neutral { color: #0f172a; }
+
+/* ---------- card + tabs ---------- */
+
+.paid-seo-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background-color: #fff;
+}
+
+.paid-seo-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid #eef0f3;
+  scrollbar-width: none;
+}
+
+.paid-seo-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background-color: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.paid-seo-tab:hover { color: #0f172a; }
+
+.paid-seo-tab-active {
+  border-bottom-color: #ff8c00;
+  color: #b45309;
+}
+
+.paid-seo-tab-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background-color: #f1f5f9;
+  color: #475569;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.paid-seo-card-body { padding: 16px 18px; }
+
+.paid-seo-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 360px;
+  margin-bottom: 12px;
+  padding: 0 10px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
+  color: #94a3b8;
+}
+
+.paid-seo-search-input {
+  flex: 1;
+  min-height: 34px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 0.85rem;
+}
+
+/* ---------- tables ---------- */
+
+.paid-seo-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.paid-seo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.paid-seo-table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.paid-seo-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: top;
+}
+
+.paid-seo-row-click { cursor: pointer; }
+.paid-seo-row-click:hover { background-color: #fff7ed; }
+
+.paid-seo-cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.paid-seo-strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.paid-seo-conflict-text {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+
+.paid-seo-muted {
+  margin: 4px 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.paid-seo-empty {
+  margin: 16px 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.paid-seo-error {
+  margin: 8px 0 16px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background-color: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.paid-seo-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.paid-seo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #c2410c;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.paid-seo-link:hover { text-decoration: underline; }
+
+/* ---------- chips ---------- */
+
+.paid-seo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 4px 2px 0;
+  padding: 2px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.paid-seo-chip-green { border-color: #bbf7d0; background-color: #f0fdf4; color: #15803d; }
+.paid-seo-chip-amber { border-color: #fde68a; background-color: #fffbeb; color: #b45309; }
+.paid-seo-chip-red { border-color: #fecaca; background-color: #fef2f2; color: #b91c1c; }
+.paid-seo-chip-blue { border-color: #bfdbfe; background-color: #eff6ff; color: #1d4ed8; }
+.paid-seo-chip-neutral { border-color: #e2e8f0; background-color: #f8fafc; color: #475569; }
+
+.paid-seo-chip-remove {
+  padding: 0 0 0 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ---------- coverage bar ---------- */
+
+.paid-seo-coverage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.paid-seo-coverage-track {
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: #eef0f3;
+}
+
+.paid-seo-coverage-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.paid-seo-fill-green { background-color: #22c55e; }
+.paid-seo-fill-amber { background-color: #f59e0b; }
+.paid-seo-fill-red { background-color: #ef4444; }
+.paid-seo-fill-neutral { background-color: #94a3b8; }
+
+.paid-seo-coverage-value {
+  min-width: 38px;
+  color: #0f172a;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ---------- buttons ---------- */
+
+.paid-seo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
+  background-color: #fff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.paid-seo-button:hover:not(:disabled) {
+  border-color: #ff8c00;
+  color: #b45309;
+}
+
+.paid-seo-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.paid-seo-button-primary {
+  border-color: #f97316;
+  background-color: #f97316;
+  color: #fff;
+}
+
+.paid-seo-button-primary:hover:not(:disabled) {
+  border-color: #ea580c;
+  background-color: #ea580c;
+  color: #fff;
+}
+
+.paid-seo-button-small {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+}
+
+/* ---------- dialogs ---------- */
+
+.paid-seo-dialog-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.paid-seo-dialog-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paid-seo-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paid-seo-section { margin-top: 12px; }
+
+.paid-seo-section-title {
+  margin: 0 0 10px;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.paid-seo-slot {
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #22c55e;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.paid-seo-slot-warn { border-left-color: #f59e0b; }
+
+.paid-seo-slot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.paid-seo-spacer { flex: 1 1 auto; }
+
+.paid-seo-snippet {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.paid-seo-snippet-title {
+  color: #1a0dab;
+  font-size: 0.95rem;
+}
+
+.paid-seo-snippet-desc {
+  color: #4d5156;
+  font-size: 0.8rem;
+}
+
+.paid-seo-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 4px 0;
+}
+
+.paid-seo-issues {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: #b45309;
+  font-size: 0.8rem;
+}
+
+.paid-seo-terms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paid-seo-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- editor form ---------- */
+
+.paid-seo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.paid-seo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paid-seo-field-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.paid-seo-input,
+.paid-seo-textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
+  outline: 0;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.86rem;
+  box-sizing: border-box;
+}
+
+.paid-seo-input:focus,
+.paid-seo-textarea:focus { border-color: #f97316; }
+
+.paid-seo-textarea { resize: vertical; }
+
+.paid-seo-input-term { max-width: 260px; }
+
+.paid-seo-counter {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.paid-seo-counter-green { color: #15803d; }
+.paid-seo-counter-amber { color: #b45309; }
+.paid-seo-counter-neutral { color: #94a3b8; }
+
+.paid-seo-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.paid-seo-preview-url {
+  color: #202124;
+  font-size: 0.75rem;
+}
+
+.paid-seo-preview-title {
+  color: #1a0dab;
+  font-size: 1.05rem;
+}
+
+.paid-seo-preview-desc {
+  color: #4d5156;
+  font-size: 0.82rem;
+}
+
+.paid-seo-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
