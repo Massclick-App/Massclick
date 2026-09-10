@@ -7,6 +7,11 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   IconButton,
   List,
@@ -19,6 +24,9 @@ import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import BusinessCenterRoundedIcon from "@mui/icons-material/BusinessCenterRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { fetchDeletedNotifications, softDeleteNotification } from "shared/services/notificationService.js";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
@@ -41,7 +49,6 @@ import { getSearchRequests } from "state/actions/searchRequestAction.js";
 import { fetchRewardClaims } from "shared/services/rewardService.js";
 import {
   fetchChatConversations,
-  fetchChatUnreadCount,
   markChatRead,
 } from "shared/services/chatService.js";
 
@@ -129,7 +136,12 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
   const [activeFilter, setActiveFilter] = useState("all");
   const [expandedId, setExpandedId] = useState(null);
   const [chatConversations, setChatConversations] = useState([]);
-  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [deletedIds, setDeletedIds] = useState(new Set());
+  const [deletingId, setDeletingId] = useState(null);
+  const [notificationToDelete, setNotificationToDelete] = useState(null);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
+  const [preferencesError, setPreferencesError] = useState(false);
+  const [toastSeverity, setToastSeverity] = useState("success");
   const [chatLoading, setChatLoading] = useState(false);
   const [loadingId, setLoadingId] = useState(null);
   const [toastOpen, setToastOpen] = useState(false);
@@ -159,11 +171,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
   const loadChatNotifications = useCallback(async () => {
     setChatLoading(true);
     try {
-      const [unread, conversations] = await Promise.all([
-        fetchChatUnreadCount().catch(() => ({ admin: 0 })),
-        fetchChatConversations({ status: "open", pageSize: 20 }).catch(() => ({ data: [] })),
-      ]);
-      setChatUnreadCount(unread?.admin || 0);
+      const conversations = await fetchChatConversations({ status: "open", pageSize: 20 }).catch(() => ({ data: [] }));
       setChatConversations(
         (conversations?.data || []).filter((conversation) => Number(conversation.unreadForAdmin || 0) > 0)
       );
@@ -184,14 +192,47 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     }
   }, []);
 
+  const loadPreferences = useCallback(async () => {
+    setPreferencesLoading(true);
+    setPreferencesError(false);
+    try {
+      const data = await fetchDeletedNotifications();
+      setDeletedIds(new Set(data.filter((item) => item.isDeleted).map((item) => item.notificationId)));
+    } catch {
+      setPreferencesError(true);
+    } finally {
+      setPreferencesLoading(false);
+    }
+  }, []);
+
+  const handleDelete = async (item) => {
+    if (deletingId) return;
+    setDeletingId(item.id);
+    try {
+      await softDeleteNotification(item.id);
+      setDeletedIds((previous) => new Set([...previous, item.id]));
+      setExpandedId((previous) => previous === item.id ? null : previous);
+      setToastSeverity("success");
+      setToastMessage("Notification deleted.");
+      setNotificationToDelete(null);
+    } catch {
+      setToastSeverity("error");
+      setToastMessage("Unable to delete notification. Please try again.");
+    } finally {
+      setDeletingId(null);
+      setToastOpen(true);
+    }
+  };
+
   const loadNotifications = useCallback(() => {
+    loadPreferences();
     dispatch(getPendingBusinessList());
     dispatch(getAllEnquiry());
     dispatch(getAllEventCreation({ pageNo: 1, pageSize: 25, options: { sortBy: "createdAt", sortOrder: "desc" } }));
     dispatch(getSearchRequests({ page: 1, limit: 100, status: "new" }));
     loadChatNotifications();
     loadRewardClaimNotifications();
-  }, [dispatch, loadChatNotifications, loadRewardClaimNotifications]);
+  }, [dispatch, loadChatNotifications, loadRewardClaimNotifications, loadPreferences]);
 
   useEffect(() => {
     if (open) loadNotifications();
@@ -216,6 +257,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
           businessesLive: true,
         })
       );
+      setToastSeverity("success");
       setToastMessage(`${business.businessName || "Business"} is now live.`);
       setToastOpen(true);
     } finally {
@@ -334,22 +376,23 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
       }));
 
     return [...rewardClaimItems, ...businessItems, ...chatItems, ...eventItems, ...enquiryItems, ...searchRequestItems]
+      .filter((item) => !deletedIds.has(item.id))
       .sort((a, b) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0));
-  }, [chatConversations, enquiries, eventCreation.data, pendingBusinessList, rewardClaims, searchRequests]);
+  }, [chatConversations, enquiries, eventCreation.data, pendingBusinessList, rewardClaims, searchRequests, deletedIds]);
 
   const counts = useMemo(() => ({
     all: notifications.length,
     business: notifications.filter((item) => item.category === "business").length,
-    chat: chatUnreadCount || notifications.filter((item) => item.category === "chat").length,
+    chat: notifications.filter((item) => item.category === "chat").length,
     event: notifications.filter((item) => item.category === "event").length,
     enquiry: notifications.filter((item) => item.category === "enquiry").length,
     searchRequest: notifications.filter((item) => item.category === "searchRequest").length,
     rewardClaim: notifications.filter((item) => item.category === "rewardClaim").length,
-  }), [chatUnreadCount, notifications]);
+  }), [notifications]);
 
   useEffect(() => {
-    onCountChange?.(counts.all);
-  }, [counts.all, onCountChange]);
+    if (!preferencesLoading && !preferencesError) onCountChange?.(counts.all);
+  }, [counts.all, onCountChange, preferencesLoading, preferencesError]);
 
   const filteredNotifications = activeFilter === "all"
     ? notifications
@@ -368,7 +411,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
     }, [])
   ), [filteredNotifications]);
 
-  const isLoading = pendingBusinessLoading || enquiryLoading || eventCreation.loading || chatLoading || searchRequestLoading || rewardClaimsLoading;
+  const isLoading = preferencesLoading || pendingBusinessLoading || enquiryLoading || eventCreation.loading || chatLoading || searchRequestLoading || rewardClaimsLoading;
 
   const runPrimaryAction = async (item) => {
     if (item.category === "business") return handleMakeLive(item.raw);
@@ -434,6 +477,7 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
             <Stack direction="row" gap={0.5}>
               <IconButton
                 onClick={loadNotifications}
+                disabled={Boolean(deletingId)}
                 aria-label="Refresh notifications"
                 sx={{ border: "1px solid #e4e8f1", borderRadius: 2, color: BRAND_NAVY }}
               >
@@ -496,6 +540,8 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
           <Box sx={{ py: 7, display: "flex", justifyContent: "center" }}>
             <CircularProgress sx={{ color: "#f97316" }} />
           </Box>
+        ) : preferencesError ? (
+          <Alert severity="error" sx={{ m: 2 }} action={<Button onClick={loadPreferences}>Retry</Button>}>Unable to load notifications.</Alert>
         ) : (
           <List
             disablePadding
@@ -552,12 +598,14 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
 
                     return (
                       <Box key={item.id} sx={{ bgcolor: "#ffffff", px: isSearchRequest ? 1 : 0, py: isSearchRequest ? 0.6 : 0 }}>
+                        <Box sx={{ position: "relative" }}>
                         <ListItemButton
                           onClick={() => setExpandedId(expanded ? null : item.id)}
                           sx={{
                             alignItems: "flex-start",
                             gap: { xs: 1, sm: 1.35 },
                             px: { xs: 1.25, sm: 2 },
+                            pr: { xs: 10, sm: 11 },
                             py: 1.35,
                             borderLeft: `3px solid ${expanded || item.unread || isSearchRequest ? BRAND_ORANGE : "transparent"}`,
                             borderRadius: isSearchRequest ? "12px 12px 0 0" : 0,
@@ -602,6 +650,15 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
                             />
                           </Box>
                         </ListItemButton>
+                        <Stack direction="row" sx={{ position: "absolute", right: 8, top: 12 }}>
+                          <IconButton size="small" title="View notification" aria-label={`View notification from ${item.title}`} aria-expanded={expanded} onClick={() => setExpandedId(expanded ? null : item.id)} sx={{ color: BRAND_NAVY }}>
+                            <VisibilityRoundedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" title="Delete notification" aria-label={`Delete notification from ${item.title}`} disabled={Boolean(deletingId)} onClick={() => setNotificationToDelete(item)} sx={{ color: "error.main" }}>
+                            {deletingId === item.id ? <CircularProgress size={18} color="inherit" /> : <DeleteOutlineRoundedIcon fontSize="small" />}
+                          </IconButton>
+                        </Stack>
+                        </Box>
 
                         {expanded && (
                           <Box sx={{ px: 2, pb: 1.6, pt: isSearchRequest ? 1.1 : 0, pl: { xs: 2, sm: 8 }, bgcolor: isSearchRequest ? "#fffaf6" : "#fff8f2", border: isSearchRequest ? "1px solid #f3e2d4" : 0, borderTop: 0, borderRadius: isSearchRequest ? "0 0 12px 12px" : 0 }}>
@@ -671,13 +728,41 @@ export default function NotificationDropdown({ open, handleClose, onCountChange 
         )}
       </Box>
 
+      <Dialog
+        open={Boolean(notificationToDelete)}
+        onClose={() => { if (!deletingId) setNotificationToDelete(null); }}
+        aria-labelledby="notification-delete-title"
+        aria-describedby="notification-delete-description"
+        maxWidth="xs"
+        fullWidth
+        sx={{ zIndex: 1400 }}
+      >
+        <DialogTitle id="notification-delete-title">Delete notification?</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="notification-delete-description">
+            Delete the notification for {notificationToDelete?.title}? It will be hidden from your notifications. The original record will be kept.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button autoFocus disabled={Boolean(deletingId)} onClick={() => setNotificationToDelete(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={Boolean(deletingId)}
+            onClick={() => { if (notificationToDelete) handleDelete(notificationToDelete); }}
+          >
+            {deletingId ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={toastOpen}
         autoHideDuration={3000}
         onClose={() => setToastOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={() => setToastOpen(false)} severity="success" sx={{ width: "100%" }}>
+        <Alert onClose={() => setToastOpen(false)} severity={toastSeverity} sx={{ width: "100%" }}>
           {toastMessage}
         </Alert>
       </Snackbar>

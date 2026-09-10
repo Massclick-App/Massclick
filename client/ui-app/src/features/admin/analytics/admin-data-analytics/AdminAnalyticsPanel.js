@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -7,6 +7,7 @@ import {
   Chip,
   Divider,
   FormControl,
+  InputLabel,
   MenuItem,
   LinearProgress,
   Paper,
@@ -16,7 +17,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
 import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
@@ -36,6 +36,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useDispatch } from "react-redux";
+import { getDashboardSummary } from "state/actions/businessListAction.js";
+import { dashboardDateKey, dashboardDayRange, shiftDashboardDay } from "shared/utils/dashboardDates.js";
 import axiosInstance from "shared/services/axiosInstance.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -73,30 +76,29 @@ const compactDate = (value) => {
   });
 };
 
-const toDateInputValue = (date) => date.toISOString().slice(0, 10);
+const toDateInputValue = dashboardDateKey;
 
 const getDateRange = (preset, customFrom, customTo, selectedDay) => {
   if (preset === "all") return {};
   if (preset === "day") {
     if (!selectedDay) return {};
     return {
-      dateFrom: new Date(`${selectedDay}T00:00:00`).toISOString(),
-      dateTo: new Date(`${selectedDay}T23:59:59.999`).toISOString(),
+      dateFrom: dashboardDayRange(selectedDay).dateFrom,
+      dateTo: dashboardDayRange(selectedDay).dateTo,
     };
   }
   if (preset === "custom") {
-    const dateFrom = customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : "";
-    const dateTo = customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : "";
+    const dateFrom = customFrom ? dashboardDayRange(customFrom).dateFrom : "";
+    const dateTo = customTo ? dashboardDayRange(customTo).dateTo : "";
     return { ...(dateFrom ? { dateFrom } : {}), ...(dateTo ? { dateTo } : {}) };
   }
   const dayCount = Number(preset);
   if (!Number.isFinite(dayCount)) return {};
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - (dayCount - 1));
-  start.setHours(0, 0, 0, 0);
-  end.setHours(23, 59, 59, 999);
-  return { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+  const today = dashboardDateKey();
+  return {
+    dateFrom: dashboardDayRange(shiftDashboardDay(today, 1 - dayCount)).dateFrom,
+    dateTo: dashboardDayRange(today).dateTo,
+  };
 };
 
 const isSameFilter = (activeFilter, filter) => {
@@ -124,13 +126,14 @@ const getMonthFilter = (item) => {
 function clickableSx(isActive) {
   return {
     cursor: "pointer",
-    borderColor: isActive ? palette.ink : palette.line,
-    boxShadow: isActive ? "0 12px 24px rgba(23, 32, 51, 0.12)" : "none",
-    transform: isActive ? "translateY(-2px)" : "none",
+    borderColor: isActive ? palette.orange : palette.line,
+    boxShadow: "none",
+    bgcolor: isActive ? "#fff8f1" : "#fff",
+    transform: "none",
     transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
     "&:hover": {
-      transform: "translateY(-3px)",
-      boxShadow: "0 12px 24px rgba(23, 32, 51, 0.10)",
+      transform: "none",
+      boxShadow: "0 3px 12px rgba(23, 32, 51, 0.06)",
     },
     "&:focus-visible": {
       outline: "3px solid rgba(234, 109, 17, 0.28)",
@@ -160,7 +163,9 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress, filter,
         border: `1px solid ${palette.line}`,
         borderRadius: 2,
         p: 2,
-        minHeight: 146,
+        minHeight: 164,
+        minWidth: 0,
+        gap: 1.5,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
@@ -191,7 +196,7 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress, filter,
       </Stack>
 
       <Box>
-        <Typography sx={{ color: palette.ink, fontSize: 31, fontWeight: 800, lineHeight: 1.05 }}>
+        <Typography sx={{ color: palette.ink, fontSize: { xs: 28, md: 34 }, fontWeight: 750, lineHeight: 1.15, letterSpacing: "-0.035em", fontVariantNumeric: "tabular-nums" }}>
           {value}
         </Typography>
         <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.75 }}>
@@ -220,13 +225,14 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress, filter,
 
 function Panel({ title, subtitle, action, children, sx }) {
   return (
-    <Paper
+    <Paper component="section"
       elevation={0}
       sx={{
         border: `1px solid ${palette.line}`,
         borderRadius: 2,
         bgcolor: "#fff",
-        p: 2.25,
+        p: { xs: 2, md: 2.5 },
+        minWidth: 0,
         ...sx,
       }}
     >
@@ -238,7 +244,7 @@ function Panel({ title, subtitle, action, children, sx }) {
         sx={{ mb: 2 }}
       >
         <Box>
-          <Typography sx={{ color: palette.ink, fontSize: 18, fontWeight: 800 }}>
+          <Typography component="h2" sx={{ color: palette.ink, fontSize: 17, fontWeight: 750, letterSpacing: "-0.015em" }}>
             {title}
           </Typography>
           {subtitle && (
@@ -251,6 +257,18 @@ function Panel({ title, subtitle, action, children, sx }) {
       </Stack>
       {children}
     </Paper>
+  );
+}
+
+function SectionHeading({ id, title, subtitle, badge }) {
+  return (
+    <Stack id={id} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mt: 3.5, mb: 1.75, scrollMarginTop: 24 }}>
+      <Box>
+        <Typography component="h2" sx={{ color: palette.ink, fontSize: 20, fontWeight: 750, letterSpacing: "-0.025em" }}>{title}</Typography>
+        <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.5 }}>{subtitle}</Typography>
+      </Box>
+      {badge && <Chip size="small" variant="outlined" label={badge} sx={{ borderColor: palette.line, color: palette.muted, fontSize: 12 }} />}
+    </Stack>
   );
 }
 
@@ -271,8 +289,10 @@ function EmptyState({ label }) {
   );
 }
 
-export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
+export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, businessOverview }) {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const requestId = useRef(0);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -288,7 +308,13 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
     [datePreset, customFrom, customTo, selectedDay],
   );
 
+  const rangeError = datePreset === "custom" && (!customFrom || !customTo || customFrom > customTo)
+    ? "Choose a valid start and end date."
+    : datePreset === "day" && !selectedDay ? "Choose a day to view." : "";
+
   const fetchReport = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    if (rangeError) { setLoading(false); return; }
     setLoading(true);
     setError("");
 
@@ -301,38 +327,48 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           ...dateRange,
         },
       });
-      setReport(response.data?.report || null);
+      if (currentRequest === requestId.current) setReport(response.data?.report || null);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Unable to load analytics report");
+      if (currentRequest === requestId.current) setError(err.response?.data?.message || err.message || "Unable to load analytics report");
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
-  }, [trendDays, trendLocation, creatorId, dateRange]);
+  }, [trendDays, trendLocation, creatorId, dateRange, rangeError]);
 
   useEffect(() => {
     fetchReport();
+    return () => { requestId.current += 1; };
   }, [fetchReport]);
 
   const totals = useMemo(() => report?.totals || {}, [report]);
   const generatedAt = report?.generatedAt ? new Date(report.generatedAt) : null;
 
+  const isFiltered = Boolean(creatorId || datePreset !== "all");
+
+  const handleScopedFilter = (filter) => {
+    if (!filter || loading || error || rangeError) return;
+    onFilterClick?.({
+      ...filter,
+      ...(isFiltered ? { scope: { createdBy: creatorId, createdFrom: dateRange.dateFrom, createdTo: dateRange.dateTo } } : {}),
+      label: `${filter.label}${isFiltered ? ` | ${dateRangeLabel}${creatorId ? " | Selected creator" : ""}` : ""}`,
+    });
+  };
+
   const metricCards = useMemo(() => {
     const liveRate = getPercent(totals.liveBusinesses, totals.businesses);
-    const activeRate = getPercent(totals.activeBusinesses, totals.businesses);
     const phoneReadyRate = getPercent(totals.gmapsWithPhone, totals.gmapsLeads);
 
     return [
       {
-        label: "Total businesses",
+        label: isFiltered ? "Businesses in selection" : "All businesses",
         value: formatNumber(totals.businesses),
-        helper: `${formatNumber(totals.thirtyDayBusinesses)} added in 30 days`,
+        helper: isFiltered ? "Matches the selected dates and creator" : `${formatNumber(totals.thirtyDayBusinesses)} added in the last 30 days`,
         icon: StorefrontRoundedIcon,
         color: palette.orange,
-        progress: activeRate,
         filter: { type: "all", label: "Total Businesses" },
       },
       {
-        label: "Live listings",
+        label: isFiltered ? "Live listings in selection" : "Live listings",
         value: `${liveRate}%`,
         helper: `${formatNumber(totals.liveBusinesses)} live, ${formatNumber(totals.pendingBusinesses)} pending`,
         icon: PublicRoundedIcon,
@@ -341,25 +377,23 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
         filter: { type: "live", label: "Live Listings" },
       },
       {
-        label: "Admin users",
-        value: formatNumber(totals.users),
-        helper: `${formatNumber(totals.activeUsers)} active users`,
-        icon: PersonRoundedIcon,
-        color: palette.blue,
-        progress: getPercent(totals.activeUsers, totals.users),
-        to: "/dashboard/user?status=all",
+        label: isFiltered ? "Payments in selection" : "Successful payments",
+        value: formatNumber(totals.successfulPayments),
+        helper: `${formatCurrency(totals.paymentRevenue)} collected`,
+        icon: PaidRoundedIcon,
+        color: palette.red,
+        filter: { type: "payment", label: "Payment: SUCCESS", value: "SUCCESS" },
       },
       {
-        label: "Enquiries",
+        label: "All enquiries",
         value: formatNumber(totals.enquiries),
         helper: `${formatNumber(totals.enquiriesLast30Days)} received in 30 days`,
         icon: SearchRoundedIcon,
         color: palette.purple,
-        progress: getPercent(totals.enquiriesLast30Days, totals.enquiries),
         to: "/dashboard/enquiry?status=all",
       },
       {
-        label: "GMaps leads",
+        label: "All Google Maps leads",
         value: formatNumber(totals.gmapsLeads),
         helper: `${formatNumber(totals.gmapsWithPhone)} phone-ready leads`,
         icon: MapRoundedIcon,
@@ -367,43 +401,42 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
         progress: phoneReadyRate,
         to: "/dashboard/gmaps-leads",
       },
+
       {
-        label: "Paid conversions",
-        value: formatNumber(totals.successfulPayments),
-        helper: `${formatCurrency(totals.paymentRevenue)} collected`,
-        icon: PaidRoundedIcon,
-        color: palette.red,
-        progress: getPercent(totals.successfulPayments, totals.businesses),
-        filter: { type: "payment", label: "Payment: SUCCESS", value: "SUCCESS" },
+        label: "Admin users",
+        value: formatNumber(totals.users),
+        helper: `${formatNumber(totals.activeUsers)} active · All time`,
+        icon: PersonRoundedIcon,
+        color: palette.blue,
+        progress: getPercent(totals.activeUsers, totals.users),
+        to: "/dashboard/user?status=all",
       },
     ];
-  }, [totals]);
+  }, [totals, isFiltered]);
 
   const handleMonthClick = (item) => {
     const payload = item?.activePayload?.[0]?.payload || item?.payload || item;
     const filter = getMonthFilter(payload);
-    if (filter) onFilterClick?.(filter);
+    if (filter) handleScopedFilter(filter);
   };
 
   const handleDayClick = (item) => {
     const payload = item?.activePayload?.[0]?.payload || item?.payload || item;
     if (!payload?.date) return;
-    const start = new Date(payload.date);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    end.setMilliseconds(end.getMilliseconds() - 1);
+    const dayRange = dashboardDayRange(payload.key || dashboardDateKey(payload.date));
+    const start = new Date(dayRange.dateFrom);
     const selectedDateLabel = start.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
+      timeZone: "Asia/Kolkata",
     });
-    onFilterClick?.({
+    handleScopedFilter({
       type: "dayLocation",
       label: `${selectedDateLabel} | ${trendLocation || "All places"} | 12:00 am-11:59 pm`,
       location: trendLocation,
-      createdFrom: start.toISOString(),
-      createdTo: end.toISOString(),
+      createdFrom: dayRange.dateFrom,
+      createdTo: dayRange.dateTo,
     });
   };
 
@@ -433,94 +466,14 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
       ? "Custom date range"
       : `Last ${datePreset} days`;
 
-  if (loading && !report) {
-    return (
-      <Box sx={{ width: "100%" }}>
-        <Skeleton variant="rectangular" height={178} sx={{ borderRadius: 2, mb: 2 }} />
-        <Skeleton variant="rectangular" height={360} sx={{ borderRadius: 2 }} />
-      </Box>
-    );
-  }
-
   return (
     <Box sx={{ width: "100%" }}>
-      <Paper
-        elevation={0}
-        sx={{
-          border: `1px solid ${palette.line}`,
-          borderRadius: 2,
-          p: { xs: 2, md: 2.5 },
-          mb: 2,
-          bgcolor: "#fff",
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", md: "center" }}
-          spacing={2}
-        >
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box
-              sx={{
-                width: 46,
-                height: 46,
-                borderRadius: 1.5,
-                display: "grid",
-                placeItems: "center",
-                bgcolor: "#fff3e8",
-                color: palette.orange,
-              }}
-            >
-              <AnalyticsRoundedIcon />
-            </Box>
-            <Box>
-              <Typography sx={{ color: palette.ink, fontSize: { xs: 24, md: 30 }, fontWeight: 850, lineHeight: 1.1 }}>
-                Admin analytics
-              </Typography>
-              <Typography sx={{ color: palette.muted, fontSize: 14, mt: 0.5 }}>
-                DB report across listings, leads, searches, users, and payments.
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            {generatedAt && (
-              <Chip
-                size="small"
-                label={`Updated ${generatedAt.toLocaleString("en-IN")}`}
-                sx={{ fontWeight: 700, bgcolor: "#f5f7fb", color: palette.muted }}
-              />
-            )}
-            <Button
-              variant="outlined"
-              startIcon={<RefreshRoundedIcon />}
-              onClick={fetchReport}
-              disabled={loading}
-              sx={{
-                borderColor: palette.line,
-                color: palette.ink,
-                textTransform: "none",
-                fontWeight: 800,
-              }}
-            >
-              Refresh
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
       <Panel
-        title="Listing performance filters"
-        subtitle={`Business metrics and creator counts are scoped to ${dateRangeLabel.toLowerCase()}.`}
-        sx={{ mb: 2 }}
+        title="Business report filters"
+        subtitle="Choose the reporting period and business creator. Business metrics and reports update automatically."
+        sx={{ mb: 2.5, borderTop: `3px solid ${palette.orange}`, boxShadow: "0 4px 20px rgba(23, 32, 51, 0.03)" }}
         action={
+          <Stack direction="row" spacing={1}>
           <Button
             size="small"
             onClick={() => {
@@ -535,11 +488,16 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           >
             Reset filters
           </Button>
+          <Button size="small" variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => { fetchReport(); dispatch(getDashboardSummary()); }} disabled={loading} sx={{ textTransform: "none", borderColor: palette.line, color: palette.ink, fontWeight: 700 }}>
+            Refresh
+          </Button>
+          </Stack>
         }
       >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} useFlexGap flexWrap="wrap">
           <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 250 } }}>
-            <Select value={creatorId} displayEmpty onChange={(event) => setCreatorId(event.target.value)} inputProps={{ "aria-label": "Filter analytics by creator" }}>
+            <InputLabel id="dashboard-creator-label" shrink>Created by</InputLabel>
+            <Select labelId="dashboard-creator-label" label="Created by" value={creatorId} displayEmpty onChange={(event) => setCreatorId(event.target.value)} inputProps={{ "aria-label": "Filter analytics by creator" }}>
               <MenuItem value="">All creators</MenuItem>
               {(report?.creatorOptions || []).map((creator) => (
                 <MenuItem key={creator.userId} value={creator.userId}>
@@ -549,7 +507,8 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
             </Select>
           </FormControl>
           <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 170 } }}>
-            <Select value={datePreset} onChange={(event) => setDatePreset(event.target.value)} inputProps={{ "aria-label": "Select analytics date range" }}>
+            <InputLabel id="dashboard-period-label">Reporting period</InputLabel>
+            <Select labelId="dashboard-period-label" label="Reporting period" value={datePreset} onChange={(event) => setDatePreset(event.target.value)} inputProps={{ "aria-label": "Select analytics date range" }}>
               <MenuItem value="all">All time</MenuItem>
               <MenuItem value="day">Specific day</MenuItem>
               <MenuItem value="7">Last 7 days</MenuItem>
@@ -576,8 +535,32 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
             </>
           )}
         </Stack>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mt: 2, pt: 1.5, borderTop: `1px solid ${palette.line}` }}>
+          <Stack component="nav" aria-label="Dashboard sections" direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+            {[["performance", "Performance"], ["growth", "Growth"], ["distribution", "Markets"], ["team", "Team"], ["records", "Payments & activity"], ["business-directory", "Directory"]].map(([id, label]) => (
+              <Button key={id} component="a" href={`#${id}`} size="small" sx={{ color: palette.muted, textTransform: "none", fontSize: 12, px: 1 }}>{label}</Button>
+            ))}
+          </Stack>
+          <Typography sx={{ color: palette.muted, fontSize: 12, alignSelf: { md: "center" } }}>
+            {generatedAt ? `Updated ${generatedAt.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })} IST` : "Reporting timezone: India (IST)"}
+          </Typography>
+        </Stack>
       </Panel>
 
+      {businessOverview}
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+
+      {rangeError && <Alert severity="warning" sx={{ mb: 2 }}>{rangeError}</Alert>}
+      {loading && <LinearProgress aria-label="Updating report" sx={{ mb: 2 }} />}
+      {loading && !report && <Skeleton variant="rectangular" height={360} sx={{ borderRadius: 2, mb: 2 }} />}
+      {report && <Box component="fieldset" disabled={Boolean(loading || rangeError || error)} aria-busy={loading} sx={{ border: 0, p: 0, m: 0, minWidth: 0, opacity: loading || rangeError || error ? 0.45 : 1, pointerEvents: loading || rangeError || error ? "none" : "auto", transition: "opacity 0.15s" }}>
+      <SectionHeading id="performance" title="Business performance" subtitle="Listings, publishing status and collections for your selected report." badge={`${dateRangeLabel} · ${creatorId ? "Selected creator" : "All creators"}`} />
       <Box
         sx={{
           display: "grid",
@@ -590,56 +573,20 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           mb: 2,
         }}
       >
-        {metricCards.map((card) => (
+        {metricCards.filter((card) => card.filter).map((card) => (
           <MetricCard
             key={card.label}
             {...card}
             activeFilter={activeFilter}
-            onFilterClick={onFilterClick}
+            onFilterClick={handleScopedFilter}
             onNavigate={navigate}
           />
         ))}
       </Box>
 
+      <SectionHeading id="growth" title="Growth & operations" subtitle="Review acquisition patterns and the current operational workload." />
       <Panel
-        title="Businesses created by user"
-        subtitle="Ranked by business creations in the selected date range. Select a user to drill into their listings."
-        sx={{ mb: 2 }}
-      >
-        {report?.userPerformance?.length ? (
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: 1.25 }}>
-            {report.userPerformance.map((item) => {
-              const selected = creatorId === item.userId;
-              const isClickable = item.userId !== "unassigned";
-              return (
-                <Box
-                  key={item.userId}
-                  component={isClickable ? "button" : "div"}
-                  type={isClickable ? "button" : undefined}
-                  onClick={isClickable ? () => handleCreatorClick(item) : undefined}
-                  sx={{ border: `1px solid ${selected ? palette.orange : palette.line}`, borderRadius: 1.5, p: 1.5, bgcolor: selected ? "#fff7ed" : "#fff", textAlign: "left", font: "inherit", ...(isClickable ? clickableSx(selected) : {}) }}
-                >
-                  <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography noWrap sx={{ color: palette.ink, fontSize: 14, fontWeight: 850 }}>{item.name}</Typography>
-                      <Typography noWrap sx={{ color: palette.muted, fontSize: 12, mt: 0.25 }}>{item.email || "No email available"}</Typography>
-                    </Box>
-                    <Chip size="small" label={formatNumber(item.businesses)} sx={{ bgcolor: "#fff3e8", color: palette.orange, fontWeight: 850 }} />
-                  </Stack>
-                  <Typography sx={{ color: palette.muted, fontSize: 12, mt: 1 }}>
-                    {formatNumber(item.liveBusinesses)} live · {formatNumber(item.activeBusinesses)} active
-                  </Typography>
-                </Box>
-              );
-            })}
-          </Box>
-        ) : (
-          <EmptyState label="No businesses created in this date range" />
-        )}
-      </Panel>
-
-      <Panel
-        title="Business count by place and day"
+        title="Daily business additions"
         subtitle={`Daily businesses added during the last ${trendDays} days${trendLocation ? ` in ${trendLocation}` : " across all places"}`}
         sx={{ mb: 2 }}
         action={
@@ -720,7 +667,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(360px, 0.65fr)" },
+          gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.35fr) minmax(0, 0.65fr)" },
           gap: 2,
           mb: 2,
         }}
@@ -788,7 +735,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                     key={item.key}
                     component="button"
                     type="button"
-                    onClick={() => filter && onFilterClick?.(filter)}
+                    onClick={() => filter && handleScopedFilter(filter)}
                     sx={{
                       border: `1px solid ${isActive ? palette.orange : palette.line}`,
                       borderRadius: 1.25,
@@ -841,7 +788,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                 key={label}
                 component={clickable ? "button" : "div"}
                 type={clickable ? "button" : undefined}
-                onClick={clickable ? () => (filter ? onFilterClick(filter) : navigate(to)) : undefined}
+                onClick={clickable ? () => (filter ? handleScopedFilter(filter) : navigate(to)) : undefined}
                 sx={{
                   width: "100%",
                   p: 0,
@@ -876,6 +823,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
         </Panel>
       </Box>
 
+      <SectionHeading id="distribution" title="Market distribution" subtitle="See which categories and locations contribute the most businesses." />
       <Box
         sx={{
           display: "grid",
@@ -884,7 +832,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           mb: 2,
         }}
       >
-        <Panel title="Top categories" subtitle="Largest business pools">
+        <Panel title="Top categories" subtitle="Most businesses in the selected report">
           {report?.topCategories?.length ? (
             <Box sx={{ height: 290 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -909,7 +857,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                     onClick={(item) => {
                       const payload = item?.payload || item;
                       if (payload?.name) {
-                        onFilterClick?.({ type: "category", label: `Category: ${payload.name}`, value: payload.name });
+                        handleScopedFilter({ type: "category", label: `Category: ${payload.name}`, value: payload.name });
                       }
                     }}
                   />
@@ -921,7 +869,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           )}
         </Panel>
 
-        <Panel title="Top locations" subtitle="Where supply is concentrated">
+        <Panel title="Top locations" subtitle="Locations with the most selected businesses">
           <Stack spacing={1.1}>
             {(report?.topLocations || []).slice(0, 8).map((item, index) => {
               const pct = getPercent(item.count, totals.businesses);
@@ -930,7 +878,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                   key={item.name}
                   component="button"
                   type="button"
-                  onClick={() => onFilterClick?.({ type: "location", label: `Location: ${item.name}`, value: item.name })}
+                  onClick={() => handleScopedFilter({ type: "location", label: `Location: ${item.name}`, value: item.name })}
                   sx={{
                     width: "100%",
                     p: 0,
@@ -978,6 +926,50 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
         </Panel>
       </Box>
 
+      <SectionHeading id="team" title="Team & account activity" subtitle="Account totals remain independent of report filters. Creator rankings below use the selected report." badge="Account-wide metrics" />
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 2, mb: 2 }}>
+        {metricCards.filter((card) => !card.filter).map((card) => (
+          <MetricCard key={card.label} {...card} onNavigate={navigate} />
+        ))}
+      </Box>
+      <Panel
+        title="Businesses created by user"
+        subtitle="Ranked by business creations in the selected date range. Select a user to drill into their listings."
+        sx={{ mb: 2 }}
+      >
+        {report?.userPerformance?.length ? (
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: 1.25 }}>
+            {report.userPerformance.map((item) => {
+              const selected = creatorId === item.userId;
+              const isClickable = item.userId !== "unassigned";
+              return (
+                <Box
+                  key={item.userId}
+                  component={isClickable ? "button" : "div"}
+                  type={isClickable ? "button" : undefined}
+                  onClick={isClickable ? () => handleCreatorClick(item) : undefined}
+                  sx={{ border: `1px solid ${selected ? palette.orange : palette.line}`, borderRadius: 1.5, p: 1.5, bgcolor: selected ? "#fff7ed" : "#fff", textAlign: "left", font: "inherit", ...(isClickable ? clickableSx(selected) : {}) }}
+                >
+                  <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography noWrap sx={{ color: palette.ink, fontSize: 14, fontWeight: 850 }}>{item.name}</Typography>
+                      <Typography noWrap sx={{ color: palette.muted, fontSize: 12, mt: 0.25 }}>{item.email || "No email available"}</Typography>
+                    </Box>
+                    <Chip size="small" label={formatNumber(item.businesses)} sx={{ bgcolor: "#fff3e8", color: palette.orange, fontWeight: 850 }} />
+                  </Stack>
+                  <Typography sx={{ color: palette.muted, fontSize: 12, mt: 1 }}>
+                    {formatNumber(item.liveBusinesses)} live · {formatNumber(item.activeBusinesses)} active
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+        ) : (
+          <EmptyState label="No businesses created in this date range" />
+        )}
+      </Panel>
+
+      <SectionHeading id="records" title="Payments & recent activity" subtitle="Inspect payment records and the latest businesses in your report." />
       <Box
         sx={{
           display: "grid",
@@ -985,7 +977,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           gap: 2,
         }}
       >
-        <Panel title="Payment status" subtitle="Embedded business payment records">
+        <Panel title="Payment status" subtitle="Payment records for the selected businesses">
           <Stack divider={<Divider />} spacing={0}>
             {(report?.paymentBreakdown || []).map((item) => (
               <Stack
@@ -995,7 +987,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                 direction="row"
                 justifyContent="space-between"
                 alignItems="center"
-                onClick={() => onFilterClick?.({
+                onClick={() => handleScopedFilter({
                   type: "payment",
                   label: `Payment: ${readableStatus(item.status)}`,
                   value: item.status || "NO_STATUS",
@@ -1025,7 +1017,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           </Stack>
         </Panel>
 
-        <Panel title="Recent businesses" subtitle="Newest entries in the current access scope">
+        <Panel title="Recent businesses" subtitle="Latest businesses matching the report filters">
           <Stack divider={<Divider />} spacing={0}>
             {(report?.recentBusinesses || []).map((item) => (
               <Stack
@@ -1036,7 +1028,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
                 justifyContent="space-between"
                 alignItems={{ xs: "flex-start", sm: "center" }}
                 spacing={1}
-                onClick={() => onFilterClick?.({
+                onClick={() => handleScopedFilter({
                   type: "search",
                   label: `Business: ${item.businessName || "Untitled business"}`,
                   value: item.businessName || "",
@@ -1079,6 +1071,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick }) {
           </Stack>
         </Panel>
       </Box>
+      </Box>}
     </Box>
   );
 }

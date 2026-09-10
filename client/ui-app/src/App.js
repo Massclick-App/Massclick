@@ -79,6 +79,7 @@ const {
   SeoPageContent,
   SeoPageContentBlogs,
   SeoTemplate,
+  PaidCategorySeo,
   AuthorMaster,
   AdminDataAnalytics,
   UnifiedAnalytics,
@@ -349,6 +350,7 @@ function AppRoutes({
                 <Route path="seopagecontent" element={<SeoPageContent />} />
                 <Route path="seopagecontentblogs" element={<SeoPageContentBlogs />} />
                 <Route path="seotemplates" element={<SeoTemplate />} />
+                <Route path="paid-category-seo" element={<PaidCategorySeo />} />
                 <Route path="authors" element={<AuthorMaster />} />
                 <Route path="data-analytics" element={<AdminDataAnalytics />} />
                 <Route path="analytics-overview" element={<UnifiedAnalytics />} />

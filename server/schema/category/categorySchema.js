@@ -35,6 +35,9 @@ const categorySchema = new mongoose.Schema(
     slug: { type: String, unique: true, lowercase: true, trim: true },
     seoTitle: { type: String, default: "" },
     seoDescription: { type: String, default: "" },
+    // Search phrases this category owns once it has paid businesses. The Paid
+    // Category SEO console flags other categories' SEO that uses them.
+    seoProtectedTerms: { type: [String], default: [] },
     regionTags: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
     filterConfig: {

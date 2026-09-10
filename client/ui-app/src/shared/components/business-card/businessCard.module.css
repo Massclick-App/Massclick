@@ -1,370 +1,134 @@
-
 .card-grid {
-  width: 100%;
   display: grid;
-  grid-template-columns: repeat(5, minmax(220px, 1fr));
-  gap: 18px;
-  padding: 16px 0 4px 0;
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 14px;
+  width: 100%;
   box-sizing: border-box;
 }
-
 
 .stat-card {
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 185px;
-  padding: 22px 22px;
-  border-radius: 14px;
-  background: #ffffff;
   position: relative;
-  overflow: hidden;
-  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 144px;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  border: 1px solid #e5e9f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #172033;
   font: inherit;
   text-align: left;
-
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.08),
-    0 2px 6px rgba(0, 0, 0, 0.04);
-
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease,
-    border-color 0.3s ease;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* HOVER */
 .stat-card:hover {
-  transform: translateY(-6px);
-  box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.12),
-    0 6px 10px rgba(0, 0, 0, 0.06);
+  border-color: #f0b383;
+  box-shadow: 0 3px 12px rgb(23 32 51 / 6%);
 }
 
 .stat-card:focus-visible {
-  outline: 3px solid rgba(255, 140, 0, 0.35);
+  outline: 3px solid #fed7aa;
   outline-offset: 3px;
 }
 
 .stat-card--active {
-  border-color: #111827;
-  box-shadow:
-    0 14px 28px rgba(17, 24, 39, 0.14),
-    0 6px 10px rgba(17, 24, 39, 0.08);
-  transform: translateY(-3px);
+  border-color: #ea6d11;
+  background: #fffaf5;
 }
 
-/* ============================================================
-   CARD TITLE
-============================================================ */
 .card-title {
   margin: 0;
-  padding: 0;
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: #1f2937;
-  line-height: 1.3;
+  max-width: calc(100% - 30px);
+  color: #657084;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
-/* ============================================================
-   CARD VALUE
-============================================================ */
 .card-value {
-  margin-top: 12px;
-  margin-bottom: 0;
-  font-size: 2rem;
-  font-weight: 800;
-  color: #000000;
+  margin: 0;
+  max-width: 100%;
+  color: #172033;
+  font-size: clamp(24px, 2vw, 32px);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
   line-height: 1.2;
-  letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
-/* ============================================================
-   HOT CATEGORY TEXT
-============================================================ */
 .hot-category-text {
-  font-size: 2rem !important;
-  font-weight: 800;
-  color: #111111;
-  max-width: 85%;
-  word-break: break-word;
+  font-size: 23px;
+  text-transform: capitalize;
 }
 
-/* ============================================================
-   OPTIONAL GROWTH TEXT
-============================================================ */
-.card-growth {
-  margin-top: 10px;
-  font-size: 0.82rem;
+.card-icon {
+  position: absolute;
+  top: 16px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.card-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.hot-ribbon {
+  color: #657084;
+  font-size: 13px;
   font-weight: 600;
 }
 
-.card-growth.up {
-  color: #16a34a;
+.card-grid--compact {
+  gap: 10px;
 }
 
-.card-growth.down {
-  color: #dc2626;
+.card-grid--compact .stat-card {
+  min-height: 96px;
+  padding: 14px 16px;
+  gap: 8px;
+  border-radius: 8px;
 }
 
-/* ============================================================
-   ICON CIRCLE
-============================================================ */
-.card-icon {
-  position: absolute;
-  right: 18px;
-  bottom: 18px;
-
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  color: #ffffff;
-
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.18),
-    inset 0 -2px 4px rgba(255, 255, 255, 0.12);
-
-  transition: transform 0.3s ease;
+.card-grid--compact .card-value {
+  font-size: 26px;
+  letter-spacing: -0.03em;
 }
 
-/* ICON ANIMATION */
-.stat-card:hover .card-icon {
-  transform: scale(1.08);
+.card-grid--compact .hot-category-text {
+  font-size: 19px;
 }
 
-/* SVG SIZE */
-.card-icon svg {
-  width: 23px;
-  height: 23px;
-  color: #ffffff !important;
+.card-grid--compact .card-icon {
+  display: none;
 }
 
-/* ============================================================
-   HOT CATEGORY RIBBON
-============================================================ */
-.hot-ribbon {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-
-  padding: 6px 12px;
-  border-radius: 999px;
-
-  background: linear-gradient(90deg, #ff7a18, #ff3d00);
-  color: #ffffff;
-
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-
-  box-shadow: 0 4px 12px rgba(255, 61, 0, 0.28);
+.card-grid--compact .card-title {
+  max-width: 100%;
+  font-size: 12px;
 }
 
-/* ============================================================
-   HOT CATEGORY CARD SPECIAL DESIGN
-============================================================ */
-.stat-card:nth-child(4) {
-  background: linear-gradient(180deg, #fff8f4 0%, #fff1eb 100%);
-  border: 2px solid #ff5722;
-
-  box-shadow:
-    0 8px 22px rgba(255, 87, 34, 0.14),
-    0 2px 6px rgba(255, 87, 34, 0.08);
+@media (min-width: 1200px) {
+  .card-grid--compact { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
-.stat-card:nth-child(4):hover {
-  box-shadow:
-    0 14px 28px rgba(255, 87, 34, 0.20),
-    0 6px 10px rgba(255, 87, 34, 0.10);
-}
-
-.stat-card:nth-child(4) .card-icon {
-  background: linear-gradient(135deg, #ff6a00, #ff3d00) !important;
-  transform: scale(1.1);
-}
-
-/* ============================================================
-   INDIVIDUAL CARD ACCENT TOP BORDER (OPTIONAL)
-============================================================ */
-.stat-card:nth-child(1) {
-  border-top: 4px solid #ff7043;
-}
-
-.stat-card:nth-child(2) {
-  border-top: 4px solid #42a5f5;
-}
-
-.stat-card:nth-child(3) {
-  border-top: 4px solid #66bb6a;
-}
-
-.stat-card:nth-child(5) {
-  border-top: 4px solid #d32f2f;
-}
-
-/* ============================================================
-   LARGE DESKTOP
-============================================================ */
-@media (max-width: 1600px) {
-  .card-grid {
-    grid-template-columns: repeat(5, minmax(200px, 1fr));
-    gap: 16px;
-  }
-}
-
-/* ============================================================
-   LAPTOP
-============================================================ */
-@media (max-width: 1400px) {
-  .card-grid {
-    grid-template-columns: repeat(5, minmax(180px, 1fr));
-    gap: 14px;
-  }
-
-  .card-value {
-    font-size: 1.85rem;
-  }
-}
-
-/* ============================================================
-   TABLET LANDSCAPE
-============================================================ */
-@media (max-width: 1200px) {
-  .card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-}
-
-/* ============================================================
-   TABLET
-============================================================ */
-@media (max-width: 900px) {
-  .card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-  }
-
-  .stat-card {
-    min-height: 155px;
-    padding: 18px;
-  }
-
-  .card-value {
-    font-size: 1.75rem;
-  }
-
-  .hot-category-text {
-    font-size: 1.55rem !important;
-  }
-
-  .card-icon {
-    width: 44px;
-    height: 44px;
-    right: 16px;
-    bottom: 16px;
-  }
-
-  .card-icon svg {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-/* ============================================================
-   MOBILE
-============================================================ */
 @media (max-width: 600px) {
-  .card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 12px 0 4px 0;
-  }
-
-  .stat-card {
-    min-height: 132px;
-    padding: 14px;
-    border-radius: 12px;
-  }
-
-  .card-title {
-    font-size: 0.76rem;
-    line-height: 1.25;
-  }
-
-  .card-value {
-    font-size: 1.45rem;
-    margin-top: 8px;
-  }
-
-  .hot-category-text {
-    font-size: 1.05rem !important;
-    max-width: calc(100% - 42px);
-  }
-
-  .card-icon {
-    width: 36px;
-    height: 36px;
-    right: 12px;
-    bottom: 12px;
-  }
-
-  .card-icon svg {
-    width: 17px;
-    height: 17px;
-  }
-
-  .hot-ribbon {
-    font-size: 0.52rem;
-    padding: 4px 8px;
-    gap: 4px;
-    letter-spacing: 0.3px;
-  }
-}
-
-/* ============================================================
-   SMALL MOBILE
-============================================================ */
-@media (max-width: 400px) {
-  .card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    padding: 10px 0 4px 0;
-  }
-
-  .stat-card {
-    min-height: 122px;
-    padding: 12px;
-  }
-
-  .card-title {
-    font-size: 0.7rem;
-  }
-
-  .card-value {
-    font-size: 1.28rem;
-  }
-
-  .hot-category-text {
-    font-size: 0.95rem !important;
-  }
-
-  .card-icon {
-    width: 32px;
-    height: 32px;
-    right: 10px;
-    bottom: 10px;
-  }
-
-  .card-icon svg {
-    width: 15px;
-    height: 15px;
-  }
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stat-card { min-height: 136px; padding: 14px; }
+  .stat-card:last-child { grid-column: 1 / -1; }
+  .card-title { max-width: calc(100% - 22px); font-size: 12px; }
+  .card-icon { width: 24px; height: 24px; right: 10px; top: 12px; }
+  .hot-category-text { font-size: 20px; }
 }

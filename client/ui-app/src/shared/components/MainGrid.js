@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 
@@ -18,6 +17,7 @@ import {
 } from "@mui/material";
 
 import AdminAnalyticsPanel from 'features/admin/analytics/admin-data-analytics/AdminAnalyticsPanel.js';
+import { dashboardDayRange, dashboardMonthRange, dashboardDateKey } from "shared/utils/dashboardDates.js";
 import BusinessCard from 'shared/components/business-card/businessCard.js';
 import CustomizedTable from 'shared/components/table/CustomizedTable.js';
 import { createPhonePePayment } from 'state/actions/phonePayAction.js';
@@ -81,24 +81,13 @@ export default function MainGrid() {
   };
 
   const getTodayRange = () => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 1);
-    end.setMilliseconds(end.getMilliseconds() - 1);
-    return {
-      createdFrom: start.toISOString(),
-      createdTo: end.toISOString(),
-    };
+    const range = dashboardDayRange();
+    return { createdFrom: range.dateFrom, createdTo: range.dateTo };
   };
 
-  const getMonthRange = (monthIndex, year = new Date().getFullYear()) => {
-    const start = new Date(year, monthIndex, 1);
-    const end = new Date(year, monthIndex + 1, 0, 23, 59, 59, 999);
-    return {
-      createdFrom: start.toISOString(),
-      createdTo: end.toISOString(),
-    };
+  const getMonthRange = (monthIndex, year = Number(dashboardDateKey().slice(0, 4))) => {
+    const range = dashboardMonthRange(year, monthIndex);
+    return { createdFrom: range.dateFrom, createdTo: range.dateTo };
   };
 
   const getCardFilterParams = (filter = cardFilter) => {
@@ -139,7 +128,6 @@ export default function MainGrid() {
   };
 
   useEffect(() => {
-    dispatch(getAllBusinessList());
     dispatch(getAllLocation());
     dispatch(getAllUsers({ pageNo: 1, pageSize: 1000 }));
   }, [dispatch]);
@@ -396,29 +384,34 @@ export default function MainGrid() {
   ];
 
   return (
-    <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      <Paper
-        elevation={0}
-        sx={{
-          width: '100%',
-          mt: 2,
-          mb: 2,
-          p: 2,
-          border: '1px solid #e5e9f0',
-          borderRadius: 2,
-          bgcolor: '#fff',
+    <Box sx={{ width: '100%', minWidth: 0, maxWidth: '1700px', mx: 'auto', pb: 3 }}>
+      <AdminAnalyticsPanel
+        activeFilter={cardFilter}
+        onFilterClick={handleCardFilter}
+        businessOverview={
+          <Paper
+            elevation={0}
+            sx={{
+              width: '100%',
+              mb: 2,
+              p: { xs: 1.5, md: 2 },
+              border: '1px solid #e5e9f0',
+              borderRadius: 2,
+              bgcolor: '#f8fafc',
         }}
       >
-        <Typography sx={{ fontSize: 18, fontWeight: 800, color: '#172033', mb: 1.5 }}>
-          Business drill-down
+            <Typography component="h2" sx={{ fontSize: 12, fontWeight: 750, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#475569', mb: 0.5 }}>
+              Portfolio snapshot · All time
         </Typography>
-        <BusinessCard activeFilter={cardFilter.type} onCardClick={handleCardFilter} />
+            <Typography sx={{ color: "#657084", fontSize: 12, mb: 1.5 }}>All accessible businesses, independent of report filters. Today follows India time (IST).</Typography>
+            <BusinessCard compact activeFilter={cardFilter.scope ? null : cardFilter.type} onCardClick={handleCardFilter} />
       </Paper>
-      <AdminAnalyticsPanel activeFilter={cardFilter} onFilterClick={handleCardFilter} />
+        }
+      />
 
 
-      <Grid elevation={3} sx={{ p: 3, borderRadius: 2 }} ref={tableSectionRef}>
-        {cardFilter.type !== "all" && (
+      <Paper id="business-directory" component="section" elevation={0} sx={{ mt: 3, p: { xs: 1.5, md: 2.5 }, minWidth: 0, border: "1px solid #e5e9f0", borderRadius: 2, scrollMarginTop: 24 }} ref={tableSectionRef}>
+        {(cardFilter.type !== "all" || cardFilter.scope) && (
           <Box sx={{
             mb: 2,
             display: "inline-flex",
@@ -445,13 +438,19 @@ export default function MainGrid() {
         <Box sx={{ width: "100%" }}>
           <CustomizedTable
             key={tableRefreshKey}
-            title={cardFilter.type === "all" ? "Data Table" : `Filtered Data — ${cardFilter.label}`}
+            title={cardFilter.type === "all" && !cardFilter.scope ? "Business directory" : `Businesses — ${cardFilter.label}`}
             data={rows}
             total={total}
             columns={businessListTable}
             onRowClick={setDetailRow}
             fetchData={(pageNo, pageSize, options = {}) => {
               const cardParams = getCardFilterParams();
+              const scope = cardFilter.scope || {};
+              const fromDates = [cardParams.createdFrom, scope.createdFrom].filter(Boolean).map((value) => new Date(value).getTime());
+              const toDates = [cardParams.createdTo, scope.createdTo].filter(Boolean).map((value) => new Date(value).getTime());
+              if (fromDates.length) cardParams.createdFrom = new Date(Math.max(...fromDates)).toISOString();
+              if (toDates.length) cardParams.createdTo = new Date(Math.min(...toDates)).toISOString();
+              cardParams.createdBy = cardParams.createdBy || scope.createdBy;
               dispatch(
                 getAllBusinessList({
                   pageNo,
@@ -473,7 +472,7 @@ export default function MainGrid() {
           />
 
         </Box>
-      </Grid>
+      </Paper>
       <BusinessDetailsDialog
         open={Boolean(detailRow)}
         row={detailRow}
@@ -483,4 +482,3 @@ export default function MainGrid() {
     </Box>
   );
 }
-

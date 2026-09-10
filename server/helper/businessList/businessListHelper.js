@@ -1,3 +1,4 @@
+import { DASHBOARD_TIMEZONE, dashboardDateKey, dashboardDayRange, shiftDashboardDay, dashboardMonthStart } from "../../utils/dashboardDates.js";
 import { ObjectId } from "mongodb";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
@@ -1662,14 +1663,14 @@ export const getDashboardSummaryHelper = async ({ role, userId }) => {
   // DATE CALCULATION
   // -------------------------
   const today = new Date();
-  const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+  const { start: startOfToday, end: endOfToday } = dashboardDayRange(dashboardDateKey(today));
 
   // -------------------------
   // COUNTS (ROLE AWARE)
   // -------------------------
   const todayCount = await businessListModel.countDocuments({
     ...query,
-    createdAt: { $gte: startOfToday },
+    createdAt: { $gte: startOfToday, $lte: endOfToday },
   });
 
   const totalCount = await businessListModel.countDocuments(query);
@@ -1817,15 +1818,15 @@ const monthLabels = [
 ];
 
 const buildMonthSeries = (rows = [], monthsBack = 12) => {
-  const now = new Date();
+  const now = new Date(`${dashboardDateKey()}T00:00:00Z`);
   const buckets = [];
 
   for (let index = monthsBack - 1; index >= 0; index -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - index, 1));
     buckets.push({
-      key: `${date.getFullYear()}-${date.getMonth() + 1}`,
-      month: monthLabels[date.getMonth()],
-      year: date.getFullYear(),
+      key: `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`,
+      month: monthLabels[date.getUTCMonth()],
+      year: date.getUTCFullYear(),
       businesses: 0,
     });
   }
@@ -1841,27 +1842,17 @@ const buildMonthSeries = (rows = [], monthsBack = 12) => {
 
 const buildDaySeries = (rows = [], daysBack = 30) => {
   const rowCounts = new Map(rows.map((row) => [row._id, row.count]));
-  const buckets = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let index = daysBack - 1; index >= 0; index -= 1) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - index);
-    const key = [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, "0"),
-      String(date.getDate()).padStart(2, "0"),
-    ].join("-");
-    buckets.push({
+  const today = dashboardDateKey();
+  return Array.from({ length: daysBack }, (_, index) => {
+    const key = shiftDashboardDay(today, index - daysBack + 1);
+    const date = dashboardDayRange(key).start;
+    return {
       key,
       date: date.toISOString(),
-      label: date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      label: date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: DASHBOARD_TIMEZONE }),
       businesses: rowCounts.get(key) || 0,
-    });
-  }
-
-  return buckets;
+    };
+  });
 };
 
 const dashboardLocationNameExpression = {
@@ -1902,24 +1893,22 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
   if (parsedDateTo && !Number.isNaN(parsedDateTo.getTime())) createdAt.$lte = parsedDateTo;
 
   const businessQuery = {
-    ...accessQuery,
+    $and: [accessQuery],
     ...(selectedCreatorId && mongoose.Types.ObjectId.isValid(selectedCreatorId)
       ? { createdBy: new mongoose.Types.ObjectId(selectedCreatorId) }
       : {}),
     ...(Object.keys(createdAt).length ? { createdAt } : {}),
   };
   const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfSevenDays = new Date(now);
-  startOfSevenDays.setDate(startOfSevenDays.getDate() - 7);
-  const startOfThirtyDays = new Date(now);
-  startOfThirtyDays.setDate(startOfThirtyDays.getDate() - 30);
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const periodDays = Math.max(1, Math.min(Number(days) || 28, 365));
-  const periodStart = new Date(now);
-  periodStart.setDate(periodStart.getDate() - periodDays);
-  periodStart.setHours(0, 0, 0, 0);
+  const todayKey = dashboardDateKey(now);
+  const { start: startOfToday, end: endOfToday } = dashboardDayRange(todayKey);
+  const startOfSevenDays = dashboardDayRange(shiftDashboardDay(todayKey, -6)).start;
+  const startOfThirtyDays = dashboardDayRange(shiftDashboardDay(todayKey, -29)).start;
+  const reportingYear = Number(todayKey.slice(0, 4));
+  const reportingMonth = Number(todayKey.slice(5, 7)) - 1;
+  const startOfYear = dashboardMonthStart(reportingYear, 0);
+  const periodDays = Math.max(1, Math.min(Number(days) || 30, 365));
+  const periodStart = dashboardDayRange(shiftDashboardDay(todayKey, 1 - periodDays)).start;
   const selectedLocation = String(location || "").trim();
   const locationCondition = selectedLocation === "Trichy / Tiruchirappalli"
     ? { $in: [/^trichy$/i, /^tiruchirappalli$/i] }
@@ -1962,7 +1951,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       ...businessQuery,
       businessesLive: true,
     }),
-    businessListModel.countDocuments(withCreatedAtRange(businessQuery, { $gte: startOfToday })),
+    businessListModel.countDocuments(withCreatedAtRange(businessQuery, { $gte: startOfToday, $lte: endOfToday })),
     businessListModel.countDocuments(withCreatedAtRange(businessQuery, { $gte: startOfThirtyDays })),
     userModel.aggregate([{ $group: { _id: "$isActive", count: { $sum: 1 } } }]),
     categoryModel.aggregate([
@@ -2041,13 +2030,13 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
     ]),
     businessListModel.aggregate([
       {
-        $match: withCreatedAtRange(businessQuery, { $gte: new Date(now.getFullYear(), now.getMonth() - 11, 1) }),
+        $match: withCreatedAtRange(businessQuery, { $gte: dashboardMonthStart(reportingYear, reportingMonth - 11) }),
       },
       {
         $group: {
           _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
+            year: { $year: { date: "$createdAt", timezone: DASHBOARD_TIMEZONE } },
+            month: { $month: { date: "$createdAt", timezone: DASHBOARD_TIMEZONE } },
           },
           count: { $sum: 1 },
         },
@@ -2135,7 +2124,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       { $limit: 12 },
     ]),
     businessListModel.aggregate([
-      { $match: { ...accessQuery, createdBy: { $ne: null } } },
+      { $match: { $and: [accessQuery, { createdBy: { $ne: null } }] } },
       { $group: { _id: "$createdBy" } },
       { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
       { $unwind: "$user" },

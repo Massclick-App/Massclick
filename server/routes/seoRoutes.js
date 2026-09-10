@@ -16,6 +16,17 @@ import {
   updateSeoTemplateAction,
   deleteSeoTemplateAction,
 } from "../controller/seo/seoTemplateController.js";
+import {
+  paidSeoOverviewAction,
+  paidSeoCategoryDetailAction,
+  paidSeoGapsAction,
+  paidSeoConflictsAction,
+  paidSeoUpsertRowAction,
+  paidSeoBusinessAction,
+  paidSeoProtectedTermsAction,
+  paidSeoFixConflictAction,
+  paidSeoRefreshCacheAction,
+} from "../controller/seo/paidSeoConsoleController.js";
 import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { addSeoPageContentBlogAction, getSeoPageContentBlogAction, getSeoPageContentBlogMetaAction, viewAllSeoPageContentBlogAction, updateSeoPageContentBlogAction, deleteSeoPageContentBlogAction, getSeoBlogBySlugAction, getBusinessSuggestionAction } from "../controller/seo/seoOnPageBlogController.js";
 import { cacheMiddleware } from "../middleware/cacheMiddleware.js";
@@ -46,6 +57,17 @@ router.get("/api/seotemplate/get", oauthAuthentication, getSeoTemplateAction);
 router.get("/api/seotemplate/viewall", oauthAuthentication, viewAllSeoTemplateAction);
 router.put("/api/seotemplate/update/:id", oauthAuthentication, updateSeoTemplateAction);
 router.delete("/api/seotemplate/delete/:id", oauthAuthentication, deleteSeoTemplateAction);
+
+// Paid Category SEO console (admin)
+router.get("/api/seo/paid-console/overview", oauthAuthentication, paidSeoOverviewAction);
+router.get("/api/seo/paid-console/gaps", oauthAuthentication, paidSeoGapsAction);
+router.get("/api/seo/paid-console/conflicts", oauthAuthentication, paidSeoConflictsAction);
+router.get("/api/seo/paid-console/category/:slug", oauthAuthentication, paidSeoCategoryDetailAction);
+router.put("/api/seo/paid-console/seo-row", oauthAuthentication, paidSeoUpsertRowAction);
+router.put("/api/seo/paid-console/business/:id", oauthAuthentication, paidSeoBusinessAction);
+router.put("/api/seo/paid-console/protected-terms/:slug", oauthAuthentication, paidSeoProtectedTermsAction);
+router.put("/api/seo/paid-console/conflict", oauthAuthentication, paidSeoFixConflictAction);
+router.post("/api/seo/paid-console/refresh-cache/:slug", oauthAuthentication, paidSeoRefreshCacheAction);
 
 router.post("/api/seopagecontentblog/create", oauthAuthentication, addSeoPageContentBlogAction);
 router.get("/api/seopagecontentblog/get", seoBlogCache, getSeoPageContentBlogAction);
