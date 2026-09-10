@@ -1513,7 +1513,6 @@ const BusinessDetail = React.memo(() => {
         <div className={cx("business-CardDetails-lowerSections business-CardDetails-v2DiscoverySections")}>
           <PopularCategoriesLink />
         </div>
-
       </div>
 
       <nav className={cx("business-CardDetails-bottomActionRail")} aria-label="Business actions">
