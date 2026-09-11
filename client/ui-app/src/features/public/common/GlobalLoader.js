@@ -10,7 +10,7 @@ import loaderAnimation from 'assets/lottie/loading.json';
 // re-exporting or hand-editing the animation's frame data.
 const PLAYBACK_SPEED = 4;
 
-const GlobalLoader = ({ size = 350, message = '' }) => {
+const GlobalLoader = ({ size = 96 }) => {
   const lottieRef = useRef(null);
 
   useEffect(() => {
@@ -38,7 +38,6 @@ const GlobalLoader = ({ size = 350, message = '' }) => {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: 2,
         }}
       >
         <Box sx={{ width: size, height: size }}>
@@ -50,23 +49,6 @@ const GlobalLoader = ({ size = 350, message = '' }) => {
             style={{ width: '100%', height: '100%' }}
           />
         </Box>
-        {message && (
-          // Was white-on-dark-overlay; with the overlay gone this needs to
-          // read against the page itself, so a dark color plus a light halo
-          // keeps it legible regardless of what's behind it.
-          <Box
-            sx={{
-              fontSize: 24,
-              color: '#1a1a1a',
-              fontWeight: 700,
-              textAlign: 'center',
-              mt: 3,
-              textShadow: '0 1px 6px rgba(255, 255, 255, 0.9)',
-            }}
-          >
-            {message}
-          </Box>
-        )}
       </Box>
     </Box>
   );

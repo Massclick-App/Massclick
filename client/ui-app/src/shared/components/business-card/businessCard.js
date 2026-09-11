@@ -101,14 +101,16 @@ export default function SelectActionCard({
         aria-pressed={activeFilter === card.filter.type}
         onClick={() => onCardClick?.(card.filter)}
       >
-        <h4 className={cx("card-title")}>{card.title}</h4>
-
-        <h2 className={cx("card-value", card.id === "hotCategory" ? "hot-category-text" : "")}>
-          {typeof card.value === "number" ? card.value.toLocaleString("en-IN") : card.value}
-        </h2>
-
         <div className={cx("card-icon")} style={{ backgroundColor: card.color }}>
           {card.icon}
+        </div>
+
+        <div>
+          <h4 className={cx("card-title")}>{card.title}</h4>
+
+          <h2 className={cx("card-value", card.id === "hotCategory" ? "hot-category-text" : "")}>
+            {typeof card.value === "number" ? card.value.toLocaleString("en-IN") : card.value}
+          </h2>
         </div>
       </button>
     ))}

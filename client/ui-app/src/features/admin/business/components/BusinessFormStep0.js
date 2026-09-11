@@ -504,8 +504,8 @@ const BusinessFormStep0 = ({
     <>
       {renderSectionIntro(
         "Contact channels",
-        "Place the most useful contact points together so callers, WhatsApp users, and enquiry teams can reach the business quickly.",
-        "4 touchpoints"
+        "All contact details are optional. You can continue and save the business with these fields empty, then add them later.",
+        "Optional"
       )}
 
       <div className={cx("section-grid", "section-grid-2")}>

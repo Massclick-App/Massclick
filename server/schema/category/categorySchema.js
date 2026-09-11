@@ -38,6 +38,10 @@ const categorySchema = new mongoose.Schema(
     // Search phrases this category owns once it has paid businesses. The Paid
     // Category SEO console flags other categories' SEO that uses them.
     seoProtectedTerms: { type: [String], default: [] },
+    // Where this category's pages go once it is switched off (isActive: false),
+    // e.g. "/bengaluru/tourist-places". legacyUrlRedirectMiddleware 301s every
+    // category URL that uses a retired slug here instead of serving an empty page.
+    retiredRedirectPath: { type: String, default: "" },
     regionTags: { type: [String], default: [] },
     isActive: { type: Boolean, default: true },
     filterConfig: {
