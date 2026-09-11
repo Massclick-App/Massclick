@@ -49,6 +49,11 @@ import {
   renderHomeRouteShell,
 } from "../utils/homeRouteShell.mjs";
 import {
+  buildBusinessRouteShellMeta,
+  renderBusinessRouteShell,
+} from "../utils/businessRouteShell.mjs";
+import { getSignedUrlByKey } from "../s3Uploder.js";
+import {
   buildBlogCrumbs,
   buildCrumbs,
   crumbsToJsonLd,
@@ -464,6 +469,7 @@ export async function ssrMiddleware(req, res) {
     let isBlogPage = false;
     let categoryRoute = null;
     let businessDoc = null;
+    let businessShell = null;
 
     let fallbackTitle = "Massclick - Local Business Search Platform";
     let fallbackDescription = "Find trusted local businesses, services, and professionals near you on Massclick.";
@@ -521,6 +527,23 @@ export async function ssrMiddleware(req, res) {
         seo = {
           ...buildBusinessSeoMeta({ business: businessDoc, districtLabel: titleCase(slugToText(secondSegment)) }),
           ...(businessPath ? { canonical: `https://massclick.in${businessPath}` } : {}),
+        };
+        // Same precedence/URL as /businesslist/view, so the React hero reuses this exact download.
+        const bannerUrl = businessDoc.bannerImageKey
+          ? getSignedUrlByKey(businessDoc.bannerImageKey)
+          : businessDoc.bannerImage || "";
+        const galleryUrl = businessDoc.businessImagesKey?.length
+          ? getSignedUrlByKey(businessDoc.businessImagesKey[0])
+          : businessDoc.businessImages?.[0] || "";
+        businessShell = {
+          path: req.path,
+          name: businessDoc.businessName || businessDoc.name || "",
+          imageUrl: bannerUrl || galleryUrl,
+          meta: buildBusinessRouteShellMeta({
+            rating: businessDoc.averageRating,
+            category: businessDoc.category,
+            area: titleCase(slugToText(secondSegment)),
+          }),
         };
       }
 
@@ -901,7 +924,7 @@ export async function ssrMiddleware(req, res) {
     const lcpImageHref =
       isCategoryPage && categoryBusinesses.length > 0
         ? categoryBusinesses[0]?.bannerImage || "/header.png"
-        : null;
+        : businessShell?.imageUrl || null;
     const lcpImagePreload = lcpImageHref
       ? `<link rel="preload" as="image" href="${escapeHtml(lcpImageHref)}" fetchpriority="high">`
       : "";
@@ -920,12 +943,16 @@ export async function ssrMiddleware(req, res) {
       : "";
     const rootBootstrapHtml = isHomePage
       ? renderHomeRouteShell()
-      : `${skeletonHtml}<div class="ssr-seo-content">${serverContent}</div>`;
+      : `${businessShell ? renderBusinessRouteShell(businessShell) : skeletonHtml}<div class="ssr-seo-content">${serverContent}</div>`;
+    // "<" escaped so business-controlled text can't close the script tag.
+    const ssrBusinessScript = businessShell
+      ? `<script>window.__SSR_BUSINESS__=${JSON.stringify(businessShell).replace(/</g, "\\u003c")}</script>`
+      : "";
 
     html = html
       .replace(
         "</head>",
-        `${homeRoutePreloadTags}${lcpImagePreload}<script>window.__SSR_SEO__=${ssrSeoJson}</script>${schemaScripts}</head>`
+        `${homeRoutePreloadTags}${lcpImagePreload}<script>window.__SSR_SEO__=${ssrSeoJson}</script>${ssrBusinessScript}${schemaScripts}</head>`
       )
       .replace('<div id="root"></div>', `<div id="root">${rootBootstrapHtml}</div>`);
 

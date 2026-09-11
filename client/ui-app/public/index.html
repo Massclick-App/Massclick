@@ -445,6 +445,94 @@
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+    /* Business shell: photo box tracks the v2 hero, slightly taller on phones so this paint stays the LCP. */
+    .biz-route-shell {
+      width: 100%;
+      min-height: 100vh;
+      background: #fff;
+    }
+    .biz-route-shell__bar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      height: 64px;
+      background: linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .biz-route-shell__page {
+      box-sizing: border-box;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 12px 28px 32px;
+    }
+    .biz-route-shell__crumbs {
+      width: min(360px, 55%);
+      height: 14px;
+      margin: 4px 0 16px;
+      border-radius: 6px;
+      background: #eef1f6;
+    }
+    .biz-route-shell__media {
+      box-sizing: border-box;
+      width: calc(((100% - 26px) * 0.7076 - 10px) * 0.7436);
+      height: clamp(340px, 28vw, 410px);
+      overflow: hidden;
+      border-radius: 13px;
+      background: #e8edf5;
+    }
+    .biz-route-shell__image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .biz-route-shell__name {
+      margin: 14px 0 6px;
+      color: #071a3d;
+      font-size: clamp(1.75rem, 2vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+      text-transform: capitalize;
+    }
+    .biz-route-shell__meta {
+      margin: 0;
+      color: #53627a;
+      font-size: 14px;
+    }
+    @media (min-width: 901px) and (max-width: 1279px) {
+      .biz-route-shell__media {
+        width: calc((100% - 366px) * 0.7059);
+      }
+    }
+    @media (max-width: 900px) {
+      .biz-route-shell__media {
+        width: calc((100% - 10px) * 0.7143);
+        height: clamp(320px, 48vw, 420px);
+      }
+    }
+    @media (max-width: 640px) {
+      .biz-route-shell__media {
+        width: 100%;
+      }
+    }
+    @media (max-width: 600px) {
+      .biz-route-shell__bar {
+        height: 56px;
+      }
+      .biz-route-shell__page {
+        padding: 8px 12px 24px;
+      }
+      .biz-route-shell__media {
+        height: auto;
+        aspect-ratio: 16 / 10.5;
+        border-radius: 10px;
+      }
+      .biz-route-shell__name {
+        font-size: clamp(1.35rem, 6.2vw, 1.65rem);
+        line-height: 1.12;
+      }
+    }
     /* Loading skeleton shown before the app JS mounts */
     .ssr-skeleton {
       padding: 20px;

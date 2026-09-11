@@ -97,6 +97,12 @@ const SEO_PROJECTION = {
   publicId: 1,
   seoTitle: 1,
   seoDescription: 1,
+  // Hero photo + rating for the pre-React business shell (ssrMiddleware).
+  bannerImageKey: 1,
+  bannerImage: 1,
+  businessImagesKey: { $slice: 1 },
+  businessImages: { $slice: 1 },
+  averageRating: 1,
 };
 
 // Resolves the trailing /business/:district/:slug-:publicId segment.

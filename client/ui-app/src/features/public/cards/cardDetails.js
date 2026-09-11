@@ -55,6 +55,7 @@ import { buildBusinessPath, buildCategoryPath } from "shared/utils/searchResultN
 import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "shared/utils/breadcrumbs.js";
 import PopularCategoriesLink from "features/public/popular-categories/popularCategories.js";
 import massClickLogo from "assets/mclogo.webp";
+import BusinessRouteFallback, { getSsrBusinessShell } from "shared/components/BusinessRouteFallback.js";
 import { formatFullBusinessAddress, formatStreetDetail, formatExperience, getLocalityLabel } from "shared/utils/formatBusinessAddress.js";
 const cx = createScopedClassNames(styles);
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ "features/public/auth/AddBusinessModal.js"));
@@ -272,7 +273,10 @@ const BusinessDetail = React.memo(() => {
     observer.observe(hero);
     return () => observer.disconnect();
   }, [business?._id, businessDetailsLoading]);
-  if (businessDetailsLoading) {
+  // Before the fetch effect's first dispatch the store is empty but not yet loading.
+  if (businessDetailsLoading || (businessIdentifier && !business && !businessDetailsError)) {
+    const ssrBusinessShell = getSsrBusinessShell(window.location.pathname);
+    if (ssrBusinessShell) return <BusinessRouteFallback shell={ssrBusinessShell} />;
     return <>
         <StickySearchBar />
         <GlobalSkeleton type="details" />
