@@ -532,13 +532,15 @@ export async function ssrMiddleware(req, res) {
         const bannerUrl = businessDoc.bannerImageKey
           ? getSignedUrlByKey(businessDoc.bannerImageKey)
           : businessDoc.bannerImage || "";
-        const galleryUrl = businessDoc.businessImagesKey?.length
-          ? getSignedUrlByKey(businessDoc.businessImagesKey[0])
-          : businessDoc.businessImages?.[0] || "";
+        const galleryUrls = businessDoc.businessImagesKey?.length
+          ? businessDoc.businessImagesKey.map((key) => getSignedUrlByKey(key))
+          : businessDoc.businessImages || [];
+        const ownPhotoCount = new Set([bannerUrl, ...galleryUrls].filter(Boolean)).size;
         businessShell = {
           path: req.path,
           name: businessDoc.businessName || businessDoc.name || "",
-          imageUrl: bannerUrl || galleryUrl,
+          imageUrl: bannerUrl || galleryUrls[0] || "",
+          layout: ownPhotoCount === 1 ? "single" : "multi",
           meta: buildBusinessRouteShellMeta({
             rating: businessDoc.averageRating,
             category: businessDoc.category,

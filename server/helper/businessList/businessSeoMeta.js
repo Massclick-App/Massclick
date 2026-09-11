@@ -100,8 +100,9 @@ const SEO_PROJECTION = {
   // Hero photo + rating for the pre-React business shell (ssrMiddleware).
   bannerImageKey: 1,
   bannerImage: 1,
-  businessImagesKey: { $slice: 1 },
-  businessImages: { $slice: 1 },
+  // Two, not one: enough to tell the single-photo hero layout from the gallery one.
+  businessImagesKey: { $slice: 2 },
+  businessImages: { $slice: 2 },
   averageRating: 1,
 };
 

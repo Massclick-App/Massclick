@@ -20,16 +20,24 @@ export const buildBusinessRouteShellMeta = ({ rating, category, area } = {}) => 
   return parts.filter(Boolean).join(" · ");
 };
 
-export const renderBusinessRouteShell = ({ name = "", imageUrl = "", meta = "" } = {}) => `
-  <div class="biz-route-shell" data-business-route-shell aria-hidden="true">
+// Mirrors cardDetails' galleryDisplayImages.length === 1 hero (contained photo over a blurred copy).
+export const renderBusinessRouteShell = ({ name = "", imageUrl = "", meta = "", layout = "multi" } = {}) => {
+  const single = layout === "single";
+  const src = escapeHtml(imageUrl);
+  const media = !imageUrl
+    ? ""
+    : single
+      ? `<img class="biz-route-shell__backdrop" src="${src}" alt=""><img class="biz-route-shell__image" src="${src}" alt="" width="1200" height="600" fetchpriority="high">`
+      : `<img class="biz-route-shell__image" src="${src}" alt="" width="1200" height="600" fetchpriority="high">`;
+  return `
+  <div class="biz-route-shell${single ? " biz-route-shell--single" : ""}" data-business-route-shell aria-hidden="true">
     <div class="biz-route-shell__bar"></div>
     <div class="biz-route-shell__page">
       <div class="biz-route-shell__crumbs"></div>
-      <div class="biz-route-shell__media">${imageUrl
-        ? `<img class="biz-route-shell__image" src="${escapeHtml(imageUrl)}" alt="" width="1200" height="600" fetchpriority="high">`
-        : ""}</div>
+      <div class="biz-route-shell__media">${media}</div>
       <p class="biz-route-shell__name">${escapeHtml(name)}</p>
       ${meta ? `<p class="biz-route-shell__meta">${escapeHtml(meta)}</p>` : ""}
     </div>
   </div>
 `;
+};

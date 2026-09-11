@@ -473,6 +473,7 @@
       background: #eef1f6;
     }
     .biz-route-shell__media {
+      position: relative;
       box-sizing: border-box;
       width: calc(((100% - 26px) * 0.7076 - 10px) * 0.7436);
       height: clamp(340px, 28vw, 410px);
@@ -485,6 +486,28 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+    .biz-route-shell--single .biz-route-shell__media {
+      width: calc((100% - 26px) * 0.7076);
+      height: clamp(344px, 29.5vw, 434px);
+      background: #15213a;
+    }
+    .biz-route-shell--single .biz-route-shell__image {
+      position: relative;
+      z-index: 2;
+      object-fit: contain;
+    }
+    .biz-route-shell__backdrop {
+      position: absolute;
+      inset: -24px;
+      z-index: 1;
+      width: calc(100% + 48px);
+      height: calc(100% + 48px);
+      object-fit: cover;
+      opacity: 0.9;
+      filter: blur(22px) saturate(0.8) brightness(0.62);
+      transform: scale(1.05);
+      pointer-events: none;
     }
     .biz-route-shell__name {
       margin: 14px 0 6px;
@@ -504,11 +527,18 @@
       .biz-route-shell__media {
         width: calc((100% - 366px) * 0.7059);
       }
+      .biz-route-shell--single .biz-route-shell__media {
+        width: calc(100% - 356px);
+      }
     }
     @media (max-width: 900px) {
       .biz-route-shell__media {
         width: calc((100% - 10px) * 0.7143);
         height: clamp(320px, 48vw, 420px);
+      }
+      .biz-route-shell--single .biz-route-shell__media {
+        width: 100%;
+        height: clamp(344px, 48vw, 434px);
       }
     }
     @media (max-width: 640px) {
@@ -527,6 +557,10 @@
         height: auto;
         aspect-ratio: 16 / 10.5;
         border-radius: 10px;
+      }
+      .biz-route-shell--single .biz-route-shell__media {
+        height: clamp(224px, 69vw, 316px);
+        aspect-ratio: auto;
       }
       .biz-route-shell__name {
         font-size: clamp(1.35rem, 6.2vw, 1.65rem);

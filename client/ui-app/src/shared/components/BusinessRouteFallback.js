@@ -7,11 +7,18 @@ export const getSsrBusinessShell = (pathname = "") => {
 };
 
 const BusinessRouteFallback = ({ shell }) => (
-  <div className="biz-route-shell" data-business-route-shell="" aria-hidden="true">
+  <div
+    className={`biz-route-shell${shell.layout === "single" ? " biz-route-shell--single" : ""}`}
+    data-business-route-shell=""
+    aria-hidden="true"
+  >
     <div className="biz-route-shell__bar" />
     <div className="biz-route-shell__page">
       <div className="biz-route-shell__crumbs" />
       <div className="biz-route-shell__media">
+        {shell.imageUrl && shell.layout === "single" ? (
+          <img className="biz-route-shell__backdrop" src={shell.imageUrl} alt="" />
+        ) : null}
         {shell.imageUrl ? (
           <img
             className="biz-route-shell__image"
