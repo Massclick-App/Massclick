@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -17,10 +18,14 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import DonutLargeRoundedIcon from "@mui/icons-material/DonutLargeRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
@@ -44,14 +49,28 @@ import axiosInstance from "shared/services/axiosInstance.js";
 const API_URL = process.env.REACT_APP_API_URL;
 
 const palette = {
-  ink: "#172033",
-  muted: "#657084",
-  line: "#e5e9f0",
+  ink: "#1a1d29",
+  muted: "#6b7385",
+  line: "#e9edf3",
+  surface: "#ffffff",
+  surfaceSubtle: "#f7f8fa",
   orange: "#ea6d11",
   blue: "#2563eb",
   green: "#16803c",
   purple: "#7c3aed",
   red: "#dc2626",
+};
+
+const SPRING_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+const cardShadow = "0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px rgba(16, 24, 40, 0.05)";
+const cardShadowHover = "0 2px 4px rgba(16, 24, 40, 0.05), 0 16px 36px rgba(16, 24, 40, 0.09)";
+const reduceMotion = "@media (prefers-reduced-motion: reduce)";
+const chartTooltipStyle = {
+  borderRadius: 12,
+  border: `1px solid ${palette.line}`,
+  boxShadow: cardShadow,
+  fontSize: 12,
+  padding: "8px 12px",
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString("en-IN");
@@ -62,6 +81,19 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   });
 const readableStatus = (value) => String(value || "NO_STATUS").replaceAll("_", " ");
+
+const avatarPalette = ["#ea6d11", "#2563eb", "#7c3aed", "#0f766e", "#dc2626", "#16803c"];
+const getAvatarColor = (seed) => {
+  const key = String(seed || "");
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return avatarPalette[hash % avatarPalette.length];
+};
+const getInitials = (name) => {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts[0][0] + (parts[1]?.[0] || "")).toUpperCase();
+};
 
 const getPercent = (value, total) => {
   if (!total) return 0;
@@ -127,17 +159,27 @@ function clickableSx(isActive) {
   return {
     cursor: "pointer",
     borderColor: isActive ? palette.orange : palette.line,
-    boxShadow: "none",
+    boxShadow: isActive ? "0 1px 2px rgba(234, 109, 17, 0.08), 0 10px 24px rgba(234, 109, 17, 0.12)" : "none",
     bgcolor: isActive ? "#fff8f1" : "#fff",
-    transform: "none",
-    transition: "transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease",
+    transform: "translateY(0) scale(1)",
+    transition: `transform 220ms ${SPRING_EASE}, box-shadow 220ms ${SPRING_EASE}, border-color 220ms ${SPRING_EASE}, background-color 220ms ${SPRING_EASE}`,
     "&:hover": {
-      transform: "none",
-      boxShadow: "0 3px 12px rgba(23, 32, 51, 0.06)",
+      transform: "translateY(-2px) scale(1.005)",
+      boxShadow: cardShadowHover,
+      borderColor: isActive ? palette.orange : "#d7deea",
+    },
+    "&:active": {
+      transform: "translateY(0) scale(0.98)",
+      transition: `transform 90ms ${SPRING_EASE}`,
     },
     "&:focus-visible": {
       outline: "3px solid rgba(234, 109, 17, 0.28)",
       outlineOffset: 3,
+    },
+    [reduceMotion]: {
+      transition: "box-shadow 150ms ease, border-color 150ms ease, background-color 150ms ease",
+      "&:hover": { transform: "none" },
+      "&:active": { transform: "none" },
     },
   };
 }
@@ -161,15 +203,16 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress, filter,
       elevation={0}
       sx={{
         border: `1px solid ${palette.line}`,
-        borderRadius: 2,
-        p: 2,
-        minHeight: 164,
+        borderRadius: "18px",
+        boxShadow: cardShadow,
+        p: 2.25,
+        minHeight: 168,
         minWidth: 0,
         gap: 1.5,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        bgcolor: "#fff",
+        bgcolor: palette.surface,
         width: "100%",
         textAlign: "left",
         font: "inherit",
@@ -177,18 +220,21 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress, filter,
       }}
     >
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1.5}>
-        <Typography sx={{ color: palette.muted, fontSize: 13, fontWeight: 700 }}>
+        <Typography sx={{ color: palette.muted, fontSize: 13, fontWeight: 650, letterSpacing: "0.01em" }}>
           {label}
         </Typography>
         <Box
           sx={{
             width: 38,
             height: 38,
-            borderRadius: 1.5,
+            borderRadius: "11px",
             display: "grid",
             placeItems: "center",
-            bgcolor: `${color}16`,
+            bgcolor: `${color}14`,
             color,
+            transition: `transform 220ms ${SPRING_EASE}, background-color 220ms ${SPRING_EASE}`,
+            ".MuiPaper-root:hover &": clickable ? { transform: "scale(1.08)", bgcolor: `${color}22` } : {},
+            [reduceMotion]: { transition: "background-color 150ms ease", ".MuiPaper-root:hover &": { transform: "none" } },
           }}
         >
           <Icon fontSize="small" />
@@ -196,10 +242,10 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress, filter,
       </Stack>
 
       <Box>
-        <Typography sx={{ color: palette.ink, fontSize: { xs: 28, md: 34 }, fontWeight: 750, lineHeight: 1.15, letterSpacing: "-0.035em", fontVariantNumeric: "tabular-nums" }}>
+        <Typography sx={{ color: palette.ink, fontSize: { xs: 28, md: 34 }, fontWeight: 700, lineHeight: 1.08, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
           {value}
         </Typography>
-        <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.75 }}>
+        <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.75, lineHeight: 1.4 }}>
           {helper}
         </Typography>
       </Box>
@@ -209,12 +255,13 @@ function MetricCard({ color, icon: Icon, label, value, helper, progress, filter,
           variant="determinate"
           value={Math.max(0, Math.min(progress, 100))}
           sx={{
-            height: 7,
+            height: 6,
             borderRadius: 999,
-            bgcolor: "#edf1f6",
+            bgcolor: "#eef1f6",
             "& .MuiLinearProgress-bar": {
               borderRadius: 999,
               bgcolor: color,
+              transition: `transform 480ms ${SPRING_EASE}`,
             },
           }}
         />
@@ -229,8 +276,9 @@ function Panel({ title, subtitle, action, children, sx }) {
       elevation={0}
       sx={{
         border: `1px solid ${palette.line}`,
-        borderRadius: 2,
-        bgcolor: "#fff",
+        borderRadius: "18px",
+        boxShadow: cardShadow,
+        bgcolor: palette.surface,
         p: { xs: 2, md: 2.5 },
         minWidth: 0,
         ...sx,
@@ -244,11 +292,11 @@ function Panel({ title, subtitle, action, children, sx }) {
         sx={{ mb: 2 }}
       >
         <Box>
-          <Typography component="h2" sx={{ color: palette.ink, fontSize: 17, fontWeight: 750, letterSpacing: "-0.015em" }}>
+          <Typography component="h2" sx={{ color: palette.ink, fontSize: 16, fontWeight: 700, letterSpacing: "-0.012em" }}>
             {title}
           </Typography>
           {subtitle && (
-            <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.25 }}>
+            <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.3, lineHeight: 1.4 }}>
               {subtitle}
             </Typography>
           )}
@@ -260,14 +308,40 @@ function Panel({ title, subtitle, action, children, sx }) {
   );
 }
 
-function SectionHeading({ id, title, subtitle, badge }) {
+function SectionHeading({ id, icon: Icon, title, subtitle, badge }) {
   return (
-    <Stack id={id} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mt: 3.5, mb: 1.75, scrollMarginTop: 24 }}>
-      <Box>
-        <Typography component="h2" sx={{ color: palette.ink, fontSize: 20, fontWeight: 750, letterSpacing: "-0.025em" }}>{title}</Typography>
-        <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.5 }}>{subtitle}</Typography>
-      </Box>
-      {badge && <Chip size="small" variant="outlined" label={badge} sx={{ borderColor: palette.line, color: palette.muted, fontSize: 12 }} />}
+    <Stack id={id} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mt: 4, mb: 2, scrollMarginTop: 24 }}>
+      <Stack direction="row" spacing={1.5} alignItems="flex-start">
+        {Icon && (
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              flexShrink: 0,
+              borderRadius: "10px",
+              display: "grid",
+              placeItems: "center",
+              bgcolor: `${palette.orange}14`,
+              color: palette.orange,
+              mt: 0.2,
+            }}
+          >
+            <Icon fontSize="small" />
+          </Box>
+        )}
+        <Box>
+          <Typography component="h2" sx={{ color: palette.ink, fontSize: 20, fontWeight: 700, letterSpacing: "-0.018em", lineHeight: 1.2 }}>{title}</Typography>
+          <Typography sx={{ color: palette.muted, fontSize: 13, mt: 0.4, lineHeight: 1.45 }}>{subtitle}</Typography>
+        </Box>
+      </Stack>
+      {badge && (
+        <Chip
+          size="small"
+          variant="outlined"
+          label={badge}
+          sx={{ borderColor: palette.line, color: palette.muted, fontSize: 12, fontWeight: 600, bgcolor: palette.surfaceSubtle }}
+        />
+      )}
     </Stack>
   );
 }
@@ -281,10 +355,11 @@ function EmptyState({ label }) {
         placeItems: "center",
         color: palette.muted,
         border: `1px dashed ${palette.line}`,
-        borderRadius: 2,
+        borderRadius: "14px",
+        bgcolor: palette.surfaceSubtle,
       }}
     >
-      <Typography sx={{ fontSize: 14, fontWeight: 700 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 14, fontWeight: 650 }}>{label}</Typography>
     </Box>
   );
 }
@@ -471,7 +546,18 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
       <Panel
         title="Business report filters"
         subtitle="Choose the reporting period and business creator. Business metrics and reports update automatically."
-        sx={{ mb: 2.5, borderTop: `3px solid ${palette.orange}`, boxShadow: "0 4px 20px rgba(23, 32, 51, 0.03)" }}
+        sx={{
+          mb: 2.5,
+          position: "relative",
+          overflow: "hidden",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            inset: "0 0 auto 0",
+            height: 3,
+            bgcolor: palette.orange,
+          },
+        }}
         action={
           <Stack direction="row" spacing={1}>
           <Button
@@ -484,17 +570,40 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
               setCustomTo("");
             }}
             disabled={!creatorId && datePreset === "all"}
-            sx={{ textTransform: "none", fontWeight: 800, color: palette.orange }}
+            sx={{ textTransform: "none", fontWeight: 750, color: palette.orange, borderRadius: "10px", transition: `background-color 180ms ${SPRING_EASE}`, "&:hover": { bgcolor: "#fff3e8" } }}
           >
             Reset filters
           </Button>
-          <Button size="small" variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => { fetchReport(); dispatch(getDashboardSummary()); }} disabled={loading} sx={{ textTransform: "none", borderColor: palette.line, color: palette.ink, fontWeight: 700 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={() => { fetchReport(); dispatch(getDashboardSummary()); }}
+            disabled={loading}
+            sx={{
+              textTransform: "none",
+              borderColor: palette.line,
+              color: palette.ink,
+              fontWeight: 700,
+              borderRadius: "10px",
+              transition: `transform 180ms ${SPRING_EASE}, border-color 180ms ${SPRING_EASE}, background-color 180ms ${SPRING_EASE}`,
+              "&:hover": { borderColor: "#d7deea", bgcolor: palette.surfaceSubtle },
+              "&:active": { transform: "scale(0.97)" },
+              [reduceMotion]: { "&:active": { transform: "none" } },
+            }}
+          >
             Refresh
           </Button>
           </Stack>
         }
       >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} useFlexGap flexWrap="wrap">
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1.25}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "12px", bgcolor: palette.surfaceSubtle } }}
+        >
           <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 250 } }}>
             <InputLabel id="dashboard-creator-label" shrink>Created by</InputLabel>
             <Select labelId="dashboard-creator-label" label="Created by" value={creatorId} displayEmpty onChange={(event) => setCreatorId(event.target.value)} inputProps={{ "aria-label": "Filter analytics by creator" }}>
@@ -536,9 +645,34 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
           )}
         </Stack>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} sx={{ mt: 2, pt: 1.5, borderTop: `1px solid ${palette.line}` }}>
-          <Stack component="nav" aria-label="Dashboard sections" direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+          <Stack
+            component="nav"
+            aria-label="Dashboard sections"
+            direction="row"
+            spacing={0.5}
+            useFlexGap
+            flexWrap="wrap"
+            sx={{ p: 0.5, borderRadius: "12px", bgcolor: palette.surfaceSubtle }}
+          >
             {[["performance", "Performance"], ["growth", "Growth"], ["distribution", "Markets"], ["team", "Team"], ["records", "Payments & activity"], ["business-directory", "Directory"]].map(([id, label]) => (
-              <Button key={id} component="a" href={`#${id}`} size="small" sx={{ color: palette.muted, textTransform: "none", fontSize: 12, px: 1 }}>{label}</Button>
+              <Button
+                key={id}
+                component="a"
+                href={`#${id}`}
+                size="small"
+                sx={{
+                  color: palette.muted,
+                  textTransform: "none",
+                  fontSize: 12,
+                  fontWeight: 650,
+                  px: 1.25,
+                  borderRadius: "9px",
+                  transition: `background-color 180ms ${SPRING_EASE}, color 180ms ${SPRING_EASE}`,
+                  "&:hover": { bgcolor: "#fff", color: palette.ink },
+                }}
+              >
+                {label}
+              </Button>
             ))}
           </Stack>
           <Typography sx={{ color: palette.muted, fontSize: 12, alignSelf: { md: "center" } }}>
@@ -558,9 +692,9 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
 
       {rangeError && <Alert severity="warning" sx={{ mb: 2 }}>{rangeError}</Alert>}
       {loading && <LinearProgress aria-label="Updating report" sx={{ mb: 2 }} />}
-      {loading && !report && <Skeleton variant="rectangular" height={360} sx={{ borderRadius: 2, mb: 2 }} />}
-      {report && <Box component="fieldset" disabled={Boolean(loading || rangeError || error)} aria-busy={loading} sx={{ border: 0, p: 0, m: 0, minWidth: 0, opacity: loading || rangeError || error ? 0.45 : 1, pointerEvents: loading || rangeError || error ? "none" : "auto", transition: "opacity 0.15s" }}>
-      <SectionHeading id="performance" title="Business performance" subtitle="Listings, publishing status and collections for your selected report." badge={`${dateRangeLabel} · ${creatorId ? "Selected creator" : "All creators"}`} />
+      {loading && !report && <Skeleton variant="rectangular" height={360} sx={{ borderRadius: "18px", mb: 2 }} />}
+      {report && <Box component="fieldset" disabled={Boolean(loading || rangeError || error)} aria-busy={loading} sx={{ border: 0, p: 0, m: 0, minWidth: 0, opacity: loading || rangeError || error ? 0.45 : 1, pointerEvents: loading || rangeError || error ? "none" : "auto", transition: `opacity 220ms ${SPRING_EASE}` }}>
+      <SectionHeading id="performance" icon={InsightsRoundedIcon} title="Business performance" subtitle="Listings, publishing status and collections for your selected report." badge={`${dateRangeLabel} · ${creatorId ? "Selected creator" : "All creators"}`} />
       <Box
         sx={{
           display: "grid",
@@ -584,7 +718,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
         ))}
       </Box>
 
-      <SectionHeading id="growth" title="Growth & operations" subtitle="Review acquisition patterns and the current operational workload." />
+      <SectionHeading id="growth" icon={TrendingUpRoundedIcon} title="Growth & operations" subtitle="Review acquisition patterns and the current operational workload." />
       <Panel
         title="Daily business additions"
         subtitle={`Daily businesses added during the last ${trendDays} days${trendLocation ? ` in ${trendLocation}` : " across all places"}`}
@@ -604,24 +738,30 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
                 ))}
               </Select>
             </FormControl>
-            {[7, 30, 90].map((days) => (
-              <Button
-                key={days}
-                size="small"
-                variant={trendDays === days ? "contained" : "outlined"}
-                onClick={() => setTrendDays(days)}
-                sx={{
-                  minWidth: 48,
-                  textTransform: "none",
-                  fontWeight: 800,
-                  bgcolor: trendDays === days ? palette.orange : undefined,
-                  borderColor: trendDays === days ? palette.orange : palette.line,
-                  "&:hover": { bgcolor: trendDays === days ? "#cf5d0c" : "#fff7ed", borderColor: palette.orange },
-                }}
-              >
-                {days}d
-              </Button>
-            ))}
+            <Stack direction="row" spacing={0.25} sx={{ p: 0.4, borderRadius: "11px", bgcolor: palette.surfaceSubtle }}>
+              {[7, 30, 90].map((days) => (
+                <Button
+                  key={days}
+                  size="small"
+                  disableElevation
+                  onClick={() => setTrendDays(days)}
+                  sx={{
+                    minWidth: 44,
+                    textTransform: "none",
+                    fontWeight: 750,
+                    borderRadius: "8px",
+                    color: trendDays === days ? "#fff" : palette.muted,
+                    bgcolor: trendDays === days ? palette.orange : "transparent",
+                    transition: `background-color 200ms ${SPRING_EASE}, color 200ms ${SPRING_EASE}, transform 200ms ${SPRING_EASE}`,
+                    "&:hover": { bgcolor: trendDays === days ? "#cf5d0c" : "#fff" },
+                    "&:active": { transform: "scale(0.94)" },
+                    [reduceMotion]: { "&:active": { transform: "none" } },
+                  }}
+                >
+                  {days}d
+                </Button>
+              ))}
+            </Stack>
           </Stack>
         }
       >
@@ -642,6 +782,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
                 />
                 <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
                 <Tooltip
+                  contentStyle={chartTooltipStyle}
                   formatter={(value) => [formatNumber(value), "Businesses"]}
                   labelFormatter={(label) => `${label}${trendLocation ? ` · ${trendLocation}` : ""}`}
                 />
@@ -701,7 +842,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
                   <CartesianGrid strokeDasharray="3 3" stroke="#edf1f6" />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} />
                   <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value) => [formatNumber(value), "Businesses"]} />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => [formatNumber(value), "Businesses"]} />
                   <Area
                     type="monotone"
                     dataKey="businesses"
@@ -738,23 +879,25 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
                     onClick={() => filter && handleScopedFilter(filter)}
                     sx={{
                       border: `1px solid ${isActive ? palette.orange : palette.line}`,
-                      borderRadius: 1.25,
+                      borderRadius: "12px",
                       bgcolor: isActive ? "#fff7ed" : "#fff",
                       color: palette.ink,
                       cursor: "pointer",
                       font: "inherit",
                       p: 1,
                       textAlign: "left",
-                      transition: "border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease",
+                      transition: `border-color 200ms ${SPRING_EASE}, background-color 200ms ${SPRING_EASE}, transform 200ms ${SPRING_EASE}`,
                       "&:hover": {
                         borderColor: palette.orange,
                         bgcolor: "#fff7ed",
-                        transform: "translateY(-1px)",
+                        transform: "translateY(-2px)",
                       },
+                      "&:active": { transform: "translateY(0) scale(0.97)" },
                       "&:focus-visible": {
                         outline: "3px solid rgba(234, 109, 17, 0.28)",
                         outlineOffset: 2,
                       },
+                      [reduceMotion]: { "&:hover": { transform: "none" }, "&:active": { transform: "none" } },
                     }}
                   >
                     <Typography sx={{ fontSize: 12, fontWeight: 850, color: isActive ? palette.orange : palette.muted }}>
@@ -823,7 +966,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
         </Panel>
       </Box>
 
-      <SectionHeading id="distribution" title="Market distribution" subtitle="See which categories and locations contribute the most businesses." />
+      <SectionHeading id="distribution" icon={DonutLargeRoundedIcon} title="Market distribution" subtitle="See which categories and locations contribute the most businesses." />
       <Box
         sx={{
           display: "grid",
@@ -847,7 +990,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
                     axisLine={false}
                     tick={{ fontSize: 12 }}
                   />
-                  <Tooltip formatter={(value) => [formatNumber(value), "Businesses"]} />
+                  <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => [formatNumber(value), "Businesses"]} />
                   <Bar
                     dataKey="count"
                     fill={palette.blue}
@@ -926,7 +1069,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
         </Panel>
       </Box>
 
-      <SectionHeading id="team" title="Team & account activity" subtitle="Account totals remain independent of report filters. Creator rankings below use the selected report." badge="Account-wide metrics" />
+      <SectionHeading id="team" icon={GroupsRoundedIcon} title="Team & account activity" subtitle="Account totals remain independent of report filters. Creator rankings below use the selected report." badge="Account-wide metrics" />
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 2, mb: 2 }}>
         {metricCards.filter((card) => !card.filter).map((card) => (
           <MetricCard key={card.label} {...card} onNavigate={navigate} />
@@ -948,14 +1091,27 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
                   component={isClickable ? "button" : "div"}
                   type={isClickable ? "button" : undefined}
                   onClick={isClickable ? () => handleCreatorClick(item) : undefined}
-                  sx={{ border: `1px solid ${selected ? palette.orange : palette.line}`, borderRadius: 1.5, p: 1.5, bgcolor: selected ? "#fff7ed" : "#fff", textAlign: "left", font: "inherit", ...(isClickable ? clickableSx(selected) : {}) }}
+                  sx={{ border: `1px solid ${selected ? palette.orange : palette.line}`, borderRadius: "14px", p: 1.5, bgcolor: selected ? "#fff7ed" : "#fff", textAlign: "left", font: "inherit", ...(isClickable ? clickableSx(selected) : {}) }}
                 >
                   <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography noWrap sx={{ color: palette.ink, fontSize: 14, fontWeight: 850 }}>{item.name}</Typography>
-                      <Typography noWrap sx={{ color: palette.muted, fontSize: 12, mt: 0.25 }}>{item.email || "No email available"}</Typography>
-                    </Box>
-                    <Chip size="small" label={formatNumber(item.businesses)} sx={{ bgcolor: "#fff3e8", color: palette.orange, fontWeight: 850 }} />
+                    <Stack direction="row" spacing={1.1} alignItems="center" sx={{ minWidth: 0 }}>
+                      <Avatar
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          fontSize: 13,
+                          fontWeight: 800,
+                          bgcolor: getAvatarColor(item.userId || item.name),
+                        }}
+                      >
+                        {getInitials(item.name)}
+                      </Avatar>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography noWrap sx={{ color: palette.ink, fontSize: 14, fontWeight: 850 }}>{item.name}</Typography>
+                        <Typography noWrap sx={{ color: palette.muted, fontSize: 12, mt: 0.1 }}>{item.email || "No email available"}</Typography>
+                      </Box>
+                    </Stack>
+                    <Chip size="small" label={formatNumber(item.businesses)} sx={{ bgcolor: "#fff3e8", color: palette.orange, fontWeight: 850, flexShrink: 0 }} />
                   </Stack>
                   <Typography sx={{ color: palette.muted, fontSize: 12, mt: 1 }}>
                     {formatNumber(item.liveBusinesses)} live · {formatNumber(item.activeBusinesses)} active
@@ -969,7 +1125,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
         )}
       </Panel>
 
-      <SectionHeading id="records" title="Payments & recent activity" subtitle="Inspect payment records and the latest businesses in your report." />
+      <SectionHeading id="records" icon={ReceiptLongRoundedIcon} title="Payments & recent activity" subtitle="Inspect payment records and the latest businesses in your report." />
       <Box
         sx={{
           display: "grid",

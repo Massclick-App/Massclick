@@ -395,9 +395,10 @@ export default function MainGrid() {
               width: '100%',
               mb: 2,
               p: { xs: 1.5, md: 2 },
-              border: '1px solid #e5e9f0',
-              borderRadius: 2,
-              bgcolor: '#f8fafc',
+              border: '1px solid #e9edf3',
+              borderRadius: '18px',
+              boxShadow: '0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px rgba(16, 24, 40, 0.05)',
+              bgcolor: '#f7f8fa',
         }}
       >
             <Typography component="h2" sx={{ fontSize: 12, fontWeight: 750, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#475569', mb: 0.5 }}>
@@ -410,7 +411,7 @@ export default function MainGrid() {
       />
 
 
-      <Paper id="business-directory" component="section" elevation={0} sx={{ mt: 3, p: { xs: 1.5, md: 2.5 }, minWidth: 0, border: "1px solid #e5e9f0", borderRadius: 2, scrollMarginTop: 24 }} ref={tableSectionRef}>
+      <Paper id="business-directory" component="section" elevation={0} sx={{ mt: 3, p: { xs: 1.5, md: 2.5 }, minWidth: 0, border: "1px solid #e9edf3", borderRadius: "18px", boxShadow: "0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px rgba(16, 24, 40, 0.05)", scrollMarginTop: 24 }} ref={tableSectionRef}>
         {(cardFilter.type !== "all" || cardFilter.scope) && (
           <Box sx={{
             mb: 2,
@@ -423,13 +424,14 @@ export default function MainGrid() {
             bgcolor: "#fff3e0",
             color: "#d97800",
             fontSize: "0.85rem",
-            fontWeight: 700
+            fontWeight: 700,
+            transition: "opacity 220ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}>
             Showing {cardFilter.label}
             <Button
               size="small"
               onClick={() => handleCardFilter({ type: "all", label: "Total Businesses" })}
-              sx={{ minWidth: "auto", color: "#d97800", textTransform: "none", p: 0.25 }}
+              sx={{ minWidth: "auto", color: "#d97800", textTransform: "none", p: 0.25, borderRadius: "8px" }}
             >
               Clear
             </Button>
