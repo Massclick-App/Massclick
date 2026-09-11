@@ -50,15 +50,16 @@ import GlobalSkeleton from "features/public/globalSkeleton.js";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "state/actions/favoriteAction.js";
 import { generateLocalBusinessSchema } from "shared/utils/seoSchemaGenerators.js";
 import { buildBusinessSeoMeta, districtLabelFromSlug } from "shared/utils/businessSeoMeta.js";
-import BusinessShareSheet from "features/public/cards/share/BusinessShareSheet.js";
 import { trackBusinessView, trackBusinessClick } from "shared/utils/webTracker.js";
 import { buildBusinessPath, buildCategoryPath } from "shared/utils/searchResultNavigation.js";
 import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "shared/utils/breadcrumbs.js";
 import PopularCategoriesLink from "features/public/popular-categories/popularCategories.js";
 import massClickLogo from "assets/mclogo.webp";
+import BusinessRouteFallback, { getSsrBusinessShell } from "shared/components/BusinessRouteFallback.js";
 import { formatFullBusinessAddress, formatStreetDetail, formatExperience, getLocalityLabel } from "shared/utils/formatBusinessAddress.js";
 const cx = createScopedClassNames(styles);
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ "features/public/auth/AddBusinessModal.js"));
+const BusinessShareSheet = lazy(() => import(/* webpackChunkName: "business-share-sheet" */ "features/public/cards/share/BusinessShareSheet.js"));
 const LOGIN_PROMPT_SHOWN_KEY = "businessDetailLoginPromptShown";
 const toSlug = (text = "") => String(text).toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 const SimpleModal = ({
@@ -157,6 +158,8 @@ const BusinessDetail = React.memo(() => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showFullHours, setShowFullHours] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Stays true after the first open so the sheet remains mounted and can play its exit animation.
+  const [shareSheetLoaded, setShareSheetLoaded] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [sidebarModal, setSidebarModal] = useState(null);
   const [sidebarSubmitting, setSidebarSubmitting] = useState(false);
@@ -270,7 +273,10 @@ const BusinessDetail = React.memo(() => {
     observer.observe(hero);
     return () => observer.disconnect();
   }, [business?._id, businessDetailsLoading]);
-  if (businessDetailsLoading) {
+  // Before the fetch effect's first dispatch the store is empty but not yet loading.
+  if (businessDetailsLoading || (businessIdentifier && !business && !businessDetailsError)) {
+    const ssrBusinessShell = getSsrBusinessShell(window.location.pathname);
+    if (ssrBusinessShell) return <BusinessRouteFallback shell={ssrBusinessShell} />;
     return <>
         <StickySearchBar />
         <GlobalSkeleton type="details" />
@@ -632,7 +638,10 @@ const BusinessDetail = React.memo(() => {
   // One share sheet for every Share button: it offers the share image, direct
   // targets and the native share sheet ("More"), instead of jumping straight
   // to the OS sheet with a bare link.
-  const handleShare = () => setShareOpen(true);
+  const handleShare = () => {
+    setShareSheetLoaded(true);
+    setShareOpen(true);
+  };
   const closeShare = () => setShareOpen(false);
   const notifyShare = (message, variant) => enqueueSnackbar(message, { variant });
   const handleEditListing = () => {
@@ -1583,22 +1592,24 @@ const BusinessDetail = React.memo(() => {
           </form>
         </SimpleModal>}
 
-      <BusinessShareSheet
-        open={shareOpen}
-        onClose={closeShare}
-        onNotify={notifyShare}
-        share={{
-          name: business.businessName,
-          category: business.category ? String(business.category).replace(/\b\w/g, (c) => c.toUpperCase()) : "",
-          area: [getLocalityLabel(business), districtLabelFromSlug(district)].filter(Boolean).filter((v, i, arr) => arr.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i).join(", "),
-          rating: averageRatingValue || 0,
-          reviews: effectiveTotalReview,
-          verified: Boolean(business.verification?.isVerified),
-          imageSrc: business.bannerImage || galleryDisplayImages[0] || "",
-          logoSrc: business.logoImage || "",
-          url: canonicalUrl,
-        }}
-      />
+      {shareSheetLoaded && <Suspense fallback={null}>
+        <BusinessShareSheet
+          open={shareOpen}
+          onClose={closeShare}
+          onNotify={notifyShare}
+          share={{
+            name: business.businessName,
+            category: business.category ? String(business.category).replace(/\b\w/g, (c) => c.toUpperCase()) : "",
+            area: [getLocalityLabel(business), districtLabelFromSlug(district)].filter(Boolean).filter((v, i, arr) => arr.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i).join(", "),
+            rating: averageRatingValue || 0,
+            reviews: effectiveTotalReview,
+            verified: Boolean(business.verification?.isVerified),
+            imageSrc: business.bannerImage || galleryDisplayImages[0] || "",
+            logoSrc: business.logoImage || "",
+            url: canonicalUrl,
+          }}
+        />
+      </Suspense>}
 
       {(sidebarModal === "edit" || sidebarModal === "claim") && <SimpleModal title={sidebarModal === "claim" ? "Claim this business" : "Suggest a listing correction"} onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
           <form className={cx("business-CardDetails-actionForm")} onSubmit={handleListingRequestSubmit(sidebarModal)}>
