@@ -49,10 +49,12 @@ export const getSearchRequests = ({ page = 1, limit = 25, status = "", read = ""
   }
 };
 
-export const markSearchRequestRead = (id) => async (dispatch) => {
+// messageValues ({ fullName, contactNumber, category, location, supportContact }) override what
+// the completed WhatsApp message is sent with; omitted fields fall back to the stored request.
+export const markSearchRequestRead = (id, messageValues = {}) => async (dispatch) => {
   dispatch({ type: UPDATE_SEARCH_REQUEST_REQUEST });
   try {
-    const response = await axiosInstance.patch(`${API_URL}/admin/search-requests/${id}/read`);
+    const response = await axiosInstance.patch(`${API_URL}/admin/search-requests/${id}/read`, messageValues);
     const request = response.data.data || response.data;
     dispatch({ type: UPDATE_SEARCH_REQUEST_SUCCESS, payload: request });
     return request;

@@ -26,6 +26,8 @@ export const normalizeWhatsAppMobile = (value) => {
 
   if (digits.startsWith("0091")) digits = digits.slice(4);
   if (digits.startsWith("91") && digits.length === 12) digits = digits.slice(2);
+  // Domestic trunk prefix, e.g. 08072377942 -> 8072377942.
+  if (digits.startsWith("0") && digits.length === 11) digits = digits.slice(1);
 
   if (!/^[6-9]\d{9}$/.test(digits)) {
     return { valid: false, mobile: "", reason: "invalid_indian_mobile" };

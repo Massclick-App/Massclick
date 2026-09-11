@@ -31,7 +31,7 @@ const SEARCH_REQUEST_COMPLETED_TEMPLATE_LANGUAGE =
   process.env.MSG91_SEARCH_REQUEST_COMPLETED_TEMPLATE_LANGUAGE || "en";
 const SEARCH_REQUEST_COMPLETED_TEMPLATE_NAMESPACE =
   process.env.MSG91_SEARCH_REQUEST_COMPLETED_TEMPLATE_NAMESPACE || null;
-const SEARCH_REQUEST_COMPLETED_CONTACT =
+export const SEARCH_REQUEST_COMPLETED_CONTACT =
   process.env.MSG91_SEARCH_REQUEST_COMPLETED_CONTACT ||
   process.env.MASSCLICK_SUPPORT_CONTACT ||
   process.env.SUPPORT_EMAIL ||
@@ -135,7 +135,7 @@ const canUseCustomerBusinessListVariant = (variant, context = {}) => {
   );
 };
 
-const getMsg91ErrorMessage = (data, fallback) => {
+export const getMsg91ErrorMessage = (data, fallback) => {
   if (!data) return fallback;
   if (typeof data === "string") return data;
 
@@ -1057,10 +1057,10 @@ export const sendSearchRequestCompletedMessage = async (request = {}, context = 
           {
             to: [recipientMobile],
             components: {
-              body_1: { type: "text", value: request.fullName || "Customer" },
-              body_2: { type: "text", value: request.category || "your request" },
-              body_3: { type: "text", value: request.location || "your area" },
-              body_4: { type: "text", value: SEARCH_REQUEST_COMPLETED_CONTACT },
+              body_1: { type: "text", value: cleanValue(request.fullName || "Customer") },
+              body_2: { type: "text", value: cleanValue(request.category || "your request") },
+              body_3: { type: "text", value: cleanValue(request.location || "your area") },
+              body_4: { type: "text", value: cleanValue(request.supportContact || SEARCH_REQUEST_COMPLETED_CONTACT) },
             },
           },
         ],

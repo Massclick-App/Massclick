@@ -1237,6 +1237,11 @@ section.seo-header-content.premium-section {
 .request-input-icon { position: relative; }
 .request-input-icon svg { position: absolute; z-index: 1; top: 50%; left: 12px; transform: translateY(-50%); color: #f97316; font-size: 20px; pointer-events: none; }
 .request-input-icon input { padding-left: 40px; }
+.request-input-icon--prefix input { padding-left: 58px; }
+.request-input-prefix { position: absolute; z-index: 1; top: 50%; left: 13px; transform: translateY(-50%); padding-right: 10px; border-right: 1px solid #e2e8f0; color: #475569; font-size: 14px; font-weight: 700; line-height: 1.4; pointer-events: none; }
+.request-field input[aria-invalid="true"], .request-field textarea[aria-invalid="true"] { border-color: #f43f5e; }
+.request-field input[aria-invalid="true"]:focus, .request-field textarea[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(244, 63, 94, .15); }
+.request-field-error { color: #be123c; font-size: 12px; font-weight: 600; line-height: 1.4; }
 .request-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 2px; }
 .request-form-footer p { margin: 0; color: #94a3b8; font-size: 12px; }
 .request-actions { display: flex; align-items: center; gap: 10px; }

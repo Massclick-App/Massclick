@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { Button, Chip } from "@mui/material";
+import { Alert, Button, Chip, Snackbar } from "@mui/material";
 import { CheckCircle2, Clock3, Copy, Mail, MapPin, Phone, RefreshCw, Search, UserRound } from "lucide-react";
 import CustomizedTable from "shared/components/table/CustomizedTable.js";
 import { useDispatch } from "react-redux";
 import { getSearchRequests, markSearchRequestRead } from "state/actions/searchRequestAction.js";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
+import { formatIndianMobile } from "shared/utils/indianMobile.js";
+import SendCompletedMessageDialog from "features/admin/search-requests/SendCompletedMessageDialog.js";
 import styles from "features/admin/search-requests/SearchRequestsAdmin.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -32,9 +34,18 @@ export default function SearchRequestsAdmin() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [readingId, setReadingId] = useState("");
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState(null);
+  // `key` remounts the dialog on every open so it starts from the request's own values.
+  const [sendDialog, setSendDialog] = useState({ open: false, request: null, key: 0 });
+  const [messageDefaults, setMessageDefaults] = useState({});
   const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const notify = useCallback((severity, text) => setToast({ key: Date.now(), severity, text, open: true }), []);
+  const closeToast = useCallback((_, reason) => {
+    if (reason === "clickaway") return;
+    setToast((current) => current && { ...current, open: false });
+  }, []);
 
   const copyRequestDoneTemplate = useCallback(async () => {
     try {
@@ -43,9 +54,9 @@ export default function SearchRequestsAdmin() {
       setCopiedTemplate(true);
       window.setTimeout(() => setCopiedTemplate(false), 1800);
     } catch {
-      setMessage("Template could not be copied. Please select and copy it manually.");
+      notify("error", "Template could not be copied. Please select and copy it manually.");
     }
-  }, []);
+  }, [notify]);
 
   const load = useCallback(async (page, limit, filters = {}) => {
     setLoading(true);
@@ -60,30 +71,38 @@ export default function SearchRequestsAdmin() {
       }));
       setRequests(result?.items || []);
       setTotal(result?.total || 0);
+      if (result?.completedMessageDefaults) setMessageDefaults(result.completedMessageDefaults);
     } catch (error) {
-      setMessage(error.response?.data?.message || "Search requests could not be loaded.");
+      notify("error", error.response?.data?.message || "Search requests could not be loaded.");
       setRequests([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [dispatch]);
+  }, [dispatch, notify]);
 
-  const markRead = useCallback(async (request) => {
-    if (request.isRead) return;
+  const openSendDialog = useCallback((request) => {
+    setSendDialog((current) => ({ open: true, request, key: current.key + 1 }));
+  }, []);
+  const closeSendDialog = useCallback(() => setSendDialog((current) => ({ ...current, open: false })), []);
+
+  const sendCompletedMessage = useCallback(async (values) => {
+    const { request } = sendDialog;
+    if (!request || request.isRead) return;
     setReadingId(request._id);
-    setMessage("");
     try {
-      const updated = await dispatch(markSearchRequestRead(request._id));
+      const updated = await dispatch(markSearchRequestRead(request._id, values));
       setRequests((current) => current.map((item) => item._id === updated._id ? updated : item));
-      setMessage(`Completed message sent to ${request.fullName}.`);
+      closeSendDialog();
+      notify("success", `Completed message sent to ${values.fullName} on ${formatIndianMobile(values.contactNumber)}.`);
       window.dispatchEvent(new Event("search-requests:changed"));
     } catch (error) {
-      setMessage(error.response?.data?.message || "The completed message could not be sent.");
+      // The dialog stays open so the admin can correct the values and retry.
+      notify("error", error.response?.data?.message || error.message || "The completed message could not be sent.");
     } finally {
       setReadingId("");
     }
-  }, [dispatch]);
+  }, [closeSendDialog, dispatch, notify, sendDialog]);
 
   const columns = useMemo(() => [
     {
@@ -106,19 +125,18 @@ export default function SearchRequestsAdmin() {
       renderCell: (_, request) => request.isRead ? (
         <span className={cx("completed")}><CheckCircle2 size={16} /> Message sent</span>
       ) : (
-        <Button size="small" variant="contained" startIcon={<CheckCircle2 size={15} />} disabled={readingId === request._id} onClick={() => markRead(request)}>
+        <Button size="small" variant="contained" startIcon={<CheckCircle2 size={15} />} disabled={readingId === request._id} onClick={() => openSendDialog(request)}>
           {readingId === request._id ? "Sending..." : "Send completed message"}
         </Button>
       ),
     },
-  ], [markRead, readingId]);
+  ], [openSendDialog, readingId]);
 
   return <main className={cx("page")}>
     <header>
       <div><span><Search size={16} /> CUSTOMER SEARCH OPERATIONS</span><h1>Search requests</h1><p>Send the completed WhatsApp message after a customer request has been handled.</p></div>
       <Button startIcon={<RefreshCw size={17} />} onClick={() => setRefreshKey((value) => value + 1)}>Refresh</Button>
     </header>
-    {message && <div className={cx("message")} role="status">{message}</div>}
     <section className={cx("template-panel")} aria-label="MSG91 request completed template">
       <div className={cx("template-meta")}>
         <span className={cx("template-eyebrow")}>MSG91 TEMPLATE</span>
@@ -145,5 +163,27 @@ export default function SearchRequestsAdmin() {
         renderEmpty={() => <div className={cx("empty")}><Search size={30} /><b>No search requests found</b><span>Requests matching your search and read filter will appear here.</span></div>}
       />
     </section>
+    {sendDialog.request && (
+      <SendCompletedMessageDialog
+        key={sendDialog.key}
+        open={sendDialog.open}
+        request={sendDialog.request}
+        defaults={messageDefaults}
+        template={requestDoneTemplate}
+        sending={readingId === sendDialog.request._id}
+        onClose={closeSendDialog}
+        onSend={sendCompletedMessage}
+      />
+    )}
+    {/* Errors stay until dismissed so a failed send can't vanish before it is read. */}
+    <Snackbar
+      key={toast?.key}
+      open={Boolean(toast?.open)}
+      autoHideDuration={toast?.severity === "error" ? null : 5000}
+      onClose={closeToast}
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+    >
+      <Alert severity={toast?.severity || "info"} variant="filled" onClose={closeToast}>{toast?.text}</Alert>
+    </Snackbar>
   </main>;
 }
