@@ -14,7 +14,6 @@ import {
   sendBusinessesToCustomer,
   sendBusinessLead,
   sendEnquiryBusinessLead,
-  sendPremiumBusinessesToCustomer,
 } from "../../helper/msg91/smsGatewayHelper.js";
 import {
   evaluateWhatsAppSend,
@@ -28,7 +27,8 @@ import { emitToRoom } from "../../websocket/roomManager.js";
 import { buildRoom, WS_EVENTS } from "../../websocket/constants.js";
 import enquiryModel from "../../model/enquiry/enquiryModel.js";
 import { sendBusinessEnquiryEmail, sendCustomerBusinessInfoEmail } from "../../helper/email/emailService.js";
-import delayedLeadDispatchModel from "../../model/businessList/delayedLeadDispatchModel.js";
+
+const SEARCH_LEAD_BUSINESS_LIMIT = 5;
 
 const districtAliasMap = {
   tiruchirappalli: ["tiruchirappalli", "trichy"],
@@ -213,6 +213,9 @@ export const dispatchLeadToBusinesses = async ({
   phase = "standard",
   traceId = "",
 } = {}) => {
+  businesses = businesses.slice(0, SEARCH_LEAD_BUSINESS_LIMIT);
+  customerListBusinesses = customerListBusinesses.slice(0, SEARCH_LEAD_BUSINESS_LIMIT);
+  const attemptedRecipients = new Set();
   let businessSendSuccess = false;
   let customerSendSuccess = !sendCustomerBusinessList;
   let customerListDisabled = false;
@@ -386,171 +389,179 @@ export const dispatchLeadToBusinesses = async ({
     }
   }
 
-  for (const business of businesses) {
-    const businessMobiles = extractIndianMobiles([
-      business.contactList,
-      business.whatsappNumber,
-    ]);
+  const sendOwnerAlerts = async () => {
+    for (const business of businesses) {
+      const businessMobiles = extractIndianMobiles([
+        business.contactList,
+        business.whatsappNumber,
+      ]).slice(0, 1);
 
-    if (!businessMobiles.length) {
-      console.warn(
-        "[WhatsApp] no valid business mobile:",
-        business.businessName,
-      );
-      continue;
-    }
+      if (!businessMobiles.length) {
+        console.warn(
+          "[WhatsApp] no valid business mobile:",
+          business.businessName,
+        );
+        continue;
+      }
 
-    for (const cleanMobile of businessMobiles) {
-      try {
-        if (waSettings.whatsapp_business_lead_alert) {
-          leadLog(traceId, "whatsapp-owner:policy-check", {
-            phase,
-            businessId: business._id?.toString?.() || "",
-            businessName: business.businessName,
-            recipientMobile: maskMobile(cleanMobile),
-          });
-          const sendPolicy = await evaluateWhatsAppSend({
-            mobile: cleanMobile,
-            template: "business_lead_alert_v2",
-            sourceType: "search_lead",
-            category: leadData.searchText,
-            location: leadData.location,
-            customerMobile: leadData.customerMobile,
-          });
-
-          if (!sendPolicy.allowed) {
-            await markWhatsAppSkipped(
-              {
-                templateName: "business_lead_alert_v2",
-                sourceType: "search_lead",
-                sourceId: savedLog?._id,
-                recipientMobile: sendPolicy.mobile || cleanMobile,
-                category: leadData.searchText,
-                location: leadData.location,
-                customerName: leadData.customerName,
-                customerMobile: leadData.customerMobile,
-                businessId: business._id,
-                businessName: business.businessName,
-              },
-              sendPolicy.skipReason,
-            );
-            console.warn(
-              `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`,
-            );
-            leadLog(traceId, "whatsapp-owner:skipped", {
+      for (const cleanMobile of businessMobiles) {
+        if (attemptedRecipients.has(cleanMobile)) continue;
+        attemptedRecipients.add(cleanMobile);
+        try {
+          if (waSettings.whatsapp_business_lead_alert) {
+            leadLog(traceId, "whatsapp-owner:policy-check", {
               phase,
               businessId: business._id?.toString?.() || "",
               businessName: business.businessName,
               recipientMobile: maskMobile(cleanMobile),
-              reason: sendPolicy.skipReason,
             });
+            const sendPolicy = await evaluateWhatsAppSend({
+              mobile: cleanMobile,
+              template: "business_lead_alert_v2",
+              sourceType: "search_lead",
+              category: leadData.searchText,
+              location: leadData.location,
+              customerMobile: leadData.customerMobile,
+            });
+
+            if (!sendPolicy.allowed) {
+              await markWhatsAppSkipped(
+                {
+                  templateName: "business_lead_alert_v2",
+                  sourceType: "search_lead",
+                  sourceId: savedLog?._id,
+                  recipientMobile: sendPolicy.mobile || cleanMobile,
+                  category: leadData.searchText,
+                  location: leadData.location,
+                  customerName: leadData.customerName,
+                  customerMobile: leadData.customerMobile,
+                  businessId: business._id,
+                  businessName: business.businessName,
+                },
+                sendPolicy.skipReason,
+              );
+              console.warn(
+                `[WhatsApp] skipped ${business.businessName} ${cleanMobile}: ${sendPolicy.skipReason}`,
+              );
+              leadLog(traceId, "whatsapp-owner:skipped", {
+                phase,
+                businessId: business._id?.toString?.() || "",
+                businessName: business.businessName,
+                recipientMobile: maskMobile(cleanMobile),
+                reason: sendPolicy.skipReason,
+              });
+              continue;
+            }
+
+            await withRetry(
+              () =>
+                sendBusinessLead(sendPolicy.mobile, leadData, {
+                  sourceType: "search_lead",
+                  sourceId: savedLog?._id,
+                  businessId: business._id,
+                  businessName: business.businessName,
+                }),
+              `Business WhatsApp ${business.businessName} ${cleanMobile}`,
+            );
+            leadLog(traceId, "whatsapp-owner:sent", {
+              phase,
+              businessId: business._id?.toString?.() || "",
+              businessName: business.businessName,
+              recipientMobile: maskMobile(cleanMobile),
+            });
+          } else {
+            console.warn("[WhatsApp] business lead alert disabled in settings");
+            leadLog(traceId, "whatsapp-owner:disabled", { phase });
             continue;
           }
 
-          await withRetry(
-            () =>
-              sendBusinessLead(sendPolicy.mobile, leadData, {
-                sourceType: "search_lead",
-                sourceId: savedLog?._id,
-                businessId: business._id,
-                businessName: business.businessName,
-              }),
-            `Business WhatsApp ${business.businessName} ${cleanMobile}`,
+          businessSendSuccess = true;
+          notifiedBusinesses.push({
+            businessName: business.businessName,
+            mobile: cleanMobile,
+          });
+
+          await wait(500);
+        } catch (err) {
+          console.error(
+            "Business WhatsApp failed after retries:",
+            err.response?.data || err.message,
           );
-          leadLog(traceId, "whatsapp-owner:sent", {
+          leadLog(traceId, "whatsapp-owner:error", {
             phase,
             businessId: business._id?.toString?.() || "",
             businessName: business.businessName,
             recipientMobile: maskMobile(cleanMobile),
+            error: err.response?.data || err.message,
           });
-        } else {
-          console.warn("[WhatsApp] business lead alert disabled in settings");
-          leadLog(traceId, "whatsapp-owner:disabled", { phase });
-          continue;
         }
-
-        businessSendSuccess = true;
-        notifiedBusinesses.push({
-          businessName: business.businessName,
-          mobile: cleanMobile,
-        });
-
-        await wait(500);
-      } catch (err) {
-        console.error(
-          "Business WhatsApp failed after retries:",
-          err.response?.data || err.message,
-        );
-        leadLog(traceId, "whatsapp-owner:error", {
-          phase,
-          businessId: business._id?.toString?.() || "",
-          businessName: business.businessName,
-          recipientMobile: maskMobile(cleanMobile),
-          error: err.response?.data || err.message,
-        });
       }
     }
-  }
 
-  if (sendCustomerBusinessList) {
-    const cleanCustomerMobile = extractIndianMobiles(
-      userDetails.mobileNumber1 || leadData.customerMobile,
-    )[0];
+  };
 
-    if (cleanCustomerMobile) {
-      try {
-        if (waSettings.whatsapp_customer_business_list) {
-          leadLog(traceId, "whatsapp-customer-list:send", {
+  const sendCustomerList = async () => {
+    if (sendCustomerBusinessList) {
+      const cleanCustomerMobile = extractIndianMobiles(
+        userDetails.mobileNumber1 || leadData.customerMobile,
+      )[0];
+
+      if (cleanCustomerMobile) {
+        try {
+          if (waSettings.whatsapp_customer_business_list) {
+            leadLog(traceId, "whatsapp-customer-list:send", {
+              phase,
+              recipientMobile: maskMobile(cleanCustomerMobile),
+              businessesCount: customerListBusinesses.length,
+            });
+            await withRetry(
+              () =>
+                sendBusinessesToCustomer(
+                  cleanCustomerMobile,
+                  leadData,
+                  customerListBusinesses,
+                  {
+                    sourceType: "customer_list",
+                    sourceId: savedLog?._id,
+                    customerListSendMode: "single",
+                  },
+                ),
+              `Customer WhatsApp ${cleanCustomerMobile}`,
+            );
+            leadLog(traceId, "whatsapp-customer-list:sent", {
+              phase,
+              recipientMobile: maskMobile(cleanCustomerMobile),
+            });
+          } else {
+            console.warn(
+              "[WhatsApp] customer business list disabled in settings",
+            );
+            customerListDisabled = true;
+            leadLog(traceId, "whatsapp-customer-list:disabled", { phase });
+          }
+
+          if (!customerListDisabled) {
+            customerSendSuccess = true;
+          }
+        } catch (err) {
+          console.error(
+            "Customer WhatsApp failed",
+            err.response?.data || err.message,
+          );
+          leadLog(traceId, "whatsapp-customer-list:error", {
             phase,
             recipientMobile: maskMobile(cleanCustomerMobile),
-            businessesCount: customerListBusinesses.length,
+            error: err.response?.data || err.message,
           });
-          await withRetry(
-            () =>
-              sendBusinessesToCustomer(
-                cleanCustomerMobile,
-                leadData,
-                customerListBusinesses,
-                {
-                  sourceType: "customer_list",
-                  sourceId: savedLog?._id,
-                  customerListSendMode:
-                    waSettings.whatsapp_customer_business_list_send_mode ||
-                    "split",
-                },
-              ),
-            `Customer WhatsApp ${cleanCustomerMobile}`,
-          );
-          leadLog(traceId, "whatsapp-customer-list:sent", {
-            phase,
-            recipientMobile: maskMobile(cleanCustomerMobile),
-          });
-        } else {
-          console.warn(
-            "[WhatsApp] customer business list disabled in settings",
-          );
-          customerListDisabled = true;
-          leadLog(traceId, "whatsapp-customer-list:disabled", { phase });
         }
-
-        if (!customerListDisabled) {
-          customerSendSuccess = true;
-        }
-      } catch (err) {
-        console.error(
-          "Customer WhatsApp failed",
-          err.response?.data || err.message,
-        );
-        leadLog(traceId, "whatsapp-customer-list:error", {
-          phase,
-          recipientMobile: maskMobile(cleanCustomerMobile),
-          error: err.response?.data || err.message,
-        });
+      } else {
+        leadLog(traceId, "whatsapp-customer-list:no-mobile", { phase });
       }
-    } else {
-      leadLog(traceId, "whatsapp-customer-list:no-mobile", { phase });
     }
-  }
+
+  };
+
+  await Promise.all([sendOwnerAlerts(), sendCustomerList()]);
 
   leadLog(traceId, "dispatch:done", {
     phase,
@@ -916,14 +927,14 @@ export const logSearchAction = async (req, res) => {
       delete searchMatchQuery.$and;
     }
 
-    // Find matching businesses (limit to top 10)
+    // Select at most five businesses for the immediate search dispatch.
     let businesses = [];
 
     if (Array.isArray(matchedBusinessIds) && matchedBusinessIds.length > 0) {
-      const orderedIds = matchedBusinessIds
+      const orderedIds = [...new Set(matchedBusinessIds
         .map((id) => id?.toString?.())
-        .filter(Boolean)
-        .slice(0, 10);
+        .filter(Boolean))]
+        .slice(0, SEARCH_LEAD_BUSINESS_LIMIT);
 
       const fetchedBusinesses = await businessListModel
         .find(
@@ -969,7 +980,7 @@ export const logSearchAction = async (req, res) => {
           premiumBusiness: 1,
         })
         .sort({ amountPaid: -1, paidDate: -1, averageRating: -1, createdAt: -1 })
-        .limit(10)
+        .limit(SEARCH_LEAD_BUSINESS_LIMIT)
         .lean();
       leadLog(reqId, "business-match:from-query", {
         found: businesses.length,
@@ -1006,185 +1017,44 @@ export const logSearchAction = async (req, res) => {
 
     const waSettings = leadSettings;
 
-    const premiumBusinesses = businesses.filter((business) => business.premiumBusiness === true);
-    const normalBusinesses = businesses.filter((business) => business.premiumBusiness !== true);
-
-    leadLog(reqId, "business-match:split", {
-      total: businesses.length,
-      premium: premiumBusinesses.length,
-      normal: normalBusinesses.length,
-      delayMinutes: nonNegativeInteger(waSettings.premium_lead_delay_minutes, 30),
-    });
-
-    if (!premiumBusinesses.length) {
-      const dispatchResult = await dispatchLeadToBusinesses({
-        businesses,
-        userDetails,
-        leadData,
-        savedLog,
-        finalCategoryName,
-        normalizedLocation,
-        waSettings,
-        sendCustomerBusinessList: true,
-        phase: "standard",
-        traceId: reqId,
-      });
-
-      if (dispatchResult.customerListDisabled) {
-        return res.status(202).json({
-          success: true,
-          message: "Lead stored but customer WhatsApp is disabled",
-          detectedCategory: finalCategoryName,
-          totalBusinesses: businesses.length,
-          notifiedBusinesses: dispatchResult.notifiedBusinesses,
-          whatsappUpdated: false,
-        });
-      }
-
-      await searchLogModel.updateOne(
-        { _id: savedLog._id },
-        { whatsapp: dispatchResult.whatsappUpdated },
-      );
-
-      return res.status(202).json({
-        success: true,
-        message: dispatchResult.whatsappUpdated
-          ? "Lead stored & WhatsApp sent"
-          : "Lead stored but WhatsApp delivery failed",
-        detectedCategory: finalCategoryName,
-        totalBusinesses: businesses.length,
-        notifiedBusinesses: dispatchResult.notifiedBusinesses,
-        whatsappUpdated: dispatchResult.whatsappUpdated,
-      });
-    }
-
-    const premiumDispatchResult = await dispatchLeadToBusinesses({
-      businesses: premiumBusinesses,
+    const dispatchResult = await dispatchLeadToBusinesses({
+      businesses,
       userDetails,
       leadData,
       savedLog,
       finalCategoryName,
       normalizedLocation,
       waSettings,
-      sendCustomerBusinessList: false,
-      phase: "premium",
+      sendCustomerBusinessList: true,
+      phase: "standard",
       traceId: reqId,
     });
 
-    let premiumCustomerWhatsappSent = false;
-    const cleanCustomerMobile = extractIndianMobiles(userDetails.mobileNumber1)[0];
-    if (cleanCustomerMobile && waSettings.whatsapp_customer_business_list) {
-      try {
-        await withRetry(
-          () =>
-            sendPremiumBusinessesToCustomer(
-              cleanCustomerMobile,
-              leadData,
-              premiumBusinesses,
-              {
-                sourceType: "premium_customer_recommendation",
-                sourceId: savedLog._id,
-              },
-            ),
-          `Premium recommendation WhatsApp ${cleanCustomerMobile}`,
-        );
-        premiumCustomerWhatsappSent = true;
-        leadLog(reqId, "whatsapp-premium-customer:sent", {
-          recipientMobile: maskMobile(cleanCustomerMobile),
-          premiumBusinessesCount: premiumBusinesses.length,
-          template: "pr_reco",
-        });
-      } catch (err) {
-        console.error(
-          "Premium recommendation WhatsApp failed",
-          err.response?.data || err.message,
-        );
-        leadLog(reqId, "whatsapp-premium-customer:error", {
-          recipientMobile: maskMobile(cleanCustomerMobile),
-          error: err.response?.data || err.message,
-        });
-      }
-    } else if (!waSettings.whatsapp_customer_business_list) {
-      console.warn("[WhatsApp] premium customer recommendation disabled because customer business list is disabled");
-      leadLog(reqId, "whatsapp-premium-customer:disabled");
-    } else {
-      leadLog(reqId, "whatsapp-premium-customer:no-mobile");
+    if (dispatchResult.customerListDisabled) {
+      return res.status(202).json({
+        success: true,
+        message: "Lead stored but customer WhatsApp is disabled",
+        detectedCategory: finalCategoryName,
+        totalBusinesses: businesses.length,
+        notifiedBusinesses: dispatchResult.notifiedBusinesses,
+        whatsappUpdated: false,
+      });
     }
-
-    const delayMinutes = nonNegativeInteger(waSettings.premium_lead_delay_minutes, 30);
-    const delayedUntil = new Date(Date.now() + delayMinutes * 60 * 1000);
-    const shouldDelayNormalBusinesses = normalBusinesses.length > 0 && delayMinutes > 0;
-    let delayedJobId = null;
-
-    if (normalBusinesses.length > 0) {
-      if (delayMinutes === 0) {
-        await dispatchLeadToBusinesses({
-          businesses: normalBusinesses,
-          userDetails,
-          leadData,
-          savedLog,
-          finalCategoryName,
-          normalizedLocation,
-          waSettings,
-          sendCustomerBusinessList: true,
-          customerListBusinesses: businesses,
-          phase: "normal_immediate",
-          traceId: reqId,
-        });
-      } else {
-        const delayedJob = await delayedLeadDispatchModel.create({
-          searchLogId: savedLog._id,
-          traceId: reqId,
-          businessIds: normalBusinesses.map((business) => business._id),
-          customerListBusinessIds: businesses.map((business) => business._id),
-          leadData,
-          userDetails: {
-            userName: userDetails.userName || "",
-            mobileNumber1: userDetails.mobileNumber1 || "",
-            mobileNumber2: userDetails.mobileNumber2 || "",
-            email: userDetails.email || "",
-          },
-          dueAt: delayedUntil,
-          status: "scheduled",
-        });
-        delayedJobId = delayedJob._id;
-        leadLog(reqId, "delayed-normal:scheduled", {
-          delayedJobId: delayedJobId?.toString?.() || "",
-          businessesCount: normalBusinesses.length,
-          dueAt: delayedUntil,
-          delayMinutes,
-        });
-      }
-    } else {
-      leadLog(reqId, "delayed-normal:none");
-    }
-
-    const whatsappUpdated =
-      premiumDispatchResult.businessSendSuccess && premiumCustomerWhatsappSent;
 
     await searchLogModel.updateOne(
       { _id: savedLog._id },
-      { whatsapp: whatsappUpdated },
+      { whatsapp: dispatchResult.whatsappUpdated },
     );
 
     return res.status(202).json({
       success: true,
-      message: premiumCustomerWhatsappSent
-        ? shouldDelayNormalBusinesses
-          ? "Premium lead sent; normal business delivery scheduled"
-          : "Premium lead sent"
-        : "Premium lead stored but customer recommendation failed",
+      message: dispatchResult.whatsappUpdated
+        ? "Lead stored & WhatsApp sent"
+        : "Lead stored but WhatsApp delivery failed",
       detectedCategory: finalCategoryName,
       totalBusinesses: businesses.length,
-      notifiedBusinesses: premiumDispatchResult.notifiedBusinesses,
-      whatsappUpdated,
-      premiumLeadFirst: true,
-      premiumBusinessesCount: premiumBusinesses.length,
-      delayedBusinessesCount: shouldDelayNormalBusinesses ? normalBusinesses.length : 0,
-      immediateNormalBusinessesCount: delayMinutes === 0 ? normalBusinesses.length : 0,
-      delayedUntil: shouldDelayNormalBusinesses ? delayedUntil : null,
-      delayedJobId,
-      premiumCustomerWhatsappSent,
+      notifiedBusinesses: dispatchResult.notifiedBusinesses,
+      whatsappUpdated: dispatchResult.whatsappUpdated,
     });
   } catch (error) {
     console.error("Error logging search:", error);

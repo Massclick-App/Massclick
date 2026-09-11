@@ -656,26 +656,12 @@ export const sendBusinessesToCustomer = async (
       }
     });
 
-    const sendMode = context.customerListSendMode === "single" ? "single" : "split";
-    const totalMatchedBusinesses = uniqueBusinesses.length;
-    const finalBusinesses = uniqueBusinesses.slice(0, sendMode === "single" ? 5 : 10);
-    const firstBatch = finalBusinesses.slice(0, 5);
-    const secondBatch = finalBusinesses.slice(5, 10);
+    // Always send one message containing at most five businesses.
+    const firstBatch = uniqueBusinesses.slice(0, 5);
     const baseValues = getCustomerListBaseValues(lead);
-    const shouldUseSingleEnTemplate =
-      totalMatchedBusinesses <= 5 || finalBusinesses.length <= 5;
-    const firstMessageVariant = shouldUseSingleEnTemplate
-      ? getCustomerBusinessListVariant(context.singleBatchLanguageCode || "en")
-      : getCustomerBusinessListVariant(context.firstLanguageCode || "en_US");
-    const requestedSecondMessageVariant = getCustomerBusinessListVariant(
-      context.secondLanguageCode || "en"
+    const firstMessageVariant = getCustomerBusinessListVariant(
+      context.singleBatchLanguageCode || "en"
     );
-    const secondMessageVariant = canUseCustomerBusinessListVariant(
-      requestedSecondMessageVariant,
-      context
-    )
-      ? requestedSecondMessageVariant
-      : CUSTOMER_BUSINESS_LIST_TEMPLATE_VARIANTS.en_US;
 
     const createPayload = (variant, values) => {
       const components = values.reduce((acc, value, index) => {
@@ -736,19 +722,6 @@ export const sendBusinessesToCustomer = async (
       0
     );
     await postWhatsAppTemplate(createPayload(firstMessageVariant, values1), auditContext);
-
-    if (sendMode === "split" && secondBatch.length > 0) {
-      const values2 = trimCustomerListForTemplateLimit(
-        secondMessageVariant,
-        baseValues,
-        secondBatch,
-        0
-      );
-      const hasBusinessRows = values2.slice(3).some((value) => value && value !== "-");
-      if (hasBusinessRows) {
-        await postWhatsAppTemplate(createPayload(secondMessageVariant, values2), auditContext);
-      }
-    }
 
     await logger.smsDebug({
       service: "CustomerBusinessList",
