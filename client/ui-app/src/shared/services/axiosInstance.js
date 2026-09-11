@@ -51,6 +51,13 @@ export const setAxiosStore = (reduxStore) => {
 // show it; anything faster is cancelled below before it ever fires.
 const LOADER_SHOW_DELAY_MS = 400;
 let pendingShowTimeout = null;
+const GLOBAL_LOADER_READ_METHODS = new Set(['get', 'head', 'options']);
+
+const shouldUseGlobalLoader = (config = {}) => {
+  if (config.skipGlobalLoader) return false;
+  const method = (config.method || 'get').toLowerCase();
+  return !GLOBAL_LOADER_READ_METHODS.has(method);
+};
 
 const showGlobalLoader = () => {
   // Only the first concurrent request schedules a show, and only once --
@@ -59,7 +66,7 @@ const showGlobalLoader = () => {
   pendingShowTimeout = setTimeout(() => {
     pendingShowTimeout = null;
     try {
-      store?.dispatch({ type: 'SHOW_GLOBAL_LOADER', payload: { message: 'Loading...' } });
+      store?.dispatch({ type: 'SHOW_GLOBAL_LOADER' });
     } catch (error) {
       }
   }, LOADER_SHOW_DELAY_MS);
@@ -205,11 +212,14 @@ const createMaintenanceModeError = (config) => {
 // Request interceptor - add token to headers and show loader
 axiosInstance.interceptors.request.use(
   (config) => {
+    config.__useGlobalLoader = shouldUseGlobalLoader(config);
     // showGlobalLoader() only dispatches when activeRequests is still 0 (this
     // is the first concurrent request) -- it must run before the increment
     // below, or the count is never 0 at check-time and SHOW never fires.
-    showGlobalLoader();
-    activeRequests++;
+    if (config.__useGlobalLoader) {
+      showGlobalLoader();
+      activeRequests++;
+    }
 
     // Don't add token to relogin endpoint (it uses refresh token).
     // Also preserve explicit Authorization headers, such as public client tokens.
@@ -222,8 +232,10 @@ axiosInstance.interceptors.request.use(
       !isAdminArea() &&
       !canBypassMaintenanceGuard(requestPath)
     ) {
-      activeRequests = Math.max(0, activeRequests - 1);
-      hideGlobalLoader();
+      if (config.__useGlobalLoader) {
+        activeRequests = Math.max(0, activeRequests - 1);
+        hideGlobalLoader();
+      }
       return Promise.reject(createMaintenanceModeError(config));
     }
 
@@ -255,8 +267,10 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    activeRequests = Math.max(0, activeRequests - 1);
-    hideGlobalLoader();
+    if (error?.config?.__useGlobalLoader) {
+      activeRequests = Math.max(0, activeRequests - 1);
+      hideGlobalLoader();
+    }
     return Promise.reject(error);
   }
 );
@@ -264,13 +278,17 @@ axiosInstance.interceptors.request.use(
 // Response interceptor - handle 401 and refresh token, hide loader
 axiosInstance.interceptors.response.use(
   (response) => {
-    activeRequests = Math.max(0, activeRequests - 1);
-    hideGlobalLoader();
+    if (response?.config?.__useGlobalLoader) {
+      activeRequests = Math.max(0, activeRequests - 1);
+      hideGlobalLoader();
+    }
     return response;
   },
   (error) => {
-    activeRequests = Math.max(0, activeRequests - 1);
-    hideGlobalLoader();
+    if (error?.config?.__useGlobalLoader) {
+      activeRequests = Math.max(0, activeRequests - 1);
+      hideGlobalLoader();
+    }
     syncMaintenanceModeFromError(error);
 
     if (error.response?.status === 429) {
