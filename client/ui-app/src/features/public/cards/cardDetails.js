@@ -2,7 +2,7 @@ import { formatBusinessHours } from "shared/utils/businessHours.js";
 import Time12HourInput from "shared/components/Time12HourInput.js";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 // BusinessDetail.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { lazy, Suspense, useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet-async";
 import { Link, useParams, useNavigate } from "react-router-dom";
@@ -54,11 +54,12 @@ import BusinessShareSheet from "features/public/cards/share/BusinessShareSheet.j
 import { trackBusinessView, trackBusinessClick } from "shared/utils/webTracker.js";
 import { buildBusinessPath, buildCategoryPath } from "shared/utils/searchResultNavigation.js";
 import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "shared/utils/breadcrumbs.js";
-import OTPLoginModal from "features/public/auth/AddBusinessModal.js";
 import PopularCategoriesLink from "features/public/popular-categories/popularCategories.js";
 import massClickLogo from "assets/mclogo.webp";
 import { formatFullBusinessAddress, formatStreetDetail, formatExperience, getLocalityLabel } from "shared/utils/formatBusinessAddress.js";
 const cx = createScopedClassNames(styles);
+const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ "features/public/auth/AddBusinessModal.js"));
+const LOGIN_PROMPT_SHOWN_KEY = "businessDetailLoginPromptShown";
 const toSlug = (text = "") => String(text).toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 const SimpleModal = ({
   children,
@@ -193,6 +194,7 @@ const BusinessDetail = React.memo(() => {
   const servicesRef = useRef(null);
   const photosRef = useRef(null);
   const reviewsRef = useRef(null);
+  const heroSectionRef = useRef(null);
   useEffect(() => {
     if (!showCertificate) return undefined;
     const previousOverflow = document.body.style.overflow;
@@ -251,6 +253,23 @@ const BusinessDetail = React.memo(() => {
     });
     return () => { active = false; };
   }, [dispatch, business?._id, business?.category, business?.geoLocation?.coordinates]);
+  useEffect(() => {
+    if (showLoginModal) sessionStorage.setItem(LOGIN_PROMPT_SHOWN_KEY, "1");
+  }, [showLoginModal]);
+  // Like the homepage: prompt a logged-out visitor once they scroll past the
+  // hero. Once per session, so browsing several listings doesn't re-prompt.
+  useEffect(() => {
+    const hero = heroSectionRef.current;
+    if (!hero || getAuthUser()?._id || sessionStorage.getItem(LOGIN_PROMPT_SHOWN_KEY)) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) return;
+      observer.disconnect();
+      if (getAuthUser()?._id || sessionStorage.getItem(LOGIN_PROMPT_SHOWN_KEY)) return;
+      setShowLoginModal(true);
+    }, { threshold: 0, rootMargin: "-80px 0px 0px 0px" });
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [business?._id, businessDetailsLoading]);
   if (businessDetailsLoading) {
     return <>
         <StickySearchBar />
@@ -896,7 +915,7 @@ const BusinessDetail = React.memo(() => {
       <div className={cx("business-CardDetails-pageWrapper business-CardDetails-v2")}>
         <Breadcrumbs items={breadcrumbItems} />
         <main>
-        <section className={cx("business-CardDetails-heroSection", galleryDisplayImages.length === 1 && "business-CardDetails-heroSection--single")}>
+        <section ref={heroSectionRef} className={cx("business-CardDetails-heroSection", galleryDisplayImages.length === 1 && "business-CardDetails-heroSection--single")}>
           <div className={cx("business-CardDetails-mainImageContainer", galleryDisplayImages.length === 1 && "business-CardDetails-mainImageContainer--single")} onClick={() => {
             if (galleryDisplayImages.length > 0) {
               const selectedIndex = galleryDisplayImages.indexOf(bannerImageSrc);
@@ -1594,7 +1613,9 @@ const BusinessDetail = React.memo(() => {
       {showFullGallery && <FullScreenGallery images={galleryDisplayImages} initialIndex={currentSlideIndex} onClose={() => setShowFullGallery(false)} />}
 
       <Footer />
-      <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
+      {showLoginModal && <Suspense fallback={null}>
+          <OTPLoginModal open={true} handleClose={() => setShowLoginModal(false)} />
+        </Suspense>}
     </>;
 });
 export default BusinessDetail;
