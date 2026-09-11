@@ -408,7 +408,12 @@ export async function ssrMiddleware(req, res) {
     const firstSegment = parts[0] || "";
     const secondSegment = parts[1] || "";
 
-    // Hard-404 malformed category-shaped URLs before any DB work happens.
+    // Hard-410 malformed category-shaped URLs before any DB work happens.
+    //
+    // 410 rather than 404: Google drops "Gone" URLs from its crawl queue faster,
+    // and the Grafana HIGH ERROR RATE rule excludes 410 from its 4xx branch so
+    // this intentional rejection of crawler junk does not page anyone. Both
+    // guards below must stay 410 for that to hold.
     //
     // These can only be crawler-invented (see isServableUrlSegment): nothing we
     // render links to them. Returning 200 with a generic shell is a soft 404 —
@@ -429,7 +434,7 @@ export async function ssrMiddleware(req, res) {
       firstSegment !== "blog";
 
     if (isSeoRoute && !parts.every(isServableUrlSegment)) {
-      return res.status(404).send(html);
+      return res.status(410).send(html);
     }
 
     // Second guard: well-formed but non-existent location segments.
@@ -448,7 +453,7 @@ export async function ssrMiddleware(req, res) {
     // must keep rendering. A district or location first segment is required only
     // once a second segment claims this is a category page.
     if (isSeoRoute && secondSegment && !(await isServableFirstSegment(firstSegment))) {
-      return res.status(404).send(html);
+      return res.status(410).send(html);
     }
 
     let seo = null;
