@@ -39,7 +39,6 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CloseIcon from "@mui/icons-material/Close";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
-import LinkIcon from "@mui/icons-material/Link";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
@@ -51,6 +50,7 @@ import GlobalSkeleton from "features/public/globalSkeleton.js";
 import { addFavorite, removeFavorite, fetchFavorites, getAuthUser } from "state/actions/favoriteAction.js";
 import { generateLocalBusinessSchema } from "shared/utils/seoSchemaGenerators.js";
 import { buildBusinessSeoMeta, districtLabelFromSlug } from "shared/utils/businessSeoMeta.js";
+import BusinessShareSheet from "features/public/cards/share/BusinessShareSheet.js";
 import { trackBusinessView, trackBusinessClick } from "shared/utils/webTracker.js";
 import { buildBusinessPath, buildCategoryPath } from "shared/utils/searchResultNavigation.js";
 import { buildCrumbs, crumbsToJsonLd, crumbsToUiItems } from "shared/utils/breadcrumbs.js";
@@ -155,7 +155,7 @@ const BusinessDetail = React.memo(() => {
   const [showFullGallery, setShowFullGallery] = useState(false);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showFullHours, setShowFullHours] = useState(false);
-  const [showShareOptions, setShowShareOptions] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [sidebarModal, setSidebarModal] = useState(null);
   const [sidebarSubmitting, setSidebarSubmitting] = useState(false);
@@ -508,18 +508,6 @@ const BusinessDetail = React.memo(() => {
       alert("Address copied to clipboard!");
     }
   };
-  const handleCopyLink = e => {
-    e.preventDefault();
-    const linkToCopy = canonicalUrl;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(linkToCopy).then(() => {
-        alert("Link copied!");
-        setShowShareOptions(false);
-      }).catch(() => {});
-    } else {
-      alert("Copy failed. Browser does not support clipboard.");
-    }
-  };
   const handleCertificateClick = type => e => {
     e.preventDefault();
     e.stopPropagation();
@@ -622,22 +610,12 @@ const BusinessDetail = React.memo(() => {
       }));
     }
   };
-  const handleShare = async () => {
-    const shareData = {
-      title: business.businessName,
-      text: `Check out ${business.businessName} on MassClick`,
-      url: canonicalUrl
-    };
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
-    setSidebarModal("share");
-  };
+  // One share sheet for every Share button: it offers the share image, direct
+  // targets and the native share sheet ("More"), instead of jumping straight
+  // to the OS sheet with a bare link.
+  const handleShare = () => setShareOpen(true);
+  const closeShare = () => setShareOpen(false);
+  const notifyShare = (message, variant) => enqueueSnackbar(message, { variant });
   const handleEditListing = () => {
     const user = getAuthUser();
     if (!user?._id) {
@@ -758,15 +736,6 @@ const BusinessDetail = React.memo(() => {
       enqueueSnackbar(error?.response?.data?.message || "Unable to submit your request.", { variant: "error" });
     } finally {
       setSidebarSubmitting(false);
-    }
-  };
-  const copyBusinessLink = async () => {
-    try {
-      await navigator.clipboard.writeText(canonicalUrl);
-      enqueueSnackbar("Business link copied.", { variant: "success" });
-      setSidebarModal(null);
-    } catch {
-      enqueueSnackbar("Unable to copy the link.", { variant: "error" });
     }
   };
   const overviewHtml = business.businessDetails;
@@ -1062,32 +1031,12 @@ const BusinessDetail = React.memo(() => {
                     <span>Save</span>
                   </button>
 
-                  <span className={cx("business-CardDetails-iconBtn business-CardDetails-shareBtn")} title="Share" onClick={() => setShowShareOptions(prev => !prev)}>
+                  <button type="button" className={cx("business-CardDetails-iconBtn business-CardDetails-shareBtn")} title="Share" onClick={handleShare}>
                     <ShareIcon style={{
                       fontSize: 20
                     }} />
                     <span>Share</span>
-                    {showShareOptions && <div className={cx("business-CardDetails-sharePopup")}>
-                        <a href={`https://wa.me/?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer">
-                          <WhatsAppIcon style={{
-                          color: "#25D366"
-                        }} />
-                        </a>
-                        <a href={`https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`} target="_blank" rel="noopener noreferrer">
-                          <FacebookIcon style={{
-                          color: "#1877F2"
-                        }} />
-                        </a>
-                        <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">
-                          <InstagramIcon style={{
-                          color: "#E4405F"
-                        }} />
-                        </a>
-                        <button onClick={handleCopyLink}>
-                          <LinkIcon />
-                        </button>
-                      </div>}
-                  </span>
+                  </button>
                 </div>
 
                 <div className={cx("business-CardDetails-ratingInput")}>
@@ -1615,14 +1564,22 @@ const BusinessDetail = React.memo(() => {
           </form>
         </SimpleModal>}
 
-      {sidebarModal === "share" && <SimpleModal title="Share this business" onClose={() => setSidebarModal(null)}>
-          <div className={cx("business-CardDetails-shareActions")}>
-            <a href={`https://wa.me/?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" className={cx("business-CardDetails-btn business-CardDetails-btn--whatsapp")}><WhatsAppIcon /> WhatsApp</a>
-            <a href={`https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`} target="_blank" rel="noopener noreferrer" className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")}><FacebookIcon /> Facebook</a>
-            <a href={`mailto:?subject=${currentTitle}&body=${currentUrl}`} className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")}><EmailIcon /> Email</a>
-            <button type="button" onClick={copyBusinessLink} className={cx("business-CardDetails-btn business-CardDetails-btn--secondary")}><LinkIcon /> Copy Link</button>
-          </div>
-        </SimpleModal>}
+      <BusinessShareSheet
+        open={shareOpen}
+        onClose={closeShare}
+        onNotify={notifyShare}
+        share={{
+          name: business.businessName,
+          category: business.category ? String(business.category).replace(/\b\w/g, (c) => c.toUpperCase()) : "",
+          area: [getLocalityLabel(business), districtLabelFromSlug(district)].filter(Boolean).filter((v, i, arr) => arr.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i).join(", "),
+          rating: averageRatingValue || 0,
+          reviews: effectiveTotalReview,
+          verified: Boolean(business.verification?.isVerified),
+          imageSrc: business.bannerImage || galleryDisplayImages[0] || "",
+          logoSrc: business.logoImage || "",
+          url: canonicalUrl,
+        }}
+      />
 
       {(sidebarModal === "edit" || sidebarModal === "claim") && <SimpleModal title={sidebarModal === "claim" ? "Claim this business" : "Suggest a listing correction"} onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
           <form className={cx("business-CardDetails-actionForm")} onSubmit={handleListingRequestSubmit(sidebarModal)}>
