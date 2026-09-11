@@ -31,6 +31,7 @@ export const AdminPages = {
   SeoPageContent: lazy(() => import(/* webpackChunkName: "admin-seo-content" */ "features/admin/seo/seoPageContent/seoPageContent.js")),
   SeoPageContentBlogs: lazy(() => import(/* webpackChunkName: "admin-seo-blogs" */ "features/admin/seo/seoPageContentBlog/seoPageContentBlog.js")),
   SeoTemplate: lazy(() => import(/* webpackChunkName: "admin-seo-templates" */ "features/admin/seo/seoTemplate/seoTemplate.js")),
+  PaidCategorySeo: lazy(() => import(/* webpackChunkName: "admin-paid-category-seo" */ "features/admin/paid-category-seo/PaidCategorySeo.js")),
   AuthorMaster: lazy(() => import(/* webpackChunkName: "admin-author-master" */ "features/admin/seo/authorMaster/authorMaster.js")),
   AdminDataAnalytics: lazy(() => import(/* webpackChunkName: "admin-data-analytics" */ "features/admin/analytics/admin-data-analytics/AdminDataAnalytics.js")),
   UnifiedAnalytics: lazy(() => import(/* webpackChunkName: "admin-unified-analytics" */ "features/admin/analytics/unified-analytics/UnifiedAnalytics.js")),

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import businessListModel from "../model/businessList/businessListModel.js";
+import categoryModel from "../model/category/categoryModel.js";
 import masterLocationModel from "../model/locationModel/masterLocationModel.js";
 import {
   resolveDistrictBySlug,
@@ -344,9 +345,53 @@ const resolveNewStyleCanonicalRedirectTarget = async (parts = [], path = "") => 
   return target;
 };
 
+// Retired categories. A category that has been switched off stops resolving,
+// so its old URLs (/trichy/bangalore-tourist-places, .../<cat>-in-<place>)
+// would otherwise render an empty 200 page. Setting retiredRedirectPath on the
+// switched-off category sends all of them to one replacement page instead.
+const RETIRED_CATEGORY_TTL_MS = 5 * 60 * 1000;
+let retiredCategoryCache = null;
+let retiredCategoryCacheAt = 0;
+
+const getRetiredCategoryRedirects = async () => {
+  const now = Date.now();
+  if (retiredCategoryCache && now - retiredCategoryCacheAt < RETIRED_CATEGORY_TTL_MS) {
+    return retiredCategoryCache;
+  }
+  const retired = await categoryModel
+    .find({ isActive: false, retiredRedirectPath: { $regex: "^/[^/]" } }, { slug: 1, category: 1, retiredRedirectPath: 1 })
+    .lean();
+  const map = new Map();
+  for (const category of retired) {
+    for (const slug of [category.slug, slugify(category.category || "")]) {
+      if (slug) map.set(slugify(slug), normalizePath(category.retiredRedirectPath));
+    }
+  }
+  retiredCategoryCache = map;
+  retiredCategoryCacheAt = now;
+  return map;
+};
+
+const resolveRetiredCategoryRedirect = async (parts = [], path = "") => {
+  if (parts[0] === "business" || parts.length < 2 || parts.length > 4) return null;
+  const retired = await getRetiredCategoryRedirects();
+  if (!retired.size) return null;
+
+  const categoryPart = slugify(parts[parts.length - 1]);
+  for (const [slug, target] of retired) {
+    if (categoryPart === slug || categoryPart.startsWith(`${slug}-in-`)) {
+      return samePath(path, target) ? null : target;
+    }
+  }
+  return null;
+};
+
 export const resolveLegacyRedirectTargetForPath = async (path = "") => {
   const parts = pathParts(path);
   if (parts.length === 0) return null;
+
+  const retiredTarget = await resolveRetiredCategoryRedirect(parts, path);
+  if (retiredTarget) return retiredTarget;
 
   // Permanent infrastructure for printed QR codes and old indexed URLs:
   // first prove the request is NOT already district-prefixed/new-style, then
