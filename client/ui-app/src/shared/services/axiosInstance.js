@@ -84,6 +84,18 @@ const hideGlobalLoader = () => {
   try {
     store?.dispatch({ type: 'HIDE_GLOBAL_LOADER' });
   } catch (error) {
+  }
+};
+
+export const resetGlobalLoader = () => {
+  if (pendingShowTimeout) {
+    clearTimeout(pendingShowTimeout);
+    pendingShowTimeout = null;
+  }
+  activeRequests = 0;
+  try {
+    store?.dispatch({ type: 'HIDE_GLOBAL_LOADER' });
+  } catch (error) {
     }
 };
 

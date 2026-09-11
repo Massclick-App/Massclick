@@ -37,6 +37,7 @@ import GlobalLoaderWrapper from 'features/public/common/GlobalLoaderWrapper.js';
 import RouteLoadingFallback from 'shared/components/RouteLoadingFallback.js';
 import { scheduleIdleCallback } from 'shared/utils/scheduleIdleCallback.js';
 import { useDrawer } from 'features/public/drawer/drawerContext.js';
+import { resetGlobalLoader } from 'shared/services/axiosInstance.js';
 
 const DEFERRED_CHROME_EVENTS = [
   "pointerdown",
@@ -218,6 +219,10 @@ function AppRoutes({
   useEffect(() => {
     setRealtimeSocketToken(getRealtimeSocketToken(getAuthSnapshot(), pathname));
   }, [pathname, setRealtimeSocketToken]);
+
+  useEffect(() => {
+    resetGlobalLoader();
+  }, [pathname]);
 
   return (
     <>
