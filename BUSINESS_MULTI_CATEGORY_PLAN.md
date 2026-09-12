@@ -1,3 +1,8 @@
+> **SUPERSEDED 2026-09-11 by `BUSINESS_MULTI_CATEGORY_HANDOFF.md` — do not implement from this file.**
+> It cites pre-restructure client paths (`Internals/`), numbers from a 950-document local scratch DB
+> rather than `massClick_dev`, and design points the handoff reverses (`retiredPublicIds`,
+> per-category `seo`/`filters`/`mni`). Kept for history only.
+
 # Multi-category business listings — implementation plan
 
 Companion to `BUSINESS_MULTI_CATEGORY_PROPOSAL.md` (the *why*). This is the *what, where and how*.
