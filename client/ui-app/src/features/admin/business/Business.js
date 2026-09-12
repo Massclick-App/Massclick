@@ -569,10 +569,15 @@ const BusinessList = React.memo(() => {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);
   const [certificateRegeneratingId, setCertificateRegeneratingId] = useState(null);
+  const certificateRegeneratingRef = useRef(false);
   const [certificateTraceDialog, setCertificateTraceDialog] = useState({
     open: false,
     businessName: "",
     items: []
+  });
+  const [certificateConfirmDialog, setCertificateConfirmDialog] = useState({
+    open: false,
+    row: null
   });
 
   // Search & Filter States
@@ -1721,9 +1726,14 @@ const BusinessList = React.memo(() => {
     ];
   };
 
-  const handleRegenerateCertificates = async row => {
+  const runRegenerateCertificates = async row => {
     if (!row?._id || !canRegenerateCertificates(row)) return;
+    if (certificateRegeneratingRef.current || certificateRegeneratingId) {
+      enqueueSnackbar("Another certificate regeneration is already running. Please wait for it to finish.", { variant: "warning" });
+      return;
+    }
 
+    certificateRegeneratingRef.current = true;
     setCertificateRegeneratingId(row._id);
     try {
       const updatedBusiness = await dispatch(regenerateBusinessCertificates(row._id));
@@ -1746,8 +1756,26 @@ const BusinessList = React.memo(() => {
         { variant: "error" }
       );
     } finally {
+      certificateRegeneratingRef.current = false;
       setCertificateRegeneratingId(null);
     }
+  };
+
+  const handleRegenerateCertificates = row => {
+    if (!row?._id || !canRegenerateCertificates(row) || certificateRegeneratingRef.current || certificateRegeneratingId) return;
+    setCertificateConfirmDialog({ open: true, row });
+  };
+
+  const closeCertificateConfirmDialog = () => {
+    if (certificateRegeneratingId) return;
+    setCertificateConfirmDialog({ open: false, row: null });
+  };
+
+  const confirmRegenerateCertificates = () => {
+    const row = certificateConfirmDialog.row;
+    if (!row || certificateRegeneratingRef.current || certificateRegeneratingId) return;
+    setCertificateConfirmDialog({ open: false, row: null });
+    runRegenerateCertificates(row);
   };
 
   const buildFilterState = (overrides = {}) => ({
@@ -3667,57 +3695,69 @@ const BusinessList = React.memo(() => {
   }, {
     id: "_actions",
     label: "Action",
-    renderCell: (_, row) => (
-      <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
-        <Tooltip title="View details" arrow>
-          <EyeOutlined onClick={() => setDetailRow(row)} style={{ fontSize: 18, color: "#ff7a00", cursor: "pointer" }} />
-        </Tooltip>
-        <Tooltip title="View docs" arrow>
-          <DescriptionOutlinedIcon
-            onClick={() => handleOpenDocuments(row)}
-            sx={{ fontSize: 18, color: "#0f766e", cursor: "pointer" }}
-          />
-        </Tooltip>
-        {canRegenerateCertificates(row) && (
-          <Tooltip title="Regenerate verified/trust certificates" arrow>
-            <AutorenewRoundedIcon
-              onClick={() => {
-                if (certificateRegeneratingId !== row._id) {
-                  handleRegenerateCertificates(row);
-                }
-              }}
-              sx={{
-                fontSize: 18,
-                color: certificateRegeneratingId === row._id ? "#94a3b8" : "#8b5cf6",
-                cursor: certificateRegeneratingId === row._id ? "not-allowed" : "pointer"
-              }}
+    renderCell: (_, row) => {
+      const certificateBusy = Boolean(certificateRegeneratingId);
+      const regeneratingThisRow = certificateRegeneratingId === row._id;
+      const regenerateTitle = regeneratingThisRow
+        ? "Regenerating this business certificate"
+        : certificateBusy
+          ? "Another certificate regeneration is already running"
+          : "Regenerate verified/trust certificates";
+
+      return (
+        <Box sx={{ display: "flex", gap: "14px", alignItems: "center" }}>
+          <Tooltip title="View details" arrow>
+            <EyeOutlined onClick={() => setDetailRow(row)} style={{ fontSize: 18, color: "#ff7a00", cursor: "pointer" }} />
+          </Tooltip>
+          <Tooltip title="View docs" arrow>
+            <DescriptionOutlinedIcon
+              onClick={() => handleOpenDocuments(row)}
+              sx={{ fontSize: 18, color: "#0f766e", cursor: "pointer" }}
             />
           </Tooltip>
-        )}
-        {Boolean(row.amountPaid) && (
-          <Tooltip title={row.email ? `Send invoice email to ${row.email}` : "No email saved for this business"} arrow>
-            <ForwardToInboxOutlinedIcon
-              onClick={() => {
-                if (row.email) {
-                  openInvoiceEmailPrompt(row);
-                }
-              }}
-              sx={{
-                fontSize: 18,
-                color: row.email ? "#0ea5e9" : "#94a3b8",
-                cursor: row.email ? "pointer" : "not-allowed"
-              }}
-            />
+          {canRegenerateCertificates(row) && (
+            <Tooltip title={regenerateTitle} arrow>
+              <span>
+                <AutorenewRoundedIcon
+                  onClick={() => {
+                    if (!certificateBusy) {
+                      handleRegenerateCertificates(row);
+                    }
+                  }}
+                  sx={{
+                    fontSize: 18,
+                    color: certificateBusy ? "#94a3b8" : "#8b5cf6",
+                    cursor: certificateBusy ? "not-allowed" : "pointer"
+                  }}
+                />
+              </span>
+            </Tooltip>
+          )}
+          {Boolean(row.amountPaid) && (
+            <Tooltip title={row.email ? `Send invoice email to ${row.email}` : "No email saved for this business"} arrow>
+              <ForwardToInboxOutlinedIcon
+                onClick={() => {
+                  if (row.email) {
+                    openInvoiceEmailPrompt(row);
+                  }
+                }}
+                sx={{
+                  fontSize: 18,
+                  color: row.email ? "#0ea5e9" : "#94a3b8",
+                  cursor: row.email ? "pointer" : "not-allowed"
+                }}
+              />
+            </Tooltip>
+          )}
+          <Tooltip title="Edit" arrow>
+            <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
           </Tooltip>
-        )}
-        <Tooltip title="Edit" arrow>
-          <EditOutlined onClick={() => handleEdit(row)} style={{ fontSize: 17, color: "#3b82f6", cursor: "pointer" }} />
-        </Tooltip>
-        <Tooltip title="Delete" arrow>
-          <DeleteOutlined onClick={() => handleDelete(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
-        </Tooltip>
-      </Box>
-    )
+          <Tooltip title="Delete" arrow>
+            <DeleteOutlined onClick={() => handleDelete(row)} style={{ fontSize: 17, color: "#ef4444", cursor: "pointer" }} />
+          </Tooltip>
+        </Box>
+      );
+    }
   }];
   const handleListingModeChange = (nextMode) => {
     if (listingMode === nextMode) {
@@ -5101,7 +5141,7 @@ const BusinessList = React.memo(() => {
                   variant="outlined"
                   startIcon={certificateRegeneratingId === row._id ? <CircularProgress size={17} /> : <AutorenewRoundedIcon fontSize="small" />}
                   onClick={() => handleRegenerateCertificates(row)}
-                  disabled={certificateRegeneratingId === row._id}
+                  disabled={Boolean(certificateRegeneratingId)}
                   sx={{
                     textTransform: "none",
                     fontSize: "0.95rem",
@@ -5114,7 +5154,11 @@ const BusinessList = React.memo(() => {
                     "&:hover": { bgcolor: "#f5f3ff", borderColor: "#c4b5fd" }
                   }}
                 >
-                  {certificateRegeneratingId === row._id ? "Regenerating" : "Regenerate Verified/Trust"}
+                  {certificateRegeneratingId === row._id
+                    ? "Regenerating"
+                    : certificateRegeneratingId
+                      ? "Regeneration in progress"
+                      : "Regenerate Verified/Trust"}
                 </Button>
               )}
               <Button
@@ -5139,6 +5183,37 @@ const BusinessList = React.memo(() => {
           </>
         );
       })()}
+    </Dialog>
+
+    <Dialog
+      open={certificateConfirmDialog.open}
+      onClose={closeCertificateConfirmDialog}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle>Regenerate certificates?</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" sx={{ color: "#475569", mb: 1.5 }}>
+          This can take a few minutes and uses extra server CPU. Only one certificate regeneration can run at a time.
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 800, color: "#0f172a" }}>
+          {certificateConfirmDialog.row?.businessName || certificateConfirmDialog.row?.name || "Selected business"}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={closeCertificateConfirmDialog} color="secondary" disabled={Boolean(certificateRegeneratingId)}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          color="warning"
+          onClick={confirmRegenerateCertificates}
+          disabled={Boolean(certificateRegeneratingId)}
+          startIcon={certificateRegeneratingId ? <CircularProgress size={17} color="inherit" /> : <AutorenewRoundedIcon fontSize="small" />}
+        >
+          Regenerate
+        </Button>
+      </DialogActions>
     </Dialog>
 
     <Dialog
@@ -5624,7 +5699,7 @@ const BusinessList = React.memo(() => {
       </DialogContent>
       <DialogActions>
         <Button onClick={closeInvoiceEmailPrompt} color="secondary" disabled={invoiceEmailPrompt.sending}>
-          Don't send
+          Don&apos;t send
         </Button>
         <Button
           variant="contained"

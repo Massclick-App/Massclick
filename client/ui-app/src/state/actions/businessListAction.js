@@ -398,7 +398,6 @@ export const updateBusinessBadges = (id, badgesData) => async (dispatch) => {
 };
 
 export const regenerateBusinessCertificates = (id) => async (dispatch) => {
-  dispatch({ type: EDIT_BUSINESS_REQUEST });
   try {
     const token = await getValidToken(dispatch);
 
