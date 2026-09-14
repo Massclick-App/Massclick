@@ -1,0 +1,9 @@
+.intro{margin:0 0 20px;color:#64748b;font-size:.84rem;line-height:1.55}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;padding-top:6px}
+.field-wide{grid-column:1/-1;margin-bottom:10px}
+.preview-block{margin-top:10px}
+.preview-label{display:block;margin-bottom:8px;color:#087451;font-size:.7rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.preview{margin:0;padding:14px 16px;border:1px solid #d9e2ed;border-radius:12px;color:#25354a;background:#f8fafc;font:500 .84rem/1.6 "Inter",system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
+.preview-value{padding:0 3px;border-radius:4px;color:#8e4b16;background:#fff0df;font-weight:700}
+.preview-value--empty{color:#be123c;background:#fff1f2}
+@media(max-width:560px){.fields{grid-template-columns:1fr}}

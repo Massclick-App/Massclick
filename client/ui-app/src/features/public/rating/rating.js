@@ -2,8 +2,9 @@ import * as React from 'react';
 import Rating from '@mui/material/Rating';
 import Box from '@mui/material/Box';
 import StarIcon from '@mui/icons-material/Star';
-import { useNavigate } from 'react-router-dom'; 
-import OTPLoginModel from 'features/public/auth/AddBusinessModal.js'
+import { useNavigate } from 'react-router-dom';
+
+const OTPLoginModel = React.lazy(() => import(/* webpackChunkName: "otp-modal" */ 'features/public/auth/AddBusinessModal.js'));
 
 const labels = {
     0.5: 'Useless',
@@ -69,8 +70,13 @@ export default function UserRatingWidget({
             '& .MuiRating-iconEmpty': { color: compact ? '#b4bfd0' : '#cbd5e1' },
         }}
     />;
+    const loginModal = showLoginModal && (
+        <React.Suspense fallback={null}>
+            <OTPLoginModel open={true} handleClose={() => setShowLoginModal(false)} />
+        </React.Suspense>
+    );
 
-    if (compact) return <>{ratingControl}<OTPLoginModel open={showLoginModal} handleClose={() => setShowLoginModal(false)} /></>;
+    if (compact) return <>{ratingControl}{loginModal}</>;
 
     return (
         <>
@@ -107,7 +113,7 @@ export default function UserRatingWidget({
                     </Box>
                 )}
             </Box>
-            <OTPLoginModel open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
+            {loginModal}
 
         </>
     );

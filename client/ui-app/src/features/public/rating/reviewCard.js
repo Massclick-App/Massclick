@@ -1,5 +1,5 @@
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import Rating from "@mui/material/Rating";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
@@ -14,10 +14,10 @@ import Dialog from "@mui/material/Dialog";
 import { useDispatch } from "react-redux";
 import { markReviewHelpful, reportReview } from "state/actions/reviewAction.js";
 import ReplyBox from "features/public/rating/ReviewReplyBox.js";
-import OTPLoginModal from "features/public/auth/AddBusinessModal.js";
 import { useSnackbar } from "shared/components/snackbar/SnackbarProvider.js";
 import styles from "features/public/rating/ReviewReplyBox.module.css";
 const cx = createScopedClassNames(styles);
+const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ "features/public/auth/AddBusinessModal.js"));
 const normalizeMobile = value => {
   const digits = String(value || "").replace(/\D/g, "");
   return digits.length >= 10 ? digits.slice(-10) : digits;
@@ -138,6 +138,8 @@ export default function ReviewCard({
           <span>{galleryIndex + 1} / {reviewPhotos.length}</span>
         </div>
       </Dialog>
-      <OTPLoginModal open={showLoginModal} handleClose={() => setShowLoginModal(false)} />
+      {showLoginModal && <Suspense fallback={null}>
+          <OTPLoginModal open={true} handleClose={() => setShowLoginModal(false)} />
+        </Suspense>}
     </div>;
 }

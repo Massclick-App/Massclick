@@ -12,6 +12,12 @@ import { getBusinessId } from "./businessPublicUrlHelper.js";
 import { s3Keys } from "../../utils/s3ObjectKeys.js";
 import { assetUrl } from "../../utils/assetUrl.js";
 
+// Certificate rendering runs in the same Node process that serves live traffic.
+// Keep libvips from fanning out CPU/temp-file usage enough for PM2 to restart
+// the app while an admin regenerate request is in progress.
+sharp.concurrency(1);
+sharp.cache({ memory: 32, files: 0, items: 64 });
+
 // The certificate is a fixed artwork plate (gold border, medal, star row,
 // MassClick mark, verified seal, signature block, Play badge, disclaimer and
 // URL — everything that never changes) with only the per-business fields drawn
@@ -109,6 +115,15 @@ const readAssetDataUrl = (fileName, label) => {
 const PLATES = {
   verified: readAssetDataUrl("plate-verified.jpg", "verified certificate plate"),
   trust: readAssetDataUrl("plate-trust.jpg", "trust certificate plate"),
+};
+
+let certificateRenderQueue = Promise.resolve();
+
+const runCertificateRenderJob = async (job) => {
+  const previous = certificateRenderQueue.catch(() => {});
+  const current = previous.then(job);
+  certificateRenderQueue = current.catch(() => {});
+  return current;
 };
 
 const appendCertificateUrls = (business = {}) => {
@@ -407,29 +422,31 @@ export const renderCertificatePng = async (svg) =>
     .toBuffer();
 
 const uploadCertificateImage = async (business = {}, type = "verified") => {
-  const businessId = getBusinessId(business);
-  const svg = await buildCertificateSvg(business, type);
-  const png = await renderCertificatePng(svg);
-  // STABLE key — the registry declares certificate-verified/certificate-trust
-  // stable, so regeneration overwrites the same object instead of orphaning the
-  // previous one (this used to mint a fresh Date.now() key specifically to dodge
-  // the 1-year Cache-Control on a reused key; now that assetUrl(key, {version})
-  // exists, every read site below versions off certificates.generatedAt instead).
-  const uploadPath =
-    type === "trust"
-      ? s3Keys.business.trustCertificate(businessId)
-      : s3Keys.business.verifiedCertificate(businessId);
-  const uploadResult = await uploadImageToS3(
-    png,
-    uploadPath,
-    {
-      skipImageConversion: true,
-      contentType: "image/png",
-      extension: "png",
-    },
-  );
+  return runCertificateRenderJob(async () => {
+    const businessId = getBusinessId(business);
+    const svg = await buildCertificateSvg(business, type);
+    const png = await renderCertificatePng(svg);
+    // STABLE key — the registry declares certificate-verified/certificate-trust
+    // stable, so regeneration overwrites the same object instead of orphaning the
+    // previous one (this used to mint a fresh Date.now() key specifically to dodge
+    // the 1-year Cache-Control on a reused key; now that assetUrl(key, {version})
+    // exists, every read site below versions off certificates.generatedAt instead).
+    const uploadPath =
+      type === "trust"
+        ? s3Keys.business.trustCertificate(businessId)
+        : s3Keys.business.verifiedCertificate(businessId);
+    const uploadResult = await uploadImageToS3(
+      png,
+      uploadPath,
+      {
+        skipImageConversion: true,
+        contentType: "image/png",
+        extension: "png",
+      },
+    );
 
-  return uploadResult.key;
+    return uploadResult.key;
+  });
 };
 
 const deleteCertificateKeys = async (keys = []) => {
@@ -587,14 +604,6 @@ export const regenerateBusinessCertificates = async (businessId) => {
     throw error;
   }
 
-  const deleteTrace = await deleteCertificateKeys([
-    currentCertificates.verifiedCertificateKey,
-    currentCertificates.trustCertificateKey,
-  ]);
-  trace.deletedCertificateKeys = deleteTrace.deletedKeys;
-  trace.skippedDeleteKeys = deleteTrace.skippedKeys;
-  trace.failedDeleteKeys = deleteTrace.failedKeys;
-
   const nextCertificates = {
     ...currentCertificates,
     verifiedCertificateKey: "",
@@ -619,6 +628,16 @@ export const regenerateBusinessCertificates = async (businessId) => {
 
   business.certificates = nextCertificates;
   await business.save();
+
+  const deleteTrace = await deleteCertificateKeys([
+    currentCertificates.verifiedCertificateKey !== nextCertificates.verifiedCertificateKey &&
+      currentCertificates.verifiedCertificateKey,
+    currentCertificates.trustCertificateKey !== nextCertificates.trustCertificateKey &&
+      currentCertificates.trustCertificateKey,
+  ]);
+  trace.deletedCertificateKeys = deleteTrace.deletedKeys;
+  trace.skippedDeleteKeys = deleteTrace.skippedKeys;
+  trace.failedDeleteKeys = deleteTrace.failedKeys;
 
   trace.newVerifiedCertificateKey = nextCertificates.verifiedCertificateKey || "";
   trace.newTrustCertificateKey = nextCertificates.trustCertificateKey || "";

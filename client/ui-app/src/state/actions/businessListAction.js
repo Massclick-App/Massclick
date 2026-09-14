@@ -26,6 +26,7 @@ import {
 import { getClientToken } from "state/actions/clientAuthAction.js";
 import { clearPublicClientSession } from "app/auth/authStore.js";
 const API_URL = process.env.REACT_APP_API_URL;
+const CERTIFICATE_REGENERATION_TIMEOUT_MS = 5 * 60 * 1000;
 
 const getValidToken = async (dispatch) => {
   let token = localStorage.getItem("accessToken");
@@ -397,14 +398,16 @@ export const updateBusinessBadges = (id, badgesData) => async (dispatch) => {
 };
 
 export const regenerateBusinessCertificates = (id) => async (dispatch) => {
-  dispatch({ type: EDIT_BUSINESS_REQUEST });
   try {
     const token = await getValidToken(dispatch);
 
     const response = await axiosInstance.post(
       `${API_URL}/businesslist/certificates/${id}/regenerate`,
       {},
-      { headers: { Authorization: `Bearer ${token}` } }
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: CERTIFICATE_REGENERATION_TIMEOUT_MS,
+      }
     );
     const updatedBusinessList = {
       ...(response.data.business || response.data),
