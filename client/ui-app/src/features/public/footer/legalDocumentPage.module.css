@@ -10,7 +10,7 @@
 
   padding: 80px 20px;
   background-color: var(--color-background-white);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .legal-header-wrapper {

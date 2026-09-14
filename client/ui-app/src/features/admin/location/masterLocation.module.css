@@ -8,7 +8,7 @@
   margin: 0 auto;
   padding: 0 16px;
   background-color: #f8f9fb;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .master-location-header {

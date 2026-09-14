@@ -12,7 +12,7 @@
 }
 
 .graphic-design-container {
-    font-family: 'Poppins', sans-serif; /* Use a modern, popular font like Poppins or Inter (assuming you link it) */
+    font-family: var(--app-font-family); /* Use a modern, popular font like Poppins or Inter (assuming you link it) */
     color: var(--dark-text);
     overflow-x: hidden; /* Prevent horizontal scroll on small devices */
 }
