@@ -34,6 +34,7 @@ export default function MainGrid() {
   const [cardFilter, setCardFilter] = React.useState({ type: "all", label: "Total Businesses" });
   const [tableRefreshKey, setTableRefreshKey] = React.useState(0);
   const [detailRow, setDetailRow] = React.useState(null);
+  const [directoryOpen, setDirectoryOpen] = React.useState(false);
   const tableSectionRef = useRef(null);
   const [activeStatus, setActiveStatus] = React.useState(
     businessList.reduce((acc, b) => {
@@ -119,6 +120,7 @@ export default function MainGrid() {
   };
 
   const handleCardFilter = (filter) => {
+    setDirectoryOpen(true);
     const nextFilter = filter || { type: "all", label: "Total Businesses" };
     setCardFilter(nextFilter);
     setTableRefreshKey(prev => prev + 1);
@@ -384,8 +386,8 @@ export default function MainGrid() {
   ];
 
   return (
-    <Box sx={{ width: '100%', minWidth: 0, maxWidth: '1700px', mx: 'auto', pb: 3 }}>
-      <AdminAnalyticsPanel
+    <Box sx={{ width: '100%', minWidth: 0, mx: 'auto', pb: 3 }}>
+      <AdminAnalyticsPanel redesigned
         activeFilter={cardFilter}
         onFilterClick={handleCardFilter}
         businessOverview={
@@ -411,6 +413,8 @@ export default function MainGrid() {
       />
 
 
+      <Button onClick={() => setDirectoryOpen(value => !value)} sx={{ fontSize: 11, mt: 1 }}>{directoryOpen ? 'Hide business directory' : 'Open business directory'}</Button>
+      <Box sx={{ display: directoryOpen ? 'block' : 'none' }}>
       <Paper id="business-directory" component="section" elevation={0} sx={{ mt: 3, p: { xs: 1.5, md: 2.5 }, minWidth: 0, border: "1px solid #e9edf3", borderRadius: "18px", boxShadow: "0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 28px rgba(16, 24, 40, 0.05)", scrollMarginTop: 24 }} ref={tableSectionRef}>
         {(cardFilter.type !== "all" || cardFilter.scope) && (
           <Box sx={{
@@ -475,6 +479,7 @@ export default function MainGrid() {
 
         </Box>
       </Paper>
+      </Box>
       <BusinessDetailsDialog
         open={Boolean(detailRow)}
         row={detailRow}

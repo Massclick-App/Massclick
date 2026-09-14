@@ -1,9 +1,9 @@
 import React, { Suspense } from 'react';
-import { alpha } from '@mui/material/styles';
+
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import AppNavbar from 'shared/components/AppNavbar.js';
 import SideMenu from 'shared/components/SideMenu.js';
@@ -38,6 +38,8 @@ const DashboardRouteFallback = () => (
 );
 
 export default function Dashboard(props) {
+  const { pathname } = useLocation();
+  const isOverview = pathname.replace(/\/$/, '') === '/dashboard';
   return (
     <AppTheme {...props} themeComponents={xThemeComponents}>
       <CssBaseline enableColorScheme />
@@ -49,15 +51,13 @@ export default function Dashboard(props) {
 
           <Box
             component="main"
-            sx={(theme) => ({
+            sx={() => ({
               flexGrow: 1,
-              backgroundColor: theme.vars
-                ? `rgba(${theme.vars.palette.background.defaultChannel} / 1)`
-                : alpha(theme.palette.background.default, 1),
+              backgroundColor: "#f0f6ff",
               overflow: 'auto',
               minWidth: 0,
               width: '100%',
-              p: { xs: 0, sm: 1.5, md: 2.5, xl: 3 },
+              p: isOverview ? { xs: 0, md: '10px 12px 10px 20px' } : { xs: 0, sm: 1.5, md: 2.5, xl: 3 },
             })}
           >
             <Stack
@@ -71,7 +71,7 @@ export default function Dashboard(props) {
                 mt: { xs: 8, md: 0 },
               }}
             >
-              <Header />
+              {!isOverview && <Header />}
               <Suspense fallback={<DashboardRouteFallback />}>
                 <Outlet />
               </Suspense>
@@ -81,4 +81,3 @@ export default function Dashboard(props) {
     </AppTheme>
   );
 }
-

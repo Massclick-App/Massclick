@@ -78,7 +78,7 @@ export default function SideMenuMobile({ open, toggleDrawer, handleClose }) {
           maxWidth: "82vw",
           height: "100%",
           position: "relative",
-          bgcolor: "#fafbfc",
+          bgcolor: "#17375f",
         }}
       >
         <Stack direction="row" sx={{ p: 2, alignItems: "center", gap: 1.5 }}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Box,
@@ -55,12 +55,12 @@ import { getAuthSnapshot } from "app/auth/authStore.js";
 
 const SUPERADMIN = "SuperAdmin";
 
-const ACTIVE_GRADIENT = "linear-gradient(90deg, #f2913f 0%, #f6ad6a 100%)";
+const ACTIVE_GRADIENT = "linear-gradient(100deg, #ff913d 0%, #ffb16b 100%)";
 const BADGE_GRADIENT = "linear-gradient(135deg, #ef7c1a 0%, #f59a4a 100%)";
-const HOVER_BG = "rgba(234, 109, 17, 0.06)";
-const TEXT = "#0F172A";
-const ICON = "#64748B";
-const MUTED = "#94A3B8";
+const HOVER_BG = "rgba(255, 255, 255, 0.09)";
+const TEXT = "#edf5ff";
+const ICON = "#d7e8ff";
+const MUTED = "#a6cbef";
 
 const MENU_SECTIONS = [
   {
@@ -154,6 +154,19 @@ const MENU_SECTIONS = [
   },
 ];
 
+// Keep the established navigation in its original order. Dashboard additions
+// belong after Config, never interleaved with existing pages.
+const DASHBOARD_SECTIONS = [
+  ...MENU_SECTIONS,
+  {
+    label: "Additional Tools",
+    items: [
+      { text: "Payments & Payouts", icon: RequestQuoteIcon, path: "/dashboard#payments" },
+      { text: "Reviews & Ratings", icon: EmojiEventsIcon, path: "/dashboard#reviews" },
+      { text: "API & Integrations", icon: SettingsIcon, path: "/dashboard#integrations" },
+    ],
+  },
+];
 export default function SideMenu({ onItemClick, railCollapsed = false }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -214,10 +227,10 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
     };
   }, []);
 
-  const filteredSections = useMemo(() => MENU_SECTIONS.map((section) => ({
+  const filteredSections = useMemo(() => DASHBOARD_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter(
-      (item) => item.path === "/dashboard" || isSuperAdmin || allowedPages.includes(item.path)
+      (item) => item.path.split('#')[0] === "/dashboard" || isSuperAdmin || allowedPages.includes(item.path)
     ),
   })).filter((section) => section.items.length > 0), [allowedPages, isSuperAdmin]);
 
@@ -247,7 +260,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
     : filteredSections;
 
   const renderMenuItem = (item) => {
-    const selected = location.pathname === item.path;
+    const selected = `${location.pathname}${location.hash || ''}` === item.path;
     const IconComp = item.icon;
     const showBadge = item.badgeKey === "chat" && chatUnread > 0;
 
@@ -260,8 +273,8 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
         }}
         disableRipple
         sx={{
-          minHeight: 40,
-          borderRadius: "10px",
+          minHeight: 44,
+          borderRadius: "7px",
           justifyContent: railCollapsed ? "center" : "flex-start",
           px: railCollapsed ? 0 : 1.25,
           py: 0.5,
@@ -293,8 +306,8 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
           >
             <IconComp
               sx={{
-                fontSize: 20,
-                color: selected ? "#fff" : ICON,
+                fontSize: 16,
+                color: selected ? "#172b46" : ICON,
                 transition: "color 0.2s ease",
               }}
             />
@@ -303,13 +316,13 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
 
         {!railCollapsed && (
           <Typography
-            noWrap
             sx={{
               flex: 1,
-              fontSize: "0.92rem",
-              fontWeight: 900,
-              color: selected ? "#fff" : TEXT,
-              WebkitTextStroke: "0.4px currentColor",
+              fontSize: "14px",
+              lineHeight: 1.4,
+              fontWeight: 500,
+              color: selected ? "#172b46" : TEXT,
+              WebkitTextStroke: "0",
               transition: "color 0.2s ease",
             }}
           >
@@ -341,7 +354,24 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
     );
 
     return (
-      <ListItem key={item.path} disablePadding sx={{ mb: 0.25 }}>
+      <ListItem key={item.path} disablePadding sx={{
+        mb: 0.5,
+        '&& .MuiListItemButton-root': {
+          opacity: 1,
+          padding: railCollapsed ? '8px 0' : '9px 12px',
+          gap: '12px',
+          borderRadius: '9px',
+        },
+        '&& .MuiSvgIcon-root': {
+          color: selected ? '#172b46' : ICON,
+          width: 19,
+          height: 19,
+        },
+        '&& .MuiTypography-root': { fontWeight: selected ? 700 : 500 },
+        '&& .MuiListItemButton-root:focus-visible': {
+          outline: '2px solid #9ad2ff', outlineOffset: '-2px',
+        },
+      }}>
         {railCollapsed ? (
           <Tooltip title={item.text} placement="right" arrow>
             {button}
@@ -368,7 +398,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
         "&::-webkit-scrollbar": { width: 6 },
         "&::-webkit-scrollbar-track": { background: "transparent" },
         "&::-webkit-scrollbar-thumb": {
-          background: "transparent",
+          background: "#6784a4",
           borderRadius: 8,
           transition: "background 0.25s ease",
         },
@@ -380,7 +410,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
       {!railCollapsed && (
         <Box
           sx={{
-            display: "flex",
+            display: 'flex',
             alignItems: "center",
             gap: 1,
             px: 1.5,
@@ -397,16 +427,16 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
             },
           }}
         >
-          <SearchIcon sx={{ fontSize: 17, color: MUTED }} />
+          <SearchIcon sx={{ fontSize: 19, color: '#56708b' }} />
           <InputBase
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search menu..."
             sx={{
               flex: 1,
-              fontSize: "0.82rem",
+              fontSize: "14px",
               color: "#334155",
-              "& input::placeholder": { color: MUTED, opacity: 1 },
+              "& input::placeholder": { color: '#526780', opacity: 1 },
             }}
           />
           {query && (
@@ -460,10 +490,11 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
               onClick={() => !searching && toggleSection(section.label)}
               disableRipple={searching}
               sx={{
-                px: 1.5,
+                px: 1,
                 py: 0.5,
-                mt: sectionIndex === 0 ? 0 : 0.75,
+                mt: sectionIndex === 0 ? 0.5 : 2,
                 borderRadius: "8px",
+                display: 'flex',
                 cursor: searching ? "default" : "pointer",
                 "&:hover": {
                   background: searching ? "transparent" : "rgba(148,163,184,0.08)",
@@ -473,9 +504,9 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
               <Typography
                 sx={{
                   flexGrow: 1,
-                  fontSize: "0.66rem",
+                  fontSize: "11px",
                   fontWeight: 700,
-                  letterSpacing: "1.2px",
+                  letterSpacing: "1px",
                   textTransform: "uppercase",
                   color: MUTED,
                 }}
@@ -505,3 +536,4 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
     </Stack>
   );
 }
+

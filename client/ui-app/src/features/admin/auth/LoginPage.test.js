@@ -1,0 +1,34 @@
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import Login from './LoginPage';
+import { login } from 'state/actions/authAction.js';
+const mockDispatch = jest.fn();
+const mockNavigate = jest.fn();
+const mockAuth = { user: null, accessToken: null, loading: false, error: null };
+jest.mock('react-redux', () => ({ useDispatch: () => mockDispatch, useSelector: fn => fn({ auth: mockAuth }) }));
+jest.mock('react-router-dom', () => ({ useNavigate: () => mockNavigate, Link: ({ to, children, ...props }) => <a href={to} {...props}>{children}</a> }));
+jest.mock('state/actions/authAction.js', () => ({ login: jest.fn(() => ({ type: 'LOGIN_TEST' })) }));
+beforeEach(() => { jest.clearAllMocks(); localStorage.clear(); mockAuth.loading = false; mockAuth.error = null; });
+test('submits existing credentials and remembers only the username', () => {
+  render(<Login />);
+  fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'MassClick' } });
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'test-password' } });
+  fireEvent.click(screen.getByLabelText('Remember username'));
+  fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+  expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text');
+  fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+  expect(login).toHaveBeenCalledWith('MassClick', 'test-password');
+  expect(mockDispatch).toHaveBeenCalled();
+  expect(localStorage.getItem('massclick:login:username')).toBe('MassClick');
+  expect(JSON.stringify(localStorage)).not.toContain('test-password');
+});
+test('provides recovery guidance, translations, theme selection and honest provider availability', () => {
+  render(<Login />);
+  fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+  expect(screen.getByRole('status')).toHaveTextContent('Contact your administrator');
+  expect(screen.getByRole('button', { name: /Google/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Dark theme' }));
+  expect(screen.getByRole('button', { name: 'Dark theme' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.change(screen.getByLabelText('Sign-in language'), { target: { value: 'ta' } });
+  expect(screen.getByRole('button', { name: 'உள்நுழைய' })).toBeInTheDocument();
+});

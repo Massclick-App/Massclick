@@ -26,7 +26,7 @@ const isRecent = (value) => {
   return Date.now() - date.getTime() <= RECENT_DAYS * 24 * 60 * 60 * 1000;
 };
 
-export default function Header() {
+export default function Header({ compact = false, children }) {
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
@@ -111,16 +111,16 @@ useEffect(() => {
       <Stack
         direction="row"
         sx={{
-          display: { xs: "none", md: "flex" },
-          width: "100%",
+          display: compact ? "flex" : { xs: "none", md: "flex" },
+          width: compact ? "auto" : "100%",
           alignItems: { xs: "flex-start", md: "center" },
           justifyContent: "space-between",
           maxWidth: { sm: "100%", md: "1700px" },
-          pt: 1.5,
+          pt: compact ? 0 : 1.5,
         }}
         spacing={2}
       >
-        <NavbarBreadcrumbs />
+        {!compact && <NavbarBreadcrumbs />}
 
         <Stack direction="row" sx={{ gap: 1 }}>
           {/* <CustomDatePicker /> */}
@@ -136,7 +136,8 @@ useEffect(() => {
             </Badge>
           </MenuButton>
 
-          <OptionsMenu />
+          {children}
+          <OptionsMenu compact={compact} />
         </Stack>
       </Stack>
 

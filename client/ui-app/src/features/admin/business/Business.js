@@ -1,7 +1,7 @@
 import { formatBusinessHours } from "shared/utils/businessHours.js";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axiosInstance from "shared/services/axiosInstance.js";
 import { useDispatch, useSelector } from "react-redux";
 import InputValidator from "shared/validators/inputValidator.js";
@@ -541,7 +541,8 @@ const BusinessList = React.memo(() => {
   } = useSelector(state => state.gmapsLeadsReducer || {});
   const [businessvalue, setBusinessValue] = useState("");
   const [editMode, setEditMode] = useState(false);
-  const [activeView, setActiveView] = useState("list");
+  const [dashboardParams] = useSearchParams();
+  const [activeView, setActiveView] = useState(() => dashboardParams.get('view') === 'form' ? 'form' : 'list');
   const [successData, setSuccessData] = useState(null);
   const [editId, setEditId] = useState(null);
 

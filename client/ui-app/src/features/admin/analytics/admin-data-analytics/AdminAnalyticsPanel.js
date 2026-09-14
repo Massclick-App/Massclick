@@ -46,6 +46,8 @@ import { getDashboardSummary } from "state/actions/businessListAction.js";
 import { dashboardDateKey, dashboardDayRange, shiftDashboardDay } from "shared/utils/dashboardDates.js";
 import axiosInstance from "shared/services/axiosInstance.js";
 
+import DashboardOverview from 'shared/components/DashboardOverview.js';
+
 const API_URL = process.env.REACT_APP_API_URL;
 
 const palette = {
@@ -112,6 +114,10 @@ const toDateInputValue = dashboardDateKey;
 
 const getDateRange = (preset, customFrom, customTo, selectedDay) => {
   if (preset === "all") return {};
+  if (preset === "ytd") {
+    const today = dashboardDateKey();
+    return { dateFrom: dashboardDayRange(`${today.slice(0, 4)}-01-01`).dateFrom, dateTo: dashboardDayRange(today).dateTo };
+  }
   if (preset === "day") {
     if (!selectedDay) return {};
     return {
@@ -364,17 +370,21 @@ function EmptyState({ label }) {
   );
 }
 
-export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, businessOverview }) {
+export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, businessOverview, redesigned = false }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const requestId = useRef(0);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [trendDays, setTrendDays] = useState(30);
+  const [trendDays, setTrendDays] = useState(() => {
+    if (!redesigned) return 30;
+    const today = dashboardDateKey();
+    return Math.round((new Date(`${today}T12:00:00Z`) - new Date(`${today.slice(0, 4)}-01-01T12:00:00Z`)) / 86400000) + 1;
+  });
   const [trendLocation, setTrendLocation] = useState("");
   const [creatorId, setCreatorId] = useState("");
-  const [datePreset, setDatePreset] = useState("all");
+  const [datePreset, setDatePreset] = useState(redesigned ? "ytd" : "all");
   const [selectedDay, setSelectedDay] = useState(toDateInputValue(new Date()));
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -529,6 +539,7 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
 
   const dateRangeLabel = datePreset === "all"
     ? "All time"
+    : datePreset === "ytd" ? "Year to date"
     : datePreset === "day"
       ? selectedDay
         ? new Date(`${selectedDay}T00:00:00`).toLocaleDateString("en-IN", {
@@ -540,6 +551,8 @@ export default function AdminAnalyticsPanel({ activeFilter, onFilterClick, busin
     : datePreset === "custom"
       ? "Custom date range"
       : `Last ${datePreset} days`;
+
+  if (redesigned) return <DashboardOverview {...{ report, loading, error, rangeError, creatorId, setCreatorId, datePreset, setDatePreset, customFrom, setCustomFrom, customTo, setCustomTo, trendDays, setTrendDays, trendLocation, setTrendLocation }} onFilter={handleScopedFilter} onDayClick={handleDayClick} onCreatorClick={handleCreatorClick} refresh={fetchReport} />;
 
   return (
     <Box sx={{ width: "100%" }}>

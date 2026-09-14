@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { styled } from '@mui/material/styles';
 import Divider, { dividerClasses } from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
@@ -19,7 +19,7 @@ const MenuItem = styled(MuiMenuItem)({
     margin: '2px 0',
 });
 
-export default function OptionsMenu() {
+export default function OptionsMenu({ compact = false }) {
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
     const dispatch = useDispatch();
@@ -54,8 +54,9 @@ export default function OptionsMenu() {
             <MenuButton
                 aria-label="Open menu"
                 onClick={handleClick}
-                sx={{ borderColor: 'transparent', p: 0 }}
+                sx={{ borderColor: 'transparent', p: 0, width: 'auto', borderRadius: compact ? '6px' : '50%', height: compact ? 32 : 40 }}
             >
+                {compact ? <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', px: 0.5 }}><Box sx={{ bgcolor: '#ff1028', color: '#fff', width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', fontSize: 18 }}>{user?.userName?.slice(0, 1) || 'M'}</Box><Box sx={{ display: { xs: 'none', lg: 'block' }, textAlign: 'left', color: '#051552' }}><Box sx={{ fontSize: 10, fontWeight: 700 }}>{user?.userName?.trim() || 'My account'}</Box><Box sx={{ fontSize: 8, color: '#5375ad' }}>My account</Box></Box></Box> :
                 <Box
                     sx={{
                         width: 40,
@@ -70,7 +71,7 @@ export default function OptionsMenu() {
                     }}
                 >
                     <AccountCircleRoundedIcon sx={{ width: 40, height: 40, color: 'primary.main' }} />
-                </Box>
+                </Box>}
             </MenuButton>
 
             <Menu
@@ -112,3 +113,4 @@ export default function OptionsMenu() {
         </React.Fragment>
     );
 }
+

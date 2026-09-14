@@ -1,0 +1,4 @@
+﻿Login artwork: login-globe.png
+Generated with the built-in imagegen tool for this login redesign.
+Prompt: Premium 3D glass globe with navy oceans, gold continents, glowing orange connections, circular pedestal, South Indian temple towers, palms, water, distant skyscrapers and a small plane; pale blue and ivory edges; no text or logos.
+The page uses the existing MassClick logo. Marketing counters from the reference are not presented as verified business statistics. Admin OAuth providers remain disabled until connected.

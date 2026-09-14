@@ -1,4 +1,5 @@
 import { DASHBOARD_TIMEZONE, dashboardDateKey, dashboardDayRange, shiftDashboardDay, dashboardMonthStart } from "../../utils/dashboardDates.js";
+import { getDashboardVisuals } from './dashboardVisuals.js';
 import { ObjectId } from "mongodb";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import businessReviewModel from "../../model/businessReview/businessReviewModel.js";
@@ -1840,9 +1841,9 @@ const buildMonthSeries = (rows = [], monthsBack = 12) => {
   return buckets;
 };
 
-const buildDaySeries = (rows = [], daysBack = 30) => {
+const buildDaySeries = (rows = [], daysBack = 30, endDay = dashboardDateKey()) => {
   const rowCounts = new Map(rows.map((row) => [row._id, row.count]));
-  const today = dashboardDateKey();
+  const today = endDay;
   return Array.from({ length: daysBack }, (_, index) => {
     const key = shiftDashboardDay(today, index - daysBack + 1);
     const date = dashboardDayRange(key).start;
@@ -1908,7 +1909,9 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
   const reportingMonth = Number(todayKey.slice(5, 7)) - 1;
   const startOfYear = dashboardMonthStart(reportingYear, 0);
   const periodDays = Math.max(1, Math.min(Number(days) || 30, 365));
-  const periodStart = dashboardDayRange(shiftDashboardDay(todayKey, 1 - periodDays)).start;
+  const trendEndKey = parsedDateTo && !Number.isNaN(parsedDateTo.getTime()) ? dashboardDateKey(parsedDateTo) : todayKey;
+  const periodEnd = dashboardDayRange(trendEndKey).end;
+  const periodStart = dashboardDayRange(shiftDashboardDay(trendEndKey, 1 - periodDays)).start;
   const selectedLocation = String(location || "").trim();
   const locationCondition = selectedLocation === "Trichy / Tiruchirappalli"
     ? { $in: [/^trichy$/i, /^tiruchirappalli$/i] }
@@ -1941,6 +1944,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
     locationOptions,
     userPerformance,
     creatorOptions,
+    dashboardVisuals,
   ] = await Promise.all([
     businessListModel.countDocuments(businessQuery),
     businessListModel.countDocuments({
@@ -2131,6 +2135,7 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
       { $project: { _id: 0, userId: "$_id", name: "$user.userName", email: "$user.emailId" } },
       { $sort: { name: 1 } },
     ]),
+    getDashboardVisuals({ businessQuery, dayTrendQuery, periodStart, periodEnd, role }),
   ]);
 
   const activeUsers = userCounts.find((row) => row._id === true)?.count || 0;
@@ -2206,7 +2211,13 @@ export const getAdminAnalyticsReportHelper = async ({ role, userId, days = 30, l
     selectedCreatorId,
     dateFrom: parsedDateFrom && !Number.isNaN(parsedDateFrom.getTime()) ? parsedDateFrom.toISOString() : null,
     dateTo: parsedDateTo && !Number.isNaN(parsedDateTo.getTime()) ? parsedDateTo.toISOString() : null,
-    dailyBusinessTrend: buildDaySeries(dailyBusinessRows, periodDays),
+    dailyBusinessTrend: buildDaySeries(dailyBusinessRows, periodDays, trendEndKey).map(day => ({ ...day, ...Object.fromEntries([['activeBusinesses', 'activeTrend'], ['enquiries', 'enquiryTrend'], ['users', 'userTrend'], ['revenue', 'revenueTrend']].map(([key, source]) => [key, dashboardVisuals[source] === null ? null : dashboardVisuals[source].find(row => row._id === day.key)?.[key] || 0])) })),
+    mapClusters: dashboardVisuals.mapClusters,
+    recentActivities: dashboardVisuals.recentActivities,
+    recentReviews: dashboardVisuals.recentReviews,
+    seoHealth: dashboardVisuals.seoHealth,
+    contentTotals: dashboardVisuals.contentTotals,
+    unavailableSections: dashboardVisuals.unavailableSections,
     locationOptions: locationOptions
       .filter((value) => String(value || "").trim())
       .sort((left, right) => left.localeCompare(right)),
