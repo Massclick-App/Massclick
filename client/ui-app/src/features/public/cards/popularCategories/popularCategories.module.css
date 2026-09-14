@@ -93,7 +93,7 @@
 
 .pc-container {
   padding: 20px 30px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .pc-header {

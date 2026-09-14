@@ -6,7 +6,7 @@
     radial-gradient(circle at top left, rgba(255, 138, 0, 0.14), transparent 34rem),
     radial-gradient(circle at 88% 12%, rgba(15, 23, 42, 0.08), transparent 26rem),
     linear-gradient(180deg, #fffaf5 0%, #f8fafc 46%, #ffffff 100%);
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .page-topbar {

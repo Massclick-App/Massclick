@@ -33,7 +33,7 @@
   padding: 0 16px;
   background-color: var(--eventCreation-background);
   box-sizing: border-box;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 /* ===========================

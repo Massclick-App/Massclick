@@ -582,7 +582,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                         transition: 'all 0.2s ease',
                                         '& .MuiInputBase-input': {
                                             py: '14px',
-                                            fontFamily: 'Poppins, sans-serif',
+                                            fontFamily: "var(--app-font-family)",
                                         },
                                     }
                                 }}
@@ -612,7 +612,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                 '&:focus-within': { borderColor: '#FF7B00', boxShadow: '0 0 0 4px rgba(255, 123, 0, 0.12)' },
                                 '& .PhoneInputCountry': { borderRight: '2px solid #FF7B00', pr: 1.5, mr: 1.5 },
                                 '& .PhoneInputCountrySelect': { cursor: 'pointer' },
-                                '& .PhoneInputInput': { border: 0, outline: 0, fontSize: '1.05rem', fontWeight: 500, fontFamily: 'Poppins, sans-serif', minWidth: 0 },
+                                '& .PhoneInputInput': { border: 0, outline: 0, fontSize: '1.05rem', fontWeight: 500, fontFamily: "var(--app-font-family)", minWidth: 0 },
                             }}>
                                 <PhoneInput
                                     international
@@ -760,7 +760,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                                 textAlign: 'center',
                                                 fontSize: '2rem',
                                                 fontWeight: 700,
-                                                fontFamily: 'Poppins, sans-serif',
+                                                fontFamily: "var(--app-font-family)",
                                             },
                                         }}
                                         variant="outlined"
@@ -845,7 +845,7 @@ const OTPLoginModal = ({ open, handleClose, onMaybeLater, onSuccess }) => {
                                             transition: 'all 0.2s ease',
                                             '& .MuiInputBase-input': {
                                                 py: '14px',
-                                                fontFamily: 'Poppins, sans-serif',
+                                                fontFamily: "var(--app-font-family)",
                                             },
                                         }
                                     }}

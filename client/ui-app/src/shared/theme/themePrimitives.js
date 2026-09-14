@@ -148,7 +148,7 @@ export const getDesignTokens = (mode) => {
       },
     },
     typography: {
-      fontFamily: 'Inter, sans-serif',
+      fontFamily: 'var(--app-font-family)',
       h1: { fontSize: defaultTheme.typography.pxToRem(48), fontWeight: 600, lineHeight: 1.2, letterSpacing: -0.5 },
       h2: { fontSize: defaultTheme.typography.pxToRem(36), fontWeight: 600, lineHeight: 1.2 },
       h3: { fontSize: defaultTheme.typography.pxToRem(30), lineHeight: 1.2 },

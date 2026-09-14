@@ -3,7 +3,7 @@
   width: 100%;
   max-width: 1800px;
   margin: 0 auto;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .mc-banner-inner {

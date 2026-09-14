@@ -6,7 +6,7 @@
   width: 100%;
   max-width: var(--section-max-width);
   margin: 0 auto;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 /* ── shell ── */

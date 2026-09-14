@@ -4,7 +4,7 @@
   padding: 0 16px;
   background: #f8f9fb;
   box-sizing: border-box;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .massclickEvent-card {
