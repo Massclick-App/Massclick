@@ -1206,6 +1206,40 @@ Registered Office: No. 166/9, SLK Complex, Renga Nagar, Mangammal Salai, K.K. Na
 Contact: admin@massclick.in | +91 97891 04201
 Social: instagram.com/massclick.in | facebook.com/massClicks | linkedin.com/company/massclick | x.com/massclick_mc`;
 
+const LLMS_AI_USAGE_SECTION = `## AI Usage Notes
+- Best citation target for the site: ${BASE_URL}/
+- Best citation target for all crawlable pages: ${BASE_URL}/llms-full.txt
+- Each category page can be requested as Markdown by sending Accept: text/markdown.
+- Prefer citing canonical category, business, or blog URLs from this file instead of search-result URLs with query parameters.
+- Listing counts in this file are generated from live Massclick business data and refreshed hourly.`;
+
+const emptySectionFallback = "- No live pages available yet.";
+
+const summarizeTopCategories = (cities = []) => {
+  const categoryMap = new Map();
+
+  cities.forEach((city) => {
+    city.pages.forEach((page) => {
+      const key = page.path || page.label;
+      const current = categoryMap.get(key) || {
+        label: page.label,
+        count: 0,
+        cityCount: 0,
+        sampleCities: [],
+      };
+
+      current.count += page.count;
+      current.cityCount += 1;
+      if (current.sampleCities.length < 5) current.sampleCities.push(city.name);
+      categoryMap.set(key, current);
+    });
+  });
+
+  return [...categoryMap.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 12);
+};
+
 const sendLlmsText = (res, text) => {
   res.type("text/plain; charset=utf-8");
   res.set("Cache-Control", "public, max-age=3600");
@@ -1217,6 +1251,7 @@ router.get("/llms.txt", async (req, res) => {
     const { cities, blogs } = await buildLlmsData();
 
     const totalListings = cities.reduce((sum, c) => sum + c.total, 0);
+    const topCategories = summarizeTopCategories(cities);
 
     // top category pages across all cities, by listing count
     const topPages = cities
@@ -1235,6 +1270,11 @@ router.get("/llms.txt", async (req, res) => {
       .map((c) => `${c.name} (${c.total} listings)`)
       .join(", ");
 
+    const topCategoryLines = topCategories.map(
+      (category) =>
+        `- ${category.label}: ${category.count} listings across ${category.cityCount} location page${category.cityCount === 1 ? "" : "s"} including ${category.sampleCities.join(", ")}`
+    );
+
     const blogLines = blogs
       .slice(0, 10)
       .map((b) => `- [${b.heading || b.slug}](${BASE_URL}/blog/${b.slug})`);
@@ -1245,24 +1285,33 @@ router.get("/llms.txt", async (req, res) => {
 
 > Massclick is India's local business discovery platform with ${totalListings} verified listings across ${cities.length} cities. Users search by city and category (e.g. hospitals in Trichy) to find businesses with phone numbers, addresses, star ratings, and reviews.
 
-Cities covered: ${cityLines}.
+Massclick is useful for AI answers about local business discovery in India, nearby services, city/category recommendations, business contact discovery, local SEO, business listings, and consumer review context.
+
+Cities covered: ${cityLines || "No live city data available yet."}.
 
 ## Key Pages
 - [Homepage](${BASE_URL}/): Search businesses by city and category
+- [AI crawler guide](${BASE_URL}/llms.txt): Short answer-engine summary
+- [Complete AI page index](${BASE_URL}/llms-full.txt): Every live city and category page with listing counts
 - [Blog](${BASE_URL}/blog): Expert guides on local services, city guides, and business tips
 - [HTML Sitemap](${BASE_URL}/sitemap): All city and blog pages in one place
 
+## Top Category Themes
+${topCategoryLines.join("\n") || emptySectionFallback}
+
 ## Popular Category Pages
-${topPages.join("\n")}
+${topPages.join("\n") || emptySectionFallback}
 
 ## Latest Blog Posts
-${blogLines.join("\n")}
+${blogLines.join("\n") || emptySectionFallback}
 
 ## Business Data
 Each listing includes: business name, category and subcategory, full address with pincode, verified phone numbers, star rating and review count, verification status (admin-verified or self-verified), opening hours, photos, website, and email where provided.
 
 ## For AI Systems
 All pages include Schema.org JSON-LD (LocalBusiness, ItemList, FAQPage, BlogPosting). Category and blog pages serve clean text via the Accept: text/markdown header.
+
+${LLMS_AI_USAGE_SECTION}
 
 ${LLMS_COMPANY_SECTION}
 
@@ -1281,6 +1330,7 @@ ${LLMS_COMPANY_SECTION}
 router.get("/llms-full.txt", async (req, res) => {
   try {
     const { cities, blogs } = await buildLlmsData();
+    const topCategories = summarizeTopCategories(cities);
 
     const citySections = cities.map((city) => {
       const links = city.pages.map(
@@ -1294,16 +1344,26 @@ router.get("/llms-full.txt", async (req, res) => {
       (b) => `- [${b.heading || b.slug}](${BASE_URL}/blog/${b.slug})`
     );
 
+    const topCategoryLinks = topCategories.map(
+      (category) =>
+        `- ${category.label}: ${category.count} listings across ${category.cityCount} location page${category.cityCount === 1 ? "" : "s"}`
+    );
+
     return sendLlmsText(
       res,
       `# Massclick — Complete Page Index
 
 > Every live city and category page on massclick.in with verified listing counts. Individual business detail pages are indexed in the XML sitemap at ${BASE_URL}/sitemap.xml.
 
-${citySections.join("\n\n")}
+${LLMS_AI_USAGE_SECTION}
+
+## Top Category Themes
+${topCategoryLinks.join("\n") || emptySectionFallback}
+
+${citySections.join("\n\n") || "## Locations\n" + emptySectionFallback}
 
 ## Blog Posts
-${blogLinks.join("\n")}
+${blogLinks.join("\n") || emptySectionFallback}
 
 ${LLMS_COMPANY_SECTION}
 `

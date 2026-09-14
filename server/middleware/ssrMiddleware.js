@@ -958,9 +958,7 @@ export async function ssrMiddleware(req, res) {
       )
       .replace('<div id="root"></div>', `<div id="root">${rootBootstrapHtml}</div>`);
 
-    if (!firstSegment) {
-      appendDiscoveryLinkHeaders(res);
-    }
+    appendDiscoveryLinkHeaders(res);
 
     const acceptsMarkdown = (req.headers["accept"] || "").includes("text/markdown");
     if (acceptsMarkdown) {
@@ -1049,7 +1047,7 @@ export async function ssrMiddleware(req, res) {
     }
 
     res.setHeader("X-Robots-Tag", "index, follow");
-    res.setHeader("Link", `<${canonical}>; rel="alternate"; type="text/markdown"`);
+    res.append("Link", `<${canonical}>; rel="alternate"; type="text/markdown"`);
     return res.status(200).send(html);
   } catch (error) {
     console.error("SSR Error:", error);
