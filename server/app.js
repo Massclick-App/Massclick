@@ -58,7 +58,6 @@ import authAdminRoutes from "./routes/authAdminRoutes.js";
 import publicUserCounterRoutes from "./routes/publicUserCounterRoutes.js";
 import gscRoutes from "./routes/gscRoutes.js";
 import ga4Routes from "./routes/ga4Routes.js";
-import trackedKeywordRoutes from "./routes/trackedKeywordRoutes.js";
 import quotationRoutes from "./routes/quotationRoute.js";
 import agreementRoutes from "./routes/agreementRoute.js";
 import massclickDocumentsRoutes from "./routes/massclickDocumentsRoute.js";
@@ -76,7 +75,6 @@ import rewardRoutes from "./routes/rewardRoutes.js";
 import adsRoutes from "./routes/adsRoute.js";
 import { startFCMScheduler } from "./scheduler/fcmScheduler.js";
 import { startDelayedLeadDispatchScheduler } from "./scheduler/delayedLeadDispatchScheduler.js";
-import { startKeywordRankCron } from "./cron/keywordRankCron.js";
 import { startS3CacheHeaderMigrationRecovery } from "./helper/mediaCleanup/s3CacheHeaderMigrationHelper.js";
 
 dotenv.config();
@@ -176,7 +174,6 @@ app.use("/", authAdminRoutes);
 app.use("/", publicUserCounterRoutes);
 app.use("/", gscRoutes);
 app.use("/", ga4Routes);
-app.use("/", trackedKeywordRoutes);
 app.use("/", quotationRoutes);
 app.use("/", agreementRoutes);
 app.use("/", massclickDocumentsRoutes);
@@ -216,7 +213,6 @@ mongoose.connect(MONGO_URI)
     await startS3CacheHeaderMigrationRecovery();
     startFCMScheduler();
     startDelayedLeadDispatchScheduler();
-    startKeywordRankCron();
     await initWsServer(httpServer);
     httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

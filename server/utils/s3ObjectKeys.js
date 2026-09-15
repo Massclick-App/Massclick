@@ -321,9 +321,6 @@ export const s3Keys = Object.freeze({
   rewardClaim: {
     evidence: (id) => s3Path({ entity: "reward-claims", entityId: id, purpose: "evidence" }),
   },
-  trackedKeyword: {
-    screenshot: (id) => s3Path({ entity: "tracked-keywords", entityId: id, purpose: "screenshot" }),
-  },
   fcmCampaign: {
     image: (id) => s3Path({ entity: "fcm-campaigns", entityId: id, purpose: "image" }),
   },
