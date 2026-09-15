@@ -18,16 +18,6 @@ import {
   FormControlLabel,
   Link,
   Alert,
-  Button,
-  IconButton,
-  Tooltip as MuiTooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  LinearProgress,
 } from "@mui/material";
 import {
   LineChart,
@@ -53,14 +43,6 @@ import {
   fetchGscCountries,
   fetchGscOpportunities,
   fetchGscKeywordGaps,
-  fetchTrackedKeywords,
-  addTrackedKeyword,
-  deleteTrackedKeyword,
-  checkKeywordRank,
-  manualCheckKeywordRank,
-  checkAllKeywords,
-  fetchKeywordHistory,
-  fetchKeywordQuota,
 } from "state/actions/gscAction.js";
 import styles from "features/admin/gsc-analytics/GscAnalyticsPage.module.css";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
@@ -119,30 +101,12 @@ const PositionBadge = ({ position }) => {
   );
 };
 
-const emptyKeywordForm = {
-  keyword: "",
-  location: "",
-  device: "desktop",
-  category: "",
-  targetUrl: "",
-  notes: "",
-  source: "manual",
-};
-const emptyManualForm = { rank: "", page: "", url: "", screenshot: "" };
-
 export default function GscAnalytics() {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState(0);
   const [quickWinsOnly, setQuickWinsOnly] = useState(false);
   const [queriesFetched, setQueriesFetched] = useState(false);
   const [pagesFetched, setPagesFetched] = useState(false);
-
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newKeywordForm, setNewKeywordForm] = useState(emptyKeywordForm);
-  const [manualDialogFor, setManualDialogFor] = useState(null);
-  const [manualForm, setManualForm] = useState(emptyManualForm);
-  const [screenshotFileName, setScreenshotFileName] = useState("");
-  const [historyDialogFor, setHistoryDialogFor] = useState(null);
 
   const {
     overview,
@@ -162,16 +126,6 @@ export default function GscAnalytics() {
     opportunitiesLoading,
     keywordGaps,
     keywordGapsLoading,
-    trackedKeywords,
-    trackedKeywordsLoading,
-    keywordCheckingId,
-    keywordCheckError,
-    keywordHistory,
-    keywordHistoryLoading,
-    keywordQuota,
-    checkAllLoading,
-    checkAllResult,
-    checkAllError,
   } = useSelector((state) => state.gscReducer || {});
 
   useEffect(() => {
@@ -181,63 +135,7 @@ export default function GscAnalytics() {
     dispatch(fetchGscCountries());
     dispatch(fetchGscOpportunities());
     dispatch(fetchGscKeywordGaps());
-    dispatch(fetchTrackedKeywords());
-    dispatch(fetchKeywordQuota());
   }, [dispatch]);
-
-  const openAddDialog = (prefill = {}) => {
-    setNewKeywordForm({ ...emptyKeywordForm, ...prefill });
-    setAddDialogOpen(true);
-  };
-
-  const handleAddKeyword = async () => {
-    if (!newKeywordForm.keyword.trim()) return;
-    await dispatch(addTrackedKeyword(newKeywordForm));
-    setAddDialogOpen(false);
-    setNewKeywordForm(emptyKeywordForm);
-  };
-
-  const handleDeleteKeyword = (id) => {
-    dispatch(deleteTrackedKeyword(id));
-  };
-
-  const handleCheckNow = (id) => {
-    dispatch(checkKeywordRank(id));
-  };
-
-  const handleCheckAll = () => {
-    dispatch(checkAllKeywords());
-  };
-
-  const openManualDialog = (id) => {
-    setManualForm(emptyManualForm);
-    setScreenshotFileName("");
-    setManualDialogFor(id);
-  };
-
-  const handleScreenshotChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setScreenshotFileName(file.name);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setManualForm((prev) => ({ ...prev, screenshot: reader.result || "" }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleManualSubmit = async () => {
-    if (!manualDialogFor) return;
-    await dispatch(manualCheckKeywordRank(manualDialogFor, manualForm));
-    setManualDialogFor(null);
-    setManualForm(emptyManualForm);
-    setScreenshotFileName("");
-  };
-
-  const openHistoryDialog = (id) => {
-    setHistoryDialogFor(id);
-    dispatch(fetchKeywordHistory(id));
-  };
 
   useEffect(() => {
     if (activeTab === 1 && !queriesFetched) {
@@ -299,7 +197,6 @@ export default function GscAnalytics() {
         <Tab label="📱 Devices" />
         <Tab label="🌍 Countries" />
         <Tab label="🚀 Opportunities" />
-        <Tab label="🎯 Tracked Keywords" />
       </Tabs>
 
       {/* ── Tab 0: Overview ── */}
@@ -1051,12 +948,6 @@ export default function GscAnalytics() {
                         >
                           CTR
                         </TableCell>
-                        <TableCell
-                          align="center"
-                          sx={{ fontWeight: 700, color: "#111827" }}
-                        >
-                          Track
-                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1080,26 +971,11 @@ export default function GscAnalytics() {
                           <TableCell align="right" sx={{ color: "#6b7280" }}>
                             {row.ctr}%
                           </TableCell>
-                          <TableCell align="center">
-                            <MuiTooltip title="Track this keyword">
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  openAddDialog({
-                                    keyword: row.query,
-                                    source: "quick-win",
-                                  })
-                                }
-                              >
-                                ➕
-                              </IconButton>
-                            </MuiTooltip>
-                          </TableCell>
                         </TableRow>
                       ))}
                       {!opportunities?.quickWins?.length && (
                         <TableRow>
-                          <TableCell colSpan={5}>
+                          <TableCell colSpan={4}>
                             <Box className={cx("empty-state")}>
                               <div className={cx("empty-state-icon")}>✨</div>
                               <Typography
@@ -1161,12 +1037,6 @@ export default function GscAnalytics() {
                         >
                           Position
                         </TableCell>
-                        <TableCell
-                          align="center"
-                          sx={{ fontWeight: 700, color: "#111827" }}
-                        >
-                          Track
-                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -1193,26 +1063,11 @@ export default function GscAnalytics() {
                           <TableCell align="center">
                             <PositionBadge position={row.position} />
                           </TableCell>
-                          <TableCell align="center">
-                            <MuiTooltip title="Track this keyword">
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  openAddDialog({
-                                    keyword: row.query,
-                                    source: "quick-win",
-                                  })
-                                }
-                              >
-                                ➕
-                              </IconButton>
-                            </MuiTooltip>
-                          </TableCell>
                         </TableRow>
                       ))}
                       {!opportunities?.lowCtr?.length && (
                         <TableRow>
-                          <TableCell colSpan={5}>
+                          <TableCell colSpan={4}>
                             <Box className={cx("empty-state")}>
                               <div className={cx("empty-state-icon")}>👍</div>
                               <Typography
@@ -1288,12 +1143,6 @@ export default function GscAnalytics() {
                           >
                             Has Content
                           </TableCell>
-                          <TableCell
-                            align="center"
-                            sx={{ fontWeight: 700, color: "#111827" }}
-                          >
-                            Track
-                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -1349,28 +1198,11 @@ export default function GscAnalytics() {
                                 variant={row.hasContent ? "filled" : "outlined"}
                               />
                             </TableCell>
-                            <TableCell align="center">
-                              <MuiTooltip title="Track this keyword">
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    openAddDialog({
-                                      keyword: `${row.category} in ${row.city}`,
-                                      category: row.category,
-                                      location: row.city,
-                                      source: "keyword-gap",
-                                    })
-                                  }
-                                >
-                                  ➕
-                                </IconButton>
-                              </MuiTooltip>
-                            </TableCell>
                           </TableRow>
                         ))}
                         {!keywordGaps?.length && (
                           <TableRow>
-                            <TableCell colSpan={7}>
+                            <TableCell colSpan={6}>
                               <Box className={cx("empty-state")}>
                                 <div className={cx("empty-state-icon")}>🎯</div>
                                 <Typography
@@ -1396,374 +1228,6 @@ export default function GscAnalytics() {
           </>
         )}
       </TabPanel>
-
-      {/* ── Tab 6: Tracked Keywords ── */}
-      <TabPanel value={activeTab} index={6}>
-        {keywordCheckError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Rank check failed: {keywordCheckError}
-          </Alert>
-        )}
-        {checkAllError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Check All failed: {checkAllError}
-          </Alert>
-        )}
-        {checkAllResult && !checkAllError && (
-          <Alert severity={checkAllResult.skipped?.length ? "warning" : "success"} sx={{ mb: 2 }}>
-            Checked {checkAllResult.checked} keyword{checkAllResult.checked !== 1 ? "s" : ""}
-            {checkAllResult.skipped?.length
-              ? `, skipped ${checkAllResult.skipped.length} (quota exhausted or lookup failed): ${checkAllResult.skipped.join(", ")}`
-              : ""}
-          </Alert>
-        )}
-        <Box
-          sx={{
-            mb: 3,
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-            <Button variant="contained" onClick={() => openAddDialog()}>
-              ➕ Add Keyword
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={handleCheckAll}
-              disabled={checkAllLoading || !(trackedKeywords || []).length}
-            >
-              {checkAllLoading ? "Checking..." : "🔄 Check All"}
-            </Button>
-            <Chip
-              label={`${(trackedKeywords || []).length} keyword${(trackedKeywords || []).length !== 1 ? "s" : ""}`}
-              variant="outlined"
-              size="small"
-            />
-          </Box>
-          {keywordQuota && (
-            <Box sx={{ minWidth: "220px" }}>
-              <Typography sx={{ fontSize: "12px", color: "#6b7280", mb: 0.5 }}>
-                Google CSE quota today: {keywordQuota.used}/{keywordQuota.limit}
-              </Typography>
-              <LinearProgress
-                variant="determinate"
-                value={Math.min(100, (keywordQuota.used / keywordQuota.limit) * 100)}
-                color={keywordQuota.remaining <= 10 ? "warning" : "primary"}
-                sx={{ height: 6, borderRadius: 3 }}
-              />
-            </Box>
-          )}
-        </Box>
-
-        {trackedKeywordsLoading ? (
-          <Box className={cx("loading-container")}>
-            <CircularProgress size={40} />
-            <Typography className={cx("loading-text")}>Loading tracked keywords...</Typography>
-          </Box>
-        ) : (
-          <Box className={cx("table-wrapper")}>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e5e7eb" }}>
-                    <TableCell sx={{ fontWeight: 700, color: "#111827" }}>Keyword</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: "#111827" }}>Location / Device</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700, color: "#111827" }}>Rank</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700, color: "#111827" }}>Δ</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: "#111827" }}>Last Checked</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700, color: "#111827" }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(trackedKeywords || []).map((row) => (
-                    <TableRow
-                      key={row._id}
-                      hover
-                      sx={{
-                        "&:hover": { backgroundColor: "#f8fafc" },
-                        borderBottom: "1px solid #f3f4f6",
-                      }}
-                    >
-                      <TableCell sx={{ color: "#111827", fontWeight: 500 }}>
-                        {row.keyword}
-                        {row.category && (
-                          <Chip label={row.category} size="small" variant="outlined" sx={{ ml: 1 }} />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ color: "#6b7280", fontSize: "13px" }}>
-                        {row.location || "—"} · {row.device}
-                      </TableCell>
-                      <TableCell align="center">
-                        {row.latest?.rank != null ? (
-                          <PositionBadge position={row.latest.rank} />
-                        ) : row.latest ? (
-                          <Chip label="Not found" size="small" color="default" variant="outlined" />
-                        ) : (
-                          <Typography sx={{ fontSize: "12px", color: "#9ca3af" }}>Never checked</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell align="center">
-                        {row.delta != null ? (
-                          <span
-                            className={cx(
-                              "metric-chip",
-                              row.delta > 0 ? "metric-chip-positive" : row.delta < 0 ? "metric-chip-negative" : ""
-                            )}
-                          >
-                            {row.delta > 0 ? `↑${row.delta}` : row.delta < 0 ? `↓${Math.abs(row.delta)}` : "—"}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ color: "#6b7280", fontSize: "13px" }}>
-                        {row.latest?.checkedAt ? (
-                          <>
-                            {new Date(row.latest.checkedAt).toLocaleDateString()}{" "}
-                            <span title={row.latest.provider}>
-                              {row.latest.provider === "manual" ? "✍️" : "🤖"}
-                            </span>
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell align="center">
-                        <MuiTooltip title="Check rank now (Google CSE)">
-                          <IconButton
-                            size="small"
-                            disabled={keywordCheckingId === row._id}
-                            onClick={() => handleCheckNow(row._id)}
-                          >
-                            {keywordCheckingId === row._id ? "⏳" : "🔄"}
-                          </IconButton>
-                        </MuiTooltip>
-                        <MuiTooltip title="Log a manual rank check">
-                          <IconButton size="small" onClick={() => openManualDialog(row._id)}>
-                            ✍️
-                          </IconButton>
-                        </MuiTooltip>
-                        <MuiTooltip title="View history">
-                          <IconButton size="small" onClick={() => openHistoryDialog(row._id)}>
-                            📈
-                          </IconButton>
-                        </MuiTooltip>
-                        <MuiTooltip title="Delete">
-                          <IconButton size="small" onClick={() => handleDeleteKeyword(row._id)}>
-                            🗑️
-                          </IconButton>
-                        </MuiTooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {!(trackedKeywords || []).length && (
-                    <TableRow>
-                      <TableCell colSpan={6}>
-                        <Box className={cx("empty-state")}>
-                          <div className={cx("empty-state-icon")}>🎯</div>
-                          <Typography sx={{ fontWeight: 600, color: "#111827" }}>
-                            No tracked keywords yet
-                          </Typography>
-                          <Typography sx={{ fontSize: "13px", color: "#6b7280" }}>
-                            Add a keyword here, or click "➕ Track" on a Quick Win or Keyword Gap row
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
-      </TabPanel>
-
-      {/* ── Add Keyword Dialog ── */}
-      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Track a New Keyword</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-          <TextField
-            label="Keyword"
-            value={newKeywordForm.keyword}
-            onChange={(e) => setNewKeywordForm((f) => ({ ...f, keyword: e.target.value }))}
-            autoFocus
-            fullWidth
-          />
-          <TextField
-            label="Location"
-            placeholder="e.g. Trichy, Tamil Nadu, India"
-            value={newKeywordForm.location}
-            onChange={(e) => setNewKeywordForm((f) => ({ ...f, location: e.target.value }))}
-            fullWidth
-          />
-          <TextField
-            select
-            label="Device"
-            value={newKeywordForm.device}
-            onChange={(e) => setNewKeywordForm((f) => ({ ...f, device: e.target.value }))}
-            fullWidth
-          >
-            <MenuItem value="desktop">Desktop</MenuItem>
-            <MenuItem value="mobile">Mobile</MenuItem>
-          </TextField>
-          <TextField
-            label="Category (optional)"
-            value={newKeywordForm.category}
-            onChange={(e) => setNewKeywordForm((f) => ({ ...f, category: e.target.value }))}
-            fullWidth
-          />
-          <TextField
-            label="Target URL (optional)"
-            value={newKeywordForm.targetUrl}
-            onChange={(e) => setNewKeywordForm((f) => ({ ...f, targetUrl: e.target.value }))}
-            fullWidth
-          />
-          <TextField
-            label="Notes (optional)"
-            value={newKeywordForm.notes}
-            onChange={(e) => setNewKeywordForm((f) => ({ ...f, notes: e.target.value }))}
-            multiline
-            minRows={2}
-            fullWidth
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAddKeyword} disabled={!newKeywordForm.keyword.trim()}>
-            Add Keyword
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ── Manual Rank Check Dialog ── */}
-      <Dialog open={Boolean(manualDialogFor)} onClose={() => setManualDialogFor(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>Log a Manual Rank Check</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-          <Typography sx={{ fontSize: "13px", color: "#6b7280" }}>
-            Searched this keyword yourself? Enter what you saw — leave rank blank if you didn't find it.
-          </Typography>
-          <TextField
-            label="Rank position"
-            type="number"
-            value={manualForm.rank}
-            onChange={(e) => setManualForm((f) => ({ ...f, rank: e.target.value }))}
-            fullWidth
-          />
-          <TextField
-            label="Result page URL (optional)"
-            value={manualForm.url}
-            onChange={(e) => setManualForm((f) => ({ ...f, url: e.target.value }))}
-            fullWidth
-          />
-          <Button variant="outlined" component="label">
-            {screenshotFileName || "Upload Screenshot (optional)"}
-            <input type="file" accept="image/*" hidden onChange={handleScreenshotChange} />
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setManualDialogFor(null)}>Cancel</Button>
-          <Button variant="contained" onClick={handleManualSubmit}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ── History Dialog ── */}
-      <Dialog open={Boolean(historyDialogFor)} onClose={() => setHistoryDialogFor(null)} maxWidth="md" fullWidth>
-        <DialogTitle>Rank History{keywordHistory?.keyword ? ` — ${keywordHistory.keyword}` : ""}</DialogTitle>
-        <DialogContent>
-          {keywordHistoryLoading ? (
-            <Box className={cx("loading-container")}>
-              <CircularProgress size={32} />
-            </Box>
-          ) : keywordHistory?.history?.length ? (
-            <>
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={keywordHistory.history}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis
-                    dataKey="checkedAt"
-                    tick={{ fontSize: 11, fill: "#6b7280" }}
-                    tickFormatter={(d) => new Date(d).toLocaleDateString()}
-                    stroke="#d1d5db"
-                  />
-                  <YAxis
-                    reversed
-                    tick={{ fontSize: 11, fill: "#6b7280" }}
-                    stroke="#d1d5db"
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                    }}
-                    labelFormatter={(d) => new Date(d).toLocaleString()}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="rank"
-                    stroke="#3b82f6"
-                    strokeWidth={2.5}
-                    connectNulls
-                    dot={{ r: 3 }}
-                    name="Rank"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-
-              <Box sx={{ mt: 2 }}>
-                {[...keywordHistory.history].reverse().map((h, i) => (
-                  <Box
-                    key={i}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 2,
-                      py: 1,
-                      borderBottom: "1px solid #f3f4f6",
-                    }}
-                  >
-                    <Typography sx={{ fontSize: "12px", color: "#6b7280", minWidth: "140px" }}>
-                      {new Date(h.checkedAt).toLocaleString()}
-                    </Typography>
-                    <Chip
-                      label={h.provider === "manual" ? "Manual" : "Auto"}
-                      size="small"
-                      variant="outlined"
-                    />
-                    <Typography sx={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>
-                      {h.rank != null ? `#${h.rank}` : "Not found"}
-                    </Typography>
-                    {h.screenshotUrl && (
-                      <Link href={h.screenshotUrl} target="_blank" rel="noopener noreferrer">
-                        <img
-                          src={h.screenshotUrl}
-                          alt="Rank check screenshot"
-                          style={{ height: "36px", borderRadius: "4px", border: "1px solid #e5e7eb" }}
-                        />
-                      </Link>
-                    )}
-                  </Box>
-                ))}
-              </Box>
-            </>
-          ) : (
-            <Box className={cx("empty-state")}>
-              <div className={cx("empty-state-icon")}>📈</div>
-              <Typography sx={{ fontWeight: 600, color: "#111827" }}>No history yet</Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setHistoryDialogFor(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

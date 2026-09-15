@@ -53,7 +53,6 @@ import eventCreationModel from "../model/event/eventCreationModel.js";
 import eventLocationModel from "../model/event/eventLocationModel.js";
 import seoPageContentBlogModel from "../model/seoModel/seoPageContentBlogModel.js";
 import authorMasterModel from "../model/seoModel/authorMasterModel.js";
-import trackedKeywordModel from "../model/seoModel/trackedKeywordModel.js";
 import userModel from "../model/userModel.js";
 import msg91UserModel from "../model/msg91Model/usersModels.js";
 import businessReviewModel from "../model/businessReview/businessReviewModel.js";
@@ -384,23 +383,6 @@ export const SCOPES = {
       { path: "profileImage", kind: "single", valueShape: "mixed", purpose: "avatar", stability: "stable" },
     ],
     invalidate: [invalidateSeoCache],
-  },
-
-  trackedKeywords: {
-    scopeKey: "trackedKeywords",
-    scopeLabel: "Tracked Keywords",
-    scopeDescription: "Rank-check screenshots inside the history subdocument array.",
-    folderPrefix: "seo",
-    entity: "tracked-keywords",
-    collection: "trackedkeywords",
-    model: trackedKeywordModel,
-    progressKey: "documents",
-    projection: { history: 1, keyword: 1 },
-    buildQuery: () => ({ "history.screenshotKey": stringy }),
-    fields: [
-      { path: "history", kind: "arrayOfObjects", itemPath: "screenshotKey", valueShape: "key", purpose: "screenshot", stability: "versioned" },
-    ],
-    invalidate: [],
   },
 
   admin: {
