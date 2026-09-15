@@ -1,0 +1,14 @@
+.viewport {
+  width: 100%;
+  overflow: hidden;
+  background: #edf0f4;
+}
+.frame {
+  position: relative;
+  margin: 0 auto;
+  background: #fff;
+}
+.sheet {
+  width: 1050px;
+  transform-origin: top left;
+}

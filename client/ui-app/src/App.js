@@ -100,6 +100,7 @@ const {
   GscAnalytics,
   Ga4Analytics,
   Quotation,
+  Agreement,
   MassclickDocuments,
   MassclickFeedAdmin,
 } = AdminPages;
@@ -391,6 +392,7 @@ function AppRoutes({
                 <Route path="gsc-analytics" element={<GscAnalytics />} />
                 <Route path="ga4-analytics" element={<Ga4Analytics />} />
                 <Route path="quotation" element={<Quotation />} />
+                <Route path="agreement" element={<Agreement />} />
                 <Route path="documents" element={<MassclickDocuments />} />
                 <Route path="feed" element={<MassclickFeedAdmin />} />
               </Route>

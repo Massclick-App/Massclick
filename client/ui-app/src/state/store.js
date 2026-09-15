@@ -39,6 +39,7 @@ import publicUserCounterReducer from 'state/reducers/publicUserCounterReducer.js
 import gscReducer from 'state/reducers/gscReducer.js';
 import ga4Reducer from 'state/reducers/ga4Reducer.js';
 import quotationReducer from 'state/reducers/quotationReducer.js';
+import agreementReducer from 'state/reducers/agreementReducer.js';
 import massclickDocumentsReducer from 'state/reducers/massclickDocumentsReducer.js';
 import massclickFeedReducer from 'state/reducers/massclickFeedReducer.js';
 import userFeedbackReducer from 'state/reducers/userFeedbackReducer.js';
@@ -91,6 +92,7 @@ const rootReducer = combineReducers({
   gscReducer,
   ga4Reducer,
   quotationReducer,
+  agreement: agreementReducer,
   massclickDocuments: massclickDocumentsReducer,
   massclickFeed: massclickFeedReducer,
   userFeedback: userFeedbackReducer,

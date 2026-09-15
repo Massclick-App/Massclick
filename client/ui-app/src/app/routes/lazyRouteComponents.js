@@ -50,6 +50,7 @@ export const AdminPages = {
   HiringAdmin: lazy(() => import(/* webpackChunkName: "admin-hiring" */ "features/admin/hiring/HiringAdmin.js")),
   GscAnalytics: lazy(() => import(/* webpackChunkName: "admin-gsc" */ "features/admin/gsc-analytics/GscAnalyticsPage.js")),
   Ga4Analytics: lazy(() => import(/* webpackChunkName: "admin-ga4" */ "features/admin/ga4-analytics/Ga4AnalyticsPage.js")),
+  Agreement: lazy(() => import(/* webpackChunkName: "admin-agreement" */ "features/admin/agreement/Agreement.js")),
   Quotation: lazy(() => import(/* webpackChunkName: "admin-quotation" */ "features/admin/quotation/Quotation.js")),
   MassclickDocuments: lazy(() => import(/* webpackChunkName: "admin-documents" */ "features/admin/massclick-documents/MassclickDocumentsAdminPage.js")),
   MassclickFeedAdmin: lazy(() => import(/* webpackChunkName: "admin-feed" */ "features/admin/massclick-feed/MassclickFeedAdminPage.js")),
