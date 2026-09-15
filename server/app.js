@@ -198,7 +198,7 @@ app.use(express.static(CLIENT_BUILD_PATH, {
   maxAge: "365d",
   etag: true,
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith(".html")) {
+    if (filePath.endsWith(".html") || filePath.endsWith("app-font.css")) {
       res.setHeader("Cache-Control", "no-cache");
     } else {
       res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
