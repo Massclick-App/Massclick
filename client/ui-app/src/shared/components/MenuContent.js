@@ -105,6 +105,7 @@ const MENU_SECTIONS = [
       { text: "Care Chat", icon: HeadsetMicIcon, path: "/dashboard/customer-care", badgeKey: "chat" },
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
       { text: "Quotations", icon: RequestQuoteIcon, path: "/dashboard/quotation" },
+      { text: "Agreements", icon: RequestQuoteIcon, path: "/dashboard/agreement" },
       { text: "Documents", icon: FolderCopyIcon, path: "/dashboard/documents" },
       { text: "Feed", icon: DynamicFeedIcon, path: "/dashboard/feed" },
       { text: "MNI", icon: StorefrontIcon, path: "/dashboard/mni-data" },

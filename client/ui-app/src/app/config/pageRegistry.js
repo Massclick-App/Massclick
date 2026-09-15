@@ -24,6 +24,7 @@ export const PAGE_REGISTRY = [
   { path: '/dashboard/search-requests',      label: 'Search Requests' },
   { path: '/dashboard/customer-care',       label: 'Care Chat' },
   { path: '/dashboard/advertisements',      label: 'Advertisements' },
+  { path: '/dashboard/agreement', label: 'Agreements' },
   { path: '/dashboard/quotation',           label: 'Quotations' },
   { path: '/dashboard/documents',           label: 'Documents' },
   { path: '/dashboard/feed',                label: 'Feed' },
