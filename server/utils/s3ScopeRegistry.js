@@ -62,6 +62,7 @@ import { RewardClaim } from "../model/rewards/rewardModels.js";
 import massclickEventModel from "../model/massclickEvent/massclickEventModel.js";
 import massclickFeedPostModel from "../model/massclickFeed/massclickFeedPostModel.js";
 import massclickDocumentsModel from "../model/massclickDocuments/massclickDocumentsModel.js";
+import agreementModel from "../model/agreement/agreementModel.js";
 import fcmCampaignModel from "../model/fcmCampaignModel/fcmCampaignModel.js";
 import chatMessageModel from "../model/chat/chatMessageModel.js";
 import supportTicketModel from "../model/support/supportTicketModel.js";
@@ -576,6 +577,23 @@ export const SCOPES = {
       // bucket goes to external.jsonl and is never touched.
       { path: "videoLinks", kind: "array", valueShape: "mixed", purpose: "video-link", stability: "versioned" },
       { path: "imageLinks", kind: "array", valueShape: "mixed", purpose: "image-link", stability: "versioned" },
+    ],
+    invalidate: [],
+  },
+
+  agreements: {
+    scopeKey: "agreements",
+    scopeLabel: "Business Agreements",
+    scopeDescription: "Saved business agreement PDFs.",
+    folderPrefix: "agreements",
+    entity: "agreements",
+    collection: "massclick_agreement",
+    model: agreementModel,
+    progressKey: "agreements",
+    projection: { pdfKey: 1, agreementNo: 1 },
+    buildQuery: () => ({ pdfKey: stringy }),
+    fields: [
+      { path: "pdfKey", kind: "single", valueShape: "key", purpose: "document", stability: "versioned" },
     ],
     invalidate: [],
   },

@@ -188,7 +188,7 @@ export const updateAgreement = async (id, data = {}) => {
     const agreement = await agreementModel
       .findOneAndUpdate(
         { _id: id, isDeleted: { $ne: true } },
-        { ...payload, updatedAt: new Date() },
+        { ...payload, pdfKey: "", pdfFileName: "", pdfSize: 0, pdfUploadedAt: null, updatedAt: new Date() },
         { new: true, runValidators: true },
       )
       .lean();

@@ -23,6 +23,9 @@ import {
   deleteAgreement,
   getAllAgreements,
   getNextAgreementNo,
+  uploadAgreementPdf,
+  getAgreementPdf,
+  getAgreement,
 } from "state/actions/agreementAction.js";
 import AgreementPreview from "features/admin/agreement/AgreementPreview.js";
 import {
@@ -176,15 +179,39 @@ export default function Agreement() {
     setMessage(null);
     setActiveView("form");
   };
+  const archivePdf = async (record) => {
+    const { generateAgreementPdf } =
+      await import("features/admin/agreement/pdfExport.js");
+    const pdf = await generateAgreementPdf(record);
+    const pdfFile = `data:application/pdf;base64,${pdf.output("datauristring").split(",")[1]}`;
+    const archived = await dispatch(
+      uploadAgreementPdf(record._id, pdfFile, record.updatedAt),
+    );
+    return { pdf, archived };
+  };
   const handleDownload = async (row) => {
     setBusy(true);
     try {
-      const { generateAgreementPdf } =
-        await import("features/admin/agreement/pdfExport.js");
-      const pdf = await generateAgreementPdf(row);
-      pdf.save(
-        `${String(row.agreementNo || "agreement").replace(/[^a-z0-9-]+/gi, "-")}.pdf`,
-      );
+      // Archive only persisted data, even when opened from an unsaved form preview.
+      row = await dispatch(getAgreement(row._id));
+      if (row.pdfKey) {
+        const { pdfUrl, fileName } = await dispatch(getAgreementPdf(row._id));
+        const response = await fetch(pdfUrl);
+        if (!response.ok) throw new Error("Unable to download the stored PDF.");
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } else {
+        const { pdf, archived } = await archivePdf(row);
+        if (editingId === row._id) setFormData(agreementForm(archived));
+        pdf.save(archived.pdfFileName);
+        setRefresh((value) => value + 1);
+      }
     } catch (error) {
       setMessage({
         type: "error",
@@ -198,6 +225,9 @@ export default function Agreement() {
     event.preventDefault();
     if (numberLoading) return;
     setBusy(true);
+    let dataSaved = false;
+    let pdfStored = false;
+    const shouldDownload = event.nativeEvent.submitter?.value === "download";
     try {
       const payload = {
         ...formData,
@@ -212,17 +242,25 @@ export default function Agreement() {
       );
       setEditingId(saved._id);
       setFormData(agreementForm(saved));
+      dataSaved = true;
+      setMessage({ type: "info", text: "Agreement saved. Uploading PDF…" });
+      const { pdf, archived } = await archivePdf(saved);
+      pdfStored = true;
+      setFormData(agreementForm(archived));
       setMessage({
         type: "success",
-        text: "Agreement saved successfully.",
+        text: "Agreement and PDF saved to AWS successfully.",
       });
       setRefresh((value) => value + 1);
-      if (event.nativeEvent.submitter?.value === "download")
-        await handleDownload(saved);
+      if (shouldDownload) pdf.save(archived.pdfFileName);
     } catch (error) {
       setMessage({
         type: "error",
-        text: errorMessage(error),
+        text: pdfStored
+          ? `Agreement and PDF are stored in AWS, but the download failed. ${errorMessage(error)}`
+          : dataSaved
+          ? `Agreement details saved, but the PDF was not uploaded. Save again to retry. ${errorMessage(error)}`
+          : errorMessage(error),
       });
     } finally {
       setBusy(false);
@@ -252,6 +290,18 @@ export default function Agreement() {
     }
   };
   const columns = [
+    {
+      id: "pdfKey",
+      label: "PDF storage",
+      sortable: false,
+      renderCell: (value) => (
+        <Chip
+          size="small"
+          label={value ? "Stored in AWS" : "Upload pending"}
+          color={value ? "success" : "warning"}
+        />
+      ),
+    },
     {
       id: "agreementNo",
       label: "Agreement No.",

@@ -6,10 +6,22 @@ import {
   viewAllAgreementsAction,
   viewAgreementAction,
   nextAgreementNoAction,
+  uploadAgreementPdfAction,
+  viewAgreementPdfAction,
 } from "../controller/agreement/agreementController.js";
 import { requireAdminAuth } from "../auth/authMiddleware.js";
 
 const router = express.Router();
+router.put(
+  "/api/agreement/pdf/:id",
+  requireAdminAuth(),
+  uploadAgreementPdfAction,
+);
+router.get(
+  "/api/agreement/pdf/:id",
+  requireAdminAuth(),
+  viewAgreementPdfAction,
+);
 router.get(
   "/api/agreement/next-number",
   requireAdminAuth(),

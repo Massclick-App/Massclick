@@ -17,6 +17,45 @@ import { getAdminAccessToken } from "app/auth/authStore.js";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
+export const uploadAgreementPdf =
+  (id, pdfFile, updatedAt) => async (dispatch) => {
+    dispatch({ type: EDIT_AGREEMENT_REQUEST });
+    try {
+      const token = await getValidToken();
+      const response = await axiosInstance.put(
+        `${API_URL}/agreement/pdf/${id}`,
+        { pdfFile, updatedAt },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      dispatch({ type: EDIT_AGREEMENT_SUCCESS, payload: response.data });
+      return response.data;
+    } catch (error) {
+      dispatch({
+        type: EDIT_AGREEMENT_FAILURE,
+        payload: error.response?.data || error.message,
+      });
+      throw error;
+    }
+  };
+
+export const getAgreementPdf = (id) => async () => {
+  const token = await getValidToken();
+  const response = await axiosInstance.get(`${API_URL}/agreement/pdf/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+export const getAgreement = (id) => async () => {
+  const token = await getValidToken();
+  const response = await axiosInstance.get(`${API_URL}/agreement/view/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
 export const getNextAgreementNo = (issueDate) => async () => {
   const token = await getValidToken();
   const params = new URLSearchParams({ issueDate });

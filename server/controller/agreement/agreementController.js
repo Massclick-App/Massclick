@@ -1,5 +1,28 @@
 import { BAD_REQUEST } from "../../errorCodes.js";
 import {
+  uploadAgreementPdf,
+  viewAgreementPdf,
+} from "../../helper/agreement/agreementPdfHelper.js";
+
+export const uploadAgreementPdfAction = async (req, res) => {
+  try {
+    const agreement = await uploadAgreementPdf(req.params.id, req.body);
+    res.send(agreement);
+  } catch (error) {
+    console.error("uploadAgreementPdfAction error:", error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+
+export const viewAgreementPdfAction = async (req, res) => {
+  try {
+    res.send(await viewAgreementPdf(req.params.id));
+  } catch (error) {
+    console.error("viewAgreementPdfAction error:", error);
+    res.status(BAD_REQUEST.code).send({ message: error.message });
+  }
+};
+import {
   createAgreement,
   deleteAgreement,
   updateAgreement,

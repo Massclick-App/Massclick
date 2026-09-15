@@ -331,6 +331,9 @@ export const s3Keys = Object.freeze({
     document: (id) => s3Path({ entity: "massclick-documents", entityId: id, purpose: "document" }),
     media: (id) => s3Path({ entity: "massclick-documents", entityId: id, purpose: "media" }),
   },
+  agreement: {
+    document: (id) => s3Path({ entity: "agreements", entityId: id, purpose: "document" }),
+  },
 });
 
 export default s3Keys;

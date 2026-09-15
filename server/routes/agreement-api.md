@@ -12,6 +12,8 @@ All endpoints require an admin bearer token. Data is stored in `massclick_agreem
 | GET | `/api/agreement/view/:id` | One document |
 | PUT | `/api/agreement/update/:id` | Replace editable fields, return saved document |
 | DELETE | `/api/agreement/delete/:id` | Soft delete, return `{ message, result }` |
+| PUT | `/api/agreement/pdf/:id` | Upload `{ pdfFile, updatedAt }`; return agreement with PDF metadata |
+| GET | `/api/agreement/pdf/:id` | Return a five-minute signed `{ pdfUrl, fileName }` for the stored PDF |
 
 Create/update body:
 
@@ -46,3 +48,13 @@ List options also accept `status=all|active|inactive`, `sortBy`, and `sortOrder=
 The browser generates the A4 PDF using the same React document as the preview, with existing html2canvas/jsPDF dependencies. The 2× capture is encoded as JPEG at 0.88 quality with PDF compression enabled, avoiding the large uncompressed PNG bitmap. Save & Download first persists the form. Table downloads export the saved record. Long content is fitted onto a single A4 page without cropping. Signature lines are blank. The fixed agreement wording is transcribed from the supplied reference; the logo uses the repository asset. The preview fits the available width and its typography is isolated from the admin panel headings and paragraphs.
 
 Validation tests: `node --test server/helper/agreement/agreementHelper.test.js server/controller/agreement/agreementController.test.js` from the repository root. No live database is needed for these tests.
+
+## AWS PDF storage
+
+Both Save and Save & Download persist the agreement first, render the returned agreement (including its final number), then upload the PDF. The uploader reuses `uploadImageToS3`, `AWS_S3_BUCKET_MASSCLICK`, and the existing AWS credentials/region. Keys are registered in `s3ScopeRegistry.js` and generated with `s3Keys.agreement.document(id)` as `agreements/{agreementId}/document/{ulid}.pdf`. Image conversion is disabled and content type is `application/pdf`.
+
+The agreement stores `pdfKey`, `pdfFileName`, `pdfSize`, and `pdfUploadedAt`. Editing agreement details clears the current PDF metadata until the replacement uploads. Each upload uses a new versioned key. The upload compares the submitted saved `updatedAt` before and after S3 upload to reject stale PDFs. Maximum upload size is 5 MB. Only admins can upload or request a signed URL.
+
+The table shows Stored in AWS or Upload pending. If generation/upload fails, the saved agreement remains available and the form offers retry without creating another agreement. Download uses the stored S3 file; older records without a PDF generate and upload one from freshly loaded saved data on their first download. The S3 bucket's existing GET CORS configuration must allow the admin application's origin for browser downloads.
+
+Storage tests: `node --test server/helper/agreement/agreementPdfHelper.test.js` (mocked AWS requests; no live uploads).

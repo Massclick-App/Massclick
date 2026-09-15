@@ -76,6 +76,10 @@ const agreementSchema = new Schema(
     isActive: { type: Boolean, default: true, index: true },
     isDeleted: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    pdfKey: { type: String, default: "" },
+    pdfFileName: { type: String, default: "" },
+    pdfSize: { type: Number, default: 0 },
+    pdfUploadedAt: { type: Date, default: null },
   },
   { timestamps: true, versionKey: false },
 );
