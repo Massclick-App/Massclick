@@ -80,7 +80,7 @@ const Header = ({ }) => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '12px',
-                                fontFamily: "'Poppins', sans-serif",
+                                fontFamily: "var(--app-font-family)",
                                 fontWeight: 700,
                                 fontSize: '1.8rem',
                                 color: '#ea6d11',

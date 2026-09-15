@@ -6,6 +6,8 @@ export const API_DOCS_PATH = "/docs/api";
 export const discoveryLinks = [
   `</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="${API_CATALOG_PROFILE}"`,
   `</docs/api>; rel="service-doc"; type="text/html"`,
+  `</llms.txt>; rel="alternate"; type="text/plain"; title="AI crawler guide"`,
+  `</llms-full.txt>; rel="alternate"; type="text/plain"; title="Complete AI page index"`,
 ];
 
 export const publicApiCatalog = [

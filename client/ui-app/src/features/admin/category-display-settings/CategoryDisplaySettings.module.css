@@ -26,7 +26,7 @@
 
 /* ── Main container ───────────────────────────────────────────────────────── */
 .category-display-settings {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 /* ── Overview card ────────────────────────────────────────────────────────── */

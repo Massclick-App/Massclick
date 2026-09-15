@@ -18,7 +18,7 @@
         ),
         linear-gradient(#f8fafc, #f8fafc);
     border-top: 1px solid var(--footer-border-soft);
-    font-family: 'Inter', sans-serif;
+    font-family: var(--app-font-family);
 }
 
 .footer-inner {

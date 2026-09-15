@@ -30,13 +30,15 @@ export const buildOrganizationSchema = () => ({
   "@type": "Organization",
   "@id": ORGANIZATION_ID,
   name: "Massclick",
+  alternateName: ["MassClick", "massclick.in"],
   // Registered entity per the MCA Certificate of Incorporation (09-Jul-2026).
   // Keep in sync with client/ui-app/src/shared/utils/companyIdentity.js.
   legalName: "MassClick Technologies Private Limited",
   url: SITE_ORIGIN,
   logo: `${SITE_ORIGIN}/logo.png`,
   description:
-    "Find trusted local businesses near you with reviews, ratings, and contact details",
+    "Massclick is an India local business discovery platform for finding trusted businesses, services, restaurants, hotels, healthcare providers, and professionals by city and category.",
+  slogan: "Explore. Connect. Succeed Local.",
   foundingDate: "2018",
   email: "admin@massclick.in",
   address: {
@@ -70,6 +72,38 @@ export const buildOrganizationSchema = () => ({
     "@type": "Country",
     name: "IN",
   },
+  knowsAbout: [
+    "Local business discovery",
+    "Indian business directory",
+    "Local SEO",
+    "Business listings",
+    "Customer reviews",
+    "City and category search",
+  ],
+  serviceArea: {
+    "@type": "Country",
+    name: "India",
+  },
+  makesOffer: [
+    {
+      "@type": "Offer",
+      itemOffered: {
+        "@type": "Service",
+        name: "Local business search",
+        description:
+          "Search verified local businesses by location and category with phone numbers, addresses, ratings, reviews, photos, and opening details.",
+      },
+    },
+    {
+      "@type": "Offer",
+      itemOffered: {
+        "@type": "Service",
+        name: "Business listing and local SEO services",
+        description:
+          "Business profile visibility, category placement, lead discovery, digital marketing, and SEO support for Indian local businesses.",
+      },
+    },
+  ],
 });
 
 export const buildWebsiteSchema = () => ({
@@ -77,9 +111,21 @@ export const buildWebsiteSchema = () => ({
   "@type": "WebSite",
   "@id": WEBSITE_ID,
   name: "Massclick",
+  alternateName: "massclick.in",
   url: `${SITE_ORIGIN}/`,
-  description: "Find trusted local businesses near you",
+  description:
+    "Search Massclick for trusted local businesses in India by city, locality, and category.",
+  inLanguage: ["en-IN", "ta-IN"],
   publisher: ORGANIZATION_REF,
+  about: [
+    { "@type": "Thing", name: "Local business directory" },
+    { "@type": "Thing", name: "Verified business listings" },
+    { "@type": "Thing", name: "Local services in India" },
+  ],
+  audience: {
+    "@type": "Audience",
+    audienceType: "Indian consumers and local business owners",
+  },
   // No potentialAction/SearchAction: Google deprecated the sitelinks search box
   // in late 2024, so the markup renders nothing.
 });

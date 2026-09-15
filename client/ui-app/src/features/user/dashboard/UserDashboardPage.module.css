@@ -1,4 +1,4 @@
-.dashboard-shell { min-height: 100vh; background: #f6f7fb; color: #17243d; padding: 118px 24px 64px; font-family: Inter, "Segoe UI", sans-serif; }
+.dashboard-shell { min-height: 100vh; background: #f6f7fb; color: #17243d; padding: 118px 24px 64px; font-family: var(--app-font-family); }
 .dashboard-container { width: min(1400px, 100%); margin: 0 auto; }
 .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
 .hero-copy { min-width: 0; }

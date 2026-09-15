@@ -1,4 +1,4 @@
-.review-page { --navy:#071a43; --orange:#ff5a0a; --blue:#135ee8; --green:#08a75a; --line:#dde5f0; --muted:#63708a; min-height:100vh; color:var(--navy); background:linear-gradient(135deg,#fff 0%,#f7f9fd 56%,#fffaf7 100%); font-family:"Poppins",sans-serif; }
+.review-page { --navy:#071a43; --orange:#ff5a0a; --blue:#135ee8; --green:#08a75a; --line:#dde5f0; --muted:#63708a; min-height:100vh; color:var(--navy); background:linear-gradient(135deg,#fff 0%,#f7f9fd 56%,#fffaf7 100%); font-family:var(--app-font-family); }
 .review-shell { width:min(1440px,calc(100% - 48px)); margin:0 auto; padding:12px 0 40px; }
 .breadcrumbs { display:flex; align-items:center; gap:9px; min-height:48px; color:#ff5a19; font-size:14px; font-weight:500; overflow:hidden; white-space:nowrap; }
 .breadcrumbs button { max-width:280px; overflow:hidden; text-overflow:ellipsis; border:0; background:none; color:#ff5a19; padding:4px 0; cursor:pointer; font:inherit; }

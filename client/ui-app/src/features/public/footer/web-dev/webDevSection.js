@@ -178,7 +178,7 @@ const WebDevSection = () => {
             md: 6
           }}>
                             <Typography variant="h1" sx={{
-              fontFamily: 'Montserrat, sans-serif',
+              fontFamily: "var(--app-font-family)",
               fontSize: {
                 xs: '2.5rem',
                 md: '3.8rem'
@@ -239,7 +239,7 @@ const WebDevSection = () => {
         }
       }}>
                     <Typography variant="h2" align="center" sx={{
-          fontFamily: 'Montserrat, sans-serif',
+          fontFamily: "var(--app-font-family)",
           fontSize: {
             xs: '1.8rem',
             md: '2.2rem'
@@ -306,7 +306,7 @@ const WebDevSection = () => {
                       flexGrow: 1
                     }}>
                                                     <Typography variant="h6" sx={{
-                        fontFamily: 'Montserrat, sans-serif',
+                        fontFamily: "var(--app-font-family)",
                         fontWeight: 700,
                         color: '#1f1f1f',
                         marginBottom: 1,
@@ -352,7 +352,7 @@ const WebDevSection = () => {
       }}>
                     <Container maxWidth="md">
                         <Typography variant="h3" sx={{
-            fontFamily: 'Montserrat, sans-serif',
+            fontFamily: "var(--app-font-family)",
             fontWeight: 800,
             lineHeight: 1.2,
             marginBottom: 2,

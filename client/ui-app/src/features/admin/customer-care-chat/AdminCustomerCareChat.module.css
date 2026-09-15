@@ -7,7 +7,7 @@
   width: 100%;
   max-width: 1500px;
   margin: 0 auto;
-  font-family: Inter, "Segoe UI", sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .pageHeader { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:18px; }

@@ -16,7 +16,7 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.96)),
     var(--eventCarousel-surface);
   /* box-shadow: var(--section-shadow); */
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--app-font-family);
   box-sizing: border-box;
 }
 
