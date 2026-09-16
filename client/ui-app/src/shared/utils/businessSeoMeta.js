@@ -1,5 +1,5 @@
 /**
- * Title / description for a business detail page.
+ * Title / description / keywords for a business detail page.
  *
  * Deliberate parallel of server/helper/businessList/businessSeoMeta.js (this
  * app can't import server code). SSR sets the tags on first load; this keeps
@@ -49,6 +49,7 @@ export const buildBusinessSeoMeta = ({ business = {}, districtLabel = "" } = {})
   const name = clean(business.businessName || business.name);
   const category = titleCaseWords(business.category);
   const place = placeLabel(business, districtLabel);
+  const district = clean(districtLabel) || clean(business.masterLocation?.district);
 
   const builtTitle = [name, category && place ? `${category} in ${place}` : category || place]
     .filter(Boolean)
@@ -61,7 +62,17 @@ export const buildBusinessSeoMeta = ({ business = {}, districtLabel = "" } = {})
     ? clean(business.seoDescription)
     : `${name}${place ? ` in ${place}` : ""}${category ? ` – ${category}` : ""}. Address, phone number, timings, photos and reviews on Massclick.`;
 
-  return { title, description };
+  const keywords = [
+    name,
+    district && `${name} ${district}`,
+    category && place && `${category} in ${place}`,
+    category && district && `${category} ${district}`,
+  ]
+    .filter(Boolean)
+    .map((keyword) => keyword.toLowerCase())
+    .join(", ");
+
+  return { title, description, keywords };
 };
 
 export const districtLabelFromSlug = (slug = "") =>

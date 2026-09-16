@@ -48,7 +48,7 @@ router.post('/api/businesslist/send-enquiry', sendEnquiryLead);
 router.post('/api/businesslist/send-info', sendBusinessInfoToCustomer);
 router.put('/api/businesslist/log-search/:id', updateSearchAction);
 // router.get('/api/businesslist/trending-searches', getTrendingSearchesAction);
-router.get('/api/businesslist/trending-searches/viewall',viewLogSearchAction);
+router.get('/api/businesslist/trending-searches/viewall', trendsCache, viewLogSearchAction);
 router.post('/api/businesslist/trending-searches/view',viewSearchAction);
 router.post('/api/businesslist/trending-searches/trending-category',getTrendingSearchesAction);
 
@@ -67,7 +67,6 @@ router.get(
   getPendingBusinessAction
 );
 router.post("/api/businesslist/qr-download/:id", oauthAuthentication, trackQrDownload);
-router.get('/api/businesslist/trending-searches/viewall', trendsCache, viewLogSearchAction);
 
 // Duplicate review console. Admin-only; never cached, because the scan result
 // drives destructive-looking actions on live listings.

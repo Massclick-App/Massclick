@@ -846,6 +846,7 @@ const BusinessDetail = React.memo(() => {
       <Helmet>
         <title>{businessSeo.title}</title>
         <meta name="description" content={businessSeo.description} />
+        <meta name="keywords" content={businessSeo.keywords} />
         <meta property="og:title" content={businessSeo.title} />
         <meta property="og:description" content={businessSeo.description} />
         <link rel="canonical" href={canonicalUrl} />

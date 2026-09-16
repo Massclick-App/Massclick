@@ -8,7 +8,7 @@ import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
 import GppGoodRoundedIcon from "@mui/icons-material/GppGoodRounded";
 import { useDispatch, useSelector } from "react-redux";
-import { getBackendSuggestions } from "state/actions/businessListAction.js";
+import { getAllSearchLogs, getBackendSuggestions } from "state/actions/businessListAction.js";
 import { searchMasterLocations } from "state/actions/masterLocationAction.js";
 import { fetchPublicUserCounter } from "state/actions/publicUserCounterAction.js";
 import { createDistrictSlug } from "shared/utils/searchResultNavigation.js";
@@ -257,6 +257,37 @@ const HeroSection = React.memo(({
     }));
     dispatch(searchMasterLocations(debouncedLocation.trim(), MASTER_LOCATION_SUGGESTION_LIMIT));
   }, [debouncedLocation, dispatch, showLocationDropdown]);
+  // The hero search box sits above the fold, so its "RECENT SEARCHES" list is
+  // the first thing a visitor can open - but the only other fetch of these logs
+  // lives in StickySearchBar, which the homepage mounts only once the user has
+  // scrolled past the hero. Without this the list silently renders empty on a
+  // fresh load (CategoryDropdown returns null when it has no options), and only
+  // fills in if the user scrolls down and comes back up.
+  //
+  // Fetched at idle so it never competes with first paint, and skipped at fire
+  // time if the store is already warm - arriving from another page that mounts
+  // the sticky bar means the logs are there and a second request would be
+  // wasted. The check reads a ref rather than a dep so the effect stays bound
+  // to `dispatch` alone and can't re-fire as the store fills.
+  const hasSearchLogsRef = useRef(false);
+  hasSearchLogsRef.current = (searchLogs || []).length > 0;
+  useEffect(() => {
+    const idleHandle = scheduleIdleCallback(() => {
+      if (hasSearchLogsRef.current) return;
+      dispatch(getAllSearchLogs());
+    }, {
+      timeout: 2000
+    });
+
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleHandle);
+        return;
+      }
+
+      window.clearTimeout(idleHandle);
+    };
+  }, [dispatch]);
   const recentSearchOptions = [...new Set((searchLogs || []).map(log => log.categoryName ? log.categoryName.trim() : "").filter(name => name && !isObjectId(name)))];
   const suggestionCategories = (() => {
     const suggestions = searchSuggestionState.items;
