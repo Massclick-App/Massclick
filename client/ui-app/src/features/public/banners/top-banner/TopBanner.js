@@ -6,7 +6,7 @@ import styles from "features/public/banners/top-banner/TopBanner.module.css";
 import defaultBanner from "assets/new_banner.webp";
 import { assetUrl } from "shared/utils/imageUrlHelper.js";
 const cx = createScopedClassNames(styles);
-const SLIDE_INTERVAL = 2000;
+const DEFAULT_SLIDE_INTERVAL = 2000;
 const COMMON_TOP_BANNER_CATEGORY = "ALL_CATEGORIES";
 const parseDate = date => {
   if (!date) return null;
@@ -28,7 +28,8 @@ const DEFAULT_BANNER = {
   isDefault: true
 };
 const TopBannerAds = ({
-  category
+  category,
+  slideInterval = DEFAULT_SLIDE_INTERVAL
 }) => {
   const dispatch = useDispatch();
   useEffect(() => {
@@ -78,9 +79,9 @@ const TopBannerAds = ({
         }
         return prev + 1;
       });
-    }, SLIDE_INTERVAL);
+    }, slideInterval);
     return () => clearInterval(timer);
-  }, [bannerAds.length]);
+  }, [bannerAds.length, slideInterval]);
   return <div className={cx("top-banner-carousel")}>
       {hasPaidBanner && <div className={cx("sponsored-label")}>Sponsored</div>}
 

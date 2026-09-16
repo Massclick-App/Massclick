@@ -1266,7 +1266,7 @@ const SearchResults = React.memo(
             committedSearchTerm={isLocationListing ? "" : searchText}
           />
           <div className={cx("results-container banner-section")}>
-            <TopBannerAds category={effectiveCategory} />
+            <TopBannerAds category={effectiveCategory} slideInterval={15000} />
           </div>
           <main>
             <div className={cx("page-spacing")} />
