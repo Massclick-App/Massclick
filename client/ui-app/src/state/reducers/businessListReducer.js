@@ -211,6 +211,7 @@ export default function businessListReducer(state = initialState, action) {
       return {
         ...state,
         businessDetailsLoading: true,
+        businessDetails: null,
         businessDetailsError: null,
       };
 
@@ -264,7 +265,10 @@ export default function businessListReducer(state = initialState, action) {
       return {
         ...state,
         businessBySlugLoading: true,
+        businessDetailsLoading: true,
+        businessDetails: null,
         businessBySlugError: null,
+        businessDetailsError: null,
       };
 
     case FETCH_BUSINESS_BY_SLUG_SUCCESS:
@@ -272,6 +276,9 @@ export default function businessListReducer(state = initialState, action) {
         ...state,
         businessBySlugLoading: false,
         businessBySlug: action.payload,
+        businessDetailsLoading: false,
+        businessDetails: action.payload,
+        businessDetailsError: null,
       };
 
     case FETCH_BUSINESS_BY_SLUG_FAILURE:
@@ -280,6 +287,9 @@ export default function businessListReducer(state = initialState, action) {
         businessBySlugLoading: false,
         businessBySlug: null,
         businessBySlugError: action.payload,
+        businessDetailsLoading: false,
+        businessDetails: null,
+        businessDetailsError: action.payload,
       };
 
     case UPDATE_SEARCH_LOG_REQUEST:
