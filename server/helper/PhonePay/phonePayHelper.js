@@ -89,7 +89,7 @@ const hasPremiumAmountMismatch = (payment = {}) => {
 
 const normalizeBaseUrl = (value, fallback) => String(value || fallback || "").trim().replace(/\/+$/, "");
 
-const getPhonePeGatewayConfig = async () => {
+export const getPhonePeGatewayConfig = async () => {
   const settings = await getSettings();
   const environment = ["sandbox", "production"].includes(settings.phonepe_environment)
     ? settings.phonepe_environment
@@ -116,25 +116,25 @@ const getPhonePeGatewayConfig = async () => {
   };
 };
 
-const assertPhonePeEnabled = (config) => {
+export const assertPhonePeEnabled = (config) => {
   if (!config.enabled) {
     throw new Error("PhonePe payment gateway is disabled");
   }
 };
 
-const assertLegacyPhonePeConfig = (config) => {
+export const assertLegacyPhonePeConfig = (config) => {
   if (!config.legacyMerchantId || !config.legacySaltKey || !config.legacySaltIndex || !config.legacyBaseUrl) {
     throw new Error("PhonePe legacy merchant id, salt key, salt index, and base URL are required");
   }
 };
 
-const assertStandardPhonePeConfig = (config) => {
+export const assertStandardPhonePeConfig = (config) => {
   if (!config.clientId || !config.clientSecret || !config.clientVersion) {
     throw new Error("PhonePe Client ID, Client Secret, and Client Version are required");
   }
 };
 
-const getPhonePeStandardAuthToken = async (config, forceRefresh = false) => {
+export const getPhonePeStandardAuthToken = async (config, forceRefresh = false) => {
   assertStandardPhonePeConfig(config);
 
   const cacheKey = `${config.environment}:${config.clientId}:${config.clientVersion}`;

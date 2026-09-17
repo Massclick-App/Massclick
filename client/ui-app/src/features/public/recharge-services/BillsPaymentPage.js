@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, CheckCircle2, ChevronRight, CreditCard, Headphones, LockKeyhole, ReceiptIndianRupee, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, CheckCircle2, ChevronRight, CreditCard, Headphones, Loader2, LockKeyhole, ReceiptIndianRupee, Search, ShieldCheck, Sparkles } from "lucide-react";
 import massClickLogo from "assets/mclogo.webp";
 import campaignHero from "assets/recharge-campaign-hero.png";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import { BILL_SERVICES, FIELD_CONFIG, getBillService, getQuickRechargeAmounts } from "features/public/recharge-services/billPaymentConfig.js";
+import { createRechargeOrder, fetchLiveBill } from "features/public/recharge-services/rechargeOrderApi.js";
 import styles from "features/public/recharge-services/BillsPaymentPage.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -17,28 +18,70 @@ export default function BillsPaymentPage() {
   const [values, setValues] = useState({});
   const [saveBill, setSaveBill] = useState(true);
   const [step, setStep] = useState("details");
+  const [isPaying, setIsPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const [liveBill, setLiveBill] = useState({ loading: false, error: "", data: null });
 
   useEffect(() => {
     setValues({});
     setSaveBill(true);
     setStep("details");
+    setIsPaying(false);
+    setPaymentError("");
+    setLiveBill({ loading: false, error: "", data: null });
   }, [serviceSlug]);
 
   if (!service) return <Navigate to="/" replace />;
   const isMobilePrepaid = service.slug === "mobile-prepaid";
   const quickAmounts = isMobilePrepaid ? getQuickRechargeAmounts(values.operator) : [];
+  const supportsLiveBill = service.slug === "electricity" || service.slug === "water";
 
-  const updateField = (key, value) => setValues((current) => ({
-    ...current,
-    [key]: value,
-    ...(key === "operator" ? { amount: "" } : {}),
-    ...(key === "state" ? { provider: "" } : {}),
-  }));
+  const updateField = (key, value) => {
+    if (key === "provider" || key === "consumer") setLiveBill({ loading: false, error: "", data: null });
+    setValues((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "operator" ? { amount: "" } : {}),
+      ...(key === "state" ? { provider: "" } : {}),
+    }));
+  };
+  const checkLiveBill = async () => {
+    setLiveBill({ loading: true, error: "", data: null });
+    try {
+      const result = await fetchLiveBill({
+        serviceSlug: service.slug,
+        provider: values.provider,
+        consumerNumber: values.consumer,
+      });
+      updateField("amount", String(result.amount));
+      setLiveBill({ loading: false, error: "", data: { customerName: result.customerName, dueDate: result.dueDate } });
+    } catch (error) {
+      setLiveBill({ loading: false, error: error.response?.data || error.message || "Could not fetch live bill", data: null });
+    }
+  };
   const selectQuickAmount = (amount) => updateField("amount", String(amount));
   const submitDetails = (event) => {
     event.preventDefault();
     setStep("review");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const confirmPayment = async () => {
+    setPaymentError("");
+    setIsPaying(true);
+    try {
+      const { paymentUrl } = await createRechargeOrder({
+        serviceSlug: service.slug,
+        serviceName: service.name,
+        serviceGroup: service.group || "",
+        billDetails: values,
+        amount: Number(values.amount),
+      });
+      if (!paymentUrl) throw new Error("Payment URL missing in response");
+      window.location.href = paymentUrl;
+    } catch (error) {
+      setPaymentError(error.response?.data || error.message || "Could not start payment. Please try again.");
+      setIsPaying(false);
+    }
   };
 
   return (
@@ -117,6 +160,29 @@ export default function BillsPaymentPage() {
                 })}
               </div>
 
+              {supportsLiveBill && (
+                <div className={cx("live-bill")}>
+                  <button
+                    type="button"
+                    className={cx("live-bill-check")}
+                    onClick={checkLiveBill}
+                    disabled={liveBill.loading || !values.provider || !values.consumer}
+                  >
+                    {liveBill.loading ? <span className={cx("spinner")}><Loader2 /> Checking bill…</span> : <><Search /> Check live bill</>}
+                  </button>
+                  {liveBill.error && <div className={cx("notice", "notice-error")}><AlertTriangle /> {liveBill.error}</div>}
+                  {liveBill.data && (
+                    <div className={cx("notice", "notice-success")}>
+                      <CheckCircle2 />
+                      <span>
+                        Live bill found{liveBill.data.customerName ? ` for ${liveBill.data.customerName}` : ""} — amount filled in below.
+                        {liveBill.data.dueDate ? ` Due ${liveBill.data.dueDate}.` : ""}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {isMobilePrepaid && (
                 <div className={cx("plan-picker")}>
                   <div className={cx("plan-picker-head")}>
@@ -150,10 +216,13 @@ export default function BillsPaymentPage() {
                 <div><dt>Service</dt><dd>{service.name}</dd></div>
                 {service.fields.map((key) => <div key={key}><dt>{FIELD_CONFIG[key].label}</dt><dd>{key === "amount" ? `₹${values[key]}` : values[key]}</dd></div>)}
               </dl>
-              <div className={cx("notice")}><ShieldCheck /> Biller verification and payment gateway integration are required before money can be collected.</div>
+              <div className={cx("notice")}><ShieldCheck /> You&rsquo;ll be redirected to our secure PhonePe checkout to complete this payment.</div>
+              {paymentError && <div className={cx("notice", "notice-error")}><AlertTriangle /> {paymentError}</div>}
               <div className={cx("review-actions")}>
-                <button type="button" onClick={() => setStep("details")}>Edit details</button>
-                <button className={cx("primary")} type="button" disabled>Continue to payment</button>
+                <button type="button" onClick={() => setStep("details")} disabled={isPaying}>Edit details</button>
+                <button className={cx("primary")} type="button" onClick={confirmPayment} disabled={isPaying}>
+                  {isPaying ? <span className={cx("spinner")}><Loader2 /> Redirecting…</span> : <><span>Continue to payment</span><ChevronRight /></>}
+                </button>
               </div>
             </div>
           )}

@@ -64,6 +64,7 @@ export const PublicPages = {
   WriteReviewPage: lazy(() => import(/* webpackChunkName: "review" */ "features/public/rating/SubmitReviewPage.js")),
   PaymentStatus: lazy(() => import(/* webpackChunkName: "payment" */ "features/public/payments/PaymentStatusPage.js")),
   BillsPaymentPage: lazy(() => import(/* webpackChunkName: "bills-payment" */ "features/public/recharge-services/BillsPaymentPage.js")),
+  RechargeStatusPage: lazy(() => import(/* webpackChunkName: "recharge-status" */ "features/public/recharge-services/RechargeStatusPage.js")),
   LeadsPage: lazy(() => import(/* webpackChunkName: "leads" */ "features/public/leads/LeadsPage.js")),
   PublicizePage: lazy(() => import(/* webpackChunkName: "publicize" */ "features/public/publicize/publicize.js")),
   FreeListingPage: lazy(() => import(/* webpackChunkName: "free-listing" */ "features/public/free-listing/FreeListingPage.js")),

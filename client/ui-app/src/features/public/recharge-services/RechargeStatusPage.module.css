@@ -1,0 +1,16 @@
+.page { --mc-navy:#0b0b4f; --mc-orange:#f36c0a; min-height:100vh; background:#f7f7fa; }
+.topbar { padding:20px 0; text-align:center; }
+.topbar img { height:36px; }
+.card { display:flex; flex-direction:column; align-items:center; width:min(440px,calc(100% - 40px)); margin:40px auto 0; padding:40px 30px; border:1px solid #e5e4eb; border-radius:18px; background:#fff; box-shadow:0 16px 45px rgba(22,20,54,.065); text-align:center; box-sizing:border-box; }
+.state { display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; }
+.state>svg { width:44px; height:44px; color:var(--mc-navy); }
+.state h1 { margin:6px 0 0; color:var(--mc-navy); font-size:1.15rem; }
+.state p { margin:0; color:#6f7189; font-size:.82rem; line-height:1.5; }
+.state-success>svg { color:#1f9d55; }
+.state-error>svg { color:#c23a3a; }
+.spin { animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.txn { margin-top:4px; color:#9090a1; font-size:.68rem; }
+.state button,.primary { display:inline-flex; align-items:center; justify-content:center; min-height:46px; margin-top:14px; padding:0 22px; border:0; border-radius:10px; background:var(--mc-navy); color:#fff; font:inherit; font-size:.78rem; font-weight:750; text-decoration:none; cursor:pointer; }
+.assurance { display:flex; align-items:center; gap:6px; margin-top:26px; color:#9090a1; font-size:.65rem; }
+.assurance svg { width:14px; color:var(--mc-orange); }

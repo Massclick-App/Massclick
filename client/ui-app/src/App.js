@@ -113,6 +113,7 @@ const {
   WriteReviewPage,
   PaymentStatus,
   BillsPaymentPage,
+  RechargeStatusPage,
   LeadsPage,
   PublicizePage,
   FreeListingPage,
@@ -268,6 +269,7 @@ function AppRoutes({
           <Route path="/reward-members" element={<Navigate to="/user_rewards#member-points" replace />} />
           <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
           <Route path="/bills-payment/:serviceSlug" element={<BillsPaymentPage />} />
+          <Route path="/recharge-status/:transactionId" element={<RechargeStatusPage />} />
           <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
           <Route path="/author/:slug" element={<AuthorProfile />} />
