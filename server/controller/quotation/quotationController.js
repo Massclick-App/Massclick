@@ -30,11 +30,13 @@ const buildQuotationNo = (year, sequence) =>
 
 const generateNextQuotationNo = async (issueDate = new Date()) => {
   const date = new Date(issueDate);
-  const year = Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear();
+  const year = Number.isNaN(date.getTime())
+    ? new Date().getFullYear()
+    : date.getFullYear();
   const counter = await quotationCounterModel.findOneAndUpdate(
     { key: `quotation-${year}`, year },
     { $inc: { sequence: 1 } },
-    { new: true, upsert: true }
+    { new: true, upsert: true },
   );
 
   return buildQuotationNo(year, counter.sequence);
@@ -42,26 +44,38 @@ const generateNextQuotationNo = async (issueDate = new Date()) => {
 
 const previewNextQuotationNo = async (issueDate = new Date()) => {
   const date = new Date(issueDate);
-  const year = Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear();
-  const counter = await quotationCounterModel.findOne({ key: `quotation-${year}`, year }).lean();
+  const year = Number.isNaN(date.getTime())
+    ? new Date().getFullYear()
+    : date.getFullYear();
+  const counter = await quotationCounterModel
+    .findOne({ key: `quotation-${year}`, year })
+    .lean();
   return buildQuotationNo(year, Number(counter?.sequence || 0) + 1);
 };
 
 const normalizeQuotationItems = (items = []) => {
-  const sourceItems = Array.isArray(items) && items.length ? items : [MASSCLICK_PRODUCT_ITEM];
+  const sourceItems =
+    Array.isArray(items) && items.length ? items : [MASSCLICK_PRODUCT_ITEM];
   return sourceItems
     .map((item) => ({
-      description: String(item.description || MASSCLICK_PRODUCT_ITEM.description).trim(),
+      description: String(
+        item.description || MASSCLICK_PRODUCT_ITEM.description,
+      ).trim(),
       quantity: Math.max(Number(item.quantity || 0), 0),
       unitPrice: Math.max(Number(item.unitPrice || 0), 0),
     }))
     .filter((item) => item.description);
 };
 
-const calculateQuotationTotal = ({ items = [], discount = 0, taxRate = MASSCLICK_GST_RATE }) => {
+const calculateQuotationTotal = ({
+  items = [],
+  discount = 0,
+  taxRate = MASSCLICK_GST_RATE,
+}) => {
   const subtotal = items.reduce(
-    (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
-    0
+    (sum, item) =>
+      sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
+    0,
   );
   const taxable = Math.max(subtotal - Number(discount || 0), 0);
   const tax = taxable * (Number(taxRate || 0) / 100);
@@ -80,6 +94,31 @@ const normalizeCount = (value, fallback, maximum) => {
   return Math.min(Math.max(Math.round(parsed), 0), maximum);
 };
 
+const normalizeComplimentaryPlans = (plans) => {
+  if (!Array.isArray(plans)) return [];
+  return plans.slice(0, 8).map((plan, planIndex) => ({
+    name: String(plan?.name || `Plan ${planIndex + 1}`)
+      .trim()
+      .slice(0, 80),
+    badge: String(plan?.badge || "")
+      .trim()
+      .slice(0, 40),
+    selected: Boolean(plan?.selected),
+    features: (Array.isArray(plan?.features) ? plan.features : [])
+      .slice(0, 12)
+      .map((feature) => ({
+        label: String(feature?.label || "Service")
+          .trim()
+          .slice(0, 100),
+        quantity: normalizeCount(feature?.quantity, 1, 100),
+        unit: String(feature?.unit || "")
+          .trim()
+          .slice(0, 30),
+        selected: feature?.selected !== false,
+      })),
+  }));
+};
+
 const normalizeQuotationPayload = (body = {}) => {
   const items = normalizeQuotationItems(body.items);
   const requestedTaxRate = Number(body.taxRate);
@@ -91,13 +130,17 @@ const normalizeQuotationPayload = (body = {}) => {
     discount: 0,
     taxRate,
   });
-  const advancePayment = Math.min(Math.max(Number(body.advancePayment || 0), 0), total);
+  const advancePayment = Math.min(
+    Math.max(Number(body.advancePayment || 0), 0),
+    total,
+  );
   const paymentMethod = String(body.paymentMethod || "not_selected").trim();
 
   return {
     quotationName: DEFAULT_QUOTATION_NAME,
     quotationNo: String(body.quotationNo || "").trim(),
     customerName: String(body.customerName || "").trim(),
+    customerCompany: String(body.customerCompany || "").trim(),
     customerPhone: String(body.customerPhone || "").trim(),
     customerEmail: String(body.customerEmail || "").trim(),
     customerAddress: String(body.customerAddress || "").trim(),
@@ -112,13 +155,16 @@ const normalizeQuotationPayload = (body = {}) => {
     taxRate,
     discount: 0,
     advancePayment,
-    paymentMethod: PAYMENT_METHODS.has(paymentMethod) ? paymentMethod : "not_selected",
+    paymentMethod: PAYMENT_METHODS.has(paymentMethod)
+      ? paymentMethod
+      : "not_selected",
     paymentReference: String(body.paymentReference || "").trim(),
     paymentDueDate: body.paymentDueDate || null,
     paymentStatus: derivePaymentStatus(advancePayment, total),
-    digitalMarketingMonths: normalizeCount(body.digitalMarketingMonths, 1, 24),
-    youtubeVideoCount: normalizeCount(body.youtubeVideoCount, 1, 100),
+    digitalMarketingMonths: normalizeCount(body.digitalMarketingMonths, 2, 24),
+    youtubeVideoCount: normalizeCount(body.youtubeVideoCount, 2, 100),
     websiteCount: normalizeCount(body.websiteCount, 1, 100),
+    complimentaryPlans: normalizeComplimentaryPlans(body.complimentaryPlans),
     items,
     status: body.status || "draft",
   };
@@ -126,7 +172,8 @@ const normalizeQuotationPayload = (body = {}) => {
 
 const validateQuotation = (payload, { requireQuotationNo = true } = {}) => {
   if (!payload.quotationName) return "Quotation name is required";
-  if (requireQuotationNo && !payload.quotationNo) return "Quotation number is required";
+  if (requireQuotationNo && !payload.quotationNo)
+    return "Quotation number is required";
   if (!payload.customerName) return "Customer name is required";
   if (!payload.items.length) return "Add at least one quotation item";
   return null;
@@ -149,7 +196,9 @@ export const createQuotationAction = async (req, res) => {
     return res.status(201).send(quotation);
   } catch (error) {
     if (error?.code === 11000) {
-      return res.status(409).send({ message: "Quotation number already exists" });
+      return res
+        .status(409)
+        .send({ message: "Quotation number already exists" });
     }
     console.error("createQuotationAction error:", error);
     return res.status(BAD_REQUEST.code).send({ message: error.message });
@@ -158,7 +207,9 @@ export const createQuotationAction = async (req, res) => {
 
 export const nextQuotationNoAction = async (req, res) => {
   try {
-    const quotationNo = await previewNextQuotationNo(req.query.issueDate || new Date());
+    const quotationNo = await previewNextQuotationNo(
+      req.query.issueDate || new Date(),
+    );
     return res.send({ quotationNo });
   } catch (error) {
     console.error("nextQuotationNoAction error:", error);
@@ -169,7 +220,10 @@ export const nextQuotationNoAction = async (req, res) => {
 export const viewAllQuotationAction = async (req, res) => {
   try {
     const pageNo = Math.max(1, parseInt(req.query.pageNo, 10) || 1);
-    const pageSize = Math.min(Math.max(1, parseInt(req.query.pageSize, 10) || 10), 100);
+    const pageSize = Math.min(
+      Math.max(1, parseInt(req.query.pageSize, 10) || 10),
+      100,
+    );
     const search = String(req.query.search || "").trim();
 
     const filter = search
@@ -226,10 +280,14 @@ export const updateQuotationAction = async (req, res) => {
       return res.status(400).send({ message: validationError });
     }
 
-    const quotation = await quotationModel.findByIdAndUpdate(req.params.id, payload, {
-      new: true,
-      runValidators: true,
-    });
+    const quotation = await quotationModel.findByIdAndUpdate(
+      req.params.id,
+      payload,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
 
     if (!quotation) {
       return res.status(404).send({ message: "Quotation not found" });
@@ -238,7 +296,9 @@ export const updateQuotationAction = async (req, res) => {
     return res.send(quotation);
   } catch (error) {
     if (error?.code === 11000) {
-      return res.status(409).send({ message: "Quotation number already exists" });
+      return res
+        .status(409)
+        .send({ message: "Quotation number already exists" });
     }
     console.error("updateQuotationAction error:", error);
     return res.status(BAD_REQUEST.code).send({ message: error.message });

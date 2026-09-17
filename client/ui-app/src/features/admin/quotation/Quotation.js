@@ -2,12 +2,7 @@ import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  Alert,
-  Button,
-  IconButton,
-  Tooltip,
-} from "@mui/material";
+import { Alert, Button, IconButton, Tooltip } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -39,8 +34,14 @@ import {
   paymentStatusLabel,
   paymentMethodLabel,
 } from "features/admin/quotation/quotationUtils.js";
-import { buildQrTarget, generateQuotationPdf } from "features/admin/quotation/pdfExport.js";
-import { QuotationPdfPage1, QuotationPdfPage2 } from "features/admin/quotation/QuotationPdfDocument.js";
+import {
+  buildQrTarget,
+  generateQuotationPdf,
+} from "features/admin/quotation/pdfExport.js";
+import {
+  QuotationPdfPage1,
+  QuotationPdfPage2,
+} from "features/admin/quotation/QuotationPdfDocument.js";
 
 const cx = createScopedClassNames(styles);
 
@@ -52,14 +53,64 @@ const addDaysIso = (days) => {
   return date.toISOString().slice(0, 10);
 };
 
-const durationOptions = Array.from({ length: 24 }, (_, index) => index + 1);
-const videoCountOptions = Array.from({ length: 20 }, (_, index) => index + 1);
+const createDefaultComplimentaryPlans = () => [
+  {
+    name: "Plan 1",
+    badge: "Most Popular",
+    selected: true,
+    features: [
+      {
+        label: "Digital Marketing",
+        quantity: 2,
+        unit: "Months",
+        selected: true,
+      },
+      { label: "YouTube Videos", quantity: 2, unit: "Videos", selected: true },
+    ],
+  },
+  {
+    name: "Plan 2",
+    badge: "",
+    selected: false,
+    features: [
+      {
+        label: "Digital Marketing",
+        quantity: 1,
+        unit: "Month",
+        selected: true,
+      },
+      { label: "Websites", quantity: 1, unit: "Website", selected: true },
+      { label: "YouTube Videos", quantity: 1, unit: "Videos", selected: true },
+    ],
+  },
+];
 
-const editableMoneyValue = (value) => Math.round(Number(value || 0) * 100) / 100;
+const normalizeComplimentaryPlans = (plans) =>
+  (Array.isArray(plans) && plans.length
+    ? plans
+    : createDefaultComplimentaryPlans()
+  ).map((plan, index) => ({
+    name: String(plan?.name || `Plan ${index + 1}`),
+    badge: String(plan?.badge || ""),
+    selected: Boolean(plan?.selected),
+    features: (Array.isArray(plan?.features) ? plan.features : []).map(
+      (feature) => ({
+        label: String(feature?.label || "Service"),
+        quantity: Number(feature?.quantity ?? 1),
+        unit: String(feature?.unit || ""),
+        selected: feature?.selected !== false,
+      }),
+    ),
+  }));
+
+const editableMoneyValue = (value) =>
+  Math.round(Number(value || 0) * 100) / 100;
 
 const normalizePayloadItems = (items = []) =>
   normalizeFormItems(items).map((item) => ({
-    description: String(item.description || MASSCLICK_PRODUCT_ITEM.description).trim(),
+    description: String(
+      item.description || MASSCLICK_PRODUCT_ITEM.description,
+    ).trim(),
     quantity: Number(item.quantity || 0),
     unitPrice: Number(item.unitPrice || 0),
   }));
@@ -68,6 +119,7 @@ const createEmptyForm = () => ({
   quotationName: DEFAULT_QUOTATION_NAME,
   quotationNo: "Auto generated",
   customerName: "",
+  customerCompany: "",
   customerPhone: "",
   customerEmail: "",
   customerAddress: "",
@@ -83,9 +135,10 @@ const createEmptyForm = () => ({
   paymentMethod: "not_selected",
   paymentReference: "",
   paymentDueDate: addDaysIso(7),
-  digitalMarketingMonths: 1,
-  youtubeVideoCount: 1,
+  digitalMarketingMonths: 2,
+  youtubeVideoCount: 2,
   websiteCount: 1,
+  complimentaryPlans: createDefaultComplimentaryPlans(),
   status: "draft",
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -116,9 +169,10 @@ const mapQuotationToForm = (quotation) => ({
   paymentMethod: quotation.paymentMethod || "not_selected",
   paymentReference: quotation.paymentReference || "",
   paymentDueDate: toDateInput(quotation.paymentDueDate),
-  digitalMarketingMonths: Number(quotation.digitalMarketingMonths ?? 1),
-  youtubeVideoCount: Number(quotation.youtubeVideoCount ?? 1),
+  digitalMarketingMonths: Number(quotation.digitalMarketingMonths ?? 2),
+  youtubeVideoCount: Number(quotation.youtubeVideoCount ?? 2),
   websiteCount: Number(quotation.websiteCount ?? 1),
+  complimentaryPlans: normalizeComplimentaryPlans(quotation.complimentaryPlans),
   quotationName: DEFAULT_QUOTATION_NAME,
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
@@ -177,6 +231,7 @@ const buildQuotationPayload = (source, quotationNo = "") => ({
   digitalMarketingMonths: Number(source.digitalMarketingMonths || 0),
   youtubeVideoCount: Number(source.youtubeVideoCount || 0),
   websiteCount: Number(source.websiteCount || 0),
+  complimentaryPlans: normalizeComplimentaryPlans(source.complimentaryPlans),
   notes: DEFAULT_NOTES,
   terms: DEFAULT_TERMS,
   items: normalizePayloadItems(source.items),
@@ -196,6 +251,7 @@ export default function Quotation() {
   const [editingId, setEditingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingRowId, setDownloadingRowId] = useState("");
   const [message, setMessage] = useState(null);
 
   const preview = useMemo(
@@ -209,12 +265,13 @@ export default function Quotation() {
       notes: DEFAULT_NOTES,
       terms: DEFAULT_TERMS,
     }),
-    [form]
+    [form],
   );
   const totals = useMemo(() => calculateTotals(preview), [preview]);
-  const paymentProgress = totals.total > 0
-    ? Math.min(100, Math.round((totals.advancePayment / totals.total) * 100))
-    : 0;
+  const paymentProgress =
+    totals.total > 0
+      ? Math.min(100, Math.round((totals.advancePayment / totals.total) * 100))
+      : 0;
 
   const [previewQr, setPreviewQr] = useState({ src: "", caption: "" });
   useEffect(() => {
@@ -239,11 +296,13 @@ export default function Quotation() {
 
   const fetchQuotations = async (pageNo = 1, pageSize = 25, options = {}) => {
     try {
-      const response = await dispatch(getAllQuotations({
-        pageNo,
-        pageSize,
-        search: options.search || "",
-      }));
+      const response = await dispatch(
+        getAllQuotations({
+          pageNo,
+          pageSize,
+          search: options.search || "",
+        }),
+      );
       const list = response?.data || [];
       if (!selectedQuotation && list.length) {
         setSelectedQuotation(list[0]);
@@ -299,22 +358,86 @@ export default function Quotation() {
     });
   };
 
+  const updateComplimentaryPlan = (planIndex, name, value) => {
+    setForm((current) => {
+      const plans = normalizeComplimentaryPlans(current.complimentaryPlans);
+      plans[planIndex] = { ...plans[planIndex], [name]: value };
+      return { ...current, complimentaryPlans: plans };
+    });
+  };
+
+  const selectComplimentaryPlan = (planIndex) => {
+    setForm((current) => ({
+      ...current,
+      complimentaryPlans: normalizeComplimentaryPlans(
+        current.complimentaryPlans,
+      ).map((plan, index) => ({
+        ...plan,
+        selected: index === planIndex ? !plan.selected : false,
+      })),
+    }));
+  };
+
+  const updateComplimentaryFeature = (planIndex, featureIndex, name, value) => {
+    setForm((current) => {
+      const plans = normalizeComplimentaryPlans(current.complimentaryPlans);
+      const features = [...plans[planIndex].features];
+      features[featureIndex] = { ...features[featureIndex], [name]: value };
+      plans[planIndex] = { ...plans[planIndex], features };
+      return { ...current, complimentaryPlans: plans };
+    });
+  };
+
+  const addComplimentaryFeature = (planIndex) => {
+    setForm((current) => {
+      const plans = normalizeComplimentaryPlans(current.complimentaryPlans);
+      plans[planIndex] = {
+        ...plans[planIndex],
+        features: [
+          ...plans[planIndex].features,
+          { label: "New Service", quantity: 1, unit: "", selected: true },
+        ],
+      };
+      return { ...current, complimentaryPlans: plans };
+    });
+  };
+
+  const removeComplimentaryFeature = (planIndex, featureIndex) => {
+    setForm((current) => {
+      const plans = normalizeComplimentaryPlans(current.complimentaryPlans);
+      plans[planIndex] = {
+        ...plans[planIndex],
+        features: plans[planIndex].features.filter(
+          (_, index) => index !== featureIndex,
+        ),
+      };
+      return { ...current, complimentaryPlans: plans };
+    });
+  };
+
   const updatePaymentAmount = (name, value) => {
     const amount = Math.max(Number(value || 0), 0);
 
     if (name === "grandTotal") {
       setForm((current) => {
         const items = normalizeFormItems(current.items);
-        const taxMultiplier = 1 + (Number(current.taxRate || 0) / 100);
-        const otherSubtotal = items.slice(1).reduce(
-          (sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
-          0
-        );
+        const taxMultiplier = 1 + Number(current.taxRate || 0) / 100;
+        const otherSubtotal = items
+          .slice(1)
+          .reduce(
+            (sum, item) =>
+              sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
+            0,
+          );
         const firstQuantity = Math.max(Number(items[0]?.quantity || 0), 1);
-        const targetSubtotal = taxMultiplier > 0 ? amount / taxMultiplier : amount;
+        const targetSubtotal =
+          taxMultiplier > 0 ? amount / taxMultiplier : amount;
         items[0] = {
           ...items[0],
-          unitPrice: Math.max((targetSubtotal - otherSubtotal) / firstQuantity, 0),
+          unitPrice: Math.max(
+            (targetSubtotal - otherSubtotal) / firstQuantity,
+            0,
+          ),
         };
         return { ...current, items };
       });
@@ -326,7 +449,10 @@ export default function Quotation() {
       return;
     }
 
-    updateField("advancePayment", Math.max(totals.total - Math.min(amount, totals.total), 0));
+    updateField(
+      "advancePayment",
+      Math.max(totals.total - Math.min(amount, totals.total), 0),
+    );
   };
 
   const resetForm = () => {
@@ -415,7 +541,10 @@ export default function Quotation() {
   };
 
   const saveQuotationForPdf = async () => {
-    const payload = buildQuotationPayload(form, editingId ? form.quotationNo : "");
+    const payload = buildQuotationPayload(
+      form,
+      editingId ? form.quotationNo : "",
+    );
     const savedQuotation = editingId
       ? await dispatch(editQuotationAction(editingId, payload))
       : await dispatch(createQuotationAction(payload));
@@ -437,14 +566,21 @@ export default function Quotation() {
         discount: 0,
         items: normalizeFormItems(savedQuotation.items),
       });
-      const fileSafeNo = String(savedQuotation.quotationNo || preview.quotationNo || "quotation").replace(/[^a-z0-9-]+/gi, "-");
+      const fileSafeNo = String(
+        savedQuotation.quotationNo || preview.quotationNo || "quotation",
+      ).replace(/[^a-z0-9-]+/gi, "-");
       pdf.save(`${fileSafeNo}.pdf`);
-      setMessage({ type: "success", text: "Quotation PDF downloaded successfully." });
+      setMessage({
+        type: "success",
+        text: "Quotation PDF downloaded successfully.",
+      });
       await fetchQuotations(1, 25, {});
     } catch (error) {
       setMessage({
         type: "error",
-        text: error.response?.data?.message || "Unable to download PDF. Please try again.",
+        text:
+          error.response?.data?.message ||
+          "Unable to download PDF. Please try again.",
       });
     } finally {
       setDownloading(false);
@@ -453,7 +589,9 @@ export default function Quotation() {
 
   const downloadQuotationFromRow = async (quotation) => {
     if (!quotation) return;
-    setDownloading(true);
+    const quotationId = quotation._id || quotation.quotationNo;
+    if (!quotationId || downloadingRowId === quotationId) return;
+    setDownloadingRowId(quotationId);
     try {
       const pdf = await generateQuotationPdf({
         ...quotation,
@@ -463,16 +601,22 @@ export default function Quotation() {
         discount: 0,
         items: normalizeFormItems(quotation.items),
       });
-      const fileSafeNo = String(quotation.quotationNo || "quotation").replace(/[^a-z0-9-]+/gi, "-");
+      const fileSafeNo = String(quotation.quotationNo || "quotation").replace(
+        /[^a-z0-9-]+/gi,
+        "-",
+      );
       pdf.save(`${fileSafeNo}.pdf`);
-      setMessage({ type: "success", text: "Quotation PDF downloaded successfully." });
+      setMessage({
+        type: "success",
+        text: "Quotation PDF downloaded successfully.",
+      });
     } catch (error) {
       setMessage({
         type: "error",
         text: "Unable to download PDF. Please try again.",
       });
     } finally {
-      setDownloading(false);
+      setDownloadingRowId("");
     }
   };
 
@@ -481,29 +625,37 @@ export default function Quotation() {
       quotations.map((quotation) => ({
         ...quotation,
         issueDateLabel: formatDate(quotation.issueDate),
-        totalLabel: money(calculateTotals({
-          ...quotation,
-          discount: 0,
-          items: normalizeFormItems(quotation.items),
-        }).total),
-        balanceLabel: money(calculateTotals({
-          ...quotation,
-          discount: 0,
-          items: normalizeFormItems(quotation.items),
-        }).balanceDue),
-        advanceLabel: money(calculateTotals({
-          ...quotation,
-          discount: 0,
-          items: normalizeFormItems(quotation.items),
-        }).advancePayment),
-        paymentStatusLabel: paymentStatusLabel(calculateTotals({
-          ...quotation,
-          discount: 0,
-          items: normalizeFormItems(quotation.items),
-        }).paymentStatus),
+        totalLabel: money(
+          calculateTotals({
+            ...quotation,
+            discount: 0,
+            items: normalizeFormItems(quotation.items),
+          }).total,
+        ),
+        balanceLabel: money(
+          calculateTotals({
+            ...quotation,
+            discount: 0,
+            items: normalizeFormItems(quotation.items),
+          }).balanceDue,
+        ),
+        advanceLabel: money(
+          calculateTotals({
+            ...quotation,
+            discount: 0,
+            items: normalizeFormItems(quotation.items),
+          }).advancePayment,
+        ),
+        paymentStatusLabel: paymentStatusLabel(
+          calculateTotals({
+            ...quotation,
+            discount: 0,
+            items: normalizeFormItems(quotation.items),
+          }).paymentStatus,
+        ),
         paymentDueDateLabel: formatDate(quotation.paymentDueDate),
       })),
-    [quotations]
+    [quotations],
   );
 
   const quotationColumns = [
@@ -521,7 +673,10 @@ export default function Quotation() {
       id: "actions",
       label: "Actions",
       renderCell: (_, row) => (
-        <div className={cx("table-actions")} onClick={(event) => event.stopPropagation()}>
+        <div
+          className={cx("table-actions")}
+          onClick={(event) => event.stopPropagation()}
+        >
           <Tooltip title="Edit quotation">
             <IconButton
               size="small"
@@ -536,8 +691,11 @@ export default function Quotation() {
             <IconButton
               size="small"
               className={cx("action-button", "action-button-download")}
-              onClick={() => downloadQuotationFromRow(row)}
-              disabled={downloading}
+              onClick={(event) => {
+                event.stopPropagation();
+                downloadQuotationFromRow(row);
+              }}
+              disabled={downloadingRowId === (row._id || row.quotationNo)}
               aria-label={`Download quotation ${row.quotationNo || ""}`}
             >
               <DownloadIcon fontSize="small" />
@@ -564,7 +722,8 @@ export default function Quotation() {
         <div className={cx("title-block")}>
           <h1 className={cx("title")}>Quotations</h1>
           <p className={cx("subtitle")}>
-            Create customer quotations, save them in massclick_quotation, and download a PDF copy.
+            Create customer quotations, save them in massclick_quotation, and
+            download a PDF copy.
           </p>
         </div>
         <Button startIcon={<AddIcon />} variant="contained" onClick={resetForm}>
@@ -601,317 +760,542 @@ export default function Quotation() {
           />
         </div>
       ) : (
-      <div className={cx("layout")}>
-        <div>
-          <form className={cx("panel")} onSubmit={submitQuotation}>
-            <h2 className={cx("section-title")}>Quotation Details</h2>
-            <div className={cx("form-grid")}>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Customer Name</span>
-                <input
-                  className={cx("input")}
-                  value={form.customerName}
-                  onChange={(event) => updateField("customerName", event.target.value)}
-                  required
-                />
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Customer Phone</span>
-                <input
-                  className={cx("input")}
-                  value={form.customerPhone}
-                  onChange={(event) => updateField("customerPhone", event.target.value)}
-                />
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Customer Email</span>
-                <input
-                  className={cx("input")}
-                  value={form.customerEmail}
-                  onChange={(event) => updateField("customerEmail", event.target.value)}
-                />
-              </label>
-              <label className={cx("field", "field-wide")}>
-                <span className={cx("label")}>Customer Address</span>
-                <textarea
-                  className={cx("textarea")}
-                  value={form.customerAddress}
-                  onChange={(event) => updateField("customerAddress", event.target.value)}
-                />
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Issue Date</span>
-                <input
-                  className={cx("input")}
-                  type="date"
-                  value={form.issueDate}
-                  onChange={(event) => updateField("issueDate", event.target.value)}
-                />
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Valid Until</span>
-                <input
-                  className={cx("input")}
-                  type="date"
-                  value={form.validUntil}
-                  onChange={(event) => updateField("validUntil", event.target.value)}
-                />
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Tax %</span>
-                <input
-                  className={cx("input")}
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={form.taxRate}
-                  onChange={(event) => updateField("taxRate", event.target.value)}
-                />
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Advance Paid</span>
-                <input
-                  className={cx("input")}
-                  type="number"
-                  min="0"
-                  value={form.advancePayment}
-                  onChange={(event) => updateField("advancePayment", event.target.value)}
-                />
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Payment Method</span>
-                <select
-                  className={cx("select")}
-                  value={form.paymentMethod}
-                  onChange={(event) => updateField("paymentMethod", event.target.value)}
-                >
-                  {paymentMethodOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className={cx("field")}>
-                <span className={cx("label")}>Payment Due Date</span>
-                <input
-                  className={cx("input")}
-                  type="date"
-                  value={form.paymentDueDate}
-                  onChange={(event) => updateField("paymentDueDate", event.target.value)}
-                />
-              </label>
-              <label className={cx("field", "field-wide")}>
-                <span className={cx("label")}>Payment Reference / Notes</span>
-                <input
-                  className={cx("input")}
-                  value={form.paymentReference}
-                  onChange={(event) => updateField("paymentReference", event.target.value)}
-                  placeholder="Transaction ID, receipt number, cheque number, or internal note"
-                />
-              </label>
-            </div>
-
-            <section className={cx("payment-overview")} aria-label="Payment overview">
-              <div className={cx("payment-overview-header")}>
-                <div>
-                  <span className={cx("payment-kicker")}>Payment Concept</span>
-                  <h3 className={cx("payment-heading")}>Amount paid and pending details</h3>
-                </div>
-                <span className={cx("payment-status", paymentStatusClass(totals.paymentStatus))}>
-                  {paymentStatusLabel(totals.paymentStatus)}
-                </span>
-              </div>
-              <div className={cx("payment-metrics")}>
-                <div className={cx("payment-metric")}>
-                  <label className={cx("payment-metric-label")} htmlFor="quotation-grand-total">Grand Total</label>
-                  <div className={cx("payment-metric-input-wrap")}>
-                    <span>Rs.</span>
-                    <input
-                      id="quotation-grand-total"
-                      className={cx("payment-metric-input")}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editableMoneyValue(totals.total)}
-                      onChange={(event) => updatePaymentAmount("grandTotal", event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className={cx("payment-metric")}>
-                  <label className={cx("payment-metric-label")} htmlFor="quotation-paid-amount">Paid / Advance</label>
-                  <div className={cx("payment-metric-input-wrap")}>
-                    <span>Rs.</span>
-                    <input
-                      id="quotation-paid-amount"
-                      className={cx("payment-metric-input")}
-                      type="number"
-                      min="0"
-                      max={totals.total}
-                      step="0.01"
-                      value={editableMoneyValue(totals.advancePayment)}
-                      onChange={(event) => updatePaymentAmount("paid", event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className={cx("payment-metric")}>
-                  <label className={cx("payment-metric-label")} htmlFor="quotation-pending-amount">Pending Amount</label>
-                  <div className={cx("payment-metric-input-wrap", "payment-metric-pending")}>
-                    <span>Rs.</span>
-                    <input
-                      id="quotation-pending-amount"
-                      className={cx("payment-metric-input")}
-                      type="number"
-                      min="0"
-                      max={totals.total}
-                      step="0.01"
-                      value={editableMoneyValue(totals.balanceDue)}
-                      onChange={(event) => updatePaymentAmount("pending", event.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className={cx("payment-progress-track")}>
-                <span
-                  className={cx("payment-progress-fill")}
-                  style={{ width: `${paymentProgress}%` }}
-                />
-              </div>
-              <div className={cx("payment-detail-grid")}>
-                <div className={cx("payment-detail")}>
-                  <span className={cx("payment-detail-label")}>Method</span>
-                  <strong className={cx("payment-detail-value")}>{paymentMethodLabel(form.paymentMethod)}</strong>
-                </div>
-                <div className={cx("payment-detail")}>
-                  <span className={cx("payment-detail-label")}>Reference</span>
-                  <strong className={cx("payment-detail-value")}>{form.paymentReference || "-"}</strong>
-                </div>
-              </div>
-            </section>
-
-            <div className={cx("items")}>
-              <h2 className={cx("section-title")}>Commercial Product</h2>
-              {normalizeFormItems(form.items).map((item, index) => (
-                <div className={cx("item-row")} key={`${index}-${item.description}`}>
-                  <input
-                    className={cx("input")}
-                    placeholder="Description"
-                    value={item.description}
-                    onChange={(event) => updateItem(index, "description", event.target.value)}
-                    required
-                  />
-                  <input
-                    className={cx("input")}
-                    type="number"
-                    min="0"
-                    value={item.quantity}
-                    onChange={(event) => updateItem(index, "quantity", event.target.value)}
-                  />
-                  <input
-                    className={cx("input")}
-                    type="number"
-                    min="0"
-                    value={item.unitPrice}
-                    onChange={(event) => updateItem(index, "unitPrice", event.target.value)}
-                  />
-                </div>
-              ))}
-              <div className={cx("product-note")}>
-                Default product values are prefilled. This quotation includes one free basic website.
-              </div>
-            </div>
-
-            <section className={cx("advantages")}>
-              <div>
-                <span className={cx("payment-kicker")}>Added Advantage</span>
-                <h2 className={cx("section-title")}>Included Digital Services</h2>
-              </div>
+        <div className={cx("layout")}>
+          <div>
+            <form className={cx("panel")} onSubmit={submitQuotation}>
+              <h2 className={cx("section-title")}>Quotation Details</h2>
               <div className={cx("form-grid")}>
                 <label className={cx("field")}>
-                  <span className={cx("label")}>Digital Marketing Duration</span>
-                  <select
-                    className={cx("select")}
-                    value={form.digitalMarketingMonths}
-                    onChange={(event) => updateField("digitalMarketingMonths", event.target.value)}
-                  >
-                    <option value="0">Not included</option>
-                    {durationOptions.map((months) => (
-                      <option key={months} value={months}>
-                        {months} {months === 1 ? "month" : "months"}
-                      </option>
-                    ))}
-                  </select>
+                  <span className={cx("label")}>Customer Name</span>
+                  <input
+                    className={cx("input")}
+                    value={form.customerName}
+                    onChange={(event) =>
+                      updateField("customerName", event.target.value)
+                    }
+                    required
+                  />
                 </label>
                 <label className={cx("field")}>
-                  <span className={cx("label")}>YouTube Videos</span>
-                  <select
-                    className={cx("select")}
-                    value={form.youtubeVideoCount}
-                    onChange={(event) => updateField("youtubeVideoCount", event.target.value)}
-                  >
-                    <option value="0">Not included</option>
-                    {videoCountOptions.map((count) => (
-                      <option key={count} value={count}>
-                        {count} {count === 1 ? "video" : "videos"}
-                      </option>
-                    ))}
-                  </select>
+                  <span className={cx("label")}>Customer Company</span>
+                  <input
+                    className={cx("input")}
+                    value={form.customerCompany}
+                    placeholder="Optional business or company name"
+                    onChange={(event) =>
+                      updateField("customerCompany", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Customer Phone</span>
+                  <input
+                    className={cx("input")}
+                    value={form.customerPhone}
+                    onChange={(event) =>
+                      updateField("customerPhone", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Customer Email</span>
+                  <input
+                    className={cx("input")}
+                    value={form.customerEmail}
+                    onChange={(event) =>
+                      updateField("customerEmail", event.target.value)
+                    }
+                  />
                 </label>
                 <label className={cx("field", "field-wide")}>
-                  <span className={cx("label")}>Number of Websites</span>
+                  <span className={cx("label")}>Customer Address</span>
+                  <textarea
+                    className={cx("textarea")}
+                    value={form.customerAddress}
+                    onChange={(event) =>
+                      updateField("customerAddress", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Issue Date</span>
+                  <input
+                    className={cx("input")}
+                    type="date"
+                    value={form.issueDate}
+                    onChange={(event) =>
+                      updateField("issueDate", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Valid Until</span>
+                  <input
+                    className={cx("input")}
+                    type="date"
+                    value={form.validUntil}
+                    onChange={(event) =>
+                      updateField("validUntil", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Tax %</span>
                   <input
                     className={cx("input")}
                     type="number"
                     min="0"
                     max="100"
-                    value={form.websiteCount}
-                    onChange={(event) => updateField("websiteCount", event.target.value)}
+                    step="0.01"
+                    value={form.taxRate}
+                    onChange={(event) =>
+                      updateField("taxRate", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Advance Paid</span>
+                  <input
+                    className={cx("input")}
+                    type="number"
+                    min="0"
+                    value={form.advancePayment}
+                    onChange={(event) =>
+                      updateField("advancePayment", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Payment Method</span>
+                  <select
+                    className={cx("select")}
+                    value={form.paymentMethod}
+                    onChange={(event) =>
+                      updateField("paymentMethod", event.target.value)
+                    }
+                  >
+                    {paymentMethodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className={cx("field")}>
+                  <span className={cx("label")}>Payment Due Date</span>
+                  <input
+                    className={cx("input")}
+                    type="date"
+                    value={form.paymentDueDate}
+                    onChange={(event) =>
+                      updateField("paymentDueDate", event.target.value)
+                    }
+                  />
+                </label>
+                <label className={cx("field", "field-wide")}>
+                  <span className={cx("label")}>Payment Reference / Notes</span>
+                  <input
+                    className={cx("input")}
+                    value={form.paymentReference}
+                    onChange={(event) =>
+                      updateField("paymentReference", event.target.value)
+                    }
+                    placeholder="Transaction ID, receipt number, cheque number, or internal note"
                   />
                 </label>
               </div>
-            </section>
 
-            <div className={cx("form-actions")}>
-              <Button type="submit" variant="contained" startIcon={<SaveIcon />} disabled={saving}>
-                {saving ? "Saving..." : editingId ? "Update Quotation" : "Save Quotation"}
-              </Button>
-              {editingId && (
+              <section
+                className={cx("payment-overview")}
+                aria-label="Payment overview"
+              >
+                <div className={cx("payment-overview-header")}>
+                  <div>
+                    <span className={cx("payment-kicker")}>
+                      Payment Concept
+                    </span>
+                    <h3 className={cx("payment-heading")}>
+                      Amount paid and pending details
+                    </h3>
+                  </div>
+                  <span
+                    className={cx(
+                      "payment-status",
+                      paymentStatusClass(totals.paymentStatus),
+                    )}
+                  >
+                    {paymentStatusLabel(totals.paymentStatus)}
+                  </span>
+                </div>
+                <div className={cx("payment-metrics")}>
+                  <div className={cx("payment-metric")}>
+                    <label
+                      className={cx("payment-metric-label")}
+                      htmlFor="quotation-grand-total"
+                    >
+                      Grand Total
+                    </label>
+                    <div className={cx("payment-metric-input-wrap")}>
+                      <span>Rs.</span>
+                      <input
+                        id="quotation-grand-total"
+                        className={cx("payment-metric-input")}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editableMoneyValue(totals.total)}
+                        onChange={(event) =>
+                          updatePaymentAmount("grandTotal", event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className={cx("payment-metric")}>
+                    <label
+                      className={cx("payment-metric-label")}
+                      htmlFor="quotation-paid-amount"
+                    >
+                      Paid / Advance
+                    </label>
+                    <div className={cx("payment-metric-input-wrap")}>
+                      <span>Rs.</span>
+                      <input
+                        id="quotation-paid-amount"
+                        className={cx("payment-metric-input")}
+                        type="number"
+                        min="0"
+                        max={totals.total}
+                        step="0.01"
+                        value={editableMoneyValue(totals.advancePayment)}
+                        onChange={(event) =>
+                          updatePaymentAmount("paid", event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className={cx("payment-metric")}>
+                    <label
+                      className={cx("payment-metric-label")}
+                      htmlFor="quotation-pending-amount"
+                    >
+                      Pending Amount
+                    </label>
+                    <div
+                      className={cx(
+                        "payment-metric-input-wrap",
+                        "payment-metric-pending",
+                      )}
+                    >
+                      <span>Rs.</span>
+                      <input
+                        id="quotation-pending-amount"
+                        className={cx("payment-metric-input")}
+                        type="number"
+                        min="0"
+                        max={totals.total}
+                        step="0.01"
+                        value={editableMoneyValue(totals.balanceDue)}
+                        onChange={(event) =>
+                          updatePaymentAmount("pending", event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className={cx("payment-progress-track")}>
+                  <span
+                    className={cx("payment-progress-fill")}
+                    style={{ width: `${paymentProgress}%` }}
+                  />
+                </div>
+                <div className={cx("payment-detail-grid")}>
+                  <div className={cx("payment-detail")}>
+                    <span className={cx("payment-detail-label")}>Method</span>
+                    <strong className={cx("payment-detail-value")}>
+                      {paymentMethodLabel(form.paymentMethod)}
+                    </strong>
+                  </div>
+                  <div className={cx("payment-detail")}>
+                    <span className={cx("payment-detail-label")}>
+                      Reference
+                    </span>
+                    <strong className={cx("payment-detail-value")}>
+                      {form.paymentReference || "-"}
+                    </strong>
+                  </div>
+                </div>
+              </section>
+
+              <div className={cx("items")}>
+                <h2 className={cx("section-title")}>Commercial Product</h2>
+                {normalizeFormItems(form.items).map((item, index) => (
+                  <div
+                    className={cx("item-row")}
+                    key={`${index}-${item.description}`}
+                  >
+                    <input
+                      className={cx("input")}
+                      placeholder="Description"
+                      value={item.description}
+                      onChange={(event) =>
+                        updateItem(index, "description", event.target.value)
+                      }
+                      required
+                    />
+                    <input
+                      className={cx("input")}
+                      type="number"
+                      min="0"
+                      value={item.quantity}
+                      onChange={(event) =>
+                        updateItem(index, "quantity", event.target.value)
+                      }
+                    />
+                    <input
+                      className={cx("input")}
+                      type="number"
+                      min="0"
+                      value={item.unitPrice}
+                      onChange={(event) =>
+                        updateItem(index, "unitPrice", event.target.value)
+                      }
+                    />
+                  </div>
+                ))}
+                <div className={cx("product-note")}>
+                  Default product values are prefilled. This quotation includes
+                  one free basic website.
+                </div>
+              </div>
+
+              <section className={cx("advantages")}>
+                <div>
+                  <span className={cx("payment-kicker")}>Added Advantage</span>
+                  <h2 className={cx("section-title")}>
+                    Complimentary Growth Plans
+                  </h2>
+                  <p className={cx("product-note")}>
+                    Select a plan, choose the included services, and edit every
+                    label, quantity, and unit shown in the PDF.
+                  </p>
+                </div>
+                <div className={cx("complimentary-plan-editor")}>
+                  {normalizeComplimentaryPlans(form.complimentaryPlans).map(
+                    (plan, planIndex) => (
+                      <article
+                        className={cx(
+                          "complimentary-plan",
+                          plan.selected && "complimentary-plan-selected",
+                        )}
+                        key={`plan-${planIndex}`}
+                      >
+                        <div className={cx("complimentary-plan-head")}>
+                          <label className={cx("plan-selector")}>
+                            <input
+                              type="checkbox"
+                              checked={plan.selected}
+                              onChange={() =>
+                                selectComplimentaryPlan(planIndex)
+                              }
+                            />
+                            <span aria-hidden="true" />
+                          </label>
+                          <input
+                            className={cx("plan-name-input")}
+                            value={plan.name}
+                            onChange={(event) =>
+                              updateComplimentaryPlan(
+                                planIndex,
+                                "name",
+                                event.target.value,
+                              )
+                            }
+                            aria-label={`Plan ${planIndex + 1} name`}
+                          />
+                          <input
+                            className={cx("plan-badge-input")}
+                            value={plan.badge}
+                            onChange={(event) =>
+                              updateComplimentaryPlan(
+                                planIndex,
+                                "badge",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Optional badge"
+                            aria-label={`Plan ${planIndex + 1} badge`}
+                          />
+                        </div>
+                        <div
+                          className={cx("complimentary-columns")}
+                          aria-hidden="true"
+                        >
+                          <span />
+                          <span>Service name</span>
+                          <span>Quantity</span>
+                          <span>Unit</span>
+                          <span />
+                        </div>
+                        <div className={cx("complimentary-features")}>
+                          {plan.features.map((feature, featureIndex) => (
+                            <div
+                              className={cx("complimentary-feature")}
+                              key={`feature-${planIndex}-${featureIndex}`}
+                            >
+                              <label
+                                className={cx("feature-selector")}
+                                title="Show this service in the PDF"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={feature.selected}
+                                  onChange={(event) =>
+                                    updateComplimentaryFeature(
+                                      planIndex,
+                                      featureIndex,
+                                      "selected",
+                                      event.target.checked,
+                                    )
+                                  }
+                                />
+                                <span aria-hidden="true" />
+                              </label>
+                              <input
+                                className={cx("input")}
+                                value={feature.label}
+                                onChange={(event) =>
+                                  updateComplimentaryFeature(
+                                    planIndex,
+                                    featureIndex,
+                                    "label",
+                                    event.target.value,
+                                  )
+                                }
+                                aria-label="Service name"
+                              />
+                              <input
+                                className={cx("input", "feature-quantity")}
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={feature.quantity}
+                                onChange={(event) =>
+                                  updateComplimentaryFeature(
+                                    planIndex,
+                                    featureIndex,
+                                    "quantity",
+                                    event.target.value,
+                                  )
+                                }
+                                aria-label="Service quantity"
+                                title="Quantity"
+                              />
+                              <input
+                                className={cx("input", "feature-unit")}
+                                value={feature.unit}
+                                onChange={(event) =>
+                                  updateComplimentaryFeature(
+                                    planIndex,
+                                    featureIndex,
+                                    "unit",
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Unit"
+                                aria-label="Service unit"
+                                title="Unit, for example Month or Videos"
+                              />
+                              <button
+                                className={cx("remove-feature")}
+                                type="button"
+                                onClick={() =>
+                                  removeComplimentaryFeature(
+                                    planIndex,
+                                    featureIndex,
+                                  )
+                                }
+                                aria-label="Remove service"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          className={cx("add-feature")}
+                          type="button"
+                          onClick={() => addComplimentaryFeature(planIndex)}
+                        >
+                          + Add complimentary service
+                        </button>
+                      </article>
+                    ),
+                  )}
+                </div>
+              </section>
+
+              <div className={cx("form-actions")}>
                 <Button
-                  type="button"
-                  color="error"
-                  startIcon={<DeleteOutlineIcon />}
-                  onClick={deleteQuotation}
+                  type="submit"
+                  variant="contained"
+                  startIcon={<SaveIcon />}
                   disabled={saving}
                 >
-                  Delete
+                  {saving
+                    ? "Saving..."
+                    : editingId
+                      ? "Update Quotation"
+                      : "Save Quotation"}
                 </Button>
-              )}
-            </div>
-          </form>
-        </div>
+                {editingId && (
+                  <Button
+                    type="button"
+                    color="error"
+                    startIcon={<DeleteOutlineIcon />}
+                    onClick={deleteQuotation}
+                    disabled={saving}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
+            </form>
+          </div>
 
-        <div className={cx("preview-shell")}>
-          <div className={cx("preview-actions")}>
-            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={downloadPdf} disabled={downloading}>
-              {downloading ? "Preparing PDF..." : "Download PDF"}
-            </Button>
-          </div>
-          <div id="quotation-print-root" className={cx("panel", "print-panel", "preview")}>
-            <ScaledPdfPage>
-              <QuotationPdfPage1
-                quotation={preview}
-                logoSrc={massclickLogo}
-                signatureSrc={authorizedSignature}
-                qrSrc={previewQr.src}
-                qrCaption={previewQr.caption}
-              />
-            </ScaledPdfPage>
-            <div style={{ height: 24 }} />
-            <ScaledPdfPage>
-              <QuotationPdfPage2 quotation={preview} logoSrc={massclickLogo} />
-            </ScaledPdfPage>
+          <div className={cx("preview-shell")}>
+            <div className={cx("preview-actions")}>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={downloadPdf}
+                disabled={downloading}
+              >
+                {downloading ? "Preparing PDF..." : "Download PDF"}
+              </Button>
+            </div>
+            <div
+              id="quotation-print-root"
+              className={cx("panel", "print-panel", "preview")}
+            >
+              <ScaledPdfPage>
+                <QuotationPdfPage1
+                  quotation={preview}
+                  logoSrc={massclickLogo}
+                  signatureSrc={authorizedSignature}
+                  qrSrc={previewQr.src}
+                  qrCaption={previewQr.caption}
+                />
+              </ScaledPdfPage>
+              <div style={{ height: 24 }} />
+              <ScaledPdfPage>
+                <QuotationPdfPage2
+                  quotation={preview}
+                  logoSrc={massclickLogo}
+                />
+              </ScaledPdfPage>
+            </div>
           </div>
         </div>
-      </div>
       )}
     </div>
   );

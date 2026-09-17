@@ -8,7 +8,27 @@ const quotationItemSchema = new Schema(
     quantity: { type: Number, default: 1, min: 0 },
     unitPrice: { type: Number, default: 0, min: 0 },
   },
-  { _id: false }
+  { _id: false },
+);
+
+const complimentaryFeatureSchema = new Schema(
+  {
+    label: { type: String, trim: true, required: true },
+    quantity: { type: Number, default: 1, min: 0, max: 100 },
+    unit: { type: String, trim: true, default: "" },
+    selected: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
+const complimentaryPlanSchema = new Schema(
+  {
+    name: { type: String, trim: true, required: true },
+    badge: { type: String, trim: true, default: "" },
+    selected: { type: Boolean, default: false },
+    features: { type: [complimentaryFeatureSchema], default: [] },
+  },
+  { _id: false },
 );
 
 const quotationSchema = new Schema(
@@ -16,6 +36,7 @@ const quotationSchema = new Schema(
     quotationName: { type: String, trim: true, required: true },
     quotationNo: { type: String, trim: true, required: true, unique: true },
     customerName: { type: String, trim: true, required: true },
+    customerCompany: { type: String, trim: true, default: "" },
     customerPhone: { type: String, trim: true, default: "" },
     customerEmail: { type: String, trim: true, default: "" },
     customerAddress: { type: String, trim: true, default: "" },
@@ -32,7 +53,16 @@ const quotationSchema = new Schema(
     advancePayment: { type: Number, default: 0, min: 0 },
     paymentMethod: {
       type: String,
-      enum: ["not_selected", "cash", "upi", "bank_transfer", "card", "cheque", "phonepe", "other"],
+      enum: [
+        "not_selected",
+        "cash",
+        "upi",
+        "bank_transfer",
+        "card",
+        "cheque",
+        "phonepe",
+        "other",
+      ],
       default: "not_selected",
     },
     paymentReference: { type: String, trim: true, default: "" },
@@ -42,9 +72,10 @@ const quotationSchema = new Schema(
       enum: ["unpaid", "part_paid", "paid"],
       default: "unpaid",
     },
-    digitalMarketingMonths: { type: Number, default: 1, min: 0, max: 24 },
-    youtubeVideoCount: { type: Number, default: 1, min: 0, max: 100 },
+    digitalMarketingMonths: { type: Number, default: 2, min: 0, max: 24 },
+    youtubeVideoCount: { type: Number, default: 2, min: 0, max: 100 },
     websiteCount: { type: Number, default: 1, min: 0, max: 100 },
+    complimentaryPlans: { type: [complimentaryPlanSchema], default: [] },
     items: {
       type: [quotationItemSchema],
       default: () => [
@@ -66,10 +97,14 @@ const quotationSchema = new Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-quotationSchema.index({ quotationName: "text", customerName: "text", quotationNo: "text" });
+quotationSchema.index({
+  quotationName: "text",
+  customerName: "text",
+  quotationNo: "text",
+});
 quotationSchema.index({ createdAt: -1 });
 
 export default quotationSchema;

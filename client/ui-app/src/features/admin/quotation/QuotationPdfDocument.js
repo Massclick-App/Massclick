@@ -1,5 +1,4 @@
 import React from "react";
-import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import DescriptionIcon from "@mui/icons-material/Description";
 import PersonIcon from "@mui/icons-material/Person";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
@@ -10,27 +9,17 @@ import LanguageIcon from "@mui/icons-material/Language";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import OndemandVideoIcon from "@mui/icons-material/OndemandVideo";
 import PublicIcon from "@mui/icons-material/Public";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import EditNoteIcon from "@mui/icons-material/EditNote";
-import InfoIcon from "@mui/icons-material/Info";
-import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import SettingsIcon from "@mui/icons-material/Settings";
+import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SearchIcon from "@mui/icons-material/Search";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import GroupsIcon from "@mui/icons-material/Groups";
-import DynamicFeedIcon from "@mui/icons-material/DynamicFeed";
-import ShareIcon from "@mui/icons-material/Share";
-import ContactMailIcon from "@mui/icons-material/ContactMail";
-import ChatIcon from "@mui/icons-material/Chat";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import StarIcon from "@mui/icons-material/Star";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import EditIcon from "@mui/icons-material/Edit";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import {
   MASSCLICK_PRODUCT_ITEM,
-  PRODUCT_INCLUSION_TEXT,
-  serviceAdvantagesText,
-  whyChooseMassClick,
-  importantNote,
-  DEFAULT_QUOTATION_NAME,
   normalizeFormItems,
   money,
   formatDate,
@@ -38,400 +27,592 @@ import {
   paymentStatusLabel,
   paymentMethodLabel,
 } from "features/admin/quotation/quotationUtils.js";
+import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import styles from "features/admin/quotation/quotationPdf.module.css";
 
 const cx = createScopedClassNames(styles);
-
-const featureIcons = [
-  WhatsAppIcon,
-  SearchIcon,
-  TrendingUpIcon,
-  GroupsIcon,
-  CampaignIcon,
-  DynamicFeedIcon,
-  ShareIcon,
-  ContactMailIcon,
-  ChatIcon,
-  MenuBookIcon,
+const coreInclusions = [
+  "Business listing / profile setup",
+  "Category-based visibility",
+  "Enquiry support",
+  "WhatsApp lead notification support",
+  "MNI (Mass Network India) access",
+  "Service card visibility",
+  "MassClick feed / profile visibility",
+  "1 year product validity",
+  "Renewal required after 1 year",
+];
+const features = [
+  {
+    title: "Google Search Based Leads Generation",
+    text: "When customers search using relevant keywords, MassClick helps generate business leads through Google-based discovery.",
+    Icon: SearchIcon,
+  },
+  {
+    title: "Website Search Based Leads Generation",
+    text: "MassClick receives visits from a large website audience, and leads are generated when users directly search and explore businesses on the platform.",
+    Icon: LanguageIcon,
+  },
+  {
+    title: "MNI – Mass Network India",
+    text: "A B2B business networking concept that helps business owners connect with other business persons, build partnerships, and create opportunities.",
+    Icon: GroupsIcon,
+  },
+  {
+    title: "Spotlight",
+    text: "Spotlight is used to promote offers, discounts, and special business promotions, similar to an advertising placement that improves visibility.",
+    Icon: StarIcon,
+  },
+  {
+    title: "Marketing Materials",
+    text: "Digital-access marketing materials such as visiting cards, letterheads, quotations, vouchers, and related business assets are included for brand support.",
+    Icon: VolumeUpIcon,
+  },
 ];
 
-export const QuotationPdfPage1 = ({ innerRef, quotation, logoSrc, signatureSrc, qrSrc, qrCaption }) => {
-  const items = normalizeFormItems(quotation.items);
-  const quoteItem = items[0] || MASSCLICK_PRODUCT_ITEM;
+const featureIcon = (label = "") => {
+  const normalized = label.toLowerCase();
+  if (normalized.includes("youtube") || normalized.includes("video"))
+    return OndemandVideoIcon;
+  if (normalized.includes("website") || normalized.includes("web"))
+    return PublicIcon;
+  if (normalized.includes("marketing") || normalized.includes("campaign"))
+    return CampaignIcon;
+  return StarIcon;
+};
+
+const Header = ({ logoSrc, type, number }) => (
+  <header className={cx("header")}>
+    <div className={cx("headerWash")} />
+    <div className={cx("brand")}>
+      <img src={logoSrc} alt="MassClick Technologies Pvt Ltd" />
+      <b>DISCOVER &nbsp;•&nbsp; CONNECT &nbsp;•&nbsp; GROW</b>
+    </div>
+    <div className={cx("motto")}>
+      <span />
+      SMART
+      <br />
+      BUSINESSES
+      <br />
+      STRONGER
+      <br />
+      TOMORROW
+      <i />
+    </div>
+    <div className={cx("headerOrange")} />
+    <div className={cx("headerNavy")} />
+    <div className={cx("documentTitle")}>
+      <div className={cx("documentIcon")}>
+        {type === "quotation" ? <DescriptionIcon /> : <StarIcon />}
+      </div>
+      <div>
+        <strong>{type === "quotation" ? "QUOTATION" : "MASSCLICK"}</strong>
+        <b>{type === "quotation" ? number : "LISTING & FEATURES"}</b>
+        <small>
+          BUSINESS GROWTH
+          <br />
+          THROUGH DIGITAL SOLUTIONS
+        </small>
+      </div>
+    </div>
+  </header>
+);
+
+const Footer = ({ quotation }) => (
+  <footer className={cx("footer")}>
+    <div className={cx("footerContact")}>
+      <span>
+        <LocalPhoneIcon />
+        {quotation.businessPhone || "+91 9789104201"}
+      </span>
+      <i />
+      <span>
+        <EmailIcon />
+        {quotation.businessEmail || "admin@massclick.in"}
+      </span>
+      <i />
+      <span>
+        <LanguageIcon />
+        www.massclick.in
+      </span>
+      <b>DISCOVER &nbsp;•&nbsp; CONNECT &nbsp;•&nbsp; GROW</b>
+    </div>
+    <div className={cx("footerOrange")}>
+      <strong>
+        THANK YOU FOR
+        <br />
+        YOUR BUSINESS
+      </strong>
+      <small>Let&apos;s Grow Together.</small>
+    </div>
+  </footer>
+);
+
+const PanelTitle = ({ icon: Icon, children, note }) => (
+  <div className={cx("panelTitle")}>
+    <span>
+      <Icon />
+    </span>
+    <strong>{children}</strong>
+    {note && <small>{note}</small>}
+  </div>
+);
+
+export const QuotationPdfPage1 = ({
+  innerRef,
+  quotation,
+  logoSrc,
+  signatureSrc,
+  qrSrc,
+}) => {
+  const item = normalizeFormItems(quotation.items)[0] || MASSCLICK_PRODUCT_ITEM;
   const totals = calculateTotals(quotation);
-
+  const validityDays =
+    quotation.issueDate && quotation.validUntil
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(quotation.validUntil) - new Date(quotation.issueDate)) /
+              86400000,
+          ),
+        )
+      : 0;
+  const months = Number(quotation.digitalMarketingMonths || 0),
+    videos = Number(quotation.youtubeVideoCount || 0),
+    websites = Number(quotation.websiteCount || 0);
+  const complimentaryPlans =
+    Array.isArray(quotation.complimentaryPlans) &&
+    quotation.complimentaryPlans.length
+      ? quotation.complimentaryPlans
+      : [
+          {
+            name: "Plan 1",
+            badge: "Most Popular",
+            selected: true,
+            features: [
+              {
+                label: "Digital Marketing",
+                quantity: months || 2,
+                unit: months === 1 ? "Month" : "Months",
+                selected: true,
+              },
+              {
+                label: "YouTube Videos",
+                quantity: videos || 2,
+                unit: "Videos",
+                selected: true,
+              },
+            ],
+          },
+          {
+            name: "Plan 2",
+            badge: "",
+            selected: false,
+            features: [
+              {
+                label: "Digital Marketing",
+                quantity: 1,
+                unit: "Month",
+                selected: true,
+              },
+              {
+                label: "Websites",
+                quantity: websites,
+                unit: "Websites",
+                selected: true,
+              },
+              {
+                label: "YouTube Videos",
+                quantity: videos,
+                unit: "Videos",
+                selected: true,
+              },
+            ],
+          },
+        ];
   return (
-    <div className={cx("page", "pageFirst")} ref={innerRef}>
-      <div className={cx("header")}>
-        <svg className={cx("headerShape")} viewBox="0 0 1050 190" preserveAspectRatio="none">
-          <polygon points="462,0 1050,0 1050,190 336,190" fill="#f4711d" />
-          <polygon points="483,0 1050,0 1050,190 357,190" fill="#ffffff" />
-        </svg>
-        <div className={cx("brand")}>
-          <img className={cx("brandLogo")} src={logoSrc} alt="MassClick" />
-          <p className={cx("brandTagline")}>Discover &bull; Connect &bull; Grow</p>
-        </div>
-        <div className={cx("headerTag")}>
-          <div className={cx("headerTagAccent")} />
-          <div className={cx("headerTagShape")} />
-          <div className={cx("headerTagContent")}>
-            <div className={cx("headerTagIcon")}>
-              <DescriptionIcon />
-            </div>
-            <div className={cx("headerTagText")}>
-              <span className={cx("headerTagLabel")}>QUOTATION</span>
-              <span className={cx("headerTagNo")}>{quotation.quotationNo || "-"}</span>
-            </div>
+    <div className={cx("page", "pageOne")} ref={innerRef}>
+      <Header
+        logoSrc={logoSrc}
+        type="quotation"
+        number={quotation.quotationNo || "-"}
+      />
+      <section className={cx("companyMeta")}>
+        <div className={cx("companyInfo")}>
+          <h1>Massclick Technologies Pvt Ltd</h1>
+          <p>Discover Local. Grow Global.</p>
+          <div className={cx("contactGrid")}>
+            <span>
+              <LocationOnIcon />
+              {quotation.businessAddress || "Tamil Nadu, India"}
+            </span>
+            <span>
+              <LocalPhoneIcon />
+              {quotation.businessPhone || "+91 9789104201"}
+            </span>
+            <span>
+              <EmailIcon />
+              {quotation.businessEmail || "admin@massclick.in"}
+            </span>
+            <span>
+              <LanguageIcon />
+              www.massclick.in
+            </span>
           </div>
         </div>
-      </div>
-
-      <div className={cx("metaRow")}>
-        <div className={cx("companyBlock")}>
-          <h1 className={cx("companyName")}>Massclick Technologies Pvt Ltd</h1>
-          <span className={cx("companyLine")}>
-            <LocationOnIcon /> {quotation.businessAddress || "Tamil Nadu, India"}
-          </span>
-          <span className={cx("companyLine")}>
-            <EmailIcon /> {quotation.businessEmail || "admin@massclick.in"}
-          </span>
-        </div>
-        <div className={cx("metaRight")}>
-          <div className={cx("metaTable")}>
-            <div className={cx("metaTableRow")}>
-              <span className={cx("metaTableLabel")}>Quotation No</span>
-              <span className={cx("metaTableValue")}>{quotation.quotationNo || "-"}</span>
-            </div>
-            <div className={cx("metaTableRow")}>
-              <span className={cx("metaTableLabel")}>Issue Date</span>
-              <span className={cx("metaTableValue")}>{formatDate(quotation.issueDate)}</span>
-            </div>
-            <div className={cx("metaTableRow")}>
-              <span className={cx("metaTableLabel")}>Valid Until</span>
-              <span className={cx("metaTableValue")}>{formatDate(quotation.validUntil)}</span>
-            </div>
+        <div className={cx("quoteMeta")}>
+          <div>
+            <b>QUOTATION NO.</b>
+            <strong>{quotation.quotationNo || "-"}</strong>
           </div>
-          {qrSrc && (
-            <div className={cx("qrBox")}>
-              <img className={cx("qrImage")} src={qrSrc} alt="Scan to WhatsApp MassClick" />
-              <div className={cx("qrCaption")}>{qrCaption}</div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className={cx("partyGrid")}>
-        <div className={cx("partyCard")}>
-          <div className={cx("cardHeader")}>
-            <div className={cx("cardIconBadge")}>
-              <PersonIcon />
-            </div>
-            <h3>Bill To</h3>
+          <div>
+            <b>ISSUE DATE</b>
+            <strong>{formatDate(quotation.issueDate)}</strong>
           </div>
-          <div className={cx("partyBody", "partyBodyAccent")}>
-            <span className={cx("partyName")}>{quotation.customerName || "Customer Name"}</span>
-            <span className={cx("partyLine")}>{quotation.customerPhone || "-"}</span>
-            <span className={cx("partyLine")}>{quotation.customerEmail || "-"}</span>
-            <span className={cx("partyLine")}>{quotation.customerAddress || "-"}</span>
+          <div>
+            <b>VALID UNTIL</b>
+            <strong>
+              {formatDate(quotation.validUntil)}
+              <small>
+                {validityDays ? `(${validityDays} Days from Issue Date)` : ""}
+              </small>
+            </strong>
           </div>
         </div>
-        <div className={cx("partyCard")}>
-          <div className={cx("cardHeader")}>
-            <div className={cx("cardIconBadge")}>
-              <QueryStatsIcon />
-            </div>
-            <h3>Commercial Summary</h3>
+        {qrSrc && (
+          <div className={cx("qr")}>
+            <img src={qrSrc} alt="MassClick QR code" />
+            <b>
+              SCAN TO VISIT
+              <br />
+              MASSCLICK
+            </b>
           </div>
-          <div className={cx("partyBody")}>
-            <span className={cx("partyName")}>{quotation.quotationName || DEFAULT_QUOTATION_NAME}</span>
-            <div className={cx("summaryRow")}>
-              <span>Product</span>
-              <span>{quoteItem.description}</span>
+        )}
+      </section>
+      <section className={cx("topCards")}>
+        <div className={cx("panel", "billPanel")}>
+          <PanelTitle icon={PersonIcon}>BILL TO</PanelTitle>
+          <div className={cx("billBody")}>
+            <strong>{quotation.customerName || "Customer Name"}</strong>
+            {quotation.customerCompany && (
+              <span>
+                <SettingsIcon />
+                {quotation.customerCompany}
+              </span>
+            )}
+            <span>
+              <LocationOnIcon />
+              {quotation.customerAddress ||
+                "Address Line 1, City, State, Pin Code"}
+            </span>
+            <span>
+              <LocalPhoneIcon />
+              {quotation.customerPhone || "Contact Number"}
+            </span>
+            <span>
+              <EmailIcon />
+              {quotation.customerEmail || "Email Address"}
+            </span>
+          </div>
+        </div>
+        <div className={cx("panel", "summaryPanel")}>
+          <PanelTitle icon={QueryStatsIcon} note="Your Growth · Our Commitment">
+            COMMERCIAL SUMMARY
+          </PanelTitle>
+          <div className={cx("summaryBody")}>
+            <div>
+              <b>Product</b>
+              <strong>{item.description}</strong>
+              <em>MassClick Product</em>
             </div>
-            <div className={cx("summaryRow")}>
-              <span>Websites Included</span>
-              <span>{Number(quotation.websiteCount || 0)}</span>
-            </div>
-            <div className={cx("summaryRow")}>
-              <span>GST</span>
-              <span>{Number(quotation.taxRate || 0)}%</span>
+            <div>
+              <b>GST</b>
+              <strong>{Number(quotation.taxRate || 0)}%</strong>
             </div>
           </div>
           <div className={cx("balanceBar")}>
-            <span className={cx("balanceBarLabel")}>Balance Due</span>
-            <span className={cx("balanceBarValue")}>{money(totals.balanceDue)}</span>
+            <b>BALANCE AMOUNT</b>
+            <strong>{money(totals.balanceDue)}</strong>
           </div>
         </div>
-      </div>
-
-      <div className={cx("advantagesRow")}>
-        <div className={cx("advantageItem")}>
-          <div className={cx("advantageIcon")}>
-            <CampaignIcon />
-          </div>
+      </section>
+      <section className={cx("productTable")}>
+        <div className={cx("tableHead")}>
+          <b>#</b>
+          <b>PRODUCT / DESCRIPTION</b>
+          <b>QTY</b>
+          <b>UNIT PRICE</b>
+          <b>AMOUNT</b>
+        </div>
+        <div className={cx("tableRow")}>
+          <b>1</b>
           <div>
-            <div className={cx("advantageLabel")}>Digital Marketing</div>
-            <div className={cx("advantageValue")}>
-              {Number(quotation.digitalMarketingMonths || 0)}{" "}
-              {Number(quotation.digitalMarketingMonths || 0) === 1 ? "month" : "months"}
+            <strong>{item.description}</strong>
+            <p>
+              Business listing/profile setup, category visibility, enquiry
+              support, WhatsApp lead notification support, MNI access, service
+              card visibility, business feed support, and core MassClick
+              platform features.
+              <br />
+              <b>
+                Validity: 1 Year. Renewal required after completion of one year.
+              </b>
+            </p>
+          </div>
+          <b>{Number(item.quantity || 0)}</b>
+          <b>{money(item.unitPrice)}</b>
+          <b>
+            {money(Number(item.quantity || 0) * Number(item.unitPrice || 0))}
+          </b>
+        </div>
+      </section>
+      <section className={cx("detailsGrid")}>
+        <div className={cx("panel", "inclusions")}>
+          <PanelTitle
+            icon={SettingsIcon}
+            note="Massclick listing and platform features only"
+          >
+            KEY INCLUSIONS
+          </PanelTitle>
+          <ul>
+            {coreInclusions.map((line) => (
+              <li key={line}>
+                <CheckCircleIcon />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className={cx("rightDetails")}>
+          <div className={cx("panel", "paymentPanel")}>
+            <PanelTitle
+              icon={DescriptionIcon}
+              note="Secure & Hassle-Free Transactions"
+            >
+              PAYMENT DETAILS
+            </PanelTitle>
+            <div className={cx("paymentColumns")}>
+              <div className={cx("paymentInfo")}>
+                <p>
+                  <span>Method</span>
+                  <b>{paymentMethodLabel(quotation.paymentMethod)}</b>
+                </p>
+                <p>
+                  <span>Paid / Advance</span>
+                  <b>{money(totals.advancePayment)}</b>
+                </p>
+                <p>
+                  <span>Reference</span>
+                  <b>{quotation.paymentReference || "-"}</b>
+                </p>
+                <p>
+                  <span>Payment Status</span>
+                  <b className={cx("status")}>
+                    {paymentStatusLabel(totals.paymentStatus)}
+                  </b>
+                </p>
+              </div>
+              <div className={cx("totals")}>
+                <p>
+                  <span>Subtotal</span>
+                  <b>{money(totals.subtotal)}</b>
+                </p>
+                <p>
+                  <span>GST ({Number(quotation.taxRate || 0)}%)</span>
+                  <b>{money(totals.tax)}</b>
+                </p>
+                <p className={cx("grand")}>
+                  <span>GRAND TOTAL</span>
+                  <b>{money(totals.total)}</b>
+                </p>
+                <p>
+                  <span>Advance Paid</span>
+                  <b>{money(totals.advancePayment)}</b>
+                </p>
+                <p className={cx("balance")}>
+                  <span>BALANCE AMOUNT</span>
+                  <b>{money(totals.balanceDue)}</b>
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className={cx("advantageItem")}>
-          <div className={cx("advantageIcon")}>
-            <OndemandVideoIcon />
+          <div className={cx("panel", "activation")}>
+            <PanelTitle icon={DescriptionIcon}>
+              PAYMENT &amp; ACTIVATION NOTE
+            </PanelTitle>
+            <ul>
+              <li>
+                This quotation is for MassClick listing and core product
+                features only.
+              </li>
+              <li>
+                Complimentary promotional offers, if any, are not part of the
+                product value.
+              </li>
+              <li>Product validity is 1 year only.</li>
+              <li>
+                Renewal is mandatory after completion of one year to continue
+                the services.
+              </li>
+            </ul>
           </div>
+        </div>
+      </section>
+      <section className={cx("growthPlan")}>
+        <div className={cx("growthTitle")}>
+          <span>
+            <CardGiftcardIcon />
+          </span>
           <div>
-            <div className={cx("advantageLabel")}>YouTube Videos</div>
-            <div className={cx("advantageValue")}>
-              {Number(quotation.youtubeVideoCount || 0)}{" "}
-              {Number(quotation.youtubeVideoCount || 0) === 1 ? "video" : "videos"}
-            </div>
+            <strong>
+              CHOOSE YOUR <em>COMPLIMENTARY DIGITAL GROWTH PLAN</em>
+            </strong>
+            <p>
+              Select one of the plans below. These value-added services are
+              provided <b>FREE</b> for a limited time only.
+              <br />
+              <b>and are not included in the core product value.</b>
+            </p>
           </div>
+          <aside>
+            <AccessTimeIcon />
+            <b>
+              Limited Time Offer!
+              <br />
+              Complimentary Only
+            </b>
+          </aside>
         </div>
-        <div className={cx("advantageItem")}>
-          <div className={cx("advantageIcon")}>
-            <PublicIcon />
-          </div>
+        <div className={cx("plans")}>
+          {complimentaryPlans.slice(0, 2).map((plan, planIndex) => (
+            <div
+              className={cx("plan", plan.selected && "selectedPlan")}
+              key={`${plan.name}-${planIndex}`}
+            >
+              {plan.selected ? (
+                <CheckCircleIcon />
+              ) : (
+                <span className={cx("emptyCheck")} />
+              )}
+              <div>
+                <h3>
+                  {plan.name || `Plan ${planIndex + 1}`}{" "}
+                  {plan.badge && <small>{plan.badge}</small>}
+                </h3>
+                {(plan.features || [])
+                  .filter((feature) => feature.selected !== false)
+                  .slice(0, 5)
+                  .map((feature, featureIndex) => {
+                    const Icon = featureIcon(feature.label);
+                    return (
+                      <p key={`${feature.label}-${featureIndex}`}>
+                        <Icon />
+                        {feature.label} – {Number(feature.quantity || 0)}{" "}
+                        {feature.unit}
+                        <b>Free</b>
+                      </p>
+                    );
+                  })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className={cx("important")}>
+          <VolumeUpIcon />
           <div>
-            <div className={cx("advantageLabel")}>Websites</div>
-            <div className={cx("advantageValue")}>{Number(quotation.websiteCount || 0)}</div>
+            <strong>
+              Important: This quotation covers only the MassClick listing and
+              core platform features.
+            </strong>
+            <ul>
+              <li>
+                The product validity is 1 year from activation. After the
+                completion of one year, renewal is required to continue the
+                services.
+              </li>
+              <li>
+                Any complimentary benefits are promotional and may be changed or
+                removed at any time.
+              </li>
+              <li>
+                These free offers may be revised or withdrawn without prior
+                notice.
+              </li>
+            </ul>
           </div>
         </div>
-      </div>
-
-      <div className={cx("itemTableWrap")}>
-        <table className={cx("itemTable")}>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Product / Description</th>
-              <th className={cx("numCell")}>Qty</th>
-              <th className={cx("numCell")}>Unit Price</th>
-              <th className={cx("numCell")}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>
-                <span className={cx("itemDescTitle")}>{quoteItem.description}</span>
-                <span className={cx("itemDescText")}>
-                  {PRODUCT_INCLUSION_TEXT} {serviceAdvantagesText(quotation)}
-                </span>
-              </td>
-              <td className={cx("numCell")}>{Number(quoteItem.quantity || 0)}</td>
-              <td className={cx("numCell")}>{money(quoteItem.unitPrice)}</td>
-              <td className={cx("numCell")}>
-                {money(Number(quoteItem.quantity || 0) * Number(quoteItem.unitPrice || 0))}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className={cx("paymentGrid")}>
-        <div className={cx("paymentCard")}>
-          <div className={cx("cardHeader")}>
-            <div className={cx("cardIconBadge")}>
-              <AccountBalanceWalletIcon />
-            </div>
-            <h3>Payment Details</h3>
-          </div>
-          <div className={cx("paymentBody")}>
-            <div className={cx("paymentRow")}>
-              <span>Method</span>
-              <span>{paymentMethodLabel(quotation.paymentMethod)}</span>
-            </div>
-            <div className={cx("paymentRow")}>
-              <span>Paid / Advance</span>
-              <span>{money(totals.advancePayment)}</span>
-            </div>
-            <div className={cx("paymentRow")}>
-              <span>Reference</span>
-              <span>{quotation.paymentReference || "-"}</span>
-            </div>
+      </section>
+      <section className={cx("signatureRow")}>
+        <div className={cx("signatureBox")}>
+          <PanelTitle icon={CheckCircleIcon}>CUSTOMER ACCEPTANCE</PanelTitle>
+          <p>
+            I agree to the above quotation, pricing, validity and plan details.
+            <br />I acknowledge the 1-year validity and renewal requirement.
+          </p>
+          <div className={cx("signatureLines")}>
+            <span>Customer Name</span>
+            <span>Date</span>
           </div>
         </div>
-        <div className={cx("totalsCol")}>
-          <div className={cx("totalsRow")}>
-            <span>Subtotal</span>
-            <span>{money(totals.subtotal)}</span>
-          </div>
-          <div className={cx("totalsRow")}>
-            <span>GST ({Number(quotation.taxRate || 0)}%)</span>
-            <span>{money(totals.tax)}</span>
-          </div>
-          <div className={cx("totalsRow", "totalsRowGrand")}>
-            <span>Grand Total</span>
-            <span>{money(totals.total)}</span>
-          </div>
-          <div className={cx("totalsRow")}>
-            <span>Advance Paid</span>
-            <span>{money(totals.advancePayment)}</span>
-          </div>
-          <div className={cx("totalsRow")}>
-            <span>Payment Status</span>
-            <span>{paymentStatusLabel(totals.paymentStatus)}</span>
-          </div>
-          <div className={cx("balanceBar", "balanceBarRounded")}>
-            <span className={cx("balanceBarLabel")}>Balance Due</span>
-            <span className={cx("balanceBarValue")}>{money(totals.balanceDue)}</span>
-          </div>
+        <div className={cx("signatureBox", "authorized")}>
+          <PanelTitle icon={EditIcon}>AUTHORIZED SIGNATURE</PanelTitle>
+          {signatureSrc && (
+            <img src={signatureSrc} alt="Authorized signature" />
+          )}
+          <p>
+            Authorized Representative
+            <br />
+            <b>Massclick Technologies Pvt Ltd</b>
+          </p>
+          <aside>
+            TOGETHER
+            <br />
+            FOR A SMARTER
+            <br />
+            TOMORROW
+            <i />
+          </aside>
         </div>
-      </div>
-
-      <div className={cx("notePanel")}>
-        <div className={cx("noteCol")}>
-          <div className={cx("noteHeader")}>
-            <div className={cx("noteIcon")}>
-              <EditNoteIcon />
-            </div>
-            <h4>Terms</h4>
-          </div>
-          <p>{quotation.terms || "-"}</p>
-        </div>
-        <div className={cx("noteDivider")} />
-        <div className={cx("noteCol")}>
-          <div className={cx("noteHeader")}>
-            <div className={cx("noteIcon")}>
-              <InfoIcon />
-            </div>
-            <h4>Notes</h4>
-          </div>
-          <p>{quotation.notes || "-"}</p>
-        </div>
-      </div>
-
-      <div className={cx("acceptPanel")}>
-        <div className={cx("acceptCol")}>
-          <div className={cx("acceptHeader")}>
-            <div className={cx("cardIconBadge")}>
-              <EditNoteIcon />
-            </div>
-            <h3>Customer Acceptance</h3>
-          </div>
-          <div className={cx("acceptName")}>{quotation.customerName || "Customer Name"}</div>
-          <div className={cx("acceptLine")} />
-        </div>
-        <div className={cx("acceptDivider")} />
-        <div className={cx("acceptCol")}>
-          <div className={cx("acceptHeader")}>
-            <div className={cx("cardIconBadge")}>
-              <VerifiedUserIcon />
-            </div>
-            <h3>Authorized Signature</h3>
-          </div>
-          {signatureSrc && <img className={cx("acceptSignature")} src={signatureSrc} alt="Authorized signature" />}
-          <div className={cx("acceptCaption")}>Authorized Representative</div>
-        </div>
-      </div>
-
-      <div className={cx("footer")}>
-        <div className={cx("footerContacts")}>
-          <span>
-            <LocalPhoneIcon /> {quotation.businessPhone || "+91 9789104201"}
-          </span>
-          <span>
-            <EmailIcon /> {quotation.businessEmail || "admin@massclick.in"}
-          </span>
-          <span>
-            <LanguageIcon /> www.massclick.in
-          </span>
-        </div>
-        <div className={cx("footerThanks")}>
-          <div className={cx("footerThanksShape")} />
-          <div className={cx("footerThanksText")}>Thank you for your business</div>
-        </div>
-      </div>
+      </section>
+      <Footer quotation={quotation} />
     </div>
   );
 };
 
 export const QuotationPdfPage2 = ({ innerRef, quotation, logoSrc }) => (
-  <div className={cx("page")} ref={innerRef}>
-    <div className={cx("header")}>
-      <svg className={cx("headerShape")} viewBox="0 0 1050 190" preserveAspectRatio="none">
-        <polygon points="462,0 1050,0 1050,190 336,190" fill="#f4711d" />
-        <polygon points="483,0 1050,0 1050,190 357,190" fill="#ffffff" />
-      </svg>
-      <div className={cx("brand")}>
-        <img className={cx("brandLogo")} src={logoSrc} alt="MassClick" />
-        <p className={cx("brandTagline")}>Discover &bull; Connect &bull; Grow</p>
+  <div className={cx("page", "pageTwo")} ref={innerRef}>
+    <Header logoSrc={logoSrc} type="features" />
+    <main className={cx("featuresMain")}>
+      <div className={cx("featuresHeading")}>
+        <span />
+        <b>5 KEY</b>
+        <h1>
+          <em>MassClick</em> Features
+        </h1>
+        <p>
+          Powerful tools that help businesses generate leads, improve
+          visibility, and grow.
+        </p>
       </div>
-      <div className={cx("headerTag")}>
-        <div className={cx("headerTagAccent")} />
-        <div className={cx("headerTagShape")} />
-        <div className={cx("headerTagContent")}>
-          <div className={cx("headerTagIcon")}>
-            <StarIcon />
-          </div>
-          <div className={cx("headerTagText")}>
-            <span className={cx("headerTagLabel")}>FEATURES</span>
-            <span className={cx("headerTagNo")}>{quotation.quotationNo || "-"}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div className={cx("sectionIntro")}>
-      <h2>10 Key MassClick Features</h2>
-      <p>
-        Lead generation, digital presence, discovery, and business network advantages included with this quotation.
-      </p>
-    </div>
-
-    <div className={cx("featureGrid")}>
-      {whyChooseMassClick.map((point, index) => {
-        const Icon = featureIcons[index] || StarIcon;
-        return (
-          <div className={cx("featureCard")} key={point.title}>
-            <div className={cx("featureIcon")}>
+      <div className={cx("featuresGrid")}>
+        {features.map(({ title, text, Icon }, index) => (
+          <article
+            className={cx("featureCard", index > 2 && "featureWide")}
+            key={title}
+          >
+            <b className={cx("featureNo")}>{index + 1}</b>
+            <span className={cx("featureIcon")}>
               <Icon />
-              <span className={cx("featureNumber")}>{index + 1}</span>
+            </span>
+            <div>
+              <h2>{title}</h2>
+              <p>{text}</p>
             </div>
-            <div className={cx("featureBody")}>
-              <h4>{point.title}</h4>
-              <p>
-                <span className={cx("featureLang")}>English</span>
-                {point.text}
-              </p>
-              <p className={cx("featureTamil")} lang="ta">
-                <span className={cx("featureLang")}>தமிழ்</span>
-                {point.tamilText}
-              </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-
-    <div className={cx("noteCard", "noteCardFull")}>
-      <div className={cx("noteHeader")}>
-        <div className={cx("noteIcon")}>
-          <InfoIcon />
-        </div>
-        <h4>Important Note</h4>
+          </article>
+        ))}
       </div>
-      <p>{importantNote}</p>
-    </div>
-
-    <div className={cx("footer")}>
-      <div className={cx("footerContacts")}>
-        <span>
-          <LocalPhoneIcon /> {quotation.businessPhone || "+91 9789104201"}
-        </span>
-        <span>
-          <EmailIcon /> {quotation.businessEmail || "admin@massclick.in"}
-        </span>
-        <span>
-          <LanguageIcon /> www.massclick.in
-        </span>
-      </div>
-      <div className={cx("footerThanks")}>
-        <div className={cx("footerThanksShape")} />
-        <div className={cx("footerThanksText")}>Thank you for your business</div>
-      </div>
-    </div>
+    </main>
+    <Footer quotation={quotation} />
   </div>
 );
