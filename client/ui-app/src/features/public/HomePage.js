@@ -25,6 +25,9 @@ const DEFERRED_INTERACTION_EVENTS = [
 const FeaturedServices = lazy(
   () => import("features/public/featured-services/featureService.js"),
 );
+const RechargeServices = lazy(
+  () => import("features/public/recharge-services/RechargeServices.js"),
+);
 
 // const MassclickBanner = lazy(
 //   () => import("features/public/massclick-banner/massClickBanner.js"),
@@ -450,6 +453,10 @@ const LandingPage = React.memo(() => {
                   }}
                 >
                   <FeaturedServices />
+                </DeferredHomeSection>
+
+                <DeferredHomeSection minHeight={620} rootMargin="150px 0px">
+                  <RechargeServices />
                 </DeferredHomeSection>
 
                 <DeferredHomeSection
