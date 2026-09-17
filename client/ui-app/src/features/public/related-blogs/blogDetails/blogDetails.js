@@ -391,6 +391,26 @@ const BlogDetail = () => {
   const heroDescription = blog?.metaDescription || "Explore a practical local guide from Massclick with helpful recommendations, business insights and decision-ready details.";
   const articleUrl = canonical;
   const shareTitle = blog?.heading || metaTitle;
+  const getTableCells = row => {
+    if (Array.isArray(row)) return row;
+    return Array.isArray(row?.cells) ? row.cells : [];
+  };
+  const normalizeTableBlock = block => {
+    const rows = (block?.rows || [])
+      .map(getTableCells)
+      .filter(cells => cells.some(cell => String(cell ?? "").trim() !== ""));
+    const width = rows.reduce((max, cells) => Math.max(max, cells.length), 0);
+
+    return {
+      caption: block?.caption || "",
+      hasHeaderRow: block?.hasHeaderRow !== false,
+      rows: rows.map(cells => (
+        cells.length === width
+          ? cells
+          : [...cells, ...Array.from({ length: width - cells.length }, () => "")]
+      ))
+    };
+  };
   const copyArticleLink = async () => {
     try {
       await navigator.clipboard.writeText(articleUrl);
@@ -414,14 +434,24 @@ const BlogDetail = () => {
   const renderContentBlock = block => {
     switch (block.type) {
       case "table":
+        const table = normalizeTableBlock(block);
+        if (table.rows.length === 0) return null;
+        const bodyRows = table.hasHeaderRow ? table.rows.slice(1) : table.rows;
+
         return <div key={block.id} className={cx("content-block table-block")}>
           <div className={cx("table-container")}>
             <table className={cx("data-table")}>
-              <tbody>
-                {block.rows.map((row, rIdx) => <tr key={rIdx}>
+              {table.caption && <caption>{table.caption}</caption>}
+              {table.hasHeaderRow && <thead>
+                <tr>
+                  {table.rows[0].map((cell, cIdx) => <th key={cIdx}>{cell}</th>)}
+                </tr>
+              </thead>}
+              {bodyRows.length > 0 && <tbody>
+                {bodyRows.map((row, rIdx) => <tr key={rIdx}>
                   {row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}
                 </tr>)}
-              </tbody>
+              </tbody>}
             </table>
           </div>
         </div>;

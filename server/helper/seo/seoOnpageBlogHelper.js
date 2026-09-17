@@ -170,32 +170,54 @@ const mapBusinessDetails = (list = []) => {
   }));
 };
 
+const getTableCells = (row) => {
+  if (Array.isArray(row)) return row;
+  return Array.isArray(row?.cells) ? row.cells : [];
+};
+
+const normalizeTableBlock = (block = {}) => {
+  const source = block?.data && typeof block.data === "object"
+    ? { ...block.data, type: block.type }
+    : block;
+  const rawRows = Array.isArray(source.rows) ? source.rows : [];
+  const rows = rawRows
+    .map(getTableCells)
+    .map((cells) => cells.map((cell) => String(cell ?? "")));
+  const width = rows.reduce((max, cells) => Math.max(max, cells.length), 0);
+
+  return {
+    ...(source.id ? { id: source.id } : {}),
+    ...(block._id ? { _id: block._id } : {}),
+    type: "table",
+    caption: String(source.caption || "").trim(),
+    hasHeaderRow: source.hasHeaderRow !== false,
+    rows: rows.map((cells) => ({
+      cells: cells.length === width
+        ? cells
+        : [...cells, ...Array.from({ length: width - cells.length }, () => "")],
+    })),
+  };
+};
+
 const mapContentBlocks = (blocks = []) => {
   if (!Array.isArray(blocks)) return [];
 
-  return blocks.map((block) => {
-    const { id, type, ...data } = block;
-    return {
-      type,
-      data: {
-        id,
-        ...data,
-      },
-    };
-  });
+  return blocks
+    .filter((block) => block?.type === "table")
+    .map(normalizeTableBlock)
+    .filter((block) =>
+      block.rows.some((row) =>
+        row.cells.some((cell) => String(cell ?? "").trim() !== "")
+      )
+    );
 };
 
 const unmapContentBlocks = (blocks = []) => {
   if (!Array.isArray(blocks)) return [];
 
-  return blocks.map((block) => {
-    if (!block.type) return block;
-    const { type, data = {} } = block;
-    return {
-      type,
-      ...data,
-    };
-  });
+  return blocks
+    .filter((block) => block?.type === "table")
+    .map(normalizeTableBlock);
 };
 
 export const createPageContentBlogSeo = async (

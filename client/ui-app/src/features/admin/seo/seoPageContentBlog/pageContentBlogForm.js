@@ -8,21 +8,13 @@ import {
   CircularProgress,
   IconButton,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
-  Select,
-  MenuItem,
-  Box,
   Tooltip,
 } from "@mui/material";
 
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import PreviewIcon from "@mui/icons-material/Preview";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
@@ -37,6 +29,52 @@ import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
 import styles from "features/admin/seo/seoPageContentBlog/seoPageContentBlog.module.css";
 
 const cx = createScopedClassNames(styles);
+
+const DEFAULT_TABLE_ROWS = 3;
+const DEFAULT_TABLE_COLS = 3;
+
+const makeTableRow = (cols) => ({
+  cells: Array.from({ length: cols }, () => ""),
+});
+
+const makeTableBlock = () => ({
+  id: Date.now(),
+  type: "table",
+  caption: "",
+  hasHeaderRow: true,
+  rows: Array.from({ length: DEFAULT_TABLE_ROWS }, () => makeTableRow(DEFAULT_TABLE_COLS)),
+});
+
+const getRowCells = (row) => {
+  if (Array.isArray(row)) return row;
+  return Array.isArray(row?.cells) ? row.cells : [];
+};
+
+const normalizeTableBlock = (block = {}) => {
+  const rawRows = Array.isArray(block.rows) && block.rows.length > 0
+    ? block.rows
+    : [makeTableRow(DEFAULT_TABLE_COLS)];
+  const width = rawRows.reduce((max, row) => Math.max(max, getRowCells(row).length), 0) || DEFAULT_TABLE_COLS;
+
+  return {
+    id: block.id || block._id || Date.now(),
+    type: "table",
+    caption: block.caption || "",
+    hasHeaderRow: block.hasHeaderRow !== false,
+    rows: rawRows.map((row) => {
+      const cells = getRowCells(row);
+      return {
+        cells: [
+          ...cells,
+          ...Array.from({ length: width - cells.length }, () => ""),
+        ],
+      };
+    }),
+  };
+};
+
+const getColumnCount = (table) =>
+  (table?.rows || []).reduce((max, row) => Math.max(max, getRowCells(row).length), 0);
 
 export default function SeoPageContentForm({
   formData,
@@ -70,34 +108,12 @@ export default function SeoPageContentForm({
   const [categoryInput, setCategoryInput] = useState("");
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
 
-  // Content Blocks State
-  const [contentBlocks, setContentBlocks] = useState(formData.contentBlocks || []);
-  const [showTableDialog, setShowTableDialog] = useState(false);
-  const [showCodeDialog, setShowCodeDialog] = useState(false);
-  const [showVideoDialog, setShowVideoDialog] = useState(false);
-  const [showCalloutDialog, setShowCalloutDialog] = useState(false);
-  const [showStatsDialog, setShowStatsDialog] = useState(false);
-  const [showTestimonialDialog, setShowTestimonialDialog] = useState(false);
-  const [showStepsDialog, setShowStepsDialog] = useState(false);
-  const [showAccordionDialog, setShowAccordionDialog] = useState(false);
-  const [showButtonDialog, setShowButtonDialog] = useState(false);
-  const [showFeatureDialog, setShowFeatureDialog] = useState(false);
-  const [showProsCons, setShowProsCons] = useState(false);
+  const [contentBlocks, setContentBlocks] = useState(
+    (formData.contentBlocks || [])
+      .filter((block) => block?.type === "table")
+      .map(normalizeTableBlock)
+  );
   const [previewMode, setPreviewMode] = useState(false);
-  const [tableRows, setTableRows] = useState(3);
-  const [tableCols, setTableCols] = useState(3);
-  const [codeLanguage, setCodeLanguage] = useState("javascript");
-  const [codeContent, setCodeContent] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [calloutType, setCalloutType] = useState("info");
-  const [calloutText, setCalloutText] = useState("");
-  const [statsItems, setStatsItems] = useState([{ label: "", value: "" }]);
-  const [testimonialData, setTestimonialData] = useState({ name: "", role: "", text: "", image: "" });
-  const [stepsData, setStepsData] = useState([{ title: "", description: "" }]);
-  const [accordionItems, setAccordionItems] = useState([{ title: "", content: "" }]);
-  const [buttonData, setButtonData] = useState({ text: "Learn More", url: "", style: "primary" });
-  const [featureItems, setFeatureItems] = useState([{ icon: "⭐", title: "", description: "" }]);
-  const [prosConsData, setProsConsData] = useState({ pros: [""], cons: [""] });
 
   const slugPreview = useMemo(() => {
     return (formData.heading || "")
@@ -346,10 +362,15 @@ export default function SeoPageContentForm({
     );
   };
 
-  // Sync content blocks from formData
   useEffect(() => {
-    if (formData.contentBlocks && formData.contentBlocks.length > 0) {
-      setContentBlocks(formData.contentBlocks);
+    const normalizedTables = (formData.contentBlocks || [])
+      .filter((block) => block?.type === "table")
+      .map(normalizeTableBlock);
+
+    setContentBlocks(normalizedTables);
+
+    if (JSON.stringify(formData.contentBlocks || []) !== JSON.stringify(normalizedTables)) {
+      updateField("contentBlocks", normalizedTables);
     }
   }, [editingId, formData.contentBlocks]);
 
@@ -358,209 +379,75 @@ export default function SeoPageContentForm({
     setCategoryInput(formData.category || "");
   }, [editingId, formData.category]);
 
-  const addStatistics = () => {
-    const newStats = {
-      id: Date.now(),
-      type: "statistics",
-      items: statsItems.filter((s) => s.label && s.value),
-    };
-    if (newStats.items.length === 0) return;
-    const updated = [...contentBlocks, newStats];
+  const updateContentBlocks = (updated) => {
     setContentBlocks(updated);
     updateField("contentBlocks", updated);
-    setShowStatsDialog(false);
-    setStatsItems([{ label: "", value: "" }]);
   };
 
-  const addTestimonial = () => {
-    if (!testimonialData.name || !testimonialData.text) return;
-    const newTestimonial = {
-      id: Date.now(),
-      type: "testimonial",
-      ...testimonialData,
-    };
-    const updated = [...contentBlocks, newTestimonial];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowTestimonialDialog(false);
-    setTestimonialData({ name: "", role: "", text: "", image: "" });
-  };
-
-  const addSteps = () => {
-    const validSteps = stepsData.filter((s) => s.title);
-    if (validSteps.length === 0) return;
-    const newSteps = {
-      id: Date.now(),
-      type: "steps",
-      items: validSteps,
-    };
-    const updated = [...contentBlocks, newSteps];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowStepsDialog(false);
-    setStepsData([{ title: "", description: "" }]);
-  };
-
-  const addAccordion = () => {
-    const validAccordions = accordionItems.filter((a) => a.title);
-    if (validAccordions.length === 0) return;
-    const newAccordion = {
-      id: Date.now(),
-      type: "accordion",
-      items: validAccordions,
-    };
-    const updated = [...contentBlocks, newAccordion];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowAccordionDialog(false);
-    setAccordionItems([{ title: "", content: "" }]);
-  };
-
-  const addButton = () => {
-    if (!buttonData.text) return;
-    const newButton = {
-      id: Date.now(),
-      type: "button",
-      ...buttonData,
-    };
-    const updated = [...contentBlocks, newButton];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowButtonDialog(false);
-    setButtonData({ text: "Learn More", url: "", style: "primary" });
-  };
-
-  const addFeatures = () => {
-    const validFeatures = featureItems.filter((f) => f.title);
-    if (validFeatures.length === 0) return;
-    const newFeatures = {
-      id: Date.now(),
-      type: "features",
-      items: validFeatures,
-    };
-    const updated = [...contentBlocks, newFeatures];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowFeatureDialog(false);
-    setFeatureItems([{ icon: "⭐", title: "", description: "" }]);
-  };
-
-  const addProsCons = () => {
-    const validPros = prosConsData.pros.filter((p) => p.trim());
-    const validCons = prosConsData.cons.filter((c) => c.trim());
-    if (validPros.length === 0 && validCons.length === 0) return;
-    const newProsCons = {
-      id: Date.now(),
-      type: "prosCons",
-      pros: validPros,
-      cons: validCons,
-    };
-    const updated = [...contentBlocks, newProsCons];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowProsCons(false);
-    setProsConsData({ pros: [""], cons: [""] });
+  const updateTableBlock = (blockId, updater) => {
+    updateContentBlocks(
+      contentBlocks.map((block) =>
+        block.id === blockId ? updater(normalizeTableBlock(block)) : block
+      )
+    );
   };
 
   const addTable = () => {
-    const newTable = {
-      id: Date.now(),
-      type: "table",
-      rows: Array(tableRows)
-        .fill(null)
-        .map(() => Array(tableCols).fill("")),
-      cols: tableCols,
-    };
-    const updated = [...contentBlocks, newTable];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowTableDialog(false);
-    setTableRows(3);
-    setTableCols(3);
-  };
-
-  const addCodeBlock = () => {
-    if (!codeContent.trim()) return;
-    const newCode = {
-      id: Date.now(),
-      type: "code",
-      language: codeLanguage,
-      content: codeContent,
-    };
-    const updated = [...contentBlocks, newCode];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowCodeDialog(false);
-    setCodeContent("");
-    setCodeLanguage("javascript");
-  };
-
-  const addVideoEmbed = () => {
-    if (!videoUrl.trim()) return;
-    const newVideo = {
-      id: Date.now(),
-      type: "video",
-      url: videoUrl,
-    };
-    const updated = [...contentBlocks, newVideo];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowVideoDialog(false);
-    setVideoUrl("");
-  };
-
-  const addCallout = () => {
-    if (!calloutText.trim()) return;
-    const newCallout = {
-      id: Date.now(),
-      type: "callout",
-      calloutType,
-      text: calloutText,
-    };
-    const updated = [...contentBlocks, newCallout];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
-    setShowCalloutDialog(false);
-    setCalloutText("");
-    setCalloutType("info");
-  };
-
-  const updateTableCell = (blockId, rowIdx, colIdx, value) => {
-    const updated = contentBlocks.map((block) => {
-      if (block.id === blockId && block.type === "table") {
-        const newRows = block.rows.map((row, rIdx) =>
-          rIdx === rowIdx
-            ? row.map((cell, cIdx) => (cIdx === colIdx ? value : cell))
-            : row
-        );
-        return { ...block, rows: newRows };
-      }
-      return block;
-    });
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
+    updateContentBlocks([...contentBlocks, makeTableBlock()]);
   };
 
   const removeContentBlock = (blockId) => {
-    const updated = contentBlocks.filter((block) => block.id !== blockId);
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
+    updateContentBlocks(contentBlocks.filter((block) => block.id !== blockId));
   };
 
-  const moveBlock = (fromIdx, toIdx) => {
-    const updated = [...contentBlocks];
-    [updated[fromIdx], updated[toIdx]] = [updated[toIdx], updated[fromIdx]];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
+  const updateTableCell = (blockId, rowIndex, colIndex, value) => {
+    updateTableBlock(blockId, (table) => ({
+      ...table,
+      rows: table.rows.map((row, currentRowIndex) => (
+        currentRowIndex === rowIndex
+          ? {
+              ...row,
+              cells: row.cells.map((cell, currentColIndex) =>
+                currentColIndex === colIndex ? value : cell
+              ),
+            }
+          : row
+      )),
+    }));
   };
 
-  const duplicateBlock = (blockId) => {
-    const block = contentBlocks.find((b) => b.id === blockId);
-    if (!block) return;
-    const duplicate = { ...JSON.parse(JSON.stringify(block)), id: Date.now() };
-    const updated = [...contentBlocks, duplicate];
-    setContentBlocks(updated);
-    updateField("contentBlocks", updated);
+  const addTableRow = (blockId) => {
+    updateTableBlock(blockId, (table) => ({
+      ...table,
+      rows: [...table.rows, makeTableRow(getColumnCount(table) || DEFAULT_TABLE_COLS)],
+    }));
+  };
+
+  const removeTableRow = (blockId, rowIndex) => {
+    updateTableBlock(blockId, (table) => ({
+      ...table,
+      rows: table.rows.filter((_, index) => index !== rowIndex),
+    }));
+  };
+
+  const addTableColumn = (blockId) => {
+    updateTableBlock(blockId, (table) => ({
+      ...table,
+      rows: table.rows.map((row) => ({
+        ...row,
+        cells: [...row.cells, ""],
+      })),
+    }));
+  };
+
+  const removeTableColumn = (blockId, colIndex) => {
+    updateTableBlock(blockId, (table) => ({
+      ...table,
+      rows: table.rows.map((row) => ({
+        ...row,
+        cells: row.cells.filter((_, index) => index !== colIndex),
+      })),
+    }));
   };
 
   /* ======================================
@@ -989,156 +876,110 @@ export default function SeoPageContentForm({
         )}
       </section>
 
-      {/* CONTENT BLOCKS SECTION */}
       <section className={cx("editor-card", "premium-card")}>
         <div className={cx("content-blocks-header")}>
-          <h2 className={cx("section-title")}>Rich Content Blocks</h2>
-          <div className={cx("block-actions")}>
-            <Button size="small" variant="outlined" onClick={() => setShowTableDialog(true)}>📊 Table</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowCodeDialog(true)}>💻 Code</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowVideoDialog(true)}>🎬 Video</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowCalloutDialog(true)}>💬 Callout</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowStatsDialog(true)}>📈 Stats</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowTestimonialDialog(true)}>⭐ Testimonial</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowStepsDialog(true)}>📍 Steps</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowAccordionDialog(true)}>📂 Accordion</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowButtonDialog(true)}>🔘 Button</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowFeatureDialog(true)}>✨ Features</Button>
-            <Button size="small" variant="outlined" onClick={() => setShowProsCons(true)}>✅ Pros/Cons</Button>
+          <div>
+            <h2 className={cx("section-title")}>Body Tables</h2>
+            <p className={cx("section-helper")}>Add tables that will appear after the main blog content.</p>
           </div>
+          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={addTable}>
+            Add Table
+          </Button>
         </div>
         {contentBlocks.length === 0 ? (
-          <p className={cx("empty-state")}>No content blocks yet. Add tables, code, videos, or callouts above.</p>
+          <p className={cx("empty-state")}>No tables added yet.</p>
         ) : (
           <div className={cx("content-blocks-list")}>
-            {contentBlocks.map((block, idx) => (
+            {contentBlocks.map((rawBlock, idx) => {
+              const block = normalizeTableBlock(rawBlock);
+              const cols = getColumnCount(block) || DEFAULT_TABLE_COLS;
+
+              return (
               <div key={block.id} className={cx("content-block")}>
                 <div className={cx("block-header")}>
-                  <DragIndicatorIcon className={cx("drag-handle")} />
-                  <span className={cx("block-type")}>{block.type.toUpperCase()}</span>
+                  <div>
+                    <span className={cx("block-type")}>TABLE {idx + 1}</span>
+                    <p className={cx("block-helper")}>First row can be used as the table header.</p>
+                  </div>
                   <div className={cx("block-actions-inline")}>
-                    {idx > 0 && <IconButton size="small" onClick={() => moveBlock(idx, idx - 1)}>↑</IconButton>}
-                    {idx < contentBlocks.length - 1 && <IconButton size="small" onClick={() => moveBlock(idx, idx + 1)}>↓</IconButton>}
-                    <IconButton size="small" onClick={() => duplicateBlock(block.id)}>📋</IconButton>
-                    <IconButton size="small" color="error" onClick={() => removeContentBlock(block.id)}><DeleteOutlineIcon /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => removeContentBlock(block.id)}>
+                      <DeleteOutlineIcon />
+                    </IconButton>
                   </div>
                 </div>
                 <div className={cx("block-content")}>
-                  {block.type === "table" && (
-                    <div className={cx("table-container")}>
-                      <table className={cx("data-table")}>
+                  <div className={cx("table-options")}>
+                    <label>
+                      Caption
+                      <input
+                        value={block.caption}
+                        onChange={(e) => updateTableBlock(block.id, (table) => ({ ...table, caption: e.target.value }))}
+                        placeholder="Optional table caption"
+                      />
+                    </label>
+                    <label className={cx("checkbox-field")}>
+                      <input
+                        type="checkbox"
+                        checked={block.hasHeaderRow}
+                        onChange={(e) => updateTableBlock(block.id, (table) => ({ ...table, hasHeaderRow: e.target.checked }))}
+                      />
+                      First row is header
+                    </label>
+                  </div>
+
+                  <div className={cx("table-controls")}>
+                    <button type="button" onClick={() => addTableRow(block.id)}>+ Row</button>
+                    <button type="button" onClick={() => addTableColumn(block.id)}>+ Column</button>
+                  </div>
+
+                  <div className={cx("table-container")}>
+                    <table className={cx("data-table")}>
                         <tbody>
                           {block.rows.map((row, rIdx) => (
                             <tr key={rIdx}>
-                              {row.map((cell, cIdx) => (
+                              {Array.from({ length: cols }).map((_, cIdx) => (
                                 <td key={cIdx}>
-                                  <input type="text" value={cell} onChange={(e) => updateTableCell(block.id, rIdx, cIdx, e.target.value)} placeholder={`Cell ${rIdx + 1}-${cIdx + 1}`} />
+                                  <textarea
+                                    value={row.cells[cIdx] || ""}
+                                    onChange={(e) => updateTableCell(block.id, rIdx, cIdx, e.target.value)}
+                                    placeholder={rIdx === 0 && block.hasHeaderRow ? `Heading ${cIdx + 1}` : `Row ${rIdx + 1}, Col ${cIdx + 1}`}
+                                    rows={2}
+                                  />
                                 </td>
                               ))}
+                              <td className={cx("table-row-actions")}>
+                                <button
+                                  type="button"
+                                  onClick={() => removeTableRow(block.id, rIdx)}
+                                  disabled={block.rows.length <= 1}
+                                  aria-label={`Remove row ${rIdx + 1}`}
+                                >
+                                  x
+                                </button>
+                              </td>
                             </tr>
                           ))}
+                          <tr className={cx("table-column-actions")}>
+                            {Array.from({ length: cols }).map((_, cIdx) => (
+                              <td key={cIdx}>
+                                <button
+                                  type="button"
+                                  onClick={() => removeTableColumn(block.id, cIdx)}
+                                  disabled={cols <= 1}
+                                >
+                                  Remove col
+                                </button>
+                              </td>
+                            ))}
+                            <td />
+                          </tr>
                         </tbody>
                       </table>
                     </div>
-                  )}
-                  {block.type === "code" && (
-                    <div className={cx("code-block-display")}>
-                      <div className={cx("code-label")}>{block.language}</div>
-                      <pre><code>{block.content}</code></pre>
-                    </div>
-                  )}
-                  {block.type === "video" && (
-                    <div className={cx("video-embed")}>
-                      <iframe width="100%" height="400" src={block.url.includes("youtube.com") || block.url.includes("youtu.be") ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}` : block.url.includes("vimeo.com") ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}` : block.url} frameBorder="0" allowFullScreen title="Embedded Video"></iframe>
-                    </div>
-                  )}
-                  {block.type === "callout" && (
-                    <div className={cx("callout", `callout-${block.calloutType}`)}>
-                      <span className={cx("callout-icon")}>{block.calloutType === "info" && "ℹ️"}{block.calloutType === "warning" && "⚠️"}{block.calloutType === "success" && "✅"}{block.calloutType === "error" && "❌"}{block.calloutType === "tip" && "💡"}</span>
-                      <p>{block.text}</p>
-                    </div>
-                  )}
-                  {block.type === "statistics" && (
-                    <div className={cx("statistics-grid")}>
-                      {block.items.map((stat, idx) => (
-                        <div key={idx} className={cx("stat-card")}>
-                          <div className={cx("stat-value")}>{stat.value}</div>
-                          <div className={cx("stat-label")}>{stat.label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {block.type === "testimonial" && (
-                    <div className={cx("testimonial-card")}>
-                      <div className={cx("testimonial-text")}>"{block.text}"</div>
-                      <div className={cx("testimonial-author")}>
-                        {block.image && <img src={block.image} alt={block.name} />}
-                        <div>
-                          <div className={cx("author-name")}>{block.name}</div>
-                          {block.role && <div className={cx("author-role")}>{block.role}</div>}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {block.type === "steps" && (
-                    <div className={cx("steps-container")}>
-                      {block.items.map((step, idx) => (
-                        <div key={idx} className={cx("step-item")}>
-                          <div className={cx("step-number")}>{idx + 1}</div>
-                          <div className={cx("step-content")}>
-                            <h4>{step.title}</h4>
-                            {step.description && <p>{step.description}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {block.type === "accordion" && (
-                    <div className={cx("accordion-container")}>
-                      {block.items.map((item, idx) => (
-                        <div key={idx} className={cx("accordion-item")}>
-                          <div className={cx("accordion-title")}><span>{item.title}</span><span>▼</span></div>
-                          <div className={cx("accordion-content")}>{item.content}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {block.type === "button" && (
-                    <div className={cx("button-container")}>
-                      <button className={`${cx("cta-button", `btn-${block.style}`)} `}>{block.text}</button>
-                      {block.url && <code>{block.url}</code>}
-                    </div>
-                  )}
-                  {block.type === "features" && (
-                    <div className={cx("features-grid")}>
-                      {block.items.map((feature, idx) => (
-                        <div key={idx} className={cx("feature-card")}>
-                          <div className={cx("feature-icon")}>{feature.icon}</div>
-                          <h4>{feature.title}</h4>
-                          {feature.description && <p>{feature.description}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {block.type === "prosCons" && (
-                    <div className={cx("proscons-container")}>
-                      <div className={cx("pros-column")}>
-                        <h4>✅ Pros</h4>
-                        <ul>
-                          {block.pros.map((pro, idx) => (<li key={idx}>{pro}</li>))}
-                        </ul>
-                      </div>
-                      <div className={cx("cons-column")}>
-                        <h4>❌ Cons</h4>
-                        <ul>
-                          {block.cons.map((con, idx) => (<li key={idx}>{con}</li>))}
-                        </ul>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -1251,302 +1092,6 @@ export default function SeoPageContentForm({
           </div>
         ))}
       </section>
-
-      {/* DIALOGS */}
-      <Dialog open={showTableDialog} onClose={() => setShowTableDialog(false)}>
-        <DialogTitle>Create Table</DialogTitle>
-        <DialogContent sx={{ display: "flex", gap: 2, py: 3 }}>
-          <TextField type="number" label="Rows" value={tableRows} onChange={(e) => setTableRows(Math.max(1, parseInt(e.target.value)))} inputProps={{ min: 1, max: 20 }} />
-          <TextField type="number" label="Columns" value={tableCols} onChange={(e) => setTableCols(Math.max(1, parseInt(e.target.value)))} inputProps={{ min: 1, max: 10 }} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowTableDialog(false)}>Cancel</Button>
-          <Button onClick={addTable} variant="contained">Create</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showCodeDialog} onClose={() => setShowCodeDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Code Block</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}>
-          <Select value={codeLanguage} onChange={(e) => setCodeLanguage(e.target.value)}>
-            <MenuItem value="javascript">JavaScript</MenuItem>
-            <MenuItem value="python">Python</MenuItem>
-            <MenuItem value="html">HTML</MenuItem>
-            <MenuItem value="css">CSS</MenuItem>
-            <MenuItem value="sql">SQL</MenuItem>
-            <MenuItem value="bash">Bash</MenuItem>
-            <MenuItem value="json">JSON</MenuItem>
-            <MenuItem value="typescript">TypeScript</MenuItem>
-            <MenuItem value="jsx">JSX</MenuItem>
-            <MenuItem value="java">Java</MenuItem>
-          </Select>
-          <TextField label="Code Content" multiline rows={8} value={codeContent} onChange={(e) => setCodeContent(e.target.value)} placeholder="Paste your code here..." variant="outlined" fullWidth />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowCodeDialog(false)}>Cancel</Button>
-          <Button onClick={addCodeBlock} variant="contained" disabled={!codeContent.trim()}>Add Code</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showVideoDialog} onClose={() => setShowVideoDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Embed Video</DialogTitle>
-        <DialogContent sx={{ py: 2 }}>
-          <TextField label="Video URL" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=..." variant="outlined" fullWidth sx={{ mt: 2 }} helperText="Supports YouTube and Vimeo" />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowVideoDialog(false)}>Cancel</Button>
-          <Button onClick={addVideoEmbed} variant="contained" disabled={!videoUrl.trim()}>Embed Video</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showCalloutDialog} onClose={() => setShowCalloutDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Callout</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}>
-          <Select value={calloutType} onChange={(e) => setCalloutType(e.target.value)}>
-            <MenuItem value="info">ℹ️ Info</MenuItem>
-            <MenuItem value="warning">⚠️ Warning</MenuItem>
-            <MenuItem value="success">✅ Success</MenuItem>
-            <MenuItem value="error">❌ Error</MenuItem>
-            <MenuItem value="tip">💡 Tip</MenuItem>
-          </Select>
-          <TextField label="Callout Text" multiline rows={4} value={calloutText} onChange={(e) => setCalloutText(e.target.value)} placeholder="Enter your callout message..." variant="outlined" fullWidth />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowCalloutDialog(false)}>Cancel</Button>
-          <Button onClick={addCallout} variant="contained" disabled={!calloutText.trim()}>Add Callout</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showStatsDialog} onClose={() => setShowStatsDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Statistics</DialogTitle>
-        <DialogContent sx={{ py: 2 }}>
-          {statsItems.map((item, idx) => (
-            <Box key={idx} sx={{ display: "flex", gap: 2, mb: 2 }}>
-              <TextField label="Value (e.g., 100+)" value={item.value} onChange={(e) => { const updated = [...statsItems]; updated[idx].value = e.target.value; setStatsItems(updated); }} sx={{ flex: 1 }} />
-              <TextField label="Label (e.g., Customers)" value={item.label} onChange={(e) => { const updated = [...statsItems]; updated[idx].label = e.target.value; setStatsItems(updated); }} sx={{ flex: 1 }} />
-              <IconButton onClick={() => setStatsItems(statsItems.filter((_, i) => i !== idx))} color="error"><DeleteOutlineIcon /></IconButton>
-            </Box>
-          ))}
-          <Button startIcon={<AddIcon />} onClick={() => setStatsItems([...statsItems, { label: "", value: "" }])}>Add More</Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowStatsDialog(false)}>Cancel</Button>
-          <Button onClick={addStatistics} variant="contained">Add Stats</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showTestimonialDialog} onClose={() => setShowTestimonialDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Testimonial</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}>
-          <TextField label="Author Name *" value={testimonialData.name} onChange={(e) => setTestimonialData({...testimonialData, name: e.target.value})} fullWidth />
-          <TextField label="Author Role" value={testimonialData.role} onChange={(e) => setTestimonialData({...testimonialData, role: e.target.value})} fullWidth />
-          <TextField label="Testimonial Text *" multiline rows={4} value={testimonialData.text} onChange={(e) => setTestimonialData({...testimonialData, text: e.target.value})} fullWidth />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowTestimonialDialog(false)}>Cancel</Button>
-          <Button onClick={addTestimonial} variant="contained" disabled={!testimonialData.name || !testimonialData.text}>Add</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showStepsDialog} onClose={() => setShowStepsDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Steps/Timeline</DialogTitle>
-        <DialogContent sx={{ py: 2 }}>
-          {stepsData.map((step, idx) => (
-            <Box key={idx} sx={{ mb: 2 }}>
-              <TextField label={`Step ${idx + 1} Title *`} value={step.title} onChange={(e) => { const updated = [...stepsData]; updated[idx].title = e.target.value; setStepsData(updated); }} fullWidth sx={{ mb: 1 }} />
-              <TextField label="Description" value={step.description} onChange={(e) => { const updated = [...stepsData]; updated[idx].description = e.target.value; setStepsData(updated); }} multiline rows={2} fullWidth />
-              <IconButton onClick={() => setStepsData(stepsData.filter((_, i) => i !== idx))} color="error" sx={{ mt: 1 }}><DeleteOutlineIcon /></IconButton>
-            </Box>
-          ))}
-          <Button startIcon={<AddIcon />} onClick={() => setStepsData([...stepsData, { title: "", description: "" }])}>Add Step</Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowStepsDialog(false)}>Cancel</Button>
-          <Button onClick={addSteps} variant="contained">Add Steps</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showAccordionDialog} onClose={() => setShowAccordionDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Accordion/FAQ</DialogTitle>
-        <DialogContent sx={{ py: 2 }}>
-          {accordionItems.map((item, idx) => (
-            <Box key={idx} sx={{ mb: 2 }}>
-              <TextField label={`Item ${idx + 1} Title *`} value={item.title} onChange={(e) => { const updated = [...accordionItems]; updated[idx].title = e.target.value; setAccordionItems(updated); }} fullWidth sx={{ mb: 1 }} />
-              <TextField label="Content" value={item.content} onChange={(e) => { const updated = [...accordionItems]; updated[idx].content = e.target.value; setAccordionItems(updated); }} multiline rows={3} fullWidth />
-              <IconButton onClick={() => setAccordionItems(accordionItems.filter((_, i) => i !== idx))} color="error" sx={{ mt: 1 }}><DeleteOutlineIcon /></IconButton>
-            </Box>
-          ))}
-          <Button startIcon={<AddIcon />} onClick={() => setAccordionItems([...accordionItems, { title: "", content: "" }])}>Add Item</Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowAccordionDialog(false)}>Cancel</Button>
-          <Button onClick={addAccordion} variant="contained">Add Accordion</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showButtonDialog} onClose={() => setShowButtonDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Button / Call-to-Action</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2.5, py: 3 }}>
-          <Box>
-            <TextField
-              label="Button Text *"
-              value={buttonData.text}
-              onChange={(e) => setButtonData({...buttonData, text: e.target.value})}
-              fullWidth
-              placeholder="e.g., Learn More, Get Started"
-            />
-          </Box>
-
-          <Box>
-            <TextField
-              label="Button URL (Optional)"
-              value={buttonData.url}
-              onChange={(e) => setButtonData({...buttonData, url: e.target.value})}
-              fullWidth
-              placeholder="https://example.com"
-              helperText="Leave empty for button without link"
-            />
-          </Box>
-
-          <Box>
-            <Box sx={{ mb: 1.5 }}>
-              <label style={{ display: "block", fontWeight: 700, marginBottom: 8, fontSize: "14px", color: "#0f172a" }}>
-                Button Style
-              </label>
-            </Box>
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1.5 }}>
-              {[
-                { value: "primary", label: "🟠 Primary", desc: "Orange gradient - Main CTA" },
-                { value: "secondary", label: "⚪ Secondary", desc: "White with border" },
-                { value: "outline", label: "🟦 Outline", desc: "Transparent with border" },
-                { value: "success", label: "🟢 Success", desc: "Green - For positive actions" },
-              ].map((style) => (
-                <Box
-                  key={style.value}
-                  onClick={() => setButtonData({...buttonData, style: style.value})}
-                  sx={{
-                    padding: "12px 14px",
-                    border: buttonData.style === style.value ? "2px solid #ff6b00" : "2px solid #e2e8f0",
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    background: buttonData.style === style.value ? "#fff4ea" : "#f8fafc",
-                    transition: "all 0.2s",
-                    "&:hover": {
-                      borderColor: "#ff6b00",
-                      background: "#fff4ea",
-                    },
-                  }}
-                >
-                  <Box sx={{ fontWeight: 700, fontSize: "13px", marginBottom: "4px" }}>
-                    {style.label}
-                  </Box>
-                  <Box sx={{ fontSize: "12px", color: "#64748b" }}>
-                    {style.desc}
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-
-          {/* Live Preview */}
-          <Box sx={{
-            borderTop: "2px solid #e8ecf1",
-            paddingTop: 2.5,
-            backgroundColor: "#f8fafc",
-            padding: "16px",
-            borderRadius: "12px"
-          }}>
-            <Box sx={{ mb: 1.5, fontWeight: 700, fontSize: "13px", color: "#64748b", textTransform: "uppercase" }}>
-              Preview
-            </Box>
-            <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-              <button
-                className={`cta-button btn-${buttonData.style}`}
-                style={{
-                  padding: "12px 28px",
-                  border: "none",
-                  borderRadius: "10px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  ...(buttonData.style === "primary" && {
-                    background: "linear-gradient(135deg, #ff6b00, #ffad5e)",
-                    color: "#fff",
-                    boxShadow: "0 8px 24px rgba(255, 107, 0, 0.3)",
-                  }),
-                  ...(buttonData.style === "secondary" && {
-                    background: "#fff",
-                    color: "#ff6b00",
-                    border: "2px solid #ff6b00",
-                  }),
-                  ...(buttonData.style === "outline" && {
-                    background: "transparent",
-                    color: "#ff6b00",
-                    border: "2px solid #ff6b00",
-                  }),
-                }}
-              >
-                {buttonData.text || "Learn More"}
-              </button>
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ padding: 2 }}>
-          <Button onClick={() => setShowButtonDialog(false)}>Cancel</Button>
-          <Button onClick={addButton} variant="contained" disabled={!buttonData.text}>
-            Add Button
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showFeatureDialog} onClose={() => setShowFeatureDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Features/Highlights</DialogTitle>
-        <DialogContent sx={{ py: 2 }}>
-          {featureItems.map((feature, idx) => (
-            <Box key={idx} sx={{ mb: 2 }}>
-              <TextField label="Icon (emoji)" value={feature.icon} onChange={(e) => { const updated = [...featureItems]; updated[idx].icon = e.target.value; setFeatureItems(updated); }} fullWidth sx={{ mb: 1 }} />
-              <TextField label={`Feature ${idx + 1} Title *`} value={feature.title} onChange={(e) => { const updated = [...featureItems]; updated[idx].title = e.target.value; setFeatureItems(updated); }} fullWidth sx={{ mb: 1 }} />
-              <TextField label="Description" value={feature.description} onChange={(e) => { const updated = [...featureItems]; updated[idx].description = e.target.value; setFeatureItems(updated); }} multiline rows={2} fullWidth />
-              <IconButton onClick={() => setFeatureItems(featureItems.filter((_, i) => i !== idx))} color="error" sx={{ mt: 1 }}><DeleteOutlineIcon /></IconButton>
-            </Box>
-          ))}
-          <Button startIcon={<AddIcon />} onClick={() => setFeatureItems([...featureItems, { icon: "⭐", title: "", description: "" }])}>Add Feature</Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowFeatureDialog(false)}>Cancel</Button>
-          <Button onClick={addFeatures} variant="contained">Add Features</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={showProsCons} onClose={() => setShowProsCons(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Pros & Cons</DialogTitle>
-        <DialogContent sx={{ py: 2 }}>
-          <Box sx={{ mb: 2 }}>
-            <h4>✅ Pros</h4>
-            {prosConsData.pros.map((pro, idx) => (
-              <Box key={idx} sx={{ display: "flex", gap: 1, mb: 1 }}>
-                <TextField value={pro} onChange={(e) => { const updated = [...prosConsData.pros]; updated[idx] = e.target.value; setProsConsData({...prosConsData, pros: updated}); }} fullWidth size="small" />
-                <IconButton onClick={() => setProsConsData({...prosConsData, pros: prosConsData.pros.filter((_, i) => i !== idx)})} color="error"><DeleteOutlineIcon /></IconButton>
-              </Box>
-            ))}
-            <Button startIcon={<AddIcon />} onClick={() => setProsConsData({...prosConsData, pros: [...prosConsData.pros, ""]})}>Add Pro</Button>
-          </Box>
-          <Box>
-            <h4>❌ Cons</h4>
-            {prosConsData.cons.map((con, idx) => (
-              <Box key={idx} sx={{ display: "flex", gap: 1, mb: 1 }}>
-                <TextField value={con} onChange={(e) => { const updated = [...prosConsData.cons]; updated[idx] = e.target.value; setProsConsData({...prosConsData, cons: updated}); }} fullWidth size="small" />
-                <IconButton onClick={() => setProsConsData({...prosConsData, cons: prosConsData.cons.filter((_, i) => i !== idx)})} color="error"><DeleteOutlineIcon /></IconButton>
-              </Box>
-            ))}
-            <Button startIcon={<AddIcon />} onClick={() => setProsConsData({...prosConsData, cons: [...prosConsData.cons, ""]})}>Add Con</Button>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowProsCons(false)}>Cancel</Button>
-          <Button onClick={addProsCons} variant="contained">Add Pros/Cons</Button>
-        </DialogActions>
-      </Dialog>
 
       <div className={cx("action-bar")}>
         <button type="submit" disabled={loading}>

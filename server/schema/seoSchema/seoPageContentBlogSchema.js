@@ -38,26 +38,22 @@ const businessSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const tableRowSchema = new mongoose.Schema(
+  { cells: { type: [String], default: [] } },
+  { _id: false }
+);
+
 const contentBlockSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: [
-        "table",
-        "code",
-        "video",
-        "callout",
-        "statistics",
-        "testimonial",
-        "steps",
-        "accordion",
-        "button",
-        "features",
-        "prosCons",
-      ],
+      enum: ["table"],
       required: true,
+      default: "table",
     },
-    data: mongoose.Schema.Types.Mixed,
+    caption: { type: String, trim: true, default: "" },
+    hasHeaderRow: { type: Boolean, default: true },
+    rows: { type: [tableRowSchema], default: [] },
   },
   { _id: true }
 );
