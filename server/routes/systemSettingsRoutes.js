@@ -2,6 +2,7 @@ import express from "express";
 import {
   getSystemSettingsAction,
   getPay2AllBalanceAction,
+  getPhonePeAuthCheckAction,
   updateSystemSettingsAction,
 } from "../controller/systemSettings/systemSettingsController.js";
 import { requireAdminAuth } from "../auth/authMiddleware.js";
@@ -52,6 +53,11 @@ router.get(
   "/api/admin/system-settings/recharge-api/pay2all/balance",
   requireAdminAuth(),
   getPay2AllBalanceAction,
+);
+router.get(
+  "/api/admin/system-settings/payment-gateway/phonepe/auth-check",
+  requireAdminAuth(),
+  getPhonePeAuthCheckAction,
 );
 
 // S3 Cache Header Migration routes

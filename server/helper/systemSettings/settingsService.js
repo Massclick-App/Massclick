@@ -47,6 +47,19 @@ export const SYSTEM_SETTINGS_DEFAULTS = {
   recharge_pay2all_webhook_path: "/api/recharge/pay2all/webhook",
   recharge_pay2all_api_token: "",
   recharge_pay2all_api_token_updated_at: null,
+  phonepe_gateway_enabled: true,
+  phonepe_integration_mode: "legacy_v1",
+  phonepe_environment: "sandbox",
+  phonepe_client_id: "",
+  phonepe_client_secret: "",
+  phonepe_client_secret_updated_at: null,
+  phonepe_client_version: "1",
+  phonepe_redirect_base_url: "",
+  phonepe_legacy_merchant_id: "",
+  phonepe_legacy_salt_key: "",
+  phonepe_legacy_salt_key_updated_at: null,
+  phonepe_legacy_salt_index: "1",
+  phonepe_legacy_base_url: "https://api.phonepe.com/apis/hermes",
 };
 
 let cache = null;

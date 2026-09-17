@@ -6,6 +6,7 @@ import { createLogger } from "../../utils/logger.js";
 import { invalidateMaintenanceCache } from "../../middleware/maintenanceModeMiddleware.js";
 import { invalidateSearchCache } from "../../utils/cacheInvalidation.js";
 import { fetchPay2AllBalance } from "../../helper/recharge/pay2AllHelper.js";
+import { checkPhonePeStandardCheckoutAuth } from "../../helper/PhonePay/phonePayHelper.js";
 
 const logger = createLogger("SYSTEM_SETTINGS");
 
@@ -19,13 +20,21 @@ const maskSecret = (value) => {
 const sanitizeSystemSettings = (settings = {}) => {
   const data = { ...SYSTEM_SETTINGS_DEFAULTS, ...settings };
   const pay2AllToken = data.recharge_pay2all_api_token;
+  const phonePeClientSecret = data.phonepe_client_secret;
+  const phonePeLegacySaltKey = data.phonepe_legacy_salt_key;
 
   delete data.recharge_pay2all_api_token;
+  delete data.phonepe_client_secret;
+  delete data.phonepe_legacy_salt_key;
 
   return {
     ...data,
     recharge_pay2all_api_token_configured: Boolean(String(pay2AllToken || "").trim()),
     recharge_pay2all_api_token_preview: maskSecret(pay2AllToken),
+    phonepe_client_secret_configured: Boolean(String(phonePeClientSecret || "").trim()),
+    phonepe_client_secret_preview: maskSecret(phonePeClientSecret),
+    phonepe_legacy_salt_key_configured: Boolean(String(phonePeLegacySaltKey || "").trim()),
+    phonepe_legacy_salt_key_preview: maskSecret(phonePeLegacySaltKey),
   };
 };
 
@@ -128,6 +137,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       "logging_db_queries",
       "redis_enabled",
       "recharge_api_enabled",
+      "phonepe_gateway_enabled",
     ];
 
     const stringFields = [
@@ -143,6 +153,14 @@ export const updateSystemSettingsAction = async (req, res) => {
       "recharge_api_provider",
       "recharge_pay2all_base_url",
       "recharge_pay2all_webhook_path",
+      "phonepe_integration_mode",
+      "phonepe_environment",
+      "phonepe_client_id",
+      "phonepe_client_version",
+      "phonepe_redirect_base_url",
+      "phonepe_legacy_merchant_id",
+      "phonepe_legacy_salt_index",
+      "phonepe_legacy_base_url",
     ];
 
     const numberFields = [
@@ -224,12 +242,78 @@ export const updateSystemSettingsAction = async (req, res) => {
       });
     }
 
+    const validPhonePeModes = ["legacy_v1", "standard_checkout_v2"];
+    if (
+      "phonepe_integration_mode" in req.body &&
+      !validPhonePeModes.includes(req.body.phonepe_integration_mode)
+    ) {
+      await logger.warn(`Invalid PhonePe integration mode attempted`, {
+        admin: adminEmail,
+        attemptedMode: req.body.phonepe_integration_mode
+      });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid PhonePe integration mode. Must be one of: ${validPhonePeModes.join(", ")}`
+      });
+    }
+
+    const validPhonePeEnvironments = ["sandbox", "production"];
+    if (
+      "phonepe_environment" in req.body &&
+      !validPhonePeEnvironments.includes(req.body.phonepe_environment)
+    ) {
+      await logger.warn(`Invalid PhonePe environment attempted`, {
+        admin: adminEmail,
+        attemptedEnvironment: req.body.phonepe_environment
+      });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid PhonePe environment. Must be one of: ${validPhonePeEnvironments.join(", ")}`
+      });
+    }
+
+    if ("phonepe_client_version" in req.body) {
+      const clientVersion = String(req.body.phonepe_client_version || "").trim();
+      if (!/^\d+$/.test(clientVersion)) {
+        await logger.warn(`Invalid PhonePe client version attempted`, {
+          admin: adminEmail,
+          attemptedVersion: req.body.phonepe_client_version
+        });
+        return res.status(400).json({
+          success: false,
+          message: "PhonePe client version must be a whole number"
+        });
+      }
+    }
+
     if ("recharge_pay2all_base_url" in req.body) {
       const urlError = assertValidUrl(req.body.recharge_pay2all_base_url, "recharge_pay2all_base_url");
       if (urlError) {
         await logger.warn(`Invalid Pay2All base URL attempted`, {
           admin: adminEmail,
           attemptedUrl: req.body.recharge_pay2all_base_url
+        });
+        return res.status(400).json({ success: false, message: urlError });
+      }
+    }
+
+    if (req.body.phonepe_redirect_base_url) {
+      const urlError = assertValidUrl(req.body.phonepe_redirect_base_url, "phonepe_redirect_base_url");
+      if (urlError) {
+        await logger.warn(`Invalid PhonePe redirect base URL attempted`, {
+          admin: adminEmail,
+          attemptedUrl: req.body.phonepe_redirect_base_url
+        });
+        return res.status(400).json({ success: false, message: urlError });
+      }
+    }
+
+    if (req.body.phonepe_legacy_base_url) {
+      const urlError = assertValidUrl(req.body.phonepe_legacy_base_url, "phonepe_legacy_base_url");
+      if (urlError) {
+        await logger.warn(`Invalid PhonePe legacy base URL attempted`, {
+          admin: adminEmail,
+          attemptedUrl: req.body.phonepe_legacy_base_url
         });
         return res.status(400).json({ success: false, message: urlError });
       }
@@ -267,6 +351,32 @@ export const updateSystemSettingsAction = async (req, res) => {
       }
       updates.recharge_pay2all_api_token = token;
       updates.recharge_pay2all_api_token_updated_at = new Date();
+    }
+
+    if ("phonepe_client_secret" in req.body) {
+      const secret = String(req.body.phonepe_client_secret || "").trim();
+      if (secret.length < 12) {
+        await logger.warn(`Invalid PhonePe client secret attempted`, { admin: adminEmail });
+        return res.status(400).json({
+          success: false,
+          message: "PhonePe client secret looks too short"
+        });
+      }
+      updates.phonepe_client_secret = secret;
+      updates.phonepe_client_secret_updated_at = new Date();
+    }
+
+    if ("phonepe_legacy_salt_key" in req.body) {
+      const saltKey = String(req.body.phonepe_legacy_salt_key || "").trim();
+      if (saltKey.length < 8) {
+        await logger.warn(`Invalid PhonePe legacy salt key attempted`, { admin: adminEmail });
+        return res.status(400).json({
+          success: false,
+          message: "PhonePe legacy salt key looks too short"
+        });
+      }
+      updates.phonepe_legacy_salt_key = saltKey;
+      updates.phonepe_legacy_salt_key_updated_at = new Date();
     }
 
     const validCustomerListSendModes = ["single", "split"];
@@ -438,6 +548,45 @@ export const getPay2AllBalanceAction = async (req, res) => {
       "Pay2All balance check failed";
 
     await logger.error("getPay2AllBalanceAction error", error, {
+      admin: adminEmail,
+      statusCode,
+    });
+
+    return res.status(statusCode).json({
+      success: false,
+      message: providerMessage,
+    });
+  }
+};
+
+export const getPhonePeAuthCheckAction = async (req, res) => {
+  const adminEmail = req.authUser?.email || "admin";
+
+  try {
+    await logger.info("Checking PhonePe Standard Checkout auth", {
+      admin: adminEmail,
+      ip: req.ip,
+    });
+
+    const auth = await checkPhonePeStandardCheckoutAuth();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        auth,
+        checkedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || error.response?.status || 500;
+    const providerMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error_description ||
+      error.response?.data?.error ||
+      error.message ||
+      "PhonePe auth check failed";
+
+    await logger.error("getPhonePeAuthCheckAction error", error, {
       admin: adminEmail,
       statusCode,
     });

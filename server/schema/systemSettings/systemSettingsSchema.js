@@ -72,6 +72,29 @@ const systemSettingsSchema = new mongoose.Schema(
     recharge_pay2all_api_token: { type: String, default: "", select: true },
     recharge_pay2all_api_token_updated_at: { type: Date, default: null },
 
+    // PhonePe payment gateway controls
+    phonepe_gateway_enabled: { type: Boolean, default: true },
+    phonepe_integration_mode: {
+      type: String,
+      enum: ["legacy_v1", "standard_checkout_v2"],
+      default: "legacy_v1",
+    },
+    phonepe_environment: {
+      type: String,
+      enum: ["sandbox", "production"],
+      default: "sandbox",
+    },
+    phonepe_client_id: { type: String, default: "" },
+    phonepe_client_secret: { type: String, default: "", select: true },
+    phonepe_client_secret_updated_at: { type: Date, default: null },
+    phonepe_client_version: { type: String, default: "1" },
+    phonepe_redirect_base_url: { type: String, default: "" },
+    phonepe_legacy_merchant_id: { type: String, default: "" },
+    phonepe_legacy_salt_key: { type: String, default: "", select: true },
+    phonepe_legacy_salt_key_updated_at: { type: Date, default: null },
+    phonepe_legacy_salt_index: { type: String, default: "1" },
+    phonepe_legacy_base_url: { type: String, default: "https://api.phonepe.com/apis/hermes" },
+
     // App Version Management
     app_android_latest_version: { type: String, default: "1.0.0" },
     app_android_min_version: { type: String, default: "1.0.0" },

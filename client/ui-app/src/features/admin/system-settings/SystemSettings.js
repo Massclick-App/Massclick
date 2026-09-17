@@ -25,6 +25,7 @@ const DatabaseIcon = () => <span>🗄️</span>;
 const AlertIcon = () => <span>⚡</span>;
 const GuardIcon = () => <span>🛡️</span>;
 const RechargeIcon = () => <span>API</span>;
+const PaymentGatewayIcon = () => <span>PG</span>;
 // const MediaCleanupIcon = () => <span>🧹</span>;
 const formatUptime = seconds => {
   if (!seconds) return "\u2014";
@@ -147,6 +148,17 @@ const FIELD_HELP = {
   recharge_pay2all_base_url: "Pay2All API base URL. Keep the live URL unless Pay2All gives a test URL.",
   recharge_pay2all_webhook_path: "Server callback path Pay2All can call for pending transaction updates.",
   recharge_pay2all_api_token: "Paste the Pay2All token once. It is saved on the server and then shown only as a masked status.",
+  phonepe_gateway_enabled: "Turns PhonePe payment creation on or off for premium membership payments.",
+  phonepe_integration_mode: "Use Standard Checkout v2 for Client ID and Client Secret. Legacy v1 keeps the older merchant-id and salt-key flow.",
+  phonepe_environment: "Sandbox uses PhonePe test APIs. Production uses live PhonePe APIs.",
+  phonepe_client_id: "PhonePe Standard Checkout Client ID from the merchant dashboard.",
+  phonepe_client_secret: "Paste the Client Secret once. It is saved on the server and then shown only as a masked status.",
+  phonepe_client_version: "PhonePe Client Version shown with the Standard Checkout credentials. Use 1 unless PhonePe shows a different version.",
+  phonepe_redirect_base_url: "Public frontend URL PhonePe returns the customer to after checkout. Leave blank to use the server FRONTEND_URL.",
+  phonepe_legacy_merchant_id: "Older PhonePe v1 merchant id. Only needed when Integration Mode is Legacy v1.",
+  phonepe_legacy_salt_key: "Older PhonePe v1 salt key. Only needed when Integration Mode is Legacy v1.",
+  phonepe_legacy_salt_index: "Older PhonePe v1 salt index. Usually 1.",
+  phonepe_legacy_base_url: "Older PhonePe v1 API base URL.",
 };
 const validateVersionFormat = version => {
   if (!version) return null;
@@ -171,6 +183,8 @@ const validateCustomerListSendMode = mode => {
   return validModes.includes(mode) ? null : "Invalid customer list send mode";
 };
 const validateRechargeProvider = provider => provider === "pay2all" ? null : "Invalid recharge provider";
+const validatePhonePeMode = mode => ["legacy_v1", "standard_checkout_v2"].includes(mode) ? null : "Invalid PhonePe mode";
+const validatePhonePeEnvironment = env => ["sandbox", "production"].includes(env) ? null : "Invalid PhonePe environment";
 const validateWebhookPath = path => {
   if (!path) return "Required";
   if (!String(path).startsWith("/")) return "Start with /";
@@ -181,6 +195,7 @@ const validateApiToken = token => {
   if (!token) return null;
   return String(token).trim().length >= 12 ? null : "Token looks too short";
 };
+const validateClientVersion = version => /^\d+$/.test(String(version || "").trim()) ? null : "Use a whole number";
 const NUMBER_FIELD_RULES = {
   rate_limit_api_limit: {
     min: 1,
@@ -272,8 +287,15 @@ const NUMBER_FIELD_RULES = {
   }
 };
 const getFieldValidationError = (key, value) => {
+  if (key === 'phonepe_client_version') return validateClientVersion(value);
+  if (key === 'phonepe_integration_mode') return validatePhonePeMode(value);
+  if (key === 'phonepe_environment') return validatePhonePeEnvironment(value);
+  if (key === 'phonepe_client_secret') return validateApiToken(value);
+  if (key === 'phonepe_legacy_salt_key') return validateApiToken(value);
   if (key.includes('_version') || key === 'app_release_notes') return validateVersionFormat(value);
   if (key === 'recharge_pay2all_base_url' && !value) return "Required";
+  if (key === 'phonepe_legacy_base_url' && value) return validateUrl(value);
+  if (key === 'phonepe_redirect_base_url' && value) return validateUrl(value);
   if (key.includes('_url')) return validateUrl(value);
   if (key === 'logging_level') return validateLoggingLevel(value);
   if (key === 'whatsapp_customer_business_list_send_mode') return validateCustomerListSendMode(value);
@@ -565,6 +587,41 @@ const SEARCH_FIELDS = [{
   placeholder: "20"
 }];
 const PAY2ALL_TOKEN_FIELD = "recharge_pay2all_api_token";
+const PHONEPE_CLIENT_SECRET_FIELD = "phonepe_client_secret";
+const PHONEPE_LEGACY_SALT_FIELD = "phonepe_legacy_salt_key";
+const PHONEPE_CONFIG_FIELDS = [{
+  key: "phonepe_integration_mode",
+  label: "Integration Mode",
+  placeholder: "standard_checkout_v2"
+}, {
+  key: "phonepe_environment",
+  label: "Environment",
+  placeholder: "sandbox"
+}, {
+  key: "phonepe_client_id",
+  label: "Client ID",
+  placeholder: "M224..."
+}, {
+  key: "phonepe_client_version",
+  label: "Client Version",
+  placeholder: "1"
+}, {
+  key: "phonepe_redirect_base_url",
+  label: "Redirect Base URL",
+  placeholder: "https://www.massclick.com"
+}, {
+  key: "phonepe_legacy_merchant_id",
+  label: "Legacy Merchant ID",
+  placeholder: "M224..."
+}, {
+  key: "phonepe_legacy_salt_index",
+  label: "Legacy Salt Index",
+  placeholder: "1"
+}, {
+  key: "phonepe_legacy_base_url",
+  label: "Legacy Base URL",
+  placeholder: "https://api.phonepe.com/apis/hermes"
+}];
 const RECHARGE_API_FIELDS = [{
   key: "recharge_api_provider",
   label: "Provider",
@@ -578,10 +635,11 @@ const RECHARGE_API_FIELDS = [{
   label: "Webhook Path",
   placeholder: "/api/recharge/pay2all/webhook"
 }];
+const PHONEPE_CONFIG_KEYS = PHONEPE_CONFIG_FIELDS.map(field => field.key);
 const RECHARGE_CONFIG_KEYS = RECHARGE_API_FIELDS.map(field => field.key);
-const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled", "recharge_api_enabled"];
+const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled", "recharge_api_enabled", "phonepe_gateway_enabled"];
 const ALL_NUMBER_KEYS = [...GUARD_LIMIT_FIELDS.map(field => field.key), ...RATE_LIMIT_FIELDS.map(field => field.key), ...SEARCH_FIELDS.map(field => field.key)];
-const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, ...RECHARGE_CONFIG_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
+const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, ...RECHARGE_CONFIG_KEYS, ...PHONEPE_CONFIG_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
 const SETTINGS_SECTIONS = [{
   key: "operations",
   label: "Operations",
@@ -603,6 +661,13 @@ const SETTINGS_SECTIONS = [{
   icon: DebugIcon,
   color: "#2563eb",
   fieldKeys: SEARCH_FIELDS.map(field => field.key)
+}, {
+  key: "paymentGateway",
+  label: "Payment Gateway",
+  description: "PhonePe Client ID, secret, environment, and payment connection checks.",
+  icon: PaymentGatewayIcon,
+  color: "#2563eb",
+  fieldKeys: ["phonepe_gateway_enabled", ...PHONEPE_CONFIG_KEYS, PHONEPE_CLIENT_SECRET_FIELD, PHONEPE_LEGACY_SALT_FIELD]
 }, {
   key: "rechargeApi",
   label: "Recharge API",
@@ -681,7 +746,14 @@ export default function SystemSettings() {
   const [sitemapRegenerating, setSitemapRegenerating] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [pay2AllTokenDraft, setPay2AllTokenDraft] = useState("");
+  const [phonePeClientSecretDraft, setPhonePeClientSecretDraft] = useState("");
+  const [phonePeLegacySaltDraft, setPhonePeLegacySaltDraft] = useState("");
   const [pay2AllBalanceCheck, setPay2AllBalanceCheck] = useState({
+    loading: false,
+    data: null,
+    error: ""
+  });
+  const [phonePeAuthCheck, setPhonePeAuthCheck] = useState({
     loading: false,
     data: null,
     error: ""
@@ -750,6 +822,10 @@ export default function SystemSettings() {
   const setSecretText = (key, val) => {
     if (key === PAY2ALL_TOKEN_FIELD) {
       setPay2AllTokenDraft(val);
+    } else if (key === PHONEPE_CLIENT_SECRET_FIELD) {
+      setPhonePeClientSecretDraft(val);
+    } else if (key === PHONEPE_LEGACY_SALT_FIELD) {
+      setPhonePeLegacySaltDraft(val);
     }
     const error = getFieldValidationError(key, val);
     setValidationErrors(prev => {
@@ -950,7 +1026,9 @@ export default function SystemSettings() {
     setKeyMatchMode("contains");
   };
   const hasPay2AllTokenDraft = pay2AllTokenDraft.trim().length > 0;
-  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) || hasPay2AllTokenDraft : false;
+  const hasPhonePeClientSecretDraft = phonePeClientSecretDraft.trim().length > 0;
+  const hasPhonePeLegacySaltDraft = phonePeLegacySaltDraft.trim().length > 0;
+  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) || hasPay2AllTokenDraft || hasPhonePeClientSecretDraft || hasPhonePeLegacySaltDraft : false;
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const handleSave = async () => {
     if (hasValidationErrors) {
@@ -976,9 +1054,17 @@ export default function SystemSettings() {
     if (hasPay2AllTokenDraft) {
       updates[PAY2ALL_TOKEN_FIELD] = pay2AllTokenDraft.trim();
     }
+    if (hasPhonePeClientSecretDraft) {
+      updates[PHONEPE_CLIENT_SECRET_FIELD] = phonePeClientSecretDraft.trim();
+    }
+    if (hasPhonePeLegacySaltDraft) {
+      updates[PHONEPE_LEGACY_SALT_FIELD] = phonePeLegacySaltDraft.trim();
+    }
     try {
       await dispatch(updateSystemSettings(updates));
       setPay2AllTokenDraft("");
+      setPhonePeClientSecretDraft("");
+      setPhonePeLegacySaltDraft("");
       setSnack({
         open: true,
         message: "Settings saved",
@@ -1130,6 +1216,66 @@ export default function SystemSettings() {
       })), 3000);
     }
   };
+  const handleCheckPhonePeAuth = async () => {
+    if (hasPhonePeClientSecretDraft) {
+      setSnack({
+        open: true,
+        message: "Save the new PhonePe secret before checking",
+        severity: "error"
+      });
+      return;
+    }
+    if (!settings?.phonepe_client_secret_configured) {
+      setSnack({
+        open: true,
+        message: "Add and save the PhonePe Client Secret first",
+        severity: "error"
+      });
+      return;
+    }
+
+    setPhonePeAuthCheck({
+      loading: true,
+      data: null,
+      error: ""
+    });
+    try {
+      const {
+        data
+      } = await axiosInstance.get(`${API_URL}/admin/system-settings/payment-gateway/phonepe/auth-check`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
+      });
+      setPhonePeAuthCheck({
+        loading: false,
+        data: data.data,
+        error: ""
+      });
+      setSnack({
+        open: true,
+        message: "PhonePe auth checked",
+        severity: "success"
+      });
+    } catch (err) {
+      const message = err.response?.data?.message || "PhonePe auth check failed";
+      setPhonePeAuthCheck({
+        loading: false,
+        data: null,
+        error: message
+      });
+      setSnack({
+        open: true,
+        message,
+        severity: "error"
+      });
+    } finally {
+      setTimeout(() => setSnack(s => ({
+        ...s,
+        open: false
+      })), 3000);
+    }
+  };
   if (loading || !local) {
     return <div className={cx("loading-container")}>
         <div className={cx("loading-spinner")}></div>
@@ -1141,7 +1287,11 @@ export default function SystemSettings() {
   const enabledCount = ALL_BOOL_KEYS.filter(k => !!local[k]).length;
   const sectionNavItems = SETTINGS_SECTIONS.map(section => {
     const activeToggleCount = section.fieldKeys.filter(key => typeof local[key] === "boolean" && !!local[key]).length;
-    const changedCount = section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length + (section.key === "rechargeApi" && hasPay2AllTokenDraft ? 1 : 0);
+    const changedCount =
+      section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length
+      + (section.key === "rechargeApi" && hasPay2AllTokenDraft ? 1 : 0)
+      + (section.key === "paymentGateway" && hasPhonePeClientSecretDraft ? 1 : 0)
+      + (section.key === "paymentGateway" && hasPhonePeLegacySaltDraft ? 1 : 0);
     const errorCount = section.fieldKeys.filter(key => validationErrors[key]).length;
     let detail = section.detailOverride || `${section.fieldKeys.length} control${section.fieldKeys.length === 1 ? "" : "s"}`;
     if (errorCount > 0) {
@@ -1313,6 +1463,184 @@ export default function SystemSettings() {
                     <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-text-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
                     {validationErrors[key] && <div className={cx("form-error-text")}>{validationErrors[key]}</div>}
                   </div>)}
+              </div>
+            </div>
+          </div>;
+      case "paymentGateway":
+        return <div className={cx("panel-stack")}>
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#2563eb'
+              }}>
+                  <PaymentGatewayIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>PhonePe Payment Gateway</div>
+                  <div className={cx("compact-subtitle")}>Store payment credentials once and use them when premium payments are created</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("recharge-status-row")}>
+                  <div>
+                    <div className={cx("recharge-status-label")}>Client Secret</div>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.phonepe_client_secret_configured ? settings.phonepe_client_secret_preview || "Configured" : "No secret saved"}
+                    </div>
+                  </div>
+                  <span className={cx(`status-badge ${settings?.phonepe_client_secret_configured ? 'success' : 'warning'}`)}>
+                    {settings?.phonepe_client_secret_configured ? "Configured" : "Missing"}
+                  </span>
+                </div>
+
+                <div className={cx("form-field panel-inline-control")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Enable PhonePe</span>
+                    <HelpHint text={FIELD_HELP.phonepe_gateway_enabled} />
+                  </label>
+                  <div className={cx("inline-toggle-row")}>
+                    <label className={cx("toggle-switch")}>
+                      <input type="checkbox" checked={!!local?.phonepe_gateway_enabled} onChange={() => toggle("phonepe_gateway_enabled")} />
+                      <span className={cx("toggle-switch-slider")} style={{
+                      '--color': '#2563eb'
+                    }}></span>
+                    </label>
+                    <span className={cx("redis-toggle-text")}>{local?.phonepe_gateway_enabled ? 'Active' : 'Disabled'}</span>
+                  </div>
+                </div>
+
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Integration Mode</span>
+                      <HelpHint text={FIELD_HELP.phonepe_integration_mode} />
+                    </label>
+                    <select className={cx(`form-select-input ${validationErrors.phonepe_integration_mode ? 'error' : ''}`)} value={local.phonepe_integration_mode ?? "legacy_v1"} onChange={e => setText("phonepe_integration_mode", e.target.value)}>
+                      <option value="standard_checkout_v2">Standard Checkout v2</option>
+                      <option value="legacy_v1">Legacy v1</option>
+                    </select>
+                    {validationErrors.phonepe_integration_mode && <div className={cx("form-error-text")}>{validationErrors.phonepe_integration_mode}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Environment</span>
+                      <HelpHint text={FIELD_HELP.phonepe_environment} />
+                    </label>
+                    <select className={cx(`form-select-input ${validationErrors.phonepe_environment ? 'error' : ''}`)} value={local.phonepe_environment ?? "sandbox"} onChange={e => setText("phonepe_environment", e.target.value)}>
+                      <option value="sandbox">Sandbox</option>
+                      <option value="production">Production</option>
+                    </select>
+                    {validationErrors.phonepe_environment && <div className={cx("form-error-text")}>{validationErrors.phonepe_environment}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Client ID</span>
+                      <HelpHint text={FIELD_HELP.phonepe_client_id} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_client_id ? 'error' : ''}`)} value={local.phonepe_client_id ?? ""} onChange={e => setText("phonepe_client_id", e.target.value)} placeholder="M224..." />
+                    {validationErrors.phonepe_client_id && <div className={cx("form-error-text")}>{validationErrors.phonepe_client_id}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Client Version</span>
+                      <HelpHint text={FIELD_HELP.phonepe_client_version} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_client_version ? 'error' : ''}`)} value={local.phonepe_client_version ?? "1"} onChange={e => setText("phonepe_client_version", e.target.value)} placeholder="1" />
+                    {validationErrors.phonepe_client_version && <div className={cx("form-error-text")}>{validationErrors.phonepe_client_version}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Redirect Base URL</span>
+                      <HelpHint text={FIELD_HELP.phonepe_redirect_base_url} />
+                    </label>
+                    <input type="url" className={cx(`form-text-input ${validationErrors.phonepe_redirect_base_url ? 'error' : ''}`)} value={local.phonepe_redirect_base_url ?? ""} onChange={e => setText("phonepe_redirect_base_url", e.target.value)} placeholder="https://www.massclick.com" />
+                    {validationErrors.phonepe_redirect_base_url && <div className={cx("form-error-text")}>{validationErrors.phonepe_redirect_base_url}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Client Secret</span>
+                      <HelpHint text={FIELD_HELP.phonepe_client_secret} />
+                    </label>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PHONEPE_CLIENT_SECRET_FIELD] ? 'error' : ''}`)} value={phonePeClientSecretDraft} onChange={e => setSecretText(PHONEPE_CLIENT_SECRET_FIELD, e.target.value)} placeholder={settings?.phonepe_client_secret_configured ? "Paste new secret to replace saved secret" : "Paste PhonePe Client Secret"} autoComplete="new-password" />
+                    {validationErrors[PHONEPE_CLIENT_SECRET_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PHONEPE_CLIENT_SECRET_FIELD]}</div>}
+                  </div>
+                </div>
+
+                <div className={cx("section-divider")}></div>
+                <div className={cx("section-label")}>Legacy v1 fallback</div>
+                <div className={cx("recharge-status-row")}>
+                  <div>
+                    <div className={cx("recharge-status-label")}>Legacy Salt Key</div>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.phonepe_legacy_salt_key_configured ? settings.phonepe_legacy_salt_key_preview || "Configured" : "No legacy salt key saved"}
+                    </div>
+                  </div>
+                  <span className={cx(`status-badge ${settings?.phonepe_legacy_salt_key_configured ? 'success' : 'warning'}`)}>
+                    {settings?.phonepe_legacy_salt_key_configured ? "Configured" : "Optional"}
+                  </span>
+                </div>
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Merchant ID</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_merchant_id} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_legacy_merchant_id ? 'error' : ''}`)} value={local.phonepe_legacy_merchant_id ?? ""} onChange={e => setText("phonepe_legacy_merchant_id", e.target.value)} placeholder="M224..." />
+                    {validationErrors.phonepe_legacy_merchant_id && <div className={cx("form-error-text")}>{validationErrors.phonepe_legacy_merchant_id}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Salt Index</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_salt_index} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_legacy_salt_index ? 'error' : ''}`)} value={local.phonepe_legacy_salt_index ?? "1"} onChange={e => setText("phonepe_legacy_salt_index", e.target.value)} placeholder="1" />
+                    {validationErrors.phonepe_legacy_salt_index && <div className={cx("form-error-text")}>{validationErrors.phonepe_legacy_salt_index}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Legacy Base URL</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_base_url} />
+                    </label>
+                    <input type="url" className={cx(`form-text-input ${validationErrors.phonepe_legacy_base_url ? 'error' : ''}`)} value={local.phonepe_legacy_base_url ?? ""} onChange={e => setText("phonepe_legacy_base_url", e.target.value)} placeholder="https://api.phonepe.com/apis/hermes" />
+                    {validationErrors.phonepe_legacy_base_url && <div className={cx("form-error-text")}>{validationErrors.phonepe_legacy_base_url}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Legacy Salt Key</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_salt_key} />
+                    </label>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PHONEPE_LEGACY_SALT_FIELD] ? 'error' : ''}`)} value={phonePeLegacySaltDraft} onChange={e => setSecretText(PHONEPE_LEGACY_SALT_FIELD, e.target.value)} placeholder={settings?.phonepe_legacy_salt_key_configured ? "Paste new salt key to replace saved salt key" : "Paste legacy salt key"} autoComplete="new-password" />
+                    {validationErrors[PHONEPE_LEGACY_SALT_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PHONEPE_LEGACY_SALT_FIELD]}</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#1d4ed8'
+              }}>
+                  <DatabaseIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Standard Checkout Check</div>
+                  <div className={cx("compact-subtitle")}>Verify the saved Client ID and Client Secret by requesting a PhonePe auth token</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("button-group")}>
+                  <button className={cx("btn btn-primary btn-sm")} onClick={handleCheckPhonePeAuth} disabled={phonePeAuthCheck.loading || saving || hasPhonePeClientSecretDraft || !settings?.phonepe_client_secret_configured}>
+                    {phonePeAuthCheck.loading ? "Checking..." : "Check PhonePe Auth"}
+                  </button>
+                </div>
+                {hasPhonePeClientSecretDraft && <div className={cx("inline-note warning")}>Save the new Client Secret before running the check.</div>}
+                {phonePeAuthCheck.error && <div className={cx("connection-result error")}>{phonePeAuthCheck.error}</div>}
+                {phonePeAuthCheck.data && <div className={cx("connection-result success")}>
+                    <div className={cx("connection-result-title")}>Auth token received</div>
+                    <pre className={cx("connection-result-pre")}>{JSON.stringify(phonePeAuthCheck.data.auth, null, 2)}</pre>
+                    <div className={cx("connection-result-time")}>Checked at {new Date(phonePeAuthCheck.data.checkedAt).toLocaleString()}</div>
+                  </div>}
               </div>
             </div>
           </div>;
