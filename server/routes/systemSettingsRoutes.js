@@ -1,9 +1,9 @@
 import express from "express";
 import {
   getSystemSettingsAction,
+  getPay2AllBalanceAction,
   updateSystemSettingsAction,
 } from "../controller/systemSettings/systemSettingsController.js";
-import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { requireAdminAuth } from "../auth/authMiddleware.js";
 import {
   startS3CacheHeaderMigrationAction,
@@ -40,13 +40,18 @@ const router = express.Router();
 
 router.get(
   "/api/admin/system-settings",
-  oauthAuthentication,
+  requireAdminAuth(),
   getSystemSettingsAction,
 );
 router.put(
   "/api/admin/system-settings",
-  oauthAuthentication,
+  requireAdminAuth(),
   updateSystemSettingsAction,
+);
+router.get(
+  "/api/admin/system-settings/recharge-api/pay2all/balance",
+  requireAdminAuth(),
+  getPay2AllBalanceAction,
 );
 
 // S3 Cache Header Migration routes

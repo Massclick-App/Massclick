@@ -24,6 +24,7 @@ const DebugIcon = () => <span>🔍</span>;
 const DatabaseIcon = () => <span>🗄️</span>;
 const AlertIcon = () => <span>⚡</span>;
 const GuardIcon = () => <span>🛡️</span>;
+const RechargeIcon = () => <span>API</span>;
 // const MediaCleanupIcon = () => <span>🧹</span>;
 const formatUptime = seconds => {
   if (!seconds) return "\u2014";
@@ -141,6 +142,11 @@ const FIELD_HELP = {
   search_nearby_radius_km: "How far search should look for nearby pincodes when exact location results are too low.",
   redis_enabled: "Controls whether Redis-backed cache behavior is enabled.",
   cache_type: "Select which cache group should be invalidated.",
+  recharge_api_enabled: "Turns the Pay2All recharge integration on for server-side recharge flows.",
+  recharge_api_provider: "Recharge provider used by the backend. Pay2All is currently supported.",
+  recharge_pay2all_base_url: "Pay2All API base URL. Keep the live URL unless Pay2All gives a test URL.",
+  recharge_pay2all_webhook_path: "Server callback path Pay2All can call for pending transaction updates.",
+  recharge_pay2all_api_token: "Paste the Pay2All token once. It is saved on the server and then shown only as a masked status.",
 };
 const validateVersionFormat = version => {
   if (!version) return null;
@@ -163,6 +169,17 @@ const validateLoggingLevel = level => {
 const validateCustomerListSendMode = mode => {
   const validModes = ['single', 'split'];
   return validModes.includes(mode) ? null : "Invalid customer list send mode";
+};
+const validateRechargeProvider = provider => provider === "pay2all" ? null : "Invalid recharge provider";
+const validateWebhookPath = path => {
+  if (!path) return "Required";
+  if (!String(path).startsWith("/")) return "Start with /";
+  if (/\s/.test(path)) return "No spaces allowed";
+  return null;
+};
+const validateApiToken = token => {
+  if (!token) return null;
+  return String(token).trim().length >= 12 ? null : "Token looks too short";
 };
 const NUMBER_FIELD_RULES = {
   rate_limit_api_limit: {
@@ -256,9 +273,13 @@ const NUMBER_FIELD_RULES = {
 };
 const getFieldValidationError = (key, value) => {
   if (key.includes('_version') || key === 'app_release_notes') return validateVersionFormat(value);
+  if (key === 'recharge_pay2all_base_url' && !value) return "Required";
   if (key.includes('_url')) return validateUrl(value);
   if (key === 'logging_level') return validateLoggingLevel(value);
   if (key === 'whatsapp_customer_business_list_send_mode') return validateCustomerListSendMode(value);
+  if (key === 'recharge_api_provider') return validateRechargeProvider(value);
+  if (key === 'recharge_pay2all_webhook_path') return validateWebhookPath(value);
+  if (key === 'recharge_pay2all_api_token') return validateApiToken(value);
   if (NUMBER_FIELD_RULES[key]) {
     const number = Number(value);
     const rule = NUMBER_FIELD_RULES[key];
@@ -543,9 +564,24 @@ const SEARCH_FIELDS = [{
   label: "Nearby Radius (km)",
   placeholder: "20"
 }];
-const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled"];
+const PAY2ALL_TOKEN_FIELD = "recharge_pay2all_api_token";
+const RECHARGE_API_FIELDS = [{
+  key: "recharge_api_provider",
+  label: "Provider",
+  placeholder: "pay2all"
+}, {
+  key: "recharge_pay2all_base_url",
+  label: "Pay2All Base URL",
+  placeholder: "https://www.pay2all.in/api/v1"
+}, {
+  key: "recharge_pay2all_webhook_path",
+  label: "Webhook Path",
+  placeholder: "/api/recharge/pay2all/webhook"
+}];
+const RECHARGE_CONFIG_KEYS = RECHARGE_API_FIELDS.map(field => field.key);
+const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled", "recharge_api_enabled"];
 const ALL_NUMBER_KEYS = [...GUARD_LIMIT_FIELDS.map(field => field.key), ...RATE_LIMIT_FIELDS.map(field => field.key), ...SEARCH_FIELDS.map(field => field.key)];
-const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
+const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, ...RECHARGE_CONFIG_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
 const SETTINGS_SECTIONS = [{
   key: "operations",
   label: "Operations",
@@ -567,6 +603,13 @@ const SETTINGS_SECTIONS = [{
   icon: DebugIcon,
   color: "#2563eb",
   fieldKeys: SEARCH_FIELDS.map(field => field.key)
+}, {
+  key: "rechargeApi",
+  label: "Recharge API",
+  description: "Pay2All token, endpoint, webhook, and connection checks.",
+  icon: RechargeIcon,
+  color: "#0f766e",
+  fieldKeys: ["recharge_api_enabled", ...RECHARGE_CONFIG_KEYS, PAY2ALL_TOKEN_FIELD]
 }, {
   key: "leadGuards",
   label: "Lead Guards",
@@ -637,6 +680,12 @@ export default function SystemSettings() {
   const [selectedCache, setSelectedCache] = useState("seo-meta");
   const [sitemapRegenerating, setSitemapRegenerating] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [pay2AllTokenDraft, setPay2AllTokenDraft] = useState("");
+  const [pay2AllBalanceCheck, setPay2AllBalanceCheck] = useState({
+    loading: false,
+    data: null,
+    error: ""
+  });
   const [selectedKeys, setSelectedKeys] = useState(new Set());
   const [keyNamespace, setKeyNamespace] = useState("all");
   const [keySearch, setKeySearch] = useState("");
@@ -696,6 +745,25 @@ export default function SystemSettings() {
         delete newErrors[key];
         return newErrors;
       }
+    });
+  };
+  const setSecretText = (key, val) => {
+    if (key === PAY2ALL_TOKEN_FIELD) {
+      setPay2AllTokenDraft(val);
+    }
+    const error = getFieldValidationError(key, val);
+    setValidationErrors(prev => {
+      if (error) {
+        return {
+          ...prev,
+          [key]: error
+        };
+      }
+      const newErrors = {
+        ...prev
+      };
+      delete newErrors[key];
+      return newErrors;
     });
   };
   const setNumber = (key, val) => {
@@ -881,7 +949,8 @@ export default function SystemSettings() {
     setKeySearch("");
     setKeyMatchMode("contains");
   };
-  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) : false;
+  const hasPay2AllTokenDraft = pay2AllTokenDraft.trim().length > 0;
+  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) || hasPay2AllTokenDraft : false;
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const handleSave = async () => {
     if (hasValidationErrors) {
@@ -904,8 +973,12 @@ export default function SystemSettings() {
     ALL_KEYS.forEach(k => {
       updates[k] = local[k];
     });
+    if (hasPay2AllTokenDraft) {
+      updates[PAY2ALL_TOKEN_FIELD] = pay2AllTokenDraft.trim();
+    }
     try {
       await dispatch(updateSystemSettings(updates));
+      setPay2AllTokenDraft("");
       setSnack({
         open: true,
         message: "Settings saved",
@@ -997,6 +1070,66 @@ export default function SystemSettings() {
       })), 3000);
     }
   };
+  const handleCheckPay2AllBalance = async () => {
+    if (hasPay2AllTokenDraft) {
+      setSnack({
+        open: true,
+        message: "Save the new Pay2All token before checking",
+        severity: "error"
+      });
+      return;
+    }
+    if (!settings?.recharge_pay2all_api_token_configured) {
+      setSnack({
+        open: true,
+        message: "Add and save the Pay2All token first",
+        severity: "error"
+      });
+      return;
+    }
+
+    setPay2AllBalanceCheck({
+      loading: true,
+      data: null,
+      error: ""
+    });
+    try {
+      const {
+        data
+      } = await axiosInstance.get(`${API_URL}/admin/system-settings/recharge-api/pay2all/balance`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
+      });
+      setPay2AllBalanceCheck({
+        loading: false,
+        data: data.data,
+        error: ""
+      });
+      setSnack({
+        open: true,
+        message: "Pay2All balance checked",
+        severity: "success"
+      });
+    } catch (err) {
+      const message = err.response?.data?.message || "Pay2All check failed";
+      setPay2AllBalanceCheck({
+        loading: false,
+        data: null,
+        error: message
+      });
+      setSnack({
+        open: true,
+        message,
+        severity: "error"
+      });
+    } finally {
+      setTimeout(() => setSnack(s => ({
+        ...s,
+        open: false
+      })), 3000);
+    }
+  };
   if (loading || !local) {
     return <div className={cx("loading-container")}>
         <div className={cx("loading-spinner")}></div>
@@ -1008,7 +1141,7 @@ export default function SystemSettings() {
   const enabledCount = ALL_BOOL_KEYS.filter(k => !!local[k]).length;
   const sectionNavItems = SETTINGS_SECTIONS.map(section => {
     const activeToggleCount = section.fieldKeys.filter(key => typeof local[key] === "boolean" && !!local[key]).length;
-    const changedCount = section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length;
+    const changedCount = section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length + (section.key === "rechargeApi" && hasPay2AllTokenDraft ? 1 : 0);
     const errorCount = section.fieldKeys.filter(key => validationErrors[key]).length;
     let detail = section.detailOverride || `${section.fieldKeys.length} control${section.fieldKeys.length === 1 ? "" : "s"}`;
     if (errorCount > 0) {
@@ -1180,6 +1313,116 @@ export default function SystemSettings() {
                     <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-text-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
                     {validationErrors[key] && <div className={cx("form-error-text")}>{validationErrors[key]}</div>}
                   </div>)}
+              </div>
+            </div>
+          </div>;
+      case "rechargeApi":
+        return <div className={cx("panel-stack")}>
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0f766e'
+              }}>
+                  <RechargeIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Pay2All Recharge API</div>
+                  <div className={cx("compact-subtitle")}>Save one server-side token for mobile, DTH, and BBPS recharge flows</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("recharge-status-row")}>
+                  <div>
+                    <div className={cx("recharge-status-label")}>Token Status</div>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.recharge_pay2all_api_token_configured ? settings.recharge_pay2all_api_token_preview || "Configured" : "No token saved"}
+                    </div>
+                  </div>
+                  <span className={cx(`status-badge ${settings?.recharge_pay2all_api_token_configured ? 'success' : 'warning'}`)}>
+                    {settings?.recharge_pay2all_api_token_configured ? "Configured" : "Missing"}
+                  </span>
+                </div>
+
+                <div className={cx("form-field panel-inline-control")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Enable Recharge API</span>
+                    <HelpHint text={FIELD_HELP.recharge_api_enabled} />
+                  </label>
+                  <div className={cx("inline-toggle-row")}>
+                    <label className={cx("toggle-switch")}>
+                      <input type="checkbox" checked={!!local?.recharge_api_enabled} onChange={() => toggle("recharge_api_enabled")} />
+                      <span className={cx("toggle-switch-slider")} style={{
+                      '--color': '#0f766e'
+                    }}></span>
+                    </label>
+                    <span className={cx("redis-toggle-text")}>{local?.recharge_api_enabled ? 'Active' : 'Disabled'}</span>
+                  </div>
+                </div>
+
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Provider</span>
+                      <HelpHint text={FIELD_HELP.recharge_api_provider} />
+                    </label>
+                    <select className={cx(`form-select-input ${validationErrors.recharge_api_provider ? 'error' : ''}`)} value={local.recharge_api_provider ?? "pay2all"} onChange={e => setText("recharge_api_provider", e.target.value)}>
+                      <option value="pay2all">Pay2All</option>
+                    </select>
+                    {validationErrors.recharge_api_provider && <div className={cx("form-error-text")}>{validationErrors.recharge_api_provider}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Pay2All Base URL</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_base_url} />
+                    </label>
+                    <input type="url" className={cx(`form-text-input ${validationErrors.recharge_pay2all_base_url ? 'error' : ''}`)} value={local.recharge_pay2all_base_url ?? ""} onChange={e => setText("recharge_pay2all_base_url", e.target.value)} placeholder="https://www.pay2all.in/api/v1" />
+                    {validationErrors.recharge_pay2all_base_url && <div className={cx("form-error-text")}>{validationErrors.recharge_pay2all_base_url}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Webhook Path</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_webhook_path} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.recharge_pay2all_webhook_path ? 'error' : ''}`)} value={local.recharge_pay2all_webhook_path ?? ""} onChange={e => setText("recharge_pay2all_webhook_path", e.target.value)} placeholder="/api/recharge/pay2all/webhook" />
+                    {validationErrors.recharge_pay2all_webhook_path && <div className={cx("form-error-text")}>{validationErrors.recharge_pay2all_webhook_path}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Pay2All API Token</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_api_token} />
+                    </label>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PAY2ALL_TOKEN_FIELD] ? 'error' : ''}`)} value={pay2AllTokenDraft} onChange={e => setSecretText(PAY2ALL_TOKEN_FIELD, e.target.value)} placeholder={settings?.recharge_pay2all_api_token_configured ? "Paste new token to replace saved token" : "Paste Pay2All API token"} autoComplete="new-password" />
+                    {validationErrors[PAY2ALL_TOKEN_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PAY2ALL_TOKEN_FIELD]}</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0d9488'
+              }}>
+                  <DatabaseIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Connection Check</div>
+                  <div className={cx("compact-subtitle")}>Verify the saved token by reading Pay2All wallet balance</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("button-group")}>
+                  <button className={cx("btn btn-primary btn-sm")} onClick={handleCheckPay2AllBalance} disabled={pay2AllBalanceCheck.loading || saving || hasPay2AllTokenDraft || !settings?.recharge_pay2all_api_token_configured}>
+                    {pay2AllBalanceCheck.loading ? "Checking..." : "Check Pay2All Balance"}
+                  </button>
+                </div>
+                {hasPay2AllTokenDraft && <div className={cx("inline-note warning")}>Save the new token before running the check.</div>}
+                {pay2AllBalanceCheck.error && <div className={cx("connection-result error")}>{pay2AllBalanceCheck.error}</div>}
+                {pay2AllBalanceCheck.data && <div className={cx("connection-result success")}>
+                    <div className={cx("connection-result-title")}>Balance response</div>
+                    <pre className={cx("connection-result-pre")}>{JSON.stringify(pay2AllBalanceCheck.data.balance, null, 2)}</pre>
+                    <div className={cx("connection-result-time")}>Checked at {new Date(pay2AllBalanceCheck.data.checkedAt).toLocaleString()}</div>
+                  </div>}
               </div>
             </div>
           </div>;
@@ -1703,9 +1946,19 @@ export default function SystemSettings() {
           <span className={cx("footer-text")}>Unsaved changes</span>
         </div>
         <div className={cx("footer-right")}>
-          <button className={cx("btn btn-ghost")} onClick={() => setLocal({
-          ...settings
-        })} disabled={saving}>
+          <button className={cx("btn btn-ghost")} onClick={() => {
+          setLocal({
+            ...settings
+          });
+          setPay2AllTokenDraft("");
+          setValidationErrors(prev => {
+            const next = {
+              ...prev
+            };
+            delete next[PAY2ALL_TOKEN_FIELD];
+            return next;
+          });
+        }} disabled={saving}>
             Reset
           </button>
           <button className={cx("btn btn-primary")} onClick={handleSave} disabled={saving || hasValidationErrors}>

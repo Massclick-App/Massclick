@@ -41,6 +41,12 @@ export const SYSTEM_SETTINGS_DEFAULTS = {
   whatsapp_dev_bypass_lead_guards: false,
   premium_lead_delay_minutes: 30,
   search_nearby_radius_km: 20,
+  recharge_api_enabled: false,
+  recharge_api_provider: "pay2all",
+  recharge_pay2all_base_url: "https://www.pay2all.in/api/v1",
+  recharge_pay2all_webhook_path: "/api/recharge/pay2all/webhook",
+  recharge_pay2all_api_token: "",
+  recharge_pay2all_api_token_updated_at: null,
 };
 
 let cache = null;

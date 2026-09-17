@@ -64,6 +64,14 @@ const systemSettingsSchema = new mongoose.Schema(
     // Search fallback controls
     search_nearby_radius_km: { type: Number, default: 20, min: 1, max: 100 },
 
+    // Recharge API controls
+    recharge_api_enabled: { type: Boolean, default: false },
+    recharge_api_provider: { type: String, enum: ["pay2all"], default: "pay2all" },
+    recharge_pay2all_base_url: { type: String, default: "https://www.pay2all.in/api/v1" },
+    recharge_pay2all_webhook_path: { type: String, default: "/api/recharge/pay2all/webhook" },
+    recharge_pay2all_api_token: { type: String, default: "", select: true },
+    recharge_pay2all_api_token_updated_at: { type: Date, default: null },
+
     // App Version Management
     app_android_latest_version: { type: String, default: "1.0.0" },
     app_android_min_version: { type: String, default: "1.0.0" },

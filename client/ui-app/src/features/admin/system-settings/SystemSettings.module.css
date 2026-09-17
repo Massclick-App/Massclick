@@ -533,6 +533,115 @@
   gap: 8px;
 }
 
+.recharge-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.recharge-status-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-tertiary);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.recharge-status-value {
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-badge.success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.status-badge.warning,
+.inline-note.warning {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.inline-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.connection-result {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+
+.connection-result.success {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.22);
+  color: #065f46;
+}
+
+.connection-result.error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.22);
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.connection-result-title {
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.connection-result-pre {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--text-primary);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.connection-result-time {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 /* ─────────────────────────────────────────────────────────────────────── */
 /* COMPACT CARD */
 /* ─────────────────────────────────────────────────────────────────────── */

@@ -5,8 +5,51 @@ import { WS_EVENTS } from "../../websocket/constants.js";
 import { createLogger } from "../../utils/logger.js";
 import { invalidateMaintenanceCache } from "../../middleware/maintenanceModeMiddleware.js";
 import { invalidateSearchCache } from "../../utils/cacheInvalidation.js";
+import { fetchPay2AllBalance } from "../../helper/recharge/pay2AllHelper.js";
 
 const logger = createLogger("SYSTEM_SETTINGS");
+
+const maskSecret = (value) => {
+  const secret = String(value || "").trim();
+  if (!secret) return "";
+  const visibleTail = secret.slice(-4);
+  return `****${visibleTail}`;
+};
+
+const sanitizeSystemSettings = (settings = {}) => {
+  const data = { ...SYSTEM_SETTINGS_DEFAULTS, ...settings };
+  const pay2AllToken = data.recharge_pay2all_api_token;
+
+  delete data.recharge_pay2all_api_token;
+
+  return {
+    ...data,
+    recharge_pay2all_api_token_configured: Boolean(String(pay2AllToken || "").trim()),
+    recharge_pay2all_api_token_preview: maskSecret(pay2AllToken),
+  };
+};
+
+const assertValidUrl = (value, fieldName) => {
+  try {
+    const url = new URL(String(value || "").trim());
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return `${fieldName} must use http or https`;
+    }
+    if (url.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(url.hostname)) {
+      return `${fieldName} must use https outside local testing`;
+    }
+    return null;
+  } catch {
+    return `${fieldName} must be a valid URL`;
+  }
+};
+
+const assertValidWebhookPath = (value) => {
+  const path = String(value || "").trim();
+  if (!path.startsWith("/")) return "recharge_pay2all_webhook_path must start with /";
+  if (/\s/.test(path)) return "recharge_pay2all_webhook_path cannot contain spaces";
+  return null;
+};
 
 export const getSystemSettingsAction = async (req, res) => {
   try {
@@ -28,6 +71,8 @@ export const getSystemSettingsAction = async (req, res) => {
       logging_enabled: settings.logging_enabled,
       logging_level: settings.logging_level,
       redis_enabled: settings.redis_enabled,
+      recharge_api_enabled: settings.recharge_api_enabled,
+      recharge_pay2all_api_token_configured: Boolean(settings.recharge_pay2all_api_token),
       search_nearby_radius_km: settings.search_nearby_radius_km,
       android_version: settings.app_android_latest_version,
       ios_version: settings.app_ios_latest_version
@@ -38,7 +83,7 @@ export const getSystemSettingsAction = async (req, res) => {
       summary: settingsSummary
     });
 
-    return res.status(200).json({ success: true, data: { ...SYSTEM_SETTINGS_DEFAULTS, ...settings } });
+    return res.status(200).json({ success: true, data: sanitizeSystemSettings(settings) });
   } catch (error) {
     const adminEmail = req.authUser?.email || "anonymous";
     await logger.error("getSystemSettingsAction error", error, { admin: adminEmail });
@@ -82,6 +127,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       "logging_seo_debug",
       "logging_db_queries",
       "redis_enabled",
+      "recharge_api_enabled",
     ];
 
     const stringFields = [
@@ -94,6 +140,9 @@ export const updateSystemSettingsAction = async (req, res) => {
       "app_release_notes",
       "logging_level",
       "whatsapp_customer_business_list_send_mode",
+      "recharge_api_provider",
+      "recharge_pay2all_base_url",
+      "recharge_pay2all_webhook_path",
     ];
 
     const numberFields = [
@@ -160,6 +209,43 @@ export const updateSystemSettingsAction = async (req, res) => {
       });
     }
 
+    const validRechargeProviders = ["pay2all"];
+    if (
+      "recharge_api_provider" in req.body &&
+      !validRechargeProviders.includes(req.body.recharge_api_provider)
+    ) {
+      await logger.warn(`Invalid recharge provider attempted`, {
+        admin: adminEmail,
+        attemptedProvider: req.body.recharge_api_provider
+      });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid recharge provider. Must be one of: ${validRechargeProviders.join(", ")}`
+      });
+    }
+
+    if ("recharge_pay2all_base_url" in req.body) {
+      const urlError = assertValidUrl(req.body.recharge_pay2all_base_url, "recharge_pay2all_base_url");
+      if (urlError) {
+        await logger.warn(`Invalid Pay2All base URL attempted`, {
+          admin: adminEmail,
+          attemptedUrl: req.body.recharge_pay2all_base_url
+        });
+        return res.status(400).json({ success: false, message: urlError });
+      }
+    }
+
+    if ("recharge_pay2all_webhook_path" in req.body) {
+      const webhookPathError = assertValidWebhookPath(req.body.recharge_pay2all_webhook_path);
+      if (webhookPathError) {
+        await logger.warn(`Invalid Pay2All webhook path attempted`, {
+          admin: adminEmail,
+          attemptedPath: req.body.recharge_pay2all_webhook_path
+        });
+        return res.status(400).json({ success: false, message: webhookPathError });
+      }
+    }
+
     const updates = {};
 
     for (const key of booleanFields) {
@@ -168,6 +254,19 @@ export const updateSystemSettingsAction = async (req, res) => {
 
     for (const key of stringFields) {
       if (key in req.body) updates[key] = String(req.body[key]).trim();
+    }
+
+    if ("recharge_pay2all_api_token" in req.body) {
+      const token = String(req.body.recharge_pay2all_api_token || "").trim();
+      if (token.length < 12) {
+        await logger.warn(`Invalid Pay2All token attempted`, { admin: adminEmail });
+        return res.status(400).json({
+          success: false,
+          message: "Pay2All API token looks too short"
+        });
+      }
+      updates.recharge_pay2all_api_token = token;
+      updates.recharge_pay2all_api_token_updated_at = new Date();
     }
 
     const validCustomerListSendModes = ["single", "split"];
@@ -301,7 +400,7 @@ export const updateSystemSettingsAction = async (req, res) => {
       }
     }
 
-    return res.status(200).json({ success: true, data: { ...SYSTEM_SETTINGS_DEFAULTS, ...settings } });
+    return res.status(200).json({ success: true, data: sanitizeSystemSettings(settings) });
   } catch (error) {
     const adminEmail = req.authUser?.email || "admin";
     await logger.error("updateSystemSettingsAction error", error, {
@@ -309,5 +408,43 @@ export const updateSystemSettingsAction = async (req, res) => {
       stack: error.stack
     });
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getPay2AllBalanceAction = async (req, res) => {
+  const adminEmail = req.authUser?.email || "admin";
+
+  try {
+    await logger.info("Checking Pay2All balance", {
+      admin: adminEmail,
+      ip: req.ip,
+    });
+
+    const balance = await fetchPay2AllBalance();
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        balance,
+        checkedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || error.response?.status || 500;
+    const providerMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Pay2All balance check failed";
+
+    await logger.error("getPay2AllBalanceAction error", error, {
+      admin: adminEmail,
+      statusCode,
+    });
+
+    return res.status(statusCode).json({
+      success: false,
+      message: providerMessage,
+    });
   }
 };
