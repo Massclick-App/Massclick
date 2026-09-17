@@ -71,6 +71,12 @@ const systemSettingsSchema = new mongoose.Schema(
     recharge_pay2all_webhook_path: { type: String, default: "/api/recharge/pay2all/webhook" },
     recharge_pay2all_api_token: { type: String, default: "", select: true },
     recharge_pay2all_api_token_updated_at: { type: Date, default: null },
+    // Separate login-access token BBPS routes require; the org API token above isn't accepted there.
+    recharge_pay2all_bbps_token: { type: String, default: "", select: true },
+    recharge_pay2all_bbps_token_updated_at: { type: Date, default: null },
+    // Maps our provider display name (e.g. "TANGEDCO") to Pay2All's BBPS billerId + the
+    // exact consumer-field param key that biller's /bbps/biller/:billerId endpoint returns.
+    recharge_pay2all_bbps_biller_map: { type: Object, default: {} },
 
     // PhonePe payment gateway controls
     phonepe_gateway_enabled: { type: Boolean, default: true },

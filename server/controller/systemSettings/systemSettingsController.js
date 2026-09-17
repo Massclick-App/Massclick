@@ -5,7 +5,12 @@ import { WS_EVENTS } from "../../websocket/constants.js";
 import { createLogger } from "../../utils/logger.js";
 import { invalidateMaintenanceCache } from "../../middleware/maintenanceModeMiddleware.js";
 import { invalidateSearchCache } from "../../utils/cacheInvalidation.js";
-import { fetchPay2AllBalance } from "../../helper/recharge/pay2AllHelper.js";
+import {
+  fetchPay2AllBalance,
+  fetchPay2AllBbpsCategoriesRaw,
+  fetchPay2AllBbpsBillersRaw,
+  fetchPay2AllBbpsBillerFieldsRaw,
+} from "../../helper/recharge/pay2AllHelper.js";
 import { checkPhonePeStandardCheckoutAuth } from "../../helper/PhonePay/phonePayHelper.js";
 
 const logger = createLogger("SYSTEM_SETTINGS");
@@ -20,10 +25,12 @@ const maskSecret = (value) => {
 const sanitizeSystemSettings = (settings = {}) => {
   const data = { ...SYSTEM_SETTINGS_DEFAULTS, ...settings };
   const pay2AllToken = data.recharge_pay2all_api_token;
+  const pay2AllBbpsToken = data.recharge_pay2all_bbps_token;
   const phonePeClientSecret = data.phonepe_client_secret;
   const phonePeLegacySaltKey = data.phonepe_legacy_salt_key;
 
   delete data.recharge_pay2all_api_token;
+  delete data.recharge_pay2all_bbps_token;
   delete data.phonepe_client_secret;
   delete data.phonepe_legacy_salt_key;
 
@@ -31,6 +38,8 @@ const sanitizeSystemSettings = (settings = {}) => {
     ...data,
     recharge_pay2all_api_token_configured: Boolean(String(pay2AllToken || "").trim()),
     recharge_pay2all_api_token_preview: maskSecret(pay2AllToken),
+    recharge_pay2all_bbps_token_configured: Boolean(String(pay2AllBbpsToken || "").trim()),
+    recharge_pay2all_bbps_token_preview: maskSecret(pay2AllBbpsToken),
     phonepe_client_secret_configured: Boolean(String(phonePeClientSecret || "").trim()),
     phonepe_client_secret_preview: maskSecret(phonePeClientSecret),
     phonepe_legacy_salt_key_configured: Boolean(String(phonePeLegacySaltKey || "").trim()),
@@ -353,6 +362,35 @@ export const updateSystemSettingsAction = async (req, res) => {
       updates.recharge_pay2all_api_token_updated_at = new Date();
     }
 
+    if ("recharge_pay2all_bbps_biller_map" in req.body) {
+      const map = req.body.recharge_pay2all_bbps_biller_map;
+      if (!map || typeof map !== "object" || Array.isArray(map)) {
+        return res.status(400).json({ success: false, message: "recharge_pay2all_bbps_biller_map must be an object" });
+      }
+      for (const [provider, entry] of Object.entries(map)) {
+        if (!entry || typeof entry !== "object" || !String(entry.billerId || "").trim() || !String(entry.paramKey || "").trim()) {
+          return res.status(400).json({
+            success: false,
+            message: `recharge_pay2all_bbps_biller_map.${provider} must include billerId and paramKey`,
+          });
+        }
+      }
+      updates.recharge_pay2all_bbps_biller_map = map;
+    }
+
+    if ("recharge_pay2all_bbps_token" in req.body) {
+      const token = String(req.body.recharge_pay2all_bbps_token || "").trim();
+      if (token.length < 12) {
+        await logger.warn(`Invalid Pay2All BBPS token attempted`, { admin: adminEmail });
+        return res.status(400).json({
+          success: false,
+          message: "Pay2All BBPS token looks too short"
+        });
+      }
+      updates.recharge_pay2all_bbps_token = token;
+      updates.recharge_pay2all_bbps_token_updated_at = new Date();
+    }
+
     if ("phonepe_client_secret" in req.body) {
       const secret = String(req.body.phonepe_client_secret || "").trim();
       if (secret.length < 12) {
@@ -556,6 +594,50 @@ export const getPay2AllBalanceAction = async (req, res) => {
       success: false,
       message: providerMessage,
     });
+  }
+};
+
+export const getPay2AllBbpsCategoriesAction = async (req, res) => {
+  const adminEmail = req.authUser?.email || "admin";
+  try {
+    await logger.info("Fetching Pay2All BBPS categories", { admin: adminEmail, ip: req.ip });
+    const data = await fetchPay2AllBbpsCategoriesRaw();
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    const statusCode = error.statusCode || error.response?.status || 500;
+    const providerMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Pay2All BBPS categories check failed";
+    await logger.error("getPay2AllBbpsCategoriesAction error", error, { admin: adminEmail, statusCode });
+    return res.status(statusCode).json({ success: false, message: providerMessage });
+  }
+};
+
+export const getPay2AllBbpsBillersAction = async (req, res) => {
+  const adminEmail = req.authUser?.email || "admin";
+  try {
+    const { slug } = req.params;
+    await logger.info("Fetching Pay2All BBPS billers", { admin: adminEmail, ip: req.ip, slug });
+    const data = await fetchPay2AllBbpsBillersRaw(slug);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    const statusCode = error.statusCode || error.response?.status || 500;
+    const providerMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Pay2All BBPS billers check failed";
+    await logger.error("getPay2AllBbpsBillersAction error", error, { admin: adminEmail, statusCode });
+    return res.status(statusCode).json({ success: false, message: providerMessage });
+  }
+};
+
+export const getPay2AllBbpsBillerFieldsAction = async (req, res) => {
+  const adminEmail = req.authUser?.email || "admin";
+  try {
+    const { billerId } = req.params;
+    await logger.info("Fetching Pay2All BBPS biller fields", { admin: adminEmail, ip: req.ip, billerId });
+    const data = await fetchPay2AllBbpsBillerFieldsRaw(billerId);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    const statusCode = error.statusCode || error.response?.status || 500;
+    const providerMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Pay2All BBPS biller fields check failed";
+    await logger.error("getPay2AllBbpsBillerFieldsAction error", error, { admin: adminEmail, statusCode });
+    return res.status(statusCode).json({ success: false, message: providerMessage });
   }
 };
 

@@ -148,6 +148,7 @@ const FIELD_HELP = {
   recharge_pay2all_base_url: "Pay2All API base URL. Keep the live URL unless Pay2All gives a test URL.",
   recharge_pay2all_webhook_path: "Server callback path Pay2All can call for pending transaction updates.",
   recharge_pay2all_api_token: "Paste the Pay2All token once. It is saved on the server and then shown only as a masked status.",
+  recharge_pay2all_bbps_token: "Pay2All's BBPS bill-fetch/pay routes need a separate login access token from your Pay2All dashboard — the regular API token above is not accepted there. Paste it once; it is saved on the server and then shown only as a masked status.",
   phonepe_gateway_enabled: "Turns PhonePe payment creation on or off for premium membership payments.",
   phonepe_integration_mode: "Use Standard Checkout v2 for Client ID and Client Secret. Legacy v1 keeps the older merchant-id and salt-key flow.",
   phonepe_environment: "Sandbox uses PhonePe test APIs. Production uses live PhonePe APIs.",
@@ -302,6 +303,7 @@ const getFieldValidationError = (key, value) => {
   if (key === 'recharge_api_provider') return validateRechargeProvider(value);
   if (key === 'recharge_pay2all_webhook_path') return validateWebhookPath(value);
   if (key === 'recharge_pay2all_api_token') return validateApiToken(value);
+  if (key === 'recharge_pay2all_bbps_token') return validateApiToken(value);
   if (NUMBER_FIELD_RULES[key]) {
     const number = Number(value);
     const rule = NUMBER_FIELD_RULES[key];
@@ -587,6 +589,7 @@ const SEARCH_FIELDS = [{
   placeholder: "20"
 }];
 const PAY2ALL_TOKEN_FIELD = "recharge_pay2all_api_token";
+const PAY2ALL_BBPS_TOKEN_FIELD = "recharge_pay2all_bbps_token";
 const PHONEPE_CLIENT_SECRET_FIELD = "phonepe_client_secret";
 const PHONEPE_LEGACY_SALT_FIELD = "phonepe_legacy_salt_key";
 const PHONEPE_CONFIG_FIELDS = [{
@@ -674,7 +677,7 @@ const SETTINGS_SECTIONS = [{
   description: "Pay2All token, endpoint, webhook, and connection checks.",
   icon: RechargeIcon,
   color: "#0f766e",
-  fieldKeys: ["recharge_api_enabled", ...RECHARGE_CONFIG_KEYS, PAY2ALL_TOKEN_FIELD]
+  fieldKeys: ["recharge_api_enabled", ...RECHARGE_CONFIG_KEYS, PAY2ALL_TOKEN_FIELD, PAY2ALL_BBPS_TOKEN_FIELD]
 }, {
   key: "leadGuards",
   label: "Lead Guards",
@@ -746,6 +749,16 @@ export default function SystemSettings() {
   const [sitemapRegenerating, setSitemapRegenerating] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [pay2AllTokenDraft, setPay2AllTokenDraft] = useState("");
+  const [pay2AllBbpsTokenDraft, setPay2AllBbpsTokenDraft] = useState("");
+  const [billerMapDraft, setBillerMapDraft] = useState("{}");
+  const [billerMapError, setBillerMapError] = useState("");
+  const [bbpsExplorer, setBbpsExplorer] = useState({
+    categorySlug: "",
+    billerId: "",
+    loading: false,
+    result: null,
+    error: ""
+  });
   const [phonePeClientSecretDraft, setPhonePeClientSecretDraft] = useState("");
   const [phonePeLegacySaltDraft, setPhonePeLegacySaltDraft] = useState("");
   const [pay2AllBalanceCheck, setPay2AllBalanceCheck] = useState({
@@ -772,6 +785,7 @@ export default function SystemSettings() {
     if (settings) setLocal({
       ...settings
     });
+    if (settings) setBillerMapDraft(JSON.stringify(settings.recharge_pay2all_bbps_biller_map || {}, null, 2));
   }, [settings]);
   useEffect(() => {
     dispatch(fetchRedisStatus());
@@ -822,6 +836,8 @@ export default function SystemSettings() {
   const setSecretText = (key, val) => {
     if (key === PAY2ALL_TOKEN_FIELD) {
       setPay2AllTokenDraft(val);
+    } else if (key === PAY2ALL_BBPS_TOKEN_FIELD) {
+      setPay2AllBbpsTokenDraft(val);
     } else if (key === PHONEPE_CLIENT_SECRET_FIELD) {
       setPhonePeClientSecretDraft(val);
     } else if (key === PHONEPE_LEGACY_SALT_FIELD) {
@@ -1026,11 +1042,38 @@ export default function SystemSettings() {
     setKeyMatchMode("contains");
   };
   const hasPay2AllTokenDraft = pay2AllTokenDraft.trim().length > 0;
+  const hasPay2AllBbpsTokenDraft = pay2AllBbpsTokenDraft.trim().length > 0;
+  const hasBillerMapChange = settings ? billerMapDraft !== JSON.stringify(settings.recharge_pay2all_bbps_biller_map || {}, null, 2) : false;
   const hasPhonePeClientSecretDraft = phonePeClientSecretDraft.trim().length > 0;
   const hasPhonePeLegacySaltDraft = phonePeLegacySaltDraft.trim().length > 0;
-  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) || hasPay2AllTokenDraft || hasPhonePeClientSecretDraft || hasPhonePeLegacySaltDraft : false;
+  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) || hasPay2AllTokenDraft || hasPay2AllBbpsTokenDraft || hasPhonePeClientSecretDraft || hasPhonePeLegacySaltDraft || hasBillerMapChange : false;
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const handleSave = async () => {
+    if (hasBillerMapChange) {
+      try {
+        const parsed = JSON.parse(billerMapDraft || "{}");
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("must be an object");
+        for (const [provider, entry] of Object.entries(parsed)) {
+          if (!entry || !entry.billerId || !entry.paramKey) {
+            throw new Error(`"${provider}" needs billerId and paramKey`);
+          }
+        }
+        setBillerMapError("");
+      } catch (err) {
+        setBillerMapError(err.message || "Invalid JSON");
+        setActiveSection("rechargeApi");
+        setSnack({
+          open: true,
+          message: "Fix the BBPS biller map JSON",
+          severity: "error"
+        });
+        setTimeout(() => setSnack(s => ({
+          ...s,
+          open: false
+        })), 3000);
+        return;
+      }
+    }
     if (hasValidationErrors) {
       const firstInvalidField = Object.keys(validationErrors).find(key => validationErrors[key]);
       if (firstInvalidField && FIELD_SECTION_MAP[firstInvalidField]) {
@@ -1054,6 +1097,12 @@ export default function SystemSettings() {
     if (hasPay2AllTokenDraft) {
       updates[PAY2ALL_TOKEN_FIELD] = pay2AllTokenDraft.trim();
     }
+    if (hasPay2AllBbpsTokenDraft) {
+      updates[PAY2ALL_BBPS_TOKEN_FIELD] = pay2AllBbpsTokenDraft.trim();
+    }
+    if (hasBillerMapChange) {
+      updates.recharge_pay2all_bbps_biller_map = JSON.parse(billerMapDraft || "{}");
+    }
     if (hasPhonePeClientSecretDraft) {
       updates[PHONEPE_CLIENT_SECRET_FIELD] = phonePeClientSecretDraft.trim();
     }
@@ -1063,6 +1112,7 @@ export default function SystemSettings() {
     try {
       await dispatch(updateSystemSettings(updates));
       setPay2AllTokenDraft("");
+      setPay2AllBbpsTokenDraft("");
       setPhonePeClientSecretDraft("");
       setPhonePeLegacySaltDraft("");
       setSnack({
@@ -1214,6 +1264,50 @@ export default function SystemSettings() {
         ...s,
         open: false
       })), 3000);
+    }
+  };
+  const runBbpsExplorer = async (path) => {
+    if (hasPay2AllBbpsTokenDraft) {
+      setSnack({
+        open: true,
+        message: "Save the new Pay2All BBPS token before browsing",
+        severity: "error"
+      });
+      return;
+    }
+    if (!settings?.recharge_pay2all_bbps_token_configured) {
+      setSnack({
+        open: true,
+        message: "Add and save the Pay2All BBPS token first",
+        severity: "error"
+      });
+      return;
+    }
+    setBbpsExplorer(prev => ({
+      ...prev,
+      loading: true,
+      result: null,
+      error: ""
+    }));
+    try {
+      const { data } = await axiosInstance.get(`${API_URL}/admin/system-settings/recharge-api/pay2all/bbps/${path}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
+      });
+      setBbpsExplorer(prev => ({
+        ...prev,
+        loading: false,
+        result: data.data,
+        error: ""
+      }));
+    } catch (err) {
+      setBbpsExplorer(prev => ({
+        ...prev,
+        loading: false,
+        result: null,
+        error: err.response?.data?.message || "BBPS lookup failed"
+      }));
     }
   };
   const handleCheckPhonePeAuth = async () => {
@@ -1722,6 +1816,17 @@ export default function SystemSettings() {
                     <input type="password" className={cx(`form-text-input ${validationErrors[PAY2ALL_TOKEN_FIELD] ? 'error' : ''}`)} value={pay2AllTokenDraft} onChange={e => setSecretText(PAY2ALL_TOKEN_FIELD, e.target.value)} placeholder={settings?.recharge_pay2all_api_token_configured ? "Paste new token to replace saved token" : "Paste Pay2All API token"} autoComplete="new-password" />
                     {validationErrors[PAY2ALL_TOKEN_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PAY2ALL_TOKEN_FIELD]}</div>}
                   </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Pay2All BBPS Login Token</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_bbps_token} />
+                    </label>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.recharge_pay2all_bbps_token_configured ? settings.recharge_pay2all_bbps_token_preview || "Configured" : "No token saved"}
+                    </div>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PAY2ALL_BBPS_TOKEN_FIELD] ? 'error' : ''}`)} value={pay2AllBbpsTokenDraft} onChange={e => setSecretText(PAY2ALL_BBPS_TOKEN_FIELD, e.target.value)} placeholder={settings?.recharge_pay2all_bbps_token_configured ? "Paste new token to replace saved token" : "Paste Pay2All BBPS login token"} autoComplete="new-password" />
+                    {validationErrors[PAY2ALL_BBPS_TOKEN_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PAY2ALL_BBPS_TOKEN_FIELD]}</div>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1751,6 +1856,69 @@ export default function SystemSettings() {
                     <pre className={cx("connection-result-pre")}>{JSON.stringify(pay2AllBalanceCheck.data.balance, null, 2)}</pre>
                     <div className={cx("connection-result-time")}>Checked at {new Date(pay2AllBalanceCheck.data.checkedAt).toLocaleString()}</div>
                   </div>}
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0f766e'
+              }}>
+                  <RechargeIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>BBPS Explorer</div>
+                  <div className={cx("compact-subtitle")}>Browse Pay2All&apos;s live BBPS catalog to find billerId and field names for the map below. Requires the BBPS login token saved above.</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("form-input-label")}><span>Category slug</span></label>
+                    <input type="text" className={cx("form-text-input")} value={bbpsExplorer.categorySlug} onChange={e => setBbpsExplorer(prev => ({ ...prev, categorySlug: e.target.value }))} placeholder="e.g. electricity" />
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("form-input-label")}><span>Biller ID</span></label>
+                    <input type="text" className={cx("form-text-input")} value={bbpsExplorer.billerId} onChange={e => setBbpsExplorer(prev => ({ ...prev, billerId: e.target.value }))} placeholder="e.g. MSEB00000MUM01" />
+                  </div>
+                </div>
+                <div className={cx("button-group")}>
+                  <button className={cx("btn btn-secondary btn-sm")} onClick={() => runBbpsExplorer("categories")} disabled={bbpsExplorer.loading}>List categories</button>
+                  <button className={cx("btn btn-secondary btn-sm")} onClick={() => runBbpsExplorer(`category/${encodeURIComponent(bbpsExplorer.categorySlug)}`)} disabled={bbpsExplorer.loading || !bbpsExplorer.categorySlug.trim()}>List billers</button>
+                  <button className={cx("btn btn-secondary btn-sm")} onClick={() => runBbpsExplorer(`biller/${encodeURIComponent(bbpsExplorer.billerId)}`)} disabled={bbpsExplorer.loading || !bbpsExplorer.billerId.trim()}>Biller fields</button>
+                </div>
+                {bbpsExplorer.error && <div className={cx("connection-result error")}>{bbpsExplorer.error}</div>}
+                {bbpsExplorer.result && <div className={cx("connection-result success")}>
+                    <pre className={cx("connection-result-pre")}>{JSON.stringify(bbpsExplorer.result, null, 2)}</pre>
+                  </div>}
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0f766e'
+              }}>
+                  <RechargeIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>BBPS Biller Map</div>
+                  <div className={cx("compact-subtitle")}>Maps a provider name shown on the Bills &amp; Recharge page (e.g. &quot;TANGEDCO&quot;) to its Pay2All billerId and the exact consumer-field key that biller expects. Only providers listed here support live bill fetch.</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <textarea
+                  className={cx(`form-text-input ${billerMapError ? 'error' : ''}`)}
+                  style={{ minHeight: 220, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'pre' }}
+                  value={billerMapDraft}
+                  onChange={e => {
+                    setBillerMapDraft(e.target.value);
+                    setBillerMapError("");
+                  }}
+                  placeholder={'{\n  "TANGEDCO": { "billerId": "TNEB0000XXX01", "paramKey": "Consumer Number" }\n}'}
+                  spellCheck={false}
+                />
+                {billerMapError && <div className={cx("form-error-text")}>{billerMapError}</div>}
               </div>
             </div>
           </div>;
@@ -2279,11 +2447,15 @@ export default function SystemSettings() {
             ...settings
           });
           setPay2AllTokenDraft("");
+          setPay2AllBbpsTokenDraft("");
+          setBillerMapDraft(JSON.stringify(settings.recharge_pay2all_bbps_biller_map || {}, null, 2));
+          setBillerMapError("");
           setValidationErrors(prev => {
             const next = {
               ...prev
             };
             delete next[PAY2ALL_TOKEN_FIELD];
+            delete next[PAY2ALL_BBPS_TOKEN_FIELD];
             return next;
           });
         }} disabled={saving}>
