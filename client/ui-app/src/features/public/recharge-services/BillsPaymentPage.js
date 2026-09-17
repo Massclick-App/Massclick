@@ -5,7 +5,7 @@ import { ArrowLeft, Check, CheckCircle2, ChevronRight, CreditCard, Headphones, L
 import massClickLogo from "assets/mclogo.webp";
 import campaignHero from "assets/recharge-campaign-hero.png";
 import { createScopedClassNames } from "shared/utils/createScopedClassNames.js";
-import { BILL_SERVICES, FIELD_CONFIG, getBillService } from "features/public/recharge-services/billPaymentConfig.js";
+import { BILL_SERVICES, FIELD_CONFIG, getBillService, getQuickRechargeAmounts } from "features/public/recharge-services/billPaymentConfig.js";
 import styles from "features/public/recharge-services/BillsPaymentPage.module.css";
 
 const cx = createScopedClassNames(styles);
@@ -25,12 +25,16 @@ export default function BillsPaymentPage() {
   }, [serviceSlug]);
 
   if (!service) return <Navigate to="/" replace />;
+  const isMobilePrepaid = service.slug === "mobile-prepaid";
+  const quickAmounts = isMobilePrepaid ? getQuickRechargeAmounts(values.operator) : [];
 
   const updateField = (key, value) => setValues((current) => ({
     ...current,
     [key]: value,
+    ...(key === "operator" ? { amount: "" } : {}),
     ...(key === "state" ? { provider: "" } : {}),
   }));
+  const selectQuickAmount = (amount) => updateField("amount", String(amount));
   const submitDetails = (event) => {
     event.preventDefault();
     setStep("review");
@@ -112,6 +116,28 @@ export default function BillsPaymentPage() {
                   );
                 })}
               </div>
+
+              {isMobilePrepaid && (
+                <div className={cx("plan-picker")}>
+                  <div className={cx("plan-picker-head")}>
+                    <span>Quick amounts</span>
+                    <small>{values.operator ? values.operator : "Select operator"}</small>
+                  </div>
+                  <div className={cx("plan-grid")}>
+                    {quickAmounts.map((amount) => (
+                      <button
+                        className={cx(Number(values.amount) === amount && "selected")}
+                        type="button"
+                        key={amount}
+                        onClick={() => selectQuickAmount(amount)}
+                      >
+                        <strong>₹{amount}</strong>
+                        <small>Recharge amount</small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <label className={cx("save-bill")}><input type="checkbox" checked={saveBill} onChange={(event) => setSaveBill(event.target.checked)} /><span><Check /></span> Save details and remind me before the next due date</label>
               <button className={cx("primary")} type="submit"><span>Review bill details</span><ChevronRight /></button>

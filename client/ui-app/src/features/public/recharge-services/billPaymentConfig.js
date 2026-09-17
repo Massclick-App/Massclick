@@ -1,5 +1,49 @@
+export const MOBILE_RECHARGE_OPERATORS = [
+  { name: "Airtel", code: "AIRTEL" },
+  { name: "BSNL", code: "BSNL" },
+  { name: "Jio", code: "JIO", providerId: 6 },
+  { name: "Vi", code: "VI" },
+];
+
+export const MOBILE_CIRCLES = [
+  "Tamil Nadu",
+  "Andhra Pradesh",
+  "Karnataka",
+  "Kerala",
+  "Maharashtra",
+  "Delhi",
+  "Assam",
+  "Bihar Jharkhand",
+  "Chennai",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jammu Kashmir",
+  "Kolkata",
+  "Madhya Pradesh Chhattisgarh",
+  "Mumbai",
+  "North East",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Uttar Pradesh East",
+  "Uttar Pradesh West",
+  "West Bengal",
+  "Other",
+];
+
+export const QUICK_RECHARGE_AMOUNTS = {
+  Jio: [199, 239, 299, 349, 399, 479, 666, 749],
+  Airtel: [199, 239, 299, 349, 409, 579, 649, 799],
+  Vi: [199, 239, 299, 349, 449, 649, 719, 799],
+  BSNL: [107, 147, 199, 239, 397, 485, 666, 997],
+  default: [199, 239, 299, 349, 399, 499],
+};
+
+export const getQuickRechargeAmounts = (operator) => QUICK_RECHARGE_AMOUNTS[operator] || QUICK_RECHARGE_AMOUNTS.default;
+
 export const BILL_SERVICES = [
-  { slug: "mobile-prepaid", name: "Prepaid", group: "Mobile", title: "Mobile Prepaid Recharge", fields: ["mobile", "operator", "circle", "amount"], options: { operator: ["Airtel", "BSNL", "Jio", "Vi"] } },
+  { slug: "mobile-prepaid", name: "Prepaid", group: "Mobile", title: "Mobile Prepaid Recharge", fields: ["mobile", "operator", "circle", "amount"], options: { operator: MOBILE_RECHARGE_OPERATORS.map((operator) => operator.name) } },
   { slug: "mobile-postpaid", name: "Postpaid", group: "Mobile", title: "Pay Mobile Postpaid Bill", fields: ["mobile", "operator", "circle", "amount"], options: { operator: ["Airtel Postpaid", "BSNL Postpaid", "Jio Postpaid", "Vi Postpaid"] } },
   { slug: "electricity", name: "Electricity", title: "Pay Electricity Bill", fields: ["state", "provider", "consumer", "amount"], optionsByState: { "Tamil Nadu": ["TANGEDCO"], "Andhra Pradesh": ["APEPDCL", "APSPDCL"], Karnataka: ["BESCOM", "CESCOM", "HESCOM"], Kerala: ["KSEB"], Maharashtra: ["Adani Electricity Mumbai", "MSEDCL", "Tata Power Mumbai"], Delhi: ["BSES Rajdhani", "BSES Yamuna", "Tata Power Delhi"], Other: ["Other electricity board"] } },
   { slug: "dth", name: "DTH", title: "Recharge Your DTH Connection", fields: ["operator", "subscriber", "amount"], options: { operator: ["Airtel Digital TV", "Dish TV", "d2h", "Sun Direct", "Tata Play"] } },
@@ -24,7 +68,7 @@ export const FIELD_CONFIG = {
   landline: { label: "Landline number with STD code", type: "tel", inputMode: "numeric", placeholder: "Enter landline number" },
   amount: { label: "Bill amount", type: "number", inputMode: "decimal", placeholder: "Enter amount", min: "1", prefix: "₹" },
   operator: { label: "Operator", type: "select", placeholder: "Select operator", options: [] },
-  circle: { label: "Circle", type: "select", placeholder: "Select circle", options: ["Tamil Nadu", "Andhra Pradesh", "Karnataka", "Kerala", "Maharashtra", "Delhi", "Other"] },
+  circle: { label: "Circle", type: "select", placeholder: "Select circle", options: MOBILE_CIRCLES },
   state: { label: "State", type: "select", placeholder: "Select state", options: ["Tamil Nadu", "Andhra Pradesh", "Karnataka", "Kerala", "Maharashtra", "Delhi", "Other"] },
   provider: { label: "Service provider / biller", type: "select", placeholder: "Select service provider", options: [] },
   consumer: { label: "Consumer number", type: "text", placeholder: "Enter consumer number" },
