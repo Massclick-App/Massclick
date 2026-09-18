@@ -38,6 +38,7 @@ import { createPhonePePayment } from "state/actions/phonePayAction.js";
 import { updateGmapsLeadStatus, clearGmapsLeadImport, setGmapsLeadToImport } from "state/actions/gmapsLeadsAction.js";
 import CustomizedTable from "shared/components/table/CustomizedTable.js";
 import Tooltip from "@mui/material/Tooltip";
+import PendingSuggestionsBanner from "features/admin/business-suggestions/PendingSuggestionsBanner.js";
 import styles from "features/admin/business/business.module.css";
 import { buildBusinessPath, createDistrictSlug } from "shared/utils/searchResultNavigation.js";
 import AdminViewTabs from "shared/components/AdminViewTabs.js";
@@ -586,15 +587,17 @@ const BusinessList = React.memo(() => {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("all"); // "all", "paid", "pending"
   const [liveStatus, setLiveStatus] = useState(""); // "", "live", "pending"
+  const [contactStatus, setContactStatus] = useState(""); // "", "missing"
   const [activeFilters, setActiveFilters] = useState([]);
   const [appliedFilters, setAppliedFilters] = useState({
     searchTerm: "",
     category: "",
     location: "",
     paymentStatus: "all",
-    liveStatus: ""
+    liveStatus: "",
+    contactStatus: ""
   });
-  const appliedFiltersRef = useRef({ searchTerm: "", category: "", location: "", paymentStatus: "all", liveStatus: "" });
+  const appliedFiltersRef = useRef({ searchTerm: "", category: "", location: "", paymentStatus: "all", liveStatus: "", contactStatus: "" });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
 
   // ===== GMaps Picker State =====
@@ -1784,6 +1787,7 @@ const BusinessList = React.memo(() => {
     location: overrides.location ?? selectedLocation,
     paymentStatus: overrides.paymentStatus ?? paymentStatus,
     liveStatus: overrides.liveStatus ?? liveStatus,
+    contactStatus: overrides.contactStatus ?? contactStatus,
   });
 
   const updateActiveFilters = (f) => {
@@ -1793,6 +1797,7 @@ const BusinessList = React.memo(() => {
     if (f.location) chips.push({ type: "location", label: `Location: ${f.location}` });
     if (f.paymentStatus !== "all") chips.push({ type: "payment", label: `Payment: ${f.paymentStatus === "paid" ? "Paid" : "Pending"}` });
     if (f.liveStatus) chips.push({ type: "live", label: `Status: ${f.liveStatus === "live" ? "Live" : "Pending Approval"}` });
+    if (f.contactStatus) chips.push({ type: "contact", label: "No phone number" });
     setActiveFilters(chips);
   };
 
@@ -1805,6 +1810,7 @@ const BusinessList = React.memo(() => {
       location: f.location || "",
       paymentStatus: f.paymentStatus !== "all" ? f.paymentStatus : "",
       liveStatus: f.liveStatus || "",
+      contactStatus: f.contactStatus || "",
       sortBy,
       sortOrder,
     }));
@@ -1820,12 +1826,13 @@ const BusinessList = React.memo(() => {
   };
 
   const handleClearFilters = () => {
-    const empty = { searchTerm: "", category: "", location: "", paymentStatus: "all", liveStatus: "" };
+    const empty = { searchTerm: "", category: "", location: "", paymentStatus: "all", liveStatus: "", contactStatus: "" };
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedLocation("");
     setPaymentStatus("all");
     setLiveStatus("");
+    setContactStatus("");
     setAppliedFilters(empty);
     appliedFiltersRef.current = empty;
     setActiveFilters([]);
@@ -1834,13 +1841,14 @@ const BusinessList = React.memo(() => {
   };
 
   const handleRemoveFilter = (filterType) => {
-    const patch = { search: { searchTerm: "" }, category: { category: "" }, location: { location: "" }, payment: { paymentStatus: "all" }, live: { liveStatus: "" } };
+    const patch = { search: { searchTerm: "" }, category: { category: "" }, location: { location: "" }, payment: { paymentStatus: "all" }, live: { liveStatus: "" }, contact: { contactStatus: "" } };
     const next = { ...appliedFilters, ...(patch[filterType] || {}) };
     if (filterType === "search") setSearchTerm("");
     if (filterType === "category") setSelectedCategory("");
     if (filterType === "location") setSelectedLocation("");
     if (filterType === "payment") setPaymentStatus("all");
     if (filterType === "live") setLiveStatus("");
+    if (filterType === "contact") setContactStatus("");
     setAppliedFilters(next);
     appliedFiltersRef.current = next;
     updateActiveFilters(next);
@@ -3537,6 +3545,7 @@ const BusinessList = React.memo(() => {
         location: f.location,
         paymentStatus: f.paymentStatus !== "all" ? f.paymentStatus : "",
         liveStatus: f.liveStatus || "",
+        contactStatus: f.contactStatus || "",
         sortBy: "createdAt",
         sortOrder: "desc",
       }));
@@ -3923,6 +3932,14 @@ const BusinessList = React.memo(() => {
           <option value="">All Status</option>
           <option value="live">Live</option>
           <option value="pending">Pending Approval</option>
+        </select>
+        <select
+          className={cx("filter-select", "filter-select-sm")}
+          value={contactStatus}
+          onChange={(e) => { setContactStatus(e.target.value); syncFilters({ contactStatus: e.target.value }); }}
+        >
+          <option value="">Any Phone</option>
+          <option value="missing">No Phone</option>
         </select>
         <button
           type="button"
@@ -4460,6 +4477,7 @@ const BusinessList = React.memo(() => {
             </div>
           )}
         </div>
+        {editMode && editId && <PendingSuggestionsBanner businessId={editId} onApplied={updates => setFormData(prev => ({ ...prev, ...updates }))} />}
         {renderPaidAssistant()}
         {!editMode && (
           <div className={cx("draft-meta-row")} style={{ marginBottom: 0 }}>

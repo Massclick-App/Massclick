@@ -11,6 +11,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSnackbar } from "notistack";
 import { getBusinessDetailsById, getBusinessDetailsBySlug, editBusinessSection, sendEnquiryLead, sendBusinessInfo, fetchNearbyBusinesses } from "state/actions/businessListAction.js";
 import { createUserFeedback } from "state/actions/userFeedbackAction.js";
+import { submitBusinessSuggestion } from "state/actions/businessSuggestionAction.js";
 import styles from "features/public/cards/cardDetails.module.css";
 import UserRatingWidget from "features/public/rating/rating.js";
 import StickySearchBar from 'features/public/sticky-search-bar/StickySearchBar.js';
@@ -61,6 +62,15 @@ const cx = createScopedClassNames(styles);
 const OTPLoginModal = lazy(() => import(/* webpackChunkName: "otp-modal" */ "features/public/auth/AddBusinessModal.js"));
 const BusinessShareSheet = lazy(() => import(/* webpackChunkName: "business-share-sheet" */ "features/public/cards/share/BusinessShareSheet.js"));
 const LOGIN_PROMPT_SHOWN_KEY = "businessDetailLoginPromptShown";
+// Mirrors SUGGESTION_FIELDS in server/schema/businessSuggestion/businessSuggestionSchema.js.
+const SUGGESTION_FIELD_OPTIONS = [
+  { value: "phone", label: "Phone number", inputLabel: "Correct phone number", inputMode: "numeric", type: "tel", placeholder: "10-digit mobile number" },
+  { value: "whatsapp", label: "WhatsApp number", inputLabel: "Correct WhatsApp number", inputMode: "numeric", type: "tel", placeholder: "10-digit WhatsApp number" },
+  { value: "address", label: "Address", inputLabel: "Correct address", multiline: true, placeholder: "Door number, street, area and pincode" },
+  { value: "email", label: "Email", inputLabel: "Correct email", type: "email", placeholder: "name@example.com" },
+  { value: "website", label: "Website", inputLabel: "Correct website", placeholder: "www.example.com" },
+  { value: "other", label: "Something else", inputLabel: "What should be corrected?", multiline: true, placeholder: "Describe the incorrect information and the correct value." }
+];
 const toSlug = (text = "") => String(text).toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 const SimpleModal = ({
   children,
@@ -182,6 +192,7 @@ const BusinessDetail = React.memo(() => {
     email: authUser?.email || authUser?.emailId || ""
   });
   const [requestNote, setRequestNote] = useState("");
+  const [suggestForm, setSuggestForm] = useState({ field: "phone", value: "", note: "" });
   const [showCertificate, setShowCertificate] = useState(false);
   const [activeCertificate, setActiveCertificate] = useState("verified");
   const [activeTab, setActiveTab] = useState("Overview");
@@ -407,6 +418,8 @@ const BusinessDetail = React.memo(() => {
   const keywordCategory = business.category || business.slug || "";
   const keywordCategorySlug = toSlug(keywordCategory);
   const whatsappNumber = business.whatsappNumber || business.contactList || business.contact;
+  // No verified number: phone buttons turn into "suggest the number" instead.
+  const hasPhone = Boolean(String(business.contact || "").trim());
   const locationSlug = location || toSlug(business.location || "business");
   // Canonical stays consistent regardless of how the user arrived. Prefer
   // the server-resolved collision-resolved publicLocationSlug (from the
@@ -647,7 +660,7 @@ const BusinessDetail = React.memo(() => {
   const handleEditListing = () => {
     const user = getAuthUser();
     if (!user?._id) {
-      setPendingSidebarAction("edit");
+      setPendingSidebarAction("suggest");
       setShowLoginModal(true);
       enqueueSnackbar("Please log in to edit this listing.", { variant: "info" });
       return;
@@ -656,7 +669,36 @@ const BusinessDetail = React.memo(() => {
       navigate("/user_edit-profile");
       return;
     }
-    setSidebarModal("edit");
+    setSidebarModal("suggest");
+  };
+  // Opens the correction form with a field preselected (e.g. "phone" from the
+  // "Suggest number" buttons shown when a listing has no phone).
+  const openSuggestion = field => {
+    setSuggestForm(current => ({ ...current, field, value: current.field === field ? current.value : "" }));
+    openSidebarAction("suggest");
+  };
+  const handleSuggestionSubmit = async e => {
+    e.preventDefault();
+    if (!suggestForm.value.trim()) {
+      enqueueSnackbar("Please enter the correct information.", { variant: "warning" });
+      return;
+    }
+    setSidebarSubmitting(true);
+    try {
+      const result = await submitBusinessSuggestion(business._id, {
+        field: suggestForm.field,
+        value: suggestForm.value.trim(),
+        note: suggestForm.note.trim(),
+        source: "business_detail_suggest_edit"
+      });
+      enqueueSnackbar(result?.duplicate ? "You have already suggested this. Our team will verify it soon." : "Thank you. Our team will verify your suggestion before updating the listing.", { variant: "success" });
+      setSidebarModal(null);
+      setSuggestForm({ field: "phone", value: "", note: "" });
+    } catch (error) {
+      enqueueSnackbar(error?.response?.data?.message || "Unable to submit your suggestion.", { variant: "error" });
+    } finally {
+      setSidebarSubmitting(false);
+    }
   };
   const handleTimingSuggestionSubmit = async e => {
     e.preventDefault();
@@ -670,15 +712,12 @@ const BusinessDetail = React.memo(() => {
     }
     setSidebarSubmitting(true);
     try {
-      await dispatch(createUserFeedback({
-        rating: 5,
-        type: "Business timing correction",
-        area: business.businessName,
-        journey: `Business ID: ${business._id}`,
-        message: `${timingSuggestion.days}: ${timingSuggestion.openingTime} - ${timingSuggestion.closingTime}${timingSuggestion.note ? `. Note: ${timingSuggestion.note}` : ""}`,
-        source: "business_detail_timing_suggestion",
-        allowContact: true
-      }));
+      await submitBusinessSuggestion(business._id, {
+        field: "timings",
+        value: `${timingSuggestion.days}: ${timingSuggestion.openingTime} - ${timingSuggestion.closingTime}`,
+        note: timingSuggestion.note || "",
+        source: "business_detail_timing_suggestion"
+      });
       enqueueSnackbar("Thank you. Your timing suggestion was submitted for review.", { variant: "success" });
       setSidebarModal(null);
       setTimingSuggestion({ days: "", openingTime: "", closingTime: "", note: "" });
@@ -1015,11 +1054,11 @@ const BusinessDetail = React.memo(() => {
 
               <div className={cx("business-CardDetails-actionBar")}>
                 <div className={cx("business-CardDetails-actionLeft")}>
-                  <button onClick={handleShowNumberClick} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>
+                  <button onClick={hasPhone ? handleShowNumberClick : () => openSuggestion("phone")} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>
                     <PhoneIcon style={{
                       fontSize: 20
                     }} />
-                    Show Number
+                    {hasPhone ? "Show Number" : "Suggest Number"}
                   </button>
 
                   {whatsappNumber && <a className={cx("business-CardDetails-btn business-CardDetails-btn--whatsapp")} href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" onClick={() => trackBusinessClick(business?._id, business?.businessName, "whatsapp", "detail")}>
@@ -1266,8 +1305,8 @@ const BusinessDetail = React.memo(() => {
               </h3>
               <div className={cx("business-CardDetails-contactRow")}>
                 <PhoneIcon className={cx("business-CardDetails-sidebarIcon")} />
-                <button onClick={handleShowNumberClick} className={cx("business-CardDetails-contactLink")}>
-                  Show Number
+                <button onClick={hasPhone ? handleShowNumberClick : () => openSuggestion("phone")} className={cx("business-CardDetails-contactLink")}>
+                  {hasPhone ? "Show Number" : "Number not available - suggest it"}
                 </button>
               </div>
 
@@ -1362,7 +1401,7 @@ const BusinessDetail = React.memo(() => {
               <h3>Business Information</h3>
               <dl>
                 <div><LocationOnIcon /><dt>Address</dt><dd>{fullAddress}</dd></div>
-                <div><PhoneIcon /><dt>Phone</dt><dd><button type="button" onClick={handleShowNumberClick}>{business.contact || "Show Number"}</button></dd></div>
+                <div><PhoneIcon /><dt>Phone</dt><dd>{hasPhone ? <button type="button" onClick={handleShowNumberClick}>{business.contact}</button> : <button type="button" onClick={() => openSuggestion("phone")}>Not available - suggest number</button>}</dd></div>
                 <div><EmailIcon /><dt>Email</dt><dd>{business.email || "Not provided"}</dd></div>
                 <div><LanguageIcon /><dt>Website</dt><dd>{website ? <a href={formattedWebsite} target="_blank" rel="noopener noreferrer">{website}</a> : "Not provided"}</dd></div>
                 <div><AccessTimeIcon /><dt>Established</dt><dd>{business.establishedYear || (business.createdAt ? new Date(business.createdAt).getFullYear() : "Not provided")}</dd></div>
@@ -1462,7 +1501,7 @@ const BusinessDetail = React.memo(() => {
             <div className={cx("business-CardDetails-v2SectionHead")}><h2>Frequently Asked Questions</h2></div>
             {[`What are the opening and closing times?`, `How can I contact ${business.businessName}?`, `Where is ${business.businessName} located?`, `Can I send an enquiry online?`].map((question, index) => <details key={question}>
                 <summary>{question}</summary>
-                <p>{index === 0 ? getTodayHours() : index === 1 ? `Use Call Now or WhatsApp to contact the business directly.` : index === 2 ? fullAddress : `Yes. Use the Send Enquiry button and the business will receive your request.`}</p>
+                <p>{index === 0 ? getTodayHours() : index === 1 ? hasPhone ? `Use Call Now or WhatsApp to contact the business directly.` : `A verified phone number is not listed yet. Use the Send Enquiry button, or suggest the number if you know it.` : index === 2 ? fullAddress : `Yes. Use the Send Enquiry button and the business will receive your request.`}</p>
               </details>)}
           </div>
 
@@ -1494,9 +1533,9 @@ const BusinessDetail = React.memo(() => {
       </div>
 
       <nav className={cx("business-CardDetails-bottomActionRail")} aria-label="Business actions">
-        <button type="button" onClick={handleShowNumberClick}>
+        <button type="button" onClick={hasPhone ? handleShowNumberClick : () => openSuggestion("phone")}>
           <PhoneIcon />
-          <span>Call Now</span>
+          <span>{hasPhone ? "Call Now" : "Suggest No."}</span>
         </button>
         {whatsappNumber && <a href={`https://wa.me/${whatsappNumber}?text=${currentTitle}%20${currentUrl}`} target="_blank" rel="noopener noreferrer" onClick={() => trackBusinessClick(business?._id, business?.businessName, "whatsapp", "detail")}>
             <WhatsAppIcon />
@@ -1612,13 +1651,34 @@ const BusinessDetail = React.memo(() => {
         />
       </Suspense>}
 
-      {(sidebarModal === "edit" || sidebarModal === "claim") && <SimpleModal title={sidebarModal === "claim" ? "Claim this business" : "Suggest a listing correction"} onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
-          <form className={cx("business-CardDetails-actionForm")} onSubmit={handleListingRequestSubmit(sidebarModal)}>
-            <p className={cx("business-CardDetails-formIntro")}>{sidebarModal === "claim" ? "Tell us your role and how we can verify your connection to this business. Our team will review the claim before granting edit access." : "Only the verified owner can directly edit this listing. Tell our review team what should be corrected."}</p>
-            <label>{sidebarModal === "claim" ? "Ownership details" : "Correction details"}
-              <textarea value={requestNote} onChange={e => setRequestNote(e.target.value)} maxLength={800} rows={5} placeholder={sidebarModal === "claim" ? "Example: I am the proprietor. Please verify me using the registered business mobile." : "Describe the incorrect information and the correct value."} required />
+      {sidebarModal === "suggest" && <SimpleModal title="Suggest an edit" onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
+          <form className={cx("business-CardDetails-actionForm")} onSubmit={handleSuggestionSubmit}>
+            <p className={cx("business-CardDetails-formIntro")}>Help us keep {business.businessName}&apos;s details accurate. Our team verifies every suggestion before the listing is updated.</p>
+            <label>What needs correcting?
+              <select value={suggestForm.field} onChange={e => setSuggestForm({ ...suggestForm, field: e.target.value, value: "" })}>
+                {SUGGESTION_FIELD_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
             </label>
-            <button type="submit" disabled={sidebarSubmitting} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>{sidebarSubmitting ? "Submitting..." : sidebarModal === "claim" ? "Submit Claim" : "Submit Correction"}</button>
+            {(() => {
+              const option = SUGGESTION_FIELD_OPTIONS.find(item => item.value === suggestForm.field) || SUGGESTION_FIELD_OPTIONS[0];
+              return <label>{option.inputLabel}
+                  {option.multiline ? <textarea value={suggestForm.value} onChange={e => setSuggestForm({ ...suggestForm, value: e.target.value })} maxLength={800} rows={4} placeholder={option.placeholder} required /> : <input type={option.type || "text"} inputMode={option.inputMode} value={suggestForm.value} onChange={e => setSuggestForm({ ...suggestForm, value: option.inputMode === "numeric" ? e.target.value.replace(/\D/g, "").slice(0, 10) : e.target.value })} maxLength={option.inputMode === "numeric" ? 10 : 300} placeholder={option.placeholder} required />}
+                </label>;
+            })()}
+            <label>Note for our team (optional)
+              <textarea value={suggestForm.note} onChange={e => setSuggestForm({ ...suggestForm, note: e.target.value })} maxLength={300} rows={2} placeholder="How do you know this? e.g. I called them today." />
+            </label>
+            <button type="submit" disabled={sidebarSubmitting} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>{sidebarSubmitting ? "Submitting..." : "Submit for verification"}</button>
+          </form>
+        </SimpleModal>}
+
+      {sidebarModal === "claim" && <SimpleModal title="Claim this business" onClose={() => !sidebarSubmitting && setSidebarModal(null)}>
+          <form className={cx("business-CardDetails-actionForm")} onSubmit={handleListingRequestSubmit("claim")}>
+            <p className={cx("business-CardDetails-formIntro")}>Tell us your role and how we can verify your connection to this business. Our team will review the claim before granting edit access.</p>
+            <label>Ownership details
+              <textarea value={requestNote} onChange={e => setRequestNote(e.target.value)} maxLength={800} rows={5} placeholder="Example: I am the proprietor. Please verify me using the registered business mobile." required />
+            </label>
+            <button type="submit" disabled={sidebarSubmitting} className={cx("business-CardDetails-btn business-CardDetails-btn--primary")}>{sidebarSubmitting ? "Submitting..." : "Submit Claim"}</button>
           </form>
         </SimpleModal>}
 

@@ -906,6 +906,7 @@ export const viewAllBusinessList = async ({
   search,
   status,
   liveStatus,
+  contactStatus,
   category,
   location,
   paymentStatus,
@@ -941,6 +942,15 @@ export const viewAllBusinessList = async ({
   if (status === "inactive") query.activeBusinesses = false;
   if (liveStatus === "live") query.businessesLive = true;
   if (liveStatus === "pending") query.businessesLive = false;
+  // Listings with no phone at all — the queue staff work through to fill numbers.
+  if (contactStatus === "missing") {
+    query.$and = [
+      ...(query.$and || []),
+      { contact: { $in: ["", null] } },
+      { contactList: { $in: ["", null] } },
+      { whatsappNumber: { $in: ["", null] } },
+    ];
+  }
 
   if (category)
     query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };

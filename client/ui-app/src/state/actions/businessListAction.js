@@ -74,6 +74,7 @@ export const exportBusinessList = ({
   paymentStatus = "all",
   status = "all",
   liveStatus = "",
+  contactStatus = "",
   createdFrom = "",
   createdTo = "",
   sortBy = "createdAt",
@@ -91,6 +92,7 @@ export const exportBusinessList = ({
     if (paymentStatus && paymentStatus !== "all") params.append("paymentStatus", paymentStatus);
     if (status && status !== "all") params.append("status", status);
     if (liveStatus) params.append("liveStatus", liveStatus);
+    if (contactStatus) params.append("contactStatus", contactStatus);
     if (createdFrom) params.append("createdFrom", createdFrom);
     if (createdTo) params.append("createdTo", createdTo);
     if (sortBy) params.append("sortBy", sortBy);
@@ -191,6 +193,7 @@ export const getAllBusinessList = ({
   search = "",
   status = "all",
   liveStatus = "",
+  contactStatus = "",
   category = "",
   location = "",
   paymentStatus = "",
@@ -211,6 +214,7 @@ export const getAllBusinessList = ({
     if (search) params.append("search", search);
     if (status && status !== "all") params.append("status", status);
     if (liveStatus) params.append("liveStatus", liveStatus);
+    if (contactStatus) params.append("contactStatus", contactStatus);
     if (category) params.append("category", category);
     if (location) params.append("location", location);
     if (paymentStatus) params.append("paymentStatus", paymentStatus);

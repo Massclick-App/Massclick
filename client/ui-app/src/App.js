@@ -66,6 +66,7 @@ const {
   MainGrid,
   EnquiryPage,
   SearchRequestsAdmin,
+  BusinessSuggestionsAdmin,
   RewardAdmin,
   RewardsConceptPage,
   RewardClaimsAdmin,
@@ -369,6 +370,7 @@ function AppRoutes({
                 <Route path="business-person-report" element={<BusinessPersonReport />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="search-requests" element={<SearchRequestsAdmin />} />
+                <Route path="business-suggestions" element={<BusinessSuggestionsAdmin />} />
                 <Route path="rewards" element={<RewardAdmin />} />
                 <Route path="reward-claims" element={<RewardClaimsAdmin />} />
                 <Route path="rewards-concept" element={<RewardsConceptPage />} />

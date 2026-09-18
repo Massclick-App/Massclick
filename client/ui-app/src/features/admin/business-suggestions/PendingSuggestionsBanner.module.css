@@ -1,0 +1,7 @@
+.banner { margin: 0 0 16px; padding: 14px 16px; border: 1px solid #f5c98f; border-radius: 12px; background: #fff8ef; color: #5c3b0a; }
+.banner-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.banner-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.banner-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.banner-field { padding: 2px 8px; border-radius: 999px; background: #ffe4c2; font-size: .75rem; font-weight: 800; }
+.banner-value { font-weight: 700; word-break: break-word; }
+.banner-by { color: #8a6a3a; font-size: .78rem; }

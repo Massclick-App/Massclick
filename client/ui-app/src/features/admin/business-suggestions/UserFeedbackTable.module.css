@@ -1,0 +1,7 @@
+.stack { display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
+.stack b { display: flex; align-items: center; gap: 5px; }
+.stack span { display: flex; align-items: center; gap: 4px; color: #7b8798; font-size: .74rem; }
+.message { min-width: 260px; max-width: 460px; }
+.message p { margin: 0; color: #334155; font-size: .8rem; line-height: 1.5; white-space: pre-wrap; }
+.status { min-width: 130px; }
+.empty { display: grid; justify-items: center; padding: 48px 20px; color: #798698; }

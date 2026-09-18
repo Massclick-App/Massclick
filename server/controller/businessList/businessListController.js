@@ -230,6 +230,7 @@ export const viewAllBusinessListAction = async (req, res) => {
     const search = (req.query.search || "").trim();
     const status = req.query.status || "all";
     const liveStatus = (req.query.liveStatus || "").trim();
+    const contactStatus = (req.query.contactStatus || "").trim();
     const category = (req.query.category || "").trim();
     const location = (req.query.location || "").trim();
     const paymentStatus = (req.query.paymentStatus || "").trim();
@@ -247,6 +248,7 @@ export const viewAllBusinessListAction = async (req, res) => {
       search,
       status,
       liveStatus,
+      contactStatus,
       category,
       location,
       paymentStatus,
@@ -515,6 +517,7 @@ export const exportBusinessListAction = async (req, res) => {
     const searchTerm = (req.query.searchTerm || "").trim();
     const status = req.query.status || "all";
     const liveStatus = (req.query.liveStatus || "").trim();
+    const contactStatus = (req.query.contactStatus || "").trim();
     const category = (req.query.category || "").trim();
     const location = (req.query.location || "").trim();
     const paymentStatus = (req.query.paymentStatus || "all").trim();
@@ -531,6 +534,7 @@ export const exportBusinessListAction = async (req, res) => {
       search,
       status,
       liveStatus,
+      contactStatus,
       category: "",
       location: "",
       paymentStatus: "",

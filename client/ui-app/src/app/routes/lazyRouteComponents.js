@@ -16,6 +16,7 @@ export const AdminPages = {
   LegalDocuments: lazy(() => import(/* webpackChunkName: "admin-legal-documents" */ "features/admin/legal-documents/LegalDocumentsPage.js")),
   MainGrid: lazy(() => import(/* webpackChunkName: "admin-maingrid" */ "shared/components/MainGrid.js")),
   EnquiryPage: lazy(() => import(/* webpackChunkName: "admin-enquiry" */ "features/admin/enquiries/EnquiryPage.js")),
+  BusinessSuggestionsAdmin: lazy(() => import(/* webpackChunkName: "admin-business-suggestions" */ "features/admin/business-suggestions/BusinessSuggestionsAdmin.js")),
   SearchRequestsAdmin: lazy(() => import(/* webpackChunkName: "admin-search-requests" */ "features/admin/search-requests/SearchRequestsAdmin.js")),
   RewardAdmin: lazy(() => import(/* webpackChunkName: "admin-rewards" */ "features/admin/rewards/RewardAdmin.js")),
   RewardsConceptPage: lazy(() => import(/* webpackChunkName: "admin-rewards-concept" */ "features/admin/rewards/RewardsConceptPage.js")),
