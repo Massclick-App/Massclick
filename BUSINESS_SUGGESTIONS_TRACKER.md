@@ -8,7 +8,7 @@ page; admins approve/reject; approval writes to the listing.
       NOTE: `/server/scripts` is gitignored — this script is local-only unless force-added.
 - [x] Dev dry run: 247 listings (contact 247 / contactList 235 / whatsapp 182)
 - [x] Dev apply: 247 updated, 0 remaining. Snapshot `db-backups/snapshots/massClick_dev/2026-09-18_10-25-25__pre-clear-office-number`
-- [ ] Prod dry run + apply — AWAITING USER APPROVAL (was 342 on 2026-09-18, staff still adding)
+- [x] Prod apply 2026-09-18: 343 updated (contact 343 / contactList 330 / whatsapp 246), 0 remaining. Snapshot `db-backups/snapshots/massClick/2026-09-18_11-37-56__pre-clear-office-number`
 
 ## Phase 2 — Detail page with no number (`features/public/cards/cardDetails.js`)
 - [x] Show Number / Call Now / sidebar contact / info-card Phone -> "Suggest number" when `contact` empty
@@ -34,6 +34,6 @@ page; admins approve/reject; approval writes to the listing.
 - [ ] UI not run in a browser yet (needs `npm start` — ask user)
 
 ## Prod replay list
-- Run `node server/scripts/clearOfficeNumber.js --prod` (dry run), then `--prod --apply`
+- ~~Run clearOfficeNumber.js on prod~~ DONE 2026-09-18 (343)
 - `business_suggestions` indexes are created by Mongoose autoIndex on first boot — verify after deploy
 - Grant "Listing Suggestions" page to non-superadmin roles in Roles if they should review
