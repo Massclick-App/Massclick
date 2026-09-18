@@ -1,18 +1,15 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { useSelector } from 'react-redux';
-
-const GlobalLoader = lazy(() => import(/* webpackChunkName: "global-loader" */ './GlobalLoader'));
+// Imported eagerly: the CSS loader is ~1 KB, so a lazy chunk would only add a
+// network round-trip before the first loading indicator can paint.
+import GlobalLoader from './GlobalLoader';
 
 const GlobalLoaderWrapper = ({ children }) => {
   const { isLoading } = useSelector(state => state.globalLoader || {});
 
   return (
     <>
-      {isLoading && (
-        <Suspense fallback={null}>
-          <GlobalLoader />
-        </Suspense>
-      )}
+      {isLoading && <GlobalLoader />}
       {children}
     </>
   );
