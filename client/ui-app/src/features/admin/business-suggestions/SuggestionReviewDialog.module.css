@@ -7,8 +7,6 @@
 .compare p { margin: 4px 0 0; word-break: break-word; white-space: pre-wrap; font-weight: 600; }
 .compare .compare-new { border-color: #b7e4cf; background: #effaf5; }
 .note, .submitter { display: flex; align-items: flex-start; gap: 6px; margin: 6px 0; color: #5b6778; font-size: .82rem; }
-.mode-switch { display: flex; gap: 10px; margin: 14px 0 6px; }
-.hint { margin: 4px 0 0; color: #7b8798; font-size: .78rem; }
 .hint-alert { margin-top: 10px; }
 
 @media (max-width: 560px) {

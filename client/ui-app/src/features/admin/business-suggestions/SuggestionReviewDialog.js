@@ -23,13 +23,13 @@ export default function SuggestionReviewDialog({ suggestion, onClose, onReviewed
   const [value, setValue] = useState(suggestion.suggestedValue);
   const [applyWhatsapp, setApplyWhatsapp] = useState(false);
   const [reason, setReason] = useState("");
-  const [mode, setMode] = useState("approve");
-  const [busy, setBusy] = useState(false);
+  // Which action is in flight ("approve" | "reject"), so only that button shows "Saving...".
+  const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [staleValue, setStaleValue] = useState(null);
 
-  const submit = async () => {
-    setBusy(true);
+  const submit = async (mode) => {
+    setBusy(mode);
     setError("");
     try {
       const updated = mode === "approve"
@@ -42,7 +42,7 @@ export default function SuggestionReviewDialog({ suggestion, onClose, onReviewed
       if (data.stale) setStaleValue(data.liveValue || "");
       setError(data.message || err.message || "Could not save the review.");
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   };
 
@@ -61,37 +61,28 @@ export default function SuggestionReviewDialog({ suggestion, onClose, onReviewed
       {suggestion.note && <p className={cx("note")}><MessageSquareText size={14} /> {suggestion.note}</p>}
       <p className={cx("submitter")}><UserRound size={14} /> {suggestion.userName || "Customer"} · {suggestion.userMobile || "no mobile"} · {formatDateTime(suggestion.createdAt)}</p>
 
-      <div className={cx("mode-switch")}>
-        <Button variant={mode === "approve" ? "contained" : "outlined"} color="success" startIcon={<Check size={16} />} onClick={() => setMode("approve")}>Approve</Button>
-        <Button variant={mode === "reject" ? "contained" : "outlined"} color="error" startIcon={<X size={16} />} onClick={() => setMode("reject")}>Reject</Button>
-      </div>
-
-      {mode === "approve" ? (
-        suggestion.autoApply ? <>
-          <TextField
-            fullWidth size="small" margin="dense"
-            label={`Value to save as ${FIELD_LABELS[suggestion.field]}`}
-            helperText="Edit before approving if the customer's value needs correcting."
-            value={value}
-            onChange={(e) => setValue(isNumber ? e.target.value.replace(/\D/g, "").slice(0, 10) : e.target.value)}
+      {suggestion.autoApply ? <>
+        <TextField
+          fullWidth size="small" margin="dense"
+          label={`Value to save as ${FIELD_LABELS[suggestion.field]}`}
+          helperText="Edit before approving if the customer's value needs correcting."
+          value={value}
+          onChange={(e) => setValue(isNumber ? e.target.value.replace(/\D/g, "").slice(0, 10) : e.target.value)}
+        />
+        {suggestion.field === "phone" && (
+          <FormControlLabel
+            control={<Checkbox checked={applyWhatsapp} onChange={(e) => setApplyWhatsapp(e.target.checked)} />}
+            label={`Also set as WhatsApp number${suggestion.liveWhatsapp ? ` (replaces ${suggestion.liveWhatsapp})` : ""}`}
           />
-          {suggestion.field === "phone" && (
-            <FormControlLabel
-              control={<Checkbox checked={applyWhatsapp} onChange={(e) => setApplyWhatsapp(e.target.checked)} />}
-              label={`Also set as WhatsApp number${suggestion.liveWhatsapp ? ` (replaces ${suggestion.liveWhatsapp})` : ""}`}
-            />
-          )}
-          <p className={cx("hint")}>Approving saves this value to the listing immediately.</p>
-        </> : (
-          <Alert severity="info" className={cx("hint-alert")}>
-            {FIELD_LABELS[suggestion.field]} changes aren&apos;t applied automatically. Update the listing from the Business page first, then approve here to close the suggestion.
-          </Alert>
-        )
-      ) : (
-        <TextField fullWidth size="small" margin="dense" label="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} inputProps={{ maxLength: 500 }} />
+        )}
+      </> : (
+        <Alert severity="info" className={cx("hint-alert")}>
+          {FIELD_LABELS[suggestion.field]} changes aren&apos;t applied automatically. Update the listing from the Business page first, then approve here to close the suggestion.
+        </Alert>
       )}
+      <TextField fullWidth size="small" margin="dense" label="Reason, if rejecting (optional)" value={reason} onChange={(e) => setReason(e.target.value)} inputProps={{ maxLength: 500 }} />
 
-      {staleValue !== null && mode === "approve" && (
+      {staleValue !== null && (
         <Alert severity="warning" className={cx("hint-alert")}>
           The listing changed since this was suggested. It now shows &ldquo;{staleValue || "empty"}&rdquo;. Approve again to overwrite it.
         </Alert>
@@ -99,9 +90,12 @@ export default function SuggestionReviewDialog({ suggestion, onClose, onReviewed
       {error && staleValue === null && <Alert severity="error" className={cx("hint-alert")}>{error}</Alert>}
     </DialogContent>
     <DialogActions>
-      <Button onClick={onClose} disabled={busy}>Cancel</Button>
-      <Button variant="contained" color={mode === "approve" ? "success" : "error"} onClick={submit} disabled={busy || (mode === "approve" && suggestion.autoApply && !value.trim())}>
-        {busy ? "Saving..." : mode === "approve" ? (staleValue !== null ? "Overwrite and approve" : suggestion.autoApply ? "Approve and update listing" : "Mark as done") : "Reject suggestion"}
+      <Button onClick={onClose} disabled={Boolean(busy)}>Cancel</Button>
+      <Button variant="outlined" color="error" startIcon={<X size={16} />} onClick={() => submit("reject")} disabled={Boolean(busy)}>
+        {busy === "reject" ? "Saving..." : "Reject"}
+      </Button>
+      <Button variant="contained" color="success" startIcon={<Check size={16} />} onClick={() => submit("approve")} disabled={Boolean(busy) || (suggestion.autoApply && !value.trim())}>
+        {busy === "approve" ? "Saving..." : staleValue !== null ? "Overwrite and approve" : suggestion.autoApply ? "Approve and update listing" : "Mark as done"}
       </Button>
     </DialogActions>
   </Dialog>;
