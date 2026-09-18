@@ -215,6 +215,53 @@ const BlogDetail = () => {
     return segments.join("");
   };
   const makeSlug = (text = "") => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const getTableCells = row => {
+    if (Array.isArray(row)) return row;
+    return Array.isArray(row?.cells) ? row.cells : [];
+  };
+  const normalizeTableBlock = block => {
+    const rows = (block?.rows || [])
+      .map(getTableCells)
+      .filter(cells => cells.some(cell => String(cell ?? "").trim() !== ""));
+    const width = rows.reduce((max, cells) => Math.max(max, cells.length), 0);
+
+    return {
+      caption: block?.caption || "",
+      hasHeaderRow: block?.hasHeaderRow !== false,
+      rows: rows.map(cells => (
+        cells.length === width
+          ? cells
+          : [...cells, ...Array.from({ length: width - cells.length }, () => "")]
+      ))
+    };
+  };
+  const renderTableBlockHtml = block => {
+    const table = normalizeTableBlock(block);
+    if (table.rows.length === 0) return "";
+
+    const renderRow = (row, tag) => `<tr>${row.map(cell => `<${tag}>${escapeHtml(cell)}</${tag}>`).join("")}</tr>`;
+    const caption = table.caption ? `<caption>${escapeHtml(table.caption)}</caption>` : "";
+    const head = table.hasHeaderRow ? `<thead>${renderRow(table.rows[0], "th")}</thead>` : "";
+    const bodyRows = table.hasHeaderRow ? table.rows.slice(1) : table.rows;
+    const body = bodyRows.length ? `<tbody>${bodyRows.map(row => renderRow(row, "td")).join("")}</tbody>` : "";
+
+    return `<div data-blog-table><table>${caption}${head}${body}</table></div>`;
+  };
+  const renderInlineTables = (html = "", blocks = []) => {
+    const tableBlocks = (blocks || []).filter(block => block?.type === "table");
+    if (!html || tableBlocks.length === 0) return html || "";
+
+    const tableHtmlByToken = {};
+    tableBlocks.forEach((block, index) => {
+      const tableHtml = renderTableBlockHtml(block);
+      tableHtmlByToken[`table${index + 1}`] = tableHtml;
+      if (index === 0) tableHtmlByToken.table = tableHtml;
+    });
+
+    return html
+      .replace(/%7B(table\d*|table)%7D/gi, (_match, tokenName) => tableHtmlByToken[tokenName.toLowerCase()] || "")
+      .replace(/\{(table\d*|table)\}/gi, (_match, tokenName) => tableHtmlByToken[tokenName.toLowerCase()] || "");
+  };
   const formattedContent = useMemo(() => {
     if (!blog?.pageContent) {
       return {
@@ -223,7 +270,10 @@ const BlogDetail = () => {
       };
     }
     const parser = new DOMParser();
-    const doc = parser.parseFromString(blog.pageContent, "text/html");
+    const doc = parser.parseFromString(
+      renderInlineTables(blog.pageContent, blog.contentBlocks),
+      "text/html"
+    );
     const headings = doc.querySelectorAll("h2, h3");
     headings.forEach(item => {
       const text = item.textContent.trim();
@@ -410,133 +460,6 @@ const BlogDetail = () => {
       return;
     }
     copyArticleLink();
-  };
-  const renderContentBlock = block => {
-    switch (block.type) {
-      case "table":
-        return <div key={block.id} className={cx("content-block table-block")}>
-          <div className={cx("table-container")}>
-            <table className={cx("data-table")}>
-              <tbody>
-                {block.rows.map((row, rIdx) => <tr key={rIdx}>
-                  {row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>;
-      case "code":
-        return <div key={block.id} className={cx("content-block code-block")}>
-          <div className={cx("code-block-display")}>
-            <div className={cx("code-label")}>{block.language}</div>
-            <pre>
-              <code>{block.content}</code>
-            </pre>
-          </div>
-        </div>;
-      case "video":
-        return <div key={block.id} className={cx("content-block video-block")}>
-          <div className={cx("video-embed")}>
-            <iframe width="100%" height="400" src={block.url.includes("youtube.com") || block.url.includes("youtu.be") ? `https://www.youtube.com/embed/${block.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/)?.[1]}` : block.url.includes("vimeo.com") ? `https://player.vimeo.com/video/${block.url.match(/vimeo\.com\/(\d+)/)?.[1]}` : block.url} frameBorder="0" allowFullScreen title="Embedded Video"></iframe>
-          </div>
-        </div>;
-      case "callout":
-        return <div key={block.id} className={cx("content-block callout-block")}>
-          <div className={cx(`callout callout-${block.calloutType}`)}>
-            <span className={cx("callout-icon")}>
-              {block.calloutType === "info" && "ℹ️"}
-              {block.calloutType === "warning" && "⚠️"}
-              {block.calloutType === "success" && "✅"}
-              {block.calloutType === "error" && "❌"}
-              {block.calloutType === "tip" && "💡"}
-            </span>
-            <p>{block.text}</p>
-          </div>
-        </div>;
-      case "statistics":
-        return <div key={block.id} className={cx("content-block statistics-block")}>
-          <div className={cx("statistics-grid")}>
-            {block.items.map((stat, idx) => <div key={idx} className={cx("stat-card")}>
-              <div className={cx("stat-value")}>{stat.value}</div>
-              <div className={cx("stat-label")}>{stat.label}</div>
-            </div>)}
-          </div>
-        </div>;
-      case "testimonial":
-        return <div key={block.id} className={cx("content-block testimonial-block")}>
-          <div className={cx("testimonial-card")}>
-            <div className={cx("testimonial-text")}>"{block.text}"</div>
-            <div className={cx("testimonial-author")}>
-              {block.image && <img src={block.image} alt={block.name} />}
-              <div>
-                <div className={cx("author-name")}>{block.name}</div>
-                {block.role && <div className={cx("author-role")}>{block.role}</div>}
-              </div>
-            </div>
-          </div>
-        </div>;
-      case "steps":
-        return <div key={block.id} className={cx("content-block steps-block")}>
-          <div className={cx("steps-container")}>
-            {block.items.map((step, idx) => <div key={idx} className={cx("step-item")}>
-              <div className={cx("step-number")}>{idx + 1}</div>
-              <div className={cx("step-content")}>
-                <h4>{step.title}</h4>
-                {step.description && <p>{step.description}</p>}
-              </div>
-            </div>)}
-          </div>
-        </div>;
-      case "accordion":
-        return <div key={block.id} className={cx("content-block accordion-block")}>
-          <div className={cx("accordion-container")}>
-            {block.items.map((item, idx) => <div key={idx} className={cx("accordion-item")}>
-              <div className={cx("accordion-title")}>
-                <span>{item.title}</span>
-                <span>▼</span>
-              </div>
-              <div className={cx("accordion-content")}>{item.content}</div>
-            </div>)}
-          </div>
-        </div>;
-      case "button":
-        return <div key={block.id} className={cx("content-block button-block")}>
-          <div className={cx("button-container")}>
-            {block.url ? <a href={block.url} target="_blank" rel="noopener noreferrer" className={cx(`cta-button btn-${block.style}`)}>
-              {block.text}
-            </a> : <button className={cx(`cta-button btn-${block.style}`)}>{block.text}</button>}
-          </div>
-        </div>;
-      case "features":
-        return <div key={block.id} className={cx("content-block features-block")}>
-          <div className={cx("features-grid")}>
-            {block.items.map((feature, idx) => <div key={idx} className={cx("feature-card")}>
-              <div className={cx("feature-icon")}>{feature.icon}</div>
-              <h4>{feature.title}</h4>
-              {feature.description && <p>{feature.description}</p>}
-            </div>)}
-          </div>
-        </div>;
-      case "prosCons":
-        return <div key={block.id} className={cx("content-block proscons-block")}>
-          <div className={cx("proscons-container")}>
-            <div className={cx("pros-column")}>
-              <h4>✅ Pros</h4>
-              <ul>
-                {block.pros.map((pro, idx) => <li key={idx}>{pro}</li>)}
-              </ul>
-            </div>
-            <div className={cx("cons-column")}>
-              <h4>❌ Cons</h4>
-              <ul>
-                {block.cons.map((con, idx) => <li key={idx}>{con}</li>)}
-              </ul>
-            </div>
-          </div>
-        </div>;
-      default:
-        return null;
-    }
   };
   const openContactPopover = business => {
     setSelectedContact(business);
@@ -748,10 +671,6 @@ const BlogDetail = () => {
             <div className={cx("blog-content")} onClick={handleContentClick} dangerouslySetInnerHTML={{
               __html: formattedContent.body || (!formattedContent.introduction ? "<p>No content available</p>" : "")
             }} />
-
-            {blog.contentBlocks?.length > 0 && <div className={cx("content-blocks-section")}>
-              {blog.contentBlocks.map(block => renderContentBlock(block))}
-            </div>}
 
             {blog.pageImages?.length > 1 && <div className={cx("image-grid")}>
               {blog.pageImages.slice(1).map((img, i) => <img key={i} src={img} alt={`${blog.heading} supporting visual ${i + 2}`} />)}

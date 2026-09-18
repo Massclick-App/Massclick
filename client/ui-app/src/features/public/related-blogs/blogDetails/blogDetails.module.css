@@ -458,20 +458,34 @@
   background: #fff;
 }
 
-.table-block .data-table td {
-  padding: 16px 18px;
-  border: 1px solid #f0f4f9;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-  line-height: 1.6;
+.table-block .data-table caption {
+  caption-side: top;
+  padding: 0 0 10px;
+  color: #10233f;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: left;
 }
 
-.table-block .data-table tr:first-child td {
-  background: linear-gradient(135deg, #fafbfc, #f3f7fb);
-  font-weight: 700;
-  color: #334155;
-  border-bottom: 2px solid #e2e8f0;
+.table-block .data-table th,
+.table-block .data-table td {
+  padding: 14px 16px;
+  border: 1px solid #dbe2ea;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: left;
+  vertical-align: top;
+}
+
+.table-block .data-table th {
+  background: #f8fafc;
+  color: #10233f;
+  font-weight: 800;
+}
+
+.table-block .data-table td {
+  color: #475569;
+  font-weight: 500;
 }
 
 .table-block .data-table tr:nth-child(even) {
@@ -1145,6 +1159,25 @@
   border-radius: 16px;
   background: #ffffff;
   box-shadow: var(--shadow-sm);
+}
+
+.blog-content [data-blog-table] {
+  margin: 28px 0;
+  overflow-x: auto;
+}
+
+.blog-content [data-blog-table] table {
+  margin: 0;
+  min-width: min(620px, 100%);
+}
+
+.blog-content [data-blog-table] caption {
+  caption-side: top;
+  padding: 0 0 10px;
+  color: #10233f;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: left;
 }
 
 .blog-content th,
