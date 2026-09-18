@@ -66,6 +66,7 @@ const {
   MainGrid,
   EnquiryPage,
   SearchRequestsAdmin,
+  BusinessSuggestionsAdmin,
   RewardAdmin,
   RewardsConceptPage,
   RewardClaimsAdmin,
@@ -112,6 +113,8 @@ const {
   EventDetails,
   WriteReviewPage,
   PaymentStatus,
+  BillsPaymentPage,
+  RechargeStatusPage,
   LeadsPage,
   PublicizePage,
   FreeListingPage,
@@ -266,6 +269,8 @@ function AppRoutes({
           <Route path="/claim-rewards" element={<RewardClaimPage />} />
           <Route path="/reward-members" element={<Navigate to="/user_rewards#member-points" replace />} />
           <Route path="/payment-status/:transactionId" element={<PaymentStatus />} />
+          <Route path="/bills-payment/:serviceSlug" element={<BillsPaymentPage />} />
+          <Route path="/recharge-status/:transactionId" element={<RechargeStatusPage />} />
           <Route path="/write-review/:businessId/:ratingValue" element={<WriteReviewPage />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
           <Route path="/author/:slug" element={<AuthorProfile />} />
@@ -365,6 +370,7 @@ function AppRoutes({
                 <Route path="business-person-report" element={<BusinessPersonReport />} />
                 <Route path="enquiry" element={<EnquiryPage />} />
                 <Route path="search-requests" element={<SearchRequestsAdmin />} />
+                <Route path="business-suggestions" element={<BusinessSuggestionsAdmin />} />
                 <Route path="rewards" element={<RewardAdmin />} />
                 <Route path="reward-claims" element={<RewardClaimsAdmin />} />
                 <Route path="rewards-concept" element={<RewardsConceptPage />} />

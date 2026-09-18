@@ -13,6 +13,8 @@ import {
   buildCanonicalLocationCategoryPath,
   buildLocationCategoryPath,
   buildLocationPath,
+  classifyLocationRouteSegments,
+  isKnownCategorySlug,
 } from "../helper/location/locationUrl.js";
 import {
   getBusinessUrlSlug,
@@ -20,7 +22,9 @@ import {
 } from "../helper/businessList/businessUrl.js";
 import seoPageContentBlogs from "../model/seoModel/seoPageContentBlogModel.js";
 import { categoriesData } from "../utils/sub-categoriesData.js";
-import { STATIC_PAGES } from "../config/ssrConfig.js";
+import { MIN_LISTINGS_TO_INDEX, STATIC_PAGES } from "../config/ssrConfig.js";
+import { resolveDistrictBySlug } from "../helper/location/locationResolver.js";
+import { slugToText } from "../utils/htmlUtils.js";
 
 const router = express.Router();
 
@@ -209,6 +213,21 @@ const buildCategoryLookup = async () => {
   _categoryLookupCache = lookup;
   _categoryLookupBuiltAt = now;
   return lookup;
+};
+
+// A category page lists a business only when the page's category TEXT occurs
+// in the business's category (or keywords) — see findBusinessesByCategory,
+// which ssrMiddleware renders from. A row that reaches a category slug only
+// through resolveCategoryPath's slug fallback never shows on that page:
+// "pg/hostels" slugifies to "pg-hostels", but "pg hostels" never matches
+// "pg/hostels". Counting such rows submitted pages that rendered empty.
+const categoryTextMatchers = new Map();
+const pageListsCategory = (categoryPath, businessCategory = "") => {
+  if (!categoryTextMatchers.has(categoryPath)) {
+    const text = slugToText(categoryPath).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    categoryTextMatchers.set(categoryPath, new RegExp(text, "i"));
+  }
+  return categoryTextMatchers.get(categoryPath).test(String(businessCategory || ""));
 };
 
 // Returns the category URL segment after the location path, e.g. "hotels".
@@ -411,32 +430,46 @@ const getAncestorDocsForLocation = ({ districtDoc, locationDoc, docsByKey }) => 
   return docs.filter(Boolean);
 };
 
-const upsertSitemapPage = (pages, entry) => {
-  // Keyed by the URL this entry actually emits, NOT by the doc behind it.
-  // locationSlug.js's no-repeat rule lets a node collapse onto a path its
-  // same-named ancestor already owns (a "Renga Nagar" locality onto its
-  // "Renga Nagar" ward), so two docs of DIFFERENT levels can legitimately
-  // share one path. Keying by level as well used to emit both, which put the
-  // identical <loc> in the sitemap twice — 718 duplicate entries across 536
-  // paths on massClick_dev. Merging them here is right: the counts add up and
-  // the newest lastmod wins, which is what the merged page actually serves.
-  const key = `${entry.locationPath || "district"}/${entry.categoryPath}`;
-  const existing = pages.get(key);
-  if (existing) {
-    const existingLastmod = new Date(existing.lastmod || 0).getTime();
-    const nextLastmod = new Date(entry.lastmod || 0).getTime();
-    if (nextLastmod > existingLastmod) existing.lastmod = entry.lastmod;
-    existing.count += entry.count || 0;
-    return;
-  }
+// The URL that serves this (location, category) page, or null when that URL
+// actually serves a DIFFERENT location. Two docs can build the identical URL:
+// locationSlug.js's no-repeat rule collapses a locality onto its same-named
+// ward's path ("Woraiyur" > "Woraiyur"), and district-collision folding can
+// give unrelated branches one path (Dindigul's "Dindigul Central" ward vs the
+// "Dindigul Central" zone's own locality). The page lists only the node the
+// router's classifier picks, so the built URL is round-tripped through that
+// same classifier. Crediting the other doc's businesses to the URL is what
+// used to submit pages that then rendered with 0-1 listings, and summing both
+// docs counted one business twice.
+const resolveServedPageUrl = async ({ districtDoc, districtSlug, locationDoc, categoryPath }) => {
+  const path = await buildDistrictCategoryPath(districtSlug, {
+    districtDoc,
+    locationDoc,
+    locationSlug: getSitemapLocationSlug(locationDoc),
+    locationPath: getSitemapLocationPath(locationDoc),
+    categoryPath,
+  });
+  if (!path) return null;
 
-  pages.set(key, entry);
+  const classification = await classifyLocationRouteSegments({
+    districtDoc,
+    segments: path.split("/").filter(Boolean).slice(1),
+  });
+  if (classification.groupSlug || classification.categorySlug !== categoryPath) return null;
+
+  const servesThisDoc = locationDoc.level === "district"
+    ? classification.type === "districtCategory"
+    : classification.type === "location" &&
+      String(classification.locationDoc?._id) === String(locationDoc._id);
+  return servesThisDoc ? `${BASE_URL}${path}` : null;
 };
 
-// Emits only live pages. A business linked to a locality contributes to the
-// locality's category page and each ancestor category page, matching the
-// search resolver's subtree behavior (`masterLocation.slug` prefix).
+// Emits only live pages, keyed by the URL each is served at. A business linked
+// to a locality contributes to the locality's category page and each ancestor
+// category page, matching the search resolver's subtree behavior
+// (`masterLocation.slug` prefix) — but only through a URL that serves that
+// exact node, so each business is counted once per URL that lists it.
 const buildDistrictCategoryPages = async (districtDoc) => {
+  const districtSlug = getDistrictUrlSlug(districtDoc);
   const [categoryLookup, docsByKey, liveRows] = await Promise.all([
     buildCategoryLookup(),
     getLocationDocsByKeyForDistrict(districtDoc),
@@ -462,11 +495,16 @@ const buildDistrictCategoryPages = async (districtDoc) => {
   ]);
 
   const docsById = getLocationDocsById(docsByKey);
+  const servedUrlByPage = new Map();
   const pages = new Map();
 
   for (const row of liveRows) {
     const categoryPath = resolveCategoryPath(row._id.category, categoryLookup);
-    if (!categoryPath) continue;
+    // resolveCategoryPath falls back to a slug of the raw business category.
+    // The router doesn't recognise that slug, so its page renders as a
+    // free-text search, which ssrMiddleware serves noindex.
+    if (!categoryPath || !(await isKnownCategorySlug(categoryPath))) continue;
+    if (!pageListsCategory(categoryPath, row._id.category)) continue;
 
     const locationDoc = row._id.locationId
       ? docsById.get(String(row._id.locationId))
@@ -479,16 +517,28 @@ const buildDistrictCategoryPages = async (districtDoc) => {
 
     for (const pageLocationDoc of candidateDocs) {
       if (!isValidSitemapLocationDoc(pageLocationDoc)) continue;
-      const publicLocationSlug = getSitemapLocationSlug(pageLocationDoc);
-      const publicLocationPath = getSitemapLocationPath(pageLocationDoc);
-      const lastmod = isoDate(row.maxDate || pageLocationDoc.updatedAt);
 
-      upsertSitemapPage(pages, {
-        districtDoc,
-        locationDoc: pageLocationDoc,
-        locationSlug: publicLocationSlug,
-        locationPath: publicLocationPath,
-        locationLabel: getLocationLabel(pageLocationDoc),
+      const pageKey = `${pageLocationDoc._id}|${categoryPath}`;
+      if (!servedUrlByPage.has(pageKey)) {
+        servedUrlByPage.set(pageKey, await resolveServedPageUrl({
+          districtDoc,
+          districtSlug,
+          locationDoc: pageLocationDoc,
+          categoryPath,
+        }));
+      }
+      const loc = servedUrlByPage.get(pageKey);
+      if (!loc) continue;
+
+      const lastmod = isoDate(row.maxDate || pageLocationDoc.updatedAt);
+      const existing = pages.get(loc);
+      if (existing) {
+        existing.count += row.count || 0;
+        if (new Date(lastmod) > new Date(existing.lastmod)) existing.lastmod = lastmod;
+        continue;
+      }
+      pages.set(loc, {
+        loc,
         locationLevel: pageLocationDoc.level,
         categoryPath,
         count: row.count || 0,
@@ -497,12 +547,18 @@ const buildDistrictCategoryPages = async (districtDoc) => {
     }
   }
 
-  return [...pages.values()].sort(
-    (a, b) =>
-      (a.locationPath || a.locationSlug || "").localeCompare(b.locationPath || b.locationSlug || "") ||
-      a.categoryPath.localeCompare(b.categoryPath)
-  );
+  return [...pages.values()].sort((a, b) => a.loc.localeCompare(b.loc));
 };
+
+const minListingsForLevel = (level = "") =>
+  level === "district" ? MIN_LISTINGS_TO_INDEX.district : MIN_LISTINGS_TO_INDEX.location;
+
+// The emit-ready list for one district: thin pages dropped, mirroring the
+// robots decision in ssrMiddleware.js so nothing submitted is served noindex.
+const buildDistrictSitemapPages = async (districtDoc) =>
+  (await buildDistrictCategoryPages(districtDoc)).filter(
+    (page) => page.count >= minListingsForLevel(page.locationLevel),
+  );
 
 // Uses the same live-page builder as the sitemap files so the index cannot
 // advertise empty district sitemap pages.
@@ -523,7 +579,7 @@ const getDistrictCategoryPagesCached = async (districtDoc) => {
     return cached.pages;
   }
 
-  const pages = await buildDistrictCategoryPages(districtDoc);
+  const pages = await buildDistrictSitemapPages(districtDoc);
   _districtPagesCache.set(cacheKey, { builtAt: now, pages });
   return pages;
 };
@@ -544,22 +600,29 @@ const buildLegacyLocationCategoryPages = async () => {
     ]),
   ]);
 
-  return rows
-    .map((row) => {
-      const locationSlug = safeSlug(row._id.location);
-      const categoryPath = resolveCategoryPath(row._id.category, categoryLookup);
-      if (!locationSlug || !isValidCitySlug(locationSlug) || !categoryPath) {
-        return null;
-      }
+  // Same rule as the district location sitemaps: known categories only, and a
+  // free-text location is a location page, so it needs the location threshold.
+  const pages = [];
+  for (const row of rows) {
+    const locationSlug = safeSlug(row._id.location);
+    const categoryPath = resolveCategoryPath(row._id.category, categoryLookup);
+    if (!locationSlug || !isValidCitySlug(locationSlug) || !categoryPath) continue;
+    if (row.count < MIN_LISTINGS_TO_INDEX.location) continue;
+    if (!pageListsCategory(categoryPath, row._id.category)) continue;
+    // Free text that is a district name ("Trichy") builds the district-wide
+    // URL, which the location sitemaps already submit with the page's real
+    // count — emitting it here too listed it twice.
+    if (await resolveDistrictBySlug(locationSlug).catch(() => null)) continue;
+    if (!(await isKnownCategorySlug(categoryPath))) continue;
 
-      return {
-        locationSlug,
-        categoryPath,
-        count: row.count,
-        lastmod: isoDate(row.maxDate),
-      };
-    })
-    .filter(Boolean);
+    pages.push({
+      locationSlug,
+      categoryPath,
+      count: row.count,
+      lastmod: isoDate(row.maxDate),
+    });
+  }
+  return pages;
 };
 
 const getBusinessSitemapContext = async (businesses = []) => {
@@ -754,20 +817,17 @@ const sendLocationSitemap = async (districtSlug, pageParam, res) => {
   if (!districtDoc) return res.status(404).end();
 
   const page = Math.max(Number(pageParam) || 1, 1);
-  const sitemapDistrictSlug = getDistrictUrlSlug(districtDoc);
   const allPages = await getDistrictCategoryPagesCached(districtDoc);
   const start = (page - 1) * LOCATION_SITEMAP_LIMIT;
   const pages = allPages.slice(start, start + LOCATION_SITEMAP_LIMIT);
 
-  const nodes = await Promise.all(
-    pages.map(async (entry) =>
-      createUrlNode({
-        loc: `${BASE_URL}${await buildDistrictCategoryPath(sitemapDistrictSlug, entry)}`,
-        lastmod: entry.lastmod,
-        changefreq: "daily",
-        priority: getLocationPriority(entry.locationLevel),
-      })
-    )
+  const nodes = pages.map((entry) =>
+    createUrlNode({
+      loc: entry.loc,
+      lastmod: entry.lastmod,
+      changefreq: "daily",
+      priority: getLocationPriority(entry.locationLevel),
+    })
   );
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

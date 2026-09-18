@@ -112,3 +112,14 @@ export const findBusinessForSeo = async (segment = "") => {
   if (!parsed) return null;
   return businessListModel.findOne({ publicId: parsed.publicId }, SEO_PROJECTION).lean();
 };
+
+const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
+
+// Existence check for the superseded /business/.../:id shapes, which carry the
+// ObjectId last. legacyUrlRedirectMiddleware 301s every one that resolves to a
+// business with a publicId, so the only ones that reach the SSR are businesses
+// still without a publicId (a real page) or ids that match nothing (a 404).
+export const businessExistsById = async (id = "") => {
+  if (!OBJECT_ID_RE.test(String(id))) return false;
+  return Boolean(await businessListModel.exists({ _id: id }));
+};

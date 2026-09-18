@@ -26,6 +26,7 @@ import ArticleIcon from "@mui/icons-material/ArticleOutlined";
 import StorefrontIcon from "@mui/icons-material/StorefrontOutlined";
 import NewspaperIcon from "@mui/icons-material/NewspaperOutlined";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
+import RateReviewIcon from "@mui/icons-material/RateReviewOutlined";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsOutlined";
@@ -50,6 +51,7 @@ import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import { fetchChatUnreadCount, getAdminChatToken } from "shared/services/chatService.js";
+import { SUGGESTIONS_CHANGED_EVENT, fetchPendingSuggestionCount } from "state/actions/businessSuggestionAction.js";
 import { connectSocket } from "shared/services/socketService.js";
 import { getAuthSnapshot } from "app/auth/authStore.js";
 
@@ -102,6 +104,7 @@ const MENU_SECTIONS = [
     items: [
       { text: "Enquiries", icon: MailOutlineIcon, path: "/dashboard/enquiry" },
       { text: "Search Requests", icon: SearchIcon, path: "/dashboard/search-requests" },
+      { text: "Listing Suggestions", icon: RateReviewIcon, path: "/dashboard/business-suggestions", badgeKey: "suggestions" },
       { text: "Care Chat", icon: HeadsetMicIcon, path: "/dashboard/customer-care", badgeKey: "chat" },
       { text: "Ads", icon: NotificationsIcon, path: "/dashboard/advertisements" },
       { text: "Quotations", icon: RequestQuoteIcon, path: "/dashboard/quotation" },
@@ -171,6 +174,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
  
   const isSuperAdmin = userRole === SUPERADMIN;
   const [chatUnread, setChatUnread] = useState(0);
+  const [pendingSuggestions, setPendingSuggestions] = useState(0);
   const [query, setQuery] = useState("");
 
   const COLLAPSE_KEY = "massclick:sidemenu:collapsed";
@@ -215,6 +219,17 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
     };
   }, []);
 
+  // A boolean dep, not allowedPages itself: the snapshot fallback can hand back a
+  // new array every render, which would refetch the count in a loop.
+  const canSeeSuggestions = isSuperAdmin || (allowedPages || []).includes("/dashboard/business-suggestions");
+  useEffect(() => {
+    if (!canSeeSuggestions) return undefined;
+    const refresh = () => fetchPendingSuggestionCount().then(setPendingSuggestions).catch(() => {});
+    refresh();
+    window.addEventListener(SUGGESTIONS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(SUGGESTIONS_CHANGED_EVENT, refresh);
+  }, [canSeeSuggestions]);
+
   const filteredSections = useMemo(() => MENU_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter(
@@ -250,7 +265,8 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
   const renderMenuItem = (item) => {
     const selected = location.pathname === item.path;
     const IconComp = item.icon;
-    const showBadge = item.badgeKey === "chat" && chatUnread > 0;
+    const badgeCount = item.badgeKey === "chat" ? chatUnread : item.badgeKey === "suggestions" ? pendingSuggestions : 0;
+    const showBadge = badgeCount > 0;
 
     const button = (
       <ListItemButton
@@ -279,7 +295,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
       >
         <ListItemIcon sx={{ minWidth: "auto", color: "inherit" }}>
           <Badge
-            badgeContent={railCollapsed && showBadge ? chatUnread : undefined}
+            badgeContent={railCollapsed && showBadge ? badgeCount : undefined}
             overlap="circular"
             sx={{
               "& .MuiBadge-badge": {
@@ -335,7 +351,7 @@ export default function SideMenu({ onItemClick, railCollapsed = false }) {
               justifyContent: "center",
             }}
           >
-            {chatUnread}
+            {badgeCount}
           </Box>
         )}
       </ListItemButton>

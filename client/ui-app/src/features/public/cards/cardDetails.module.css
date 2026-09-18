@@ -2003,6 +2003,7 @@ button.business-CardDetails-statusBadge:hover {
 }
 
 .business-CardDetails-actionForm input,
+.business-CardDetails-actionForm select,
 .business-CardDetails-actionForm textarea {
   border: 1px solid var(--bc-border);
   border-radius: 10px;
@@ -2014,6 +2015,7 @@ button.business-CardDetails-statusBadge:hover {
 }
 
 .business-CardDetails-actionForm input:focus,
+.business-CardDetails-actionForm select:focus,
 .business-CardDetails-actionForm textarea:focus {
   border-color: var(--bc-primary);
   box-shadow: 0 0 0 3px rgba(255, 123, 0, 0.12);

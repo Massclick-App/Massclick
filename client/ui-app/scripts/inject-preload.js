@@ -8,8 +8,15 @@
 const fs = require("fs");
 const path = require("path");
 
-const htmlPath = path.resolve(__dirname, "../build/index.html");
-const manifestPath = path.resolve(__dirname, "../build/asset-manifest.json");
+// Respects BUILD_PATH (set by CRA/react-app-rewired for the actual build output)
+// so this postbuild step targets the same directory the build just wrote to,
+// instead of always the "../build" default — which becomes wrong once deploys
+// build into timestamped release directories rather than in place.
+const buildDir = process.env.BUILD_PATH
+  ? path.resolve(process.env.BUILD_PATH)
+  : path.resolve(__dirname, "../build");
+const htmlPath = path.join(buildDir, "index.html");
+const manifestPath = path.join(buildDir, "asset-manifest.json");
 
 if (!fs.existsSync(htmlPath)) {
   console.error("[inject-preload] build/index.html not found - skipping.");

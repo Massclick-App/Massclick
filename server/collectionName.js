@@ -52,6 +52,7 @@ export const Collections = {
     MASSCLICKFEEDPOSTS: 'massclick_feed_posts',
     MASSCLICKFEEDFOLLOWS: 'massclick_feed_follows',
     USERFEEDBACKS: 'user_feedbacks',
+    BUSINESSSUGGESTIONS: 'business_suggestions',
     WEBANALYTICSEVENT: 'web_analytics_events',
     ACCOUNTDELETIONREQUESTS: 'account_deletion_requests',
     SEARCHREQUESTS: 'search_requests',
@@ -65,7 +66,8 @@ export const Collections = {
     REWARDRULES: 'reward_rules',
     REWARDREDEMPTIONS: 'reward_redemptions',
     REWARDCLAIMS: 'reward_claims',
-    S3KEYMIGRATIONJOB: 's3_key_migration_jobs'
+    S3KEYMIGRATIONJOB: 's3_key_migration_jobs',
+    RECHARGEORDER: 'recharge_orders'
 };
 
 export const {
@@ -122,6 +124,7 @@ export const {
     MASSCLICKFEEDPOSTS,
     MASSCLICKFEEDFOLLOWS,
     USERFEEDBACKS,
+    BUSINESSSUGGESTIONS,
     WEBANALYTICSEVENT,
     ACCOUNTDELETIONREQUESTS,
     SEARCHREQUESTS,
@@ -135,6 +138,7 @@ export const {
     REWARDRULES,
     REWARDREDEMPTIONS,
     REWARDCLAIMS,
-    S3KEYMIGRATIONJOB
+    S3KEYMIGRATIONJOB,
+    RECHARGEORDER
 } = Collections;
 export const MASSCLICKEVENTS = "massclickevents";

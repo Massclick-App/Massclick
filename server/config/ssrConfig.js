@@ -15,6 +15,17 @@ export const STATIC_PAGES = {
   seo:         { pageType: "seo",          title: "SEO Services | Massclick",               description: "Improve your search engine rankings with Massclick's professional SEO services.",    keywords: "massclick, SEO services, search engine optimisation" },
 };
 
+// Minimum live listings for a category page to be indexed and submitted in a
+// sitemap. Location pages need two: thousands of one-listing "Best X in
+// <locality>" pages built from one template read as thin, scaled content, and
+// drag the whole site down with them. Shared by ssrMiddleware.js (robots meta)
+// and routes/sitemapRoutes.js (what gets submitted), so the sitemap never
+// submits a page the SSR marks noindex. SearchResult.js mirrors these numbers.
+export const MIN_LISTINGS_TO_INDEX = {
+  district: 1,
+  location: 2,
+};
+
 export const SKIP_SEO_ROUTES = new Set([
   "business", "dashboard", "admin", "write-review",
   "payment-status", "leads", "free-listing", "publicize",

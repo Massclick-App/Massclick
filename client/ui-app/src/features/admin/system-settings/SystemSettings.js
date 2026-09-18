@@ -24,6 +24,8 @@ const DebugIcon = () => <span>🔍</span>;
 const DatabaseIcon = () => <span>🗄️</span>;
 const AlertIcon = () => <span>⚡</span>;
 const GuardIcon = () => <span>🛡️</span>;
+const RechargeIcon = () => <span>API</span>;
+const PaymentGatewayIcon = () => <span>PG</span>;
 // const MediaCleanupIcon = () => <span>🧹</span>;
 const formatUptime = seconds => {
   if (!seconds) return "\u2014";
@@ -141,6 +143,23 @@ const FIELD_HELP = {
   search_nearby_radius_km: "How far search should look for nearby pincodes when exact location results are too low.",
   redis_enabled: "Controls whether Redis-backed cache behavior is enabled.",
   cache_type: "Select which cache group should be invalidated.",
+  recharge_api_enabled: "Turns the Pay2All recharge integration on for server-side recharge flows.",
+  recharge_api_provider: "Recharge provider used by the backend. Pay2All is currently supported.",
+  recharge_pay2all_base_url: "Pay2All API base URL. Keep the live URL unless Pay2All gives a test URL.",
+  recharge_pay2all_webhook_path: "Server callback path Pay2All can call for pending transaction updates.",
+  recharge_pay2all_api_token: "Paste the Pay2All token once. It is saved on the server and then shown only as a masked status.",
+  recharge_pay2all_bbps_token: "Pay2All's BBPS bill-fetch/pay routes need a separate login access token from your Pay2All dashboard — the regular API token above is not accepted there. Paste it once; it is saved on the server and then shown only as a masked status.",
+  phonepe_gateway_enabled: "Turns PhonePe payment creation on or off for premium membership payments.",
+  phonepe_integration_mode: "Use Standard Checkout v2 for Client ID and Client Secret. Legacy v1 keeps the older merchant-id and salt-key flow.",
+  phonepe_environment: "Sandbox uses PhonePe test APIs. Production uses live PhonePe APIs.",
+  phonepe_client_id: "PhonePe Standard Checkout Client ID from the merchant dashboard.",
+  phonepe_client_secret: "Paste the Client Secret once. It is saved on the server and then shown only as a masked status.",
+  phonepe_client_version: "PhonePe Client Version shown with the Standard Checkout credentials. Use 1 unless PhonePe shows a different version.",
+  phonepe_redirect_base_url: "Public frontend URL PhonePe returns the customer to after checkout. Leave blank to use the server FRONTEND_URL.",
+  phonepe_legacy_merchant_id: "Older PhonePe v1 merchant id. Only needed when Integration Mode is Legacy v1.",
+  phonepe_legacy_salt_key: "Older PhonePe v1 salt key. Only needed when Integration Mode is Legacy v1.",
+  phonepe_legacy_salt_index: "Older PhonePe v1 salt index. Usually 1.",
+  phonepe_legacy_base_url: "Older PhonePe v1 API base URL.",
 };
 const validateVersionFormat = version => {
   if (!version) return null;
@@ -164,6 +183,20 @@ const validateCustomerListSendMode = mode => {
   const validModes = ['single', 'split'];
   return validModes.includes(mode) ? null : "Invalid customer list send mode";
 };
+const validateRechargeProvider = provider => provider === "pay2all" ? null : "Invalid recharge provider";
+const validatePhonePeMode = mode => ["legacy_v1", "standard_checkout_v2"].includes(mode) ? null : "Invalid PhonePe mode";
+const validatePhonePeEnvironment = env => ["sandbox", "production"].includes(env) ? null : "Invalid PhonePe environment";
+const validateWebhookPath = path => {
+  if (!path) return "Required";
+  if (!String(path).startsWith("/")) return "Start with /";
+  if (/\s/.test(path)) return "No spaces allowed";
+  return null;
+};
+const validateApiToken = token => {
+  if (!token) return null;
+  return String(token).trim().length >= 12 ? null : "Token looks too short";
+};
+const validateClientVersion = version => /^\d+$/.test(String(version || "").trim()) ? null : "Use a whole number";
 const NUMBER_FIELD_RULES = {
   rate_limit_api_limit: {
     min: 1,
@@ -255,10 +288,22 @@ const NUMBER_FIELD_RULES = {
   }
 };
 const getFieldValidationError = (key, value) => {
+  if (key === 'phonepe_client_version') return validateClientVersion(value);
+  if (key === 'phonepe_integration_mode') return validatePhonePeMode(value);
+  if (key === 'phonepe_environment') return validatePhonePeEnvironment(value);
+  if (key === 'phonepe_client_secret') return validateApiToken(value);
+  if (key === 'phonepe_legacy_salt_key') return validateApiToken(value);
   if (key.includes('_version') || key === 'app_release_notes') return validateVersionFormat(value);
+  if (key === 'recharge_pay2all_base_url' && !value) return "Required";
+  if (key === 'phonepe_legacy_base_url' && value) return validateUrl(value);
+  if (key === 'phonepe_redirect_base_url' && value) return validateUrl(value);
   if (key.includes('_url')) return validateUrl(value);
   if (key === 'logging_level') return validateLoggingLevel(value);
   if (key === 'whatsapp_customer_business_list_send_mode') return validateCustomerListSendMode(value);
+  if (key === 'recharge_api_provider') return validateRechargeProvider(value);
+  if (key === 'recharge_pay2all_webhook_path') return validateWebhookPath(value);
+  if (key === 'recharge_pay2all_api_token') return validateApiToken(value);
+  if (key === 'recharge_pay2all_bbps_token') return validateApiToken(value);
   if (NUMBER_FIELD_RULES[key]) {
     const number = Number(value);
     const rule = NUMBER_FIELD_RULES[key];
@@ -543,9 +588,61 @@ const SEARCH_FIELDS = [{
   label: "Nearby Radius (km)",
   placeholder: "20"
 }];
-const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled"];
+const PAY2ALL_TOKEN_FIELD = "recharge_pay2all_api_token";
+const PAY2ALL_BBPS_TOKEN_FIELD = "recharge_pay2all_bbps_token";
+const PHONEPE_CLIENT_SECRET_FIELD = "phonepe_client_secret";
+const PHONEPE_LEGACY_SALT_FIELD = "phonepe_legacy_salt_key";
+const PHONEPE_CONFIG_FIELDS = [{
+  key: "phonepe_integration_mode",
+  label: "Integration Mode",
+  placeholder: "standard_checkout_v2"
+}, {
+  key: "phonepe_environment",
+  label: "Environment",
+  placeholder: "sandbox"
+}, {
+  key: "phonepe_client_id",
+  label: "Client ID",
+  placeholder: "M224..."
+}, {
+  key: "phonepe_client_version",
+  label: "Client Version",
+  placeholder: "1"
+}, {
+  key: "phonepe_redirect_base_url",
+  label: "Redirect Base URL",
+  placeholder: "https://www.massclick.com"
+}, {
+  key: "phonepe_legacy_merchant_id",
+  label: "Legacy Merchant ID",
+  placeholder: "M224..."
+}, {
+  key: "phonepe_legacy_salt_index",
+  label: "Legacy Salt Index",
+  placeholder: "1"
+}, {
+  key: "phonepe_legacy_base_url",
+  label: "Legacy Base URL",
+  placeholder: "https://api.phonepe.com/apis/hermes"
+}];
+const RECHARGE_API_FIELDS = [{
+  key: "recharge_api_provider",
+  label: "Provider",
+  placeholder: "pay2all"
+}, {
+  key: "recharge_pay2all_base_url",
+  label: "Pay2All Base URL",
+  placeholder: "https://www.pay2all.in/api/v1"
+}, {
+  key: "recharge_pay2all_webhook_path",
+  label: "Webhook Path",
+  placeholder: "/api/recharge/pay2all/webhook"
+}];
+const PHONEPE_CONFIG_KEYS = PHONEPE_CONFIG_FIELDS.map(field => field.key);
+const RECHARGE_CONFIG_KEYS = RECHARGE_API_FIELDS.map(field => field.key);
+const ALL_BOOL_KEYS = [...TOGGLE_GROUPS.flatMap(g => g.items.map(i => i.key)), "rate_limit_enabled", "recharge_api_enabled", "phonepe_gateway_enabled"];
 const ALL_NUMBER_KEYS = [...GUARD_LIMIT_FIELDS.map(field => field.key), ...RATE_LIMIT_FIELDS.map(field => field.key), ...SEARCH_FIELDS.map(field => field.key)];
-const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
+const ALL_KEYS = [...ALL_BOOL_KEYS, ...ALL_NUMBER_KEYS, ...RECHARGE_CONFIG_KEYS, ...PHONEPE_CONFIG_KEYS, "app_maintenance_mode", "app_android_latest_version", "app_android_min_version", "app_android_update_url", "app_ios_latest_version", "app_ios_min_version", "app_ios_update_url", "app_release_notes", "logging_level", "whatsapp_customer_business_list_send_mode", "redis_enabled"];
 const SETTINGS_SECTIONS = [{
   key: "operations",
   label: "Operations",
@@ -567,6 +664,20 @@ const SETTINGS_SECTIONS = [{
   icon: DebugIcon,
   color: "#2563eb",
   fieldKeys: SEARCH_FIELDS.map(field => field.key)
+}, {
+  key: "paymentGateway",
+  label: "Payment Gateway",
+  description: "PhonePe Client ID, secret, environment, and payment connection checks.",
+  icon: PaymentGatewayIcon,
+  color: "#2563eb",
+  fieldKeys: ["phonepe_gateway_enabled", ...PHONEPE_CONFIG_KEYS, PHONEPE_CLIENT_SECRET_FIELD, PHONEPE_LEGACY_SALT_FIELD]
+}, {
+  key: "rechargeApi",
+  label: "Recharge API",
+  description: "Pay2All token, endpoint, webhook, and connection checks.",
+  icon: RechargeIcon,
+  color: "#0f766e",
+  fieldKeys: ["recharge_api_enabled", ...RECHARGE_CONFIG_KEYS, PAY2ALL_TOKEN_FIELD, PAY2ALL_BBPS_TOKEN_FIELD]
 }, {
   key: "leadGuards",
   label: "Lead Guards",
@@ -637,6 +748,29 @@ export default function SystemSettings() {
   const [selectedCache, setSelectedCache] = useState("seo-meta");
   const [sitemapRegenerating, setSitemapRegenerating] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [pay2AllTokenDraft, setPay2AllTokenDraft] = useState("");
+  const [pay2AllBbpsTokenDraft, setPay2AllBbpsTokenDraft] = useState("");
+  const [billerMapDraft, setBillerMapDraft] = useState("{}");
+  const [billerMapError, setBillerMapError] = useState("");
+  const [bbpsExplorer, setBbpsExplorer] = useState({
+    categorySlug: "",
+    billerId: "",
+    loading: false,
+    result: null,
+    error: ""
+  });
+  const [phonePeClientSecretDraft, setPhonePeClientSecretDraft] = useState("");
+  const [phonePeLegacySaltDraft, setPhonePeLegacySaltDraft] = useState("");
+  const [pay2AllBalanceCheck, setPay2AllBalanceCheck] = useState({
+    loading: false,
+    data: null,
+    error: ""
+  });
+  const [phonePeAuthCheck, setPhonePeAuthCheck] = useState({
+    loading: false,
+    data: null,
+    error: ""
+  });
   const [selectedKeys, setSelectedKeys] = useState(new Set());
   const [keyNamespace, setKeyNamespace] = useState("all");
   const [keySearch, setKeySearch] = useState("");
@@ -651,6 +785,7 @@ export default function SystemSettings() {
     if (settings) setLocal({
       ...settings
     });
+    if (settings) setBillerMapDraft(JSON.stringify(settings.recharge_pay2all_bbps_biller_map || {}, null, 2));
   }, [settings]);
   useEffect(() => {
     dispatch(fetchRedisStatus());
@@ -696,6 +831,31 @@ export default function SystemSettings() {
         delete newErrors[key];
         return newErrors;
       }
+    });
+  };
+  const setSecretText = (key, val) => {
+    if (key === PAY2ALL_TOKEN_FIELD) {
+      setPay2AllTokenDraft(val);
+    } else if (key === PAY2ALL_BBPS_TOKEN_FIELD) {
+      setPay2AllBbpsTokenDraft(val);
+    } else if (key === PHONEPE_CLIENT_SECRET_FIELD) {
+      setPhonePeClientSecretDraft(val);
+    } else if (key === PHONEPE_LEGACY_SALT_FIELD) {
+      setPhonePeLegacySaltDraft(val);
+    }
+    const error = getFieldValidationError(key, val);
+    setValidationErrors(prev => {
+      if (error) {
+        return {
+          ...prev,
+          [key]: error
+        };
+      }
+      const newErrors = {
+        ...prev
+      };
+      delete newErrors[key];
+      return newErrors;
     });
   };
   const setNumber = (key, val) => {
@@ -881,9 +1041,39 @@ export default function SystemSettings() {
     setKeySearch("");
     setKeyMatchMode("contains");
   };
-  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) : false;
+  const hasPay2AllTokenDraft = pay2AllTokenDraft.trim().length > 0;
+  const hasPay2AllBbpsTokenDraft = pay2AllBbpsTokenDraft.trim().length > 0;
+  const hasBillerMapChange = settings ? billerMapDraft !== JSON.stringify(settings.recharge_pay2all_bbps_biller_map || {}, null, 2) : false;
+  const hasPhonePeClientSecretDraft = phonePeClientSecretDraft.trim().length > 0;
+  const hasPhonePeLegacySaltDraft = phonePeLegacySaltDraft.trim().length > 0;
+  const dirty = settings && local ? ALL_KEYS.some(k => local[k] !== settings[k]) || hasPay2AllTokenDraft || hasPay2AllBbpsTokenDraft || hasPhonePeClientSecretDraft || hasPhonePeLegacySaltDraft || hasBillerMapChange : false;
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
   const handleSave = async () => {
+    if (hasBillerMapChange) {
+      try {
+        const parsed = JSON.parse(billerMapDraft || "{}");
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("must be an object");
+        for (const [provider, entry] of Object.entries(parsed)) {
+          if (!entry || !entry.billerId || !entry.paramKey) {
+            throw new Error(`"${provider}" needs billerId and paramKey`);
+          }
+        }
+        setBillerMapError("");
+      } catch (err) {
+        setBillerMapError(err.message || "Invalid JSON");
+        setActiveSection("rechargeApi");
+        setSnack({
+          open: true,
+          message: "Fix the BBPS biller map JSON",
+          severity: "error"
+        });
+        setTimeout(() => setSnack(s => ({
+          ...s,
+          open: false
+        })), 3000);
+        return;
+      }
+    }
     if (hasValidationErrors) {
       const firstInvalidField = Object.keys(validationErrors).find(key => validationErrors[key]);
       if (firstInvalidField && FIELD_SECTION_MAP[firstInvalidField]) {
@@ -904,8 +1094,27 @@ export default function SystemSettings() {
     ALL_KEYS.forEach(k => {
       updates[k] = local[k];
     });
+    if (hasPay2AllTokenDraft) {
+      updates[PAY2ALL_TOKEN_FIELD] = pay2AllTokenDraft.trim();
+    }
+    if (hasPay2AllBbpsTokenDraft) {
+      updates[PAY2ALL_BBPS_TOKEN_FIELD] = pay2AllBbpsTokenDraft.trim();
+    }
+    if (hasBillerMapChange) {
+      updates.recharge_pay2all_bbps_biller_map = JSON.parse(billerMapDraft || "{}");
+    }
+    if (hasPhonePeClientSecretDraft) {
+      updates[PHONEPE_CLIENT_SECRET_FIELD] = phonePeClientSecretDraft.trim();
+    }
+    if (hasPhonePeLegacySaltDraft) {
+      updates[PHONEPE_LEGACY_SALT_FIELD] = phonePeLegacySaltDraft.trim();
+    }
     try {
       await dispatch(updateSystemSettings(updates));
+      setPay2AllTokenDraft("");
+      setPay2AllBbpsTokenDraft("");
+      setPhonePeClientSecretDraft("");
+      setPhonePeLegacySaltDraft("");
       setSnack({
         open: true,
         message: "Settings saved",
@@ -997,6 +1206,170 @@ export default function SystemSettings() {
       })), 3000);
     }
   };
+  const handleCheckPay2AllBalance = async () => {
+    if (hasPay2AllTokenDraft) {
+      setSnack({
+        open: true,
+        message: "Save the new Pay2All token before checking",
+        severity: "error"
+      });
+      return;
+    }
+    if (!settings?.recharge_pay2all_api_token_configured) {
+      setSnack({
+        open: true,
+        message: "Add and save the Pay2All token first",
+        severity: "error"
+      });
+      return;
+    }
+
+    setPay2AllBalanceCheck({
+      loading: true,
+      data: null,
+      error: ""
+    });
+    try {
+      const {
+        data
+      } = await axiosInstance.get(`${API_URL}/admin/system-settings/recharge-api/pay2all/balance`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
+      });
+      setPay2AllBalanceCheck({
+        loading: false,
+        data: data.data,
+        error: ""
+      });
+      setSnack({
+        open: true,
+        message: "Pay2All balance checked",
+        severity: "success"
+      });
+    } catch (err) {
+      const message = err.response?.data?.message || "Pay2All check failed";
+      setPay2AllBalanceCheck({
+        loading: false,
+        data: null,
+        error: message
+      });
+      setSnack({
+        open: true,
+        message,
+        severity: "error"
+      });
+    } finally {
+      setTimeout(() => setSnack(s => ({
+        ...s,
+        open: false
+      })), 3000);
+    }
+  };
+  const runBbpsExplorer = async (path) => {
+    if (hasPay2AllBbpsTokenDraft) {
+      setSnack({
+        open: true,
+        message: "Save the new Pay2All BBPS token before browsing",
+        severity: "error"
+      });
+      return;
+    }
+    if (!settings?.recharge_pay2all_bbps_token_configured) {
+      setSnack({
+        open: true,
+        message: "Add and save the Pay2All BBPS token first",
+        severity: "error"
+      });
+      return;
+    }
+    setBbpsExplorer(prev => ({
+      ...prev,
+      loading: true,
+      result: null,
+      error: ""
+    }));
+    try {
+      const { data } = await axiosInstance.get(`${API_URL}/admin/system-settings/recharge-api/pay2all/bbps/${path}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
+      });
+      setBbpsExplorer(prev => ({
+        ...prev,
+        loading: false,
+        result: data.data,
+        error: ""
+      }));
+    } catch (err) {
+      setBbpsExplorer(prev => ({
+        ...prev,
+        loading: false,
+        result: null,
+        error: err.response?.data?.message || "BBPS lookup failed"
+      }));
+    }
+  };
+  const handleCheckPhonePeAuth = async () => {
+    if (hasPhonePeClientSecretDraft) {
+      setSnack({
+        open: true,
+        message: "Save the new PhonePe secret before checking",
+        severity: "error"
+      });
+      return;
+    }
+    if (!settings?.phonepe_client_secret_configured) {
+      setSnack({
+        open: true,
+        message: "Add and save the PhonePe Client Secret first",
+        severity: "error"
+      });
+      return;
+    }
+
+    setPhonePeAuthCheck({
+      loading: true,
+      data: null,
+      error: ""
+    });
+    try {
+      const {
+        data
+      } = await axiosInstance.get(`${API_URL}/admin/system-settings/payment-gateway/phonepe/auth-check`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+        }
+      });
+      setPhonePeAuthCheck({
+        loading: false,
+        data: data.data,
+        error: ""
+      });
+      setSnack({
+        open: true,
+        message: "PhonePe auth checked",
+        severity: "success"
+      });
+    } catch (err) {
+      const message = err.response?.data?.message || "PhonePe auth check failed";
+      setPhonePeAuthCheck({
+        loading: false,
+        data: null,
+        error: message
+      });
+      setSnack({
+        open: true,
+        message,
+        severity: "error"
+      });
+    } finally {
+      setTimeout(() => setSnack(s => ({
+        ...s,
+        open: false
+      })), 3000);
+    }
+  };
   if (loading || !local) {
     return <div className={cx("loading-container")}>
         <div className={cx("loading-spinner")}></div>
@@ -1008,7 +1381,11 @@ export default function SystemSettings() {
   const enabledCount = ALL_BOOL_KEYS.filter(k => !!local[k]).length;
   const sectionNavItems = SETTINGS_SECTIONS.map(section => {
     const activeToggleCount = section.fieldKeys.filter(key => typeof local[key] === "boolean" && !!local[key]).length;
-    const changedCount = section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length;
+    const changedCount =
+      section.fieldKeys.filter(key => settings && local[key] !== settings[key]).length
+      + (section.key === "rechargeApi" && hasPay2AllTokenDraft ? 1 : 0)
+      + (section.key === "paymentGateway" && hasPhonePeClientSecretDraft ? 1 : 0)
+      + (section.key === "paymentGateway" && hasPhonePeLegacySaltDraft ? 1 : 0);
     const errorCount = section.fieldKeys.filter(key => validationErrors[key]).length;
     let detail = section.detailOverride || `${section.fieldKeys.length} control${section.fieldKeys.length === 1 ? "" : "s"}`;
     if (errorCount > 0) {
@@ -1180,6 +1557,368 @@ export default function SystemSettings() {
                     <input type="number" min={NUMBER_FIELD_RULES[key].min} max={NUMBER_FIELD_RULES[key].max} step="1" className={cx(`form-text-input ${validationErrors[key] ? 'error' : ''}`)} value={local[key] ?? ""} onChange={e => setNumber(key, e.target.value)} placeholder={placeholder} />
                     {validationErrors[key] && <div className={cx("form-error-text")}>{validationErrors[key]}</div>}
                   </div>)}
+              </div>
+            </div>
+          </div>;
+      case "paymentGateway":
+        return <div className={cx("panel-stack")}>
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#2563eb'
+              }}>
+                  <PaymentGatewayIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>PhonePe Payment Gateway</div>
+                  <div className={cx("compact-subtitle")}>Store payment credentials once and use them when premium payments are created</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("recharge-status-row")}>
+                  <div>
+                    <div className={cx("recharge-status-label")}>Client Secret</div>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.phonepe_client_secret_configured ? settings.phonepe_client_secret_preview || "Configured" : "No secret saved"}
+                    </div>
+                  </div>
+                  <span className={cx(`status-badge ${settings?.phonepe_client_secret_configured ? 'success' : 'warning'}`)}>
+                    {settings?.phonepe_client_secret_configured ? "Configured" : "Missing"}
+                  </span>
+                </div>
+
+                <div className={cx("form-field panel-inline-control")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Enable PhonePe</span>
+                    <HelpHint text={FIELD_HELP.phonepe_gateway_enabled} />
+                  </label>
+                  <div className={cx("inline-toggle-row")}>
+                    <label className={cx("toggle-switch")}>
+                      <input type="checkbox" checked={!!local?.phonepe_gateway_enabled} onChange={() => toggle("phonepe_gateway_enabled")} />
+                      <span className={cx("toggle-switch-slider")} style={{
+                      '--color': '#2563eb'
+                    }}></span>
+                    </label>
+                    <span className={cx("redis-toggle-text")}>{local?.phonepe_gateway_enabled ? 'Active' : 'Disabled'}</span>
+                  </div>
+                </div>
+
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Integration Mode</span>
+                      <HelpHint text={FIELD_HELP.phonepe_integration_mode} />
+                    </label>
+                    <select className={cx(`form-select-input ${validationErrors.phonepe_integration_mode ? 'error' : ''}`)} value={local.phonepe_integration_mode ?? "legacy_v1"} onChange={e => setText("phonepe_integration_mode", e.target.value)}>
+                      <option value="standard_checkout_v2">Standard Checkout v2</option>
+                      <option value="legacy_v1">Legacy v1</option>
+                    </select>
+                    {validationErrors.phonepe_integration_mode && <div className={cx("form-error-text")}>{validationErrors.phonepe_integration_mode}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Environment</span>
+                      <HelpHint text={FIELD_HELP.phonepe_environment} />
+                    </label>
+                    <select className={cx(`form-select-input ${validationErrors.phonepe_environment ? 'error' : ''}`)} value={local.phonepe_environment ?? "sandbox"} onChange={e => setText("phonepe_environment", e.target.value)}>
+                      <option value="sandbox">Sandbox</option>
+                      <option value="production">Production</option>
+                    </select>
+                    {validationErrors.phonepe_environment && <div className={cx("form-error-text")}>{validationErrors.phonepe_environment}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Client ID</span>
+                      <HelpHint text={FIELD_HELP.phonepe_client_id} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_client_id ? 'error' : ''}`)} value={local.phonepe_client_id ?? ""} onChange={e => setText("phonepe_client_id", e.target.value)} placeholder="M224..." />
+                    {validationErrors.phonepe_client_id && <div className={cx("form-error-text")}>{validationErrors.phonepe_client_id}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Client Version</span>
+                      <HelpHint text={FIELD_HELP.phonepe_client_version} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_client_version ? 'error' : ''}`)} value={local.phonepe_client_version ?? "1"} onChange={e => setText("phonepe_client_version", e.target.value)} placeholder="1" />
+                    {validationErrors.phonepe_client_version && <div className={cx("form-error-text")}>{validationErrors.phonepe_client_version}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Redirect Base URL</span>
+                      <HelpHint text={FIELD_HELP.phonepe_redirect_base_url} />
+                    </label>
+                    <input type="url" className={cx(`form-text-input ${validationErrors.phonepe_redirect_base_url ? 'error' : ''}`)} value={local.phonepe_redirect_base_url ?? ""} onChange={e => setText("phonepe_redirect_base_url", e.target.value)} placeholder="https://www.massclick.com" />
+                    {validationErrors.phonepe_redirect_base_url && <div className={cx("form-error-text")}>{validationErrors.phonepe_redirect_base_url}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Client Secret</span>
+                      <HelpHint text={FIELD_HELP.phonepe_client_secret} />
+                    </label>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PHONEPE_CLIENT_SECRET_FIELD] ? 'error' : ''}`)} value={phonePeClientSecretDraft} onChange={e => setSecretText(PHONEPE_CLIENT_SECRET_FIELD, e.target.value)} placeholder={settings?.phonepe_client_secret_configured ? "Paste new secret to replace saved secret" : "Paste PhonePe Client Secret"} autoComplete="new-password" />
+                    {validationErrors[PHONEPE_CLIENT_SECRET_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PHONEPE_CLIENT_SECRET_FIELD]}</div>}
+                  </div>
+                </div>
+
+                <div className={cx("section-divider")}></div>
+                <div className={cx("section-label")}>Legacy v1 fallback</div>
+                <div className={cx("recharge-status-row")}>
+                  <div>
+                    <div className={cx("recharge-status-label")}>Legacy Salt Key</div>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.phonepe_legacy_salt_key_configured ? settings.phonepe_legacy_salt_key_preview || "Configured" : "No legacy salt key saved"}
+                    </div>
+                  </div>
+                  <span className={cx(`status-badge ${settings?.phonepe_legacy_salt_key_configured ? 'success' : 'warning'}`)}>
+                    {settings?.phonepe_legacy_salt_key_configured ? "Configured" : "Optional"}
+                  </span>
+                </div>
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Merchant ID</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_merchant_id} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_legacy_merchant_id ? 'error' : ''}`)} value={local.phonepe_legacy_merchant_id ?? ""} onChange={e => setText("phonepe_legacy_merchant_id", e.target.value)} placeholder="M224..." />
+                    {validationErrors.phonepe_legacy_merchant_id && <div className={cx("form-error-text")}>{validationErrors.phonepe_legacy_merchant_id}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Salt Index</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_salt_index} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.phonepe_legacy_salt_index ? 'error' : ''}`)} value={local.phonepe_legacy_salt_index ?? "1"} onChange={e => setText("phonepe_legacy_salt_index", e.target.value)} placeholder="1" />
+                    {validationErrors.phonepe_legacy_salt_index && <div className={cx("form-error-text")}>{validationErrors.phonepe_legacy_salt_index}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Legacy Base URL</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_base_url} />
+                    </label>
+                    <input type="url" className={cx(`form-text-input ${validationErrors.phonepe_legacy_base_url ? 'error' : ''}`)} value={local.phonepe_legacy_base_url ?? ""} onChange={e => setText("phonepe_legacy_base_url", e.target.value)} placeholder="https://api.phonepe.com/apis/hermes" />
+                    {validationErrors.phonepe_legacy_base_url && <div className={cx("form-error-text")}>{validationErrors.phonepe_legacy_base_url}</div>}
+                  </div>
+                  <div className={cx("form-field span-2")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Legacy Salt Key</span>
+                      <HelpHint text={FIELD_HELP.phonepe_legacy_salt_key} />
+                    </label>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PHONEPE_LEGACY_SALT_FIELD] ? 'error' : ''}`)} value={phonePeLegacySaltDraft} onChange={e => setSecretText(PHONEPE_LEGACY_SALT_FIELD, e.target.value)} placeholder={settings?.phonepe_legacy_salt_key_configured ? "Paste new salt key to replace saved salt key" : "Paste legacy salt key"} autoComplete="new-password" />
+                    {validationErrors[PHONEPE_LEGACY_SALT_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PHONEPE_LEGACY_SALT_FIELD]}</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#1d4ed8'
+              }}>
+                  <DatabaseIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Standard Checkout Check</div>
+                  <div className={cx("compact-subtitle")}>Verify the saved Client ID and Client Secret by requesting a PhonePe auth token</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("button-group")}>
+                  <button className={cx("btn btn-primary btn-sm")} onClick={handleCheckPhonePeAuth} disabled={phonePeAuthCheck.loading || saving || hasPhonePeClientSecretDraft || !settings?.phonepe_client_secret_configured}>
+                    {phonePeAuthCheck.loading ? "Checking..." : "Check PhonePe Auth"}
+                  </button>
+                </div>
+                {hasPhonePeClientSecretDraft && <div className={cx("inline-note warning")}>Save the new Client Secret before running the check.</div>}
+                {phonePeAuthCheck.error && <div className={cx("connection-result error")}>{phonePeAuthCheck.error}</div>}
+                {phonePeAuthCheck.data && <div className={cx("connection-result success")}>
+                    <div className={cx("connection-result-title")}>Auth token received</div>
+                    <pre className={cx("connection-result-pre")}>{JSON.stringify(phonePeAuthCheck.data.auth, null, 2)}</pre>
+                    <div className={cx("connection-result-time")}>Checked at {new Date(phonePeAuthCheck.data.checkedAt).toLocaleString()}</div>
+                  </div>}
+              </div>
+            </div>
+          </div>;
+      case "rechargeApi":
+        return <div className={cx("panel-stack")}>
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0f766e'
+              }}>
+                  <RechargeIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Pay2All Recharge API</div>
+                  <div className={cx("compact-subtitle")}>Save one server-side token for mobile, DTH, and BBPS recharge flows</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("recharge-status-row")}>
+                  <div>
+                    <div className={cx("recharge-status-label")}>Token Status</div>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.recharge_pay2all_api_token_configured ? settings.recharge_pay2all_api_token_preview || "Configured" : "No token saved"}
+                    </div>
+                  </div>
+                  <span className={cx(`status-badge ${settings?.recharge_pay2all_api_token_configured ? 'success' : 'warning'}`)}>
+                    {settings?.recharge_pay2all_api_token_configured ? "Configured" : "Missing"}
+                  </span>
+                </div>
+
+                <div className={cx("form-field panel-inline-control")}>
+                  <label className={cx("label-with-help form-label")}>
+                    <span>Enable Recharge API</span>
+                    <HelpHint text={FIELD_HELP.recharge_api_enabled} />
+                  </label>
+                  <div className={cx("inline-toggle-row")}>
+                    <label className={cx("toggle-switch")}>
+                      <input type="checkbox" checked={!!local?.recharge_api_enabled} onChange={() => toggle("recharge_api_enabled")} />
+                      <span className={cx("toggle-switch-slider")} style={{
+                      '--color': '#0f766e'
+                    }}></span>
+                    </label>
+                    <span className={cx("redis-toggle-text")}>{local?.recharge_api_enabled ? 'Active' : 'Disabled'}</span>
+                  </div>
+                </div>
+
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Provider</span>
+                      <HelpHint text={FIELD_HELP.recharge_api_provider} />
+                    </label>
+                    <select className={cx(`form-select-input ${validationErrors.recharge_api_provider ? 'error' : ''}`)} value={local.recharge_api_provider ?? "pay2all"} onChange={e => setText("recharge_api_provider", e.target.value)}>
+                      <option value="pay2all">Pay2All</option>
+                    </select>
+                    {validationErrors.recharge_api_provider && <div className={cx("form-error-text")}>{validationErrors.recharge_api_provider}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Pay2All Base URL</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_base_url} />
+                    </label>
+                    <input type="url" className={cx(`form-text-input ${validationErrors.recharge_pay2all_base_url ? 'error' : ''}`)} value={local.recharge_pay2all_base_url ?? ""} onChange={e => setText("recharge_pay2all_base_url", e.target.value)} placeholder="https://www.pay2all.in/api/v1" />
+                    {validationErrors.recharge_pay2all_base_url && <div className={cx("form-error-text")}>{validationErrors.recharge_pay2all_base_url}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Webhook Path</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_webhook_path} />
+                    </label>
+                    <input type="text" className={cx(`form-text-input ${validationErrors.recharge_pay2all_webhook_path ? 'error' : ''}`)} value={local.recharge_pay2all_webhook_path ?? ""} onChange={e => setText("recharge_pay2all_webhook_path", e.target.value)} placeholder="/api/recharge/pay2all/webhook" />
+                    {validationErrors.recharge_pay2all_webhook_path && <div className={cx("form-error-text")}>{validationErrors.recharge_pay2all_webhook_path}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Pay2All API Token</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_api_token} />
+                    </label>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PAY2ALL_TOKEN_FIELD] ? 'error' : ''}`)} value={pay2AllTokenDraft} onChange={e => setSecretText(PAY2ALL_TOKEN_FIELD, e.target.value)} placeholder={settings?.recharge_pay2all_api_token_configured ? "Paste new token to replace saved token" : "Paste Pay2All API token"} autoComplete="new-password" />
+                    {validationErrors[PAY2ALL_TOKEN_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PAY2ALL_TOKEN_FIELD]}</div>}
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("label-with-help form-input-label")}>
+                      <span>Pay2All BBPS Login Token</span>
+                      <HelpHint text={FIELD_HELP.recharge_pay2all_bbps_token} />
+                    </label>
+                    <div className={cx("recharge-status-value")}>
+                      {settings?.recharge_pay2all_bbps_token_configured ? settings.recharge_pay2all_bbps_token_preview || "Configured" : "No token saved"}
+                    </div>
+                    <input type="password" className={cx(`form-text-input ${validationErrors[PAY2ALL_BBPS_TOKEN_FIELD] ? 'error' : ''}`)} value={pay2AllBbpsTokenDraft} onChange={e => setSecretText(PAY2ALL_BBPS_TOKEN_FIELD, e.target.value)} placeholder={settings?.recharge_pay2all_bbps_token_configured ? "Paste new token to replace saved token" : "Paste Pay2All BBPS login token"} autoComplete="new-password" />
+                    {validationErrors[PAY2ALL_BBPS_TOKEN_FIELD] && <div className={cx("form-error-text")}>{validationErrors[PAY2ALL_BBPS_TOKEN_FIELD]}</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0d9488'
+              }}>
+                  <DatabaseIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>Connection Check</div>
+                  <div className={cx("compact-subtitle")}>Verify the saved token by reading Pay2All wallet balance</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("button-group")}>
+                  <button className={cx("btn btn-primary btn-sm")} onClick={handleCheckPay2AllBalance} disabled={pay2AllBalanceCheck.loading || saving || hasPay2AllTokenDraft || !settings?.recharge_pay2all_api_token_configured}>
+                    {pay2AllBalanceCheck.loading ? "Checking..." : "Check Pay2All Balance"}
+                  </button>
+                </div>
+                {hasPay2AllTokenDraft && <div className={cx("inline-note warning")}>Save the new token before running the check.</div>}
+                {pay2AllBalanceCheck.error && <div className={cx("connection-result error")}>{pay2AllBalanceCheck.error}</div>}
+                {pay2AllBalanceCheck.data && <div className={cx("connection-result success")}>
+                    <div className={cx("connection-result-title")}>Balance response</div>
+                    <pre className={cx("connection-result-pre")}>{JSON.stringify(pay2AllBalanceCheck.data.balance, null, 2)}</pre>
+                    <div className={cx("connection-result-time")}>Checked at {new Date(pay2AllBalanceCheck.data.checkedAt).toLocaleString()}</div>
+                  </div>}
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0f766e'
+              }}>
+                  <RechargeIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>BBPS Explorer</div>
+                  <div className={cx("compact-subtitle")}>Browse Pay2All&apos;s live BBPS catalog to find billerId and field names for the map below. Requires the BBPS login token saved above.</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <div className={cx("form-grid")}>
+                  <div className={cx("form-field")}>
+                    <label className={cx("form-input-label")}><span>Category slug</span></label>
+                    <input type="text" className={cx("form-text-input")} value={bbpsExplorer.categorySlug} onChange={e => setBbpsExplorer(prev => ({ ...prev, categorySlug: e.target.value }))} placeholder="e.g. electricity" />
+                  </div>
+                  <div className={cx("form-field")}>
+                    <label className={cx("form-input-label")}><span>Biller ID</span></label>
+                    <input type="text" className={cx("form-text-input")} value={bbpsExplorer.billerId} onChange={e => setBbpsExplorer(prev => ({ ...prev, billerId: e.target.value }))} placeholder="e.g. MSEB00000MUM01" />
+                  </div>
+                </div>
+                <div className={cx("button-group")}>
+                  <button className={cx("btn btn-secondary btn-sm")} onClick={() => runBbpsExplorer("categories")} disabled={bbpsExplorer.loading}>List categories</button>
+                  <button className={cx("btn btn-secondary btn-sm")} onClick={() => runBbpsExplorer(`category/${encodeURIComponent(bbpsExplorer.categorySlug)}`)} disabled={bbpsExplorer.loading || !bbpsExplorer.categorySlug.trim()}>List billers</button>
+                  <button className={cx("btn btn-secondary btn-sm")} onClick={() => runBbpsExplorer(`biller/${encodeURIComponent(bbpsExplorer.billerId)}`)} disabled={bbpsExplorer.loading || !bbpsExplorer.billerId.trim()}>Biller fields</button>
+                </div>
+                {bbpsExplorer.error && <div className={cx("connection-result error")}>{bbpsExplorer.error}</div>}
+                {bbpsExplorer.result && <div className={cx("connection-result success")}>
+                    <pre className={cx("connection-result-pre")}>{JSON.stringify(bbpsExplorer.result, null, 2)}</pre>
+                  </div>}
+              </div>
+            </div>
+
+            <div className={cx("compact-card panel-card")}>
+              <div className={cx("compact-card-header")}>
+                <div className={cx("compact-icon")} style={{
+                background: '#0f766e'
+              }}>
+                  <RechargeIcon />
+                </div>
+                <div className={cx("compact-header-text")}>
+                  <div className={cx("compact-title")}>BBPS Biller Map</div>
+                  <div className={cx("compact-subtitle")}>Maps a provider name shown on the Bills &amp; Recharge page (e.g. &quot;TANGEDCO&quot;) to its Pay2All billerId and the exact consumer-field key that biller expects. Only providers listed here support live bill fetch.</div>
+                </div>
+              </div>
+              <div className={cx("section-group")}>
+                <textarea
+                  className={cx(`form-text-input ${billerMapError ? 'error' : ''}`)}
+                  style={{ minHeight: 220, fontFamily: 'monospace', fontSize: '0.78rem', whiteSpace: 'pre' }}
+                  value={billerMapDraft}
+                  onChange={e => {
+                    setBillerMapDraft(e.target.value);
+                    setBillerMapError("");
+                  }}
+                  placeholder={'{\n  "TANGEDCO": { "billerId": "TNEB0000XXX01", "paramKey": "Consumer Number" }\n}'}
+                  spellCheck={false}
+                />
+                {billerMapError && <div className={cx("form-error-text")}>{billerMapError}</div>}
               </div>
             </div>
           </div>;
@@ -1703,9 +2442,23 @@ export default function SystemSettings() {
           <span className={cx("footer-text")}>Unsaved changes</span>
         </div>
         <div className={cx("footer-right")}>
-          <button className={cx("btn btn-ghost")} onClick={() => setLocal({
-          ...settings
-        })} disabled={saving}>
+          <button className={cx("btn btn-ghost")} onClick={() => {
+          setLocal({
+            ...settings
+          });
+          setPay2AllTokenDraft("");
+          setPay2AllBbpsTokenDraft("");
+          setBillerMapDraft(JSON.stringify(settings.recharge_pay2all_bbps_biller_map || {}, null, 2));
+          setBillerMapError("");
+          setValidationErrors(prev => {
+            const next = {
+              ...prev
+            };
+            delete next[PAY2ALL_TOKEN_FIELD];
+            delete next[PAY2ALL_BBPS_TOKEN_FIELD];
+            return next;
+          });
+        }} disabled={saving}>
             Reset
           </button>
           <button className={cx("btn btn-primary")} onClick={handleSave} disabled={saving || hasValidationErrors}>

@@ -230,6 +230,7 @@ export const viewAllBusinessListAction = async (req, res) => {
     const search = (req.query.search || "").trim();
     const status = req.query.status || "all";
     const liveStatus = (req.query.liveStatus || "").trim();
+    const contactStatus = (req.query.contactStatus || "").trim();
     const category = (req.query.category || "").trim();
     const location = (req.query.location || "").trim();
     const paymentStatus = (req.query.paymentStatus || "").trim();
@@ -247,6 +248,7 @@ export const viewAllBusinessListAction = async (req, res) => {
       search,
       status,
       liveStatus,
+      contactStatus,
       category,
       location,
       paymentStatus,
@@ -515,6 +517,7 @@ export const exportBusinessListAction = async (req, res) => {
     const searchTerm = (req.query.searchTerm || "").trim();
     const status = req.query.status || "all";
     const liveStatus = (req.query.liveStatus || "").trim();
+    const contactStatus = (req.query.contactStatus || "").trim();
     const category = (req.query.category || "").trim();
     const location = (req.query.location || "").trim();
     const paymentStatus = (req.query.paymentStatus || "all").trim();
@@ -531,6 +534,7 @@ export const exportBusinessListAction = async (req, res) => {
       search,
       status,
       liveStatus,
+      contactStatus,
       category: "",
       location: "",
       paymentStatus: "",
@@ -1146,7 +1150,7 @@ export const getEnhancedSuggestionsController = async (req, res) => {
 
 export const mainSearchController = async (req, res) => {
   try {
-    let { term = "", location = "", category = "", district = "" } = req.query;
+    let { term = "", location = "", category = "", district = "", locationPath = "" } = req.query;
     const originalTermParam = String(term || "").trim();
     const originalCategoryParam = String(category || "").trim();
     // Preserved pre-normalize: resolveRouteLocation needs the URL-shaped
@@ -1246,9 +1250,15 @@ export const mainSearchController = async (req, res) => {
     let districtScopeDoc = null;
 
     if (district) {
+      // `locationPath` ("manikandam/allithurai") is optional and wins over the
+      // bare slug when sent: a publicLocationSlug is not unique within a
+      // district — a ward and its same-named locality share one — and slug
+      // resolution picks the locality, emptying the ward's results. `location`
+      // stays the slug either way, so the free-text fallback names below are
+      // unchanged.
       const routeResolution = await resolveRouteLocation({
         districtSlug: district,
-        locationSlug: rawLocationParam,
+        locationSlug: String(locationPath || "").trim() || rawLocationParam,
       }).catch((err) => {
         console.error("[Search] district route resolve failed:", err.message);
         return { districtDoc: null, locationDoc: null };

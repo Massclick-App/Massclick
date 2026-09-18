@@ -64,6 +64,43 @@ const systemSettingsSchema = new mongoose.Schema(
     // Search fallback controls
     search_nearby_radius_km: { type: Number, default: 20, min: 1, max: 100 },
 
+    // Recharge API controls
+    recharge_api_enabled: { type: Boolean, default: false },
+    recharge_api_provider: { type: String, enum: ["pay2all"], default: "pay2all" },
+    recharge_pay2all_base_url: { type: String, default: "https://www.pay2all.in/api/v1" },
+    recharge_pay2all_webhook_path: { type: String, default: "/api/recharge/pay2all/webhook" },
+    recharge_pay2all_api_token: { type: String, default: "", select: true },
+    recharge_pay2all_api_token_updated_at: { type: Date, default: null },
+    // Separate login-access token BBPS routes require; the org API token above isn't accepted there.
+    recharge_pay2all_bbps_token: { type: String, default: "", select: true },
+    recharge_pay2all_bbps_token_updated_at: { type: Date, default: null },
+    // Maps our provider display name (e.g. "TANGEDCO") to Pay2All's BBPS billerId + the
+    // exact consumer-field param key that biller's /bbps/biller/:billerId endpoint returns.
+    recharge_pay2all_bbps_biller_map: { type: Object, default: {} },
+
+    // PhonePe payment gateway controls
+    phonepe_gateway_enabled: { type: Boolean, default: true },
+    phonepe_integration_mode: {
+      type: String,
+      enum: ["legacy_v1", "standard_checkout_v2"],
+      default: "legacy_v1",
+    },
+    phonepe_environment: {
+      type: String,
+      enum: ["sandbox", "production"],
+      default: "sandbox",
+    },
+    phonepe_client_id: { type: String, default: "" },
+    phonepe_client_secret: { type: String, default: "", select: true },
+    phonepe_client_secret_updated_at: { type: Date, default: null },
+    phonepe_client_version: { type: String, default: "1" },
+    phonepe_redirect_base_url: { type: String, default: "" },
+    phonepe_legacy_merchant_id: { type: String, default: "" },
+    phonepe_legacy_salt_key: { type: String, default: "", select: true },
+    phonepe_legacy_salt_key_updated_at: { type: Date, default: null },
+    phonepe_legacy_salt_index: { type: String, default: "1" },
+    phonepe_legacy_base_url: { type: String, default: "https://api.phonepe.com/apis/hermes" },
+
     // App Version Management
     app_android_latest_version: { type: String, default: "1.0.0" },
     app_android_min_version: { type: String, default: "1.0.0" },

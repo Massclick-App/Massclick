@@ -695,6 +695,9 @@ const SearchResults = React.memo(
           params.filters = JSON.stringify(cleanCategoryFilters);
         }
         if (districtSlug) params.district = districtSlug;
+        // The slug in `location` is not unique within a district (a ward and
+        // its same-named locality share one); the path names exactly one node.
+        if (districtSlug && routeLocationPath) params.locationPath = routeLocationPath;
         params.page = page;
         params.pageSize = 20;
         if (userGeo) {
@@ -703,7 +706,7 @@ const SearchResults = React.memo(
         }
         return params;
       },
-      [sortBy, activeFilters, userGeo, districtSlug],
+      [sortBy, activeFilters, userGeo, districtSlug, routeLocationPath],
     );
 
     const trackResolvedSearch = useCallback((resultsCount) => {
@@ -1131,7 +1134,15 @@ const SearchResults = React.memo(
     // empty area or an unresolvable category slug (e.g. a stray ObjectId
     // falling through to this route) — either way it shouldn't be indexed
     // under a manufactured "Best {slug} in {location}" title.
-    const hasResolvedResults = initialSearchResolved && totalResults > 0;
+    //
+    // Location-scoped pages need 2+ results: thousands of one-listing
+    // "Best X in <locality>" pages read as thin templated content. Same
+    // threshold as ssrMiddleware.js and the location sitemaps, so a page the
+    // sitemap submits is one this component also lets be indexed.
+    const minIndexableResults =
+      routeLocationSlug || routeLocationPath || !districtSlug ? 2 : 1;
+    const isIndexable =
+      initialSearchResolved && totalResults >= minIndexableResults;
     const pageHeading = isLocationListing
       ? `Businesses in ${locationText}`
       : `Best ${searchText} in ${locationText}`;
@@ -1157,11 +1168,21 @@ const SearchResults = React.memo(
         ? `businesses in ${locationText}, local businesses ${locationText}, Massclick ${locationText}`
         : `${searchText}, ${searchText} in ${locationText}, best ${searchText} ${locationText}, top ${searchText} ${locationText}`,
       canonical: canonicalUrl,
-      robots: hasResolvedResults ? "index, follow" : "noindex, follow",
+      robots: isIndexable ? "index, follow" : "noindex, follow",
     };
+    // Stored SEO meta always says "index, follow", so it must not be allowed to
+    // re-index a page that falls below the threshold above. Only overridden once
+    // the search has resolved: a stored-meta page must not flash noindex while
+    // results are still loading and have a renderer snapshot it mid-fetch.
     const routeCanonicalSeoData =
       seoMetaData && Object.keys(seoMetaData).length > 0
-        ? { ...seoMetaData, canonical: canonicalUrl }
+        ? {
+            ...seoMetaData,
+            canonical: canonicalUrl,
+            ...(initialSearchResolved && !isIndexable
+              ? { robots: "noindex, follow" }
+              : {}),
+          }
         : seoMetaData;
     const seoContent = seoPageContents?.[0];
     const sanitizedPageContent = seoContent?.pageContent

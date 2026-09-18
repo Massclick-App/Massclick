@@ -80,7 +80,8 @@ server/key.json
 client/ui-app/.env
 client/ui-app/env
 client/ui-app/.env
-client/ui-app/build/
+client/ui-app/build
+client/ui-app/releases/
 client/ui-app/.env
 docker-compose.yml
 client/ui-app/lh-report-prod.json

@@ -1,77 +1,38 @@
 # https://www.robotstxt.org/robotstxt.html
+#
+# ONE group for every crawler, on purpose. A crawler obeys only the most
+# specific group naming it, so the old per-bot "User-agent: Googlebot /
+# Allow: /" groups made Google and every other named bot skip the Disallow
+# lines under "*" entirely (/admin was being served to Googlebot). Naming the
+# bots inside the shared group keeps them explicitly welcome for AI and search
+# visibility without that side effect. Keep the User-agent lines contiguous:
+# some parsers end a group at a blank line.
+#
+# Google (search, Gemini) · OpenAI · Anthropic · Perplexity · Apple ·
+# Amazon · Meta · Microsoft · You.com · Cohere · ByteDance
 
 User-agent: *
-Allow: /
-
-# ── Google ────────────────────────────────────────────────
 User-agent: Googlebot
-Allow: /
-
-# Google AI training (Gemini) — allow for AI visibility
 User-agent: Google-Extended
-Allow: /
-
-# ── OpenAI ────────────────────────────────────────────────
 User-agent: GPTBot
-Allow: /
-
 User-agent: OAI-SearchBot
-Allow: /
-
 User-agent: ChatGPT-User
-Allow: /
-
-# ── Anthropic / Claude ────────────────────────────────────
 User-agent: ClaudeBot
-Allow: /
-
 User-agent: Claude-SearchBot
-Allow: /
-
 User-agent: Claude-User
-Allow: /
-
 User-agent: anthropic-ai
-Allow: /
-
-# ── Perplexity ────────────────────────────────────────────
 User-agent: PerplexityBot
-Allow: /
-
-# ── Apple Intelligence ────────────────────────────────────
 User-agent: Applebot
-Allow: /
-
 User-agent: Applebot-Extended
-Allow: /
-
-# ── Amazon / Alexa ────────────────────────────────────────
 User-agent: Amazonbot
-Allow: /
-
-# ── Meta / Facebook ───────────────────────────────────────
 User-agent: FacebookBot
-Allow: /
-
-# ── Microsoft / Bing ──────────────────────────────────────
 User-agent: bingbot
-Allow: /
-
-# ── You.com ───────────────────────────────────────────────
 User-agent: YouBot
-Allow: /
-
-# ── Cohere ────────────────────────────────────────────────
 User-agent: cohere-ai
-Allow: /
-
-# ── ByteDance / TikTok ────────────────────────────────────
 User-agent: Bytespider
 Allow: /
-
-# ── Common admin / private routes ─────────────────────────
-User-agent: *
 Disallow: /admin
+Disallow: /dashboard
 Disallow: /api/
 
 Sitemap: https://massclick.in/sitemap.xml

@@ -1,9 +1,11 @@
+/* global process, Buffer */
 import crypto from "crypto";
 import axios from "axios";
 import paymentModel from "../../model/phonePay/paymentModel.js";
 import businessListModel from "../../model/businessList/businessListModel.js";
 import { sendInvoiceEmail } from "../email/emailService.js";
 import { CERTIFICATE_TEMPLATE_VERSION, ensureBusinessCertificates } from "../businessList/businessCertificateHelper.js";
+import { getSettings } from "../systemSettings/settingsService.js";
 
 const {
   PHONEPE_MERCHANT_ID,
@@ -15,6 +17,24 @@ const {
 
 const PREMIUM_MEMBERSHIP_BASE_AMOUNT = 24000;
 const GST_RATE_PERCENT = 18;
+const DEFAULT_PHONEPE_LEGACY_BASE_URL = "https://api.phonepe.com/apis/hermes";
+const DEFAULT_FRONTEND_URL = "http://localhost:3000";
+const PHONEPE_STANDARD_ENDPOINTS = {
+  sandbox: {
+    oauthBaseUrl: "https://api-preprod.phonepe.com/apis/pg-sandbox",
+    checkoutBaseUrl: "https://api-preprod.phonepe.com/apis/pg-sandbox",
+  },
+  production: {
+    oauthBaseUrl: "https://api.phonepe.com/apis/identity-manager",
+    checkoutBaseUrl: "https://api.phonepe.com/apis/pg",
+  },
+};
+const tokenCache = {
+  cacheKey: "",
+  accessToken: "",
+  tokenType: "O-Bearer",
+  expiresAtMs: 0,
+};
 
 const normalizePremiumMembershipAmount = (amount) => {
   const requestedAmount = Number(amount || 0);
@@ -67,8 +87,122 @@ const hasPremiumAmountMismatch = (payment = {}) => {
     || Number(payment.totalAmount || 0) !== expected.totalAmount;
 };
 
-export const createPhonePePayment = async (amount, userId, businessId = null) => {
+const normalizeBaseUrl = (value, fallback) => String(value || fallback || "").trim().replace(/\/+$/, "");
+
+export const getPhonePeGatewayConfig = async () => {
+  const settings = await getSettings();
+  const environment = ["sandbox", "production"].includes(settings.phonepe_environment)
+    ? settings.phonepe_environment
+    : "sandbox";
+  const mode = ["legacy_v1", "standard_checkout_v2"].includes(settings.phonepe_integration_mode)
+    ? settings.phonepe_integration_mode
+    : "legacy_v1";
+  const endpoints = PHONEPE_STANDARD_ENDPOINTS[environment];
+
+  return {
+    enabled: settings.phonepe_gateway_enabled !== false,
+    mode,
+    environment,
+    clientId: String(settings.phonepe_client_id || process.env.PHONEPE_CLIENT_ID || "").trim(),
+    clientSecret: String(settings.phonepe_client_secret || process.env.PHONEPE_CLIENT_SECRET || "").trim(),
+    clientVersion: String(settings.phonepe_client_version || process.env.PHONEPE_CLIENT_VERSION || "1").trim(),
+    redirectBaseUrl: normalizeBaseUrl(settings.phonepe_redirect_base_url, process.env.FRONTEND_URL || FRONTEND_URL || DEFAULT_FRONTEND_URL),
+    oauthBaseUrl: endpoints.oauthBaseUrl,
+    checkoutBaseUrl: endpoints.checkoutBaseUrl,
+    legacyMerchantId: String(settings.phonepe_legacy_merchant_id || process.env.PHONEPE_MERCHANT_ID || PHONEPE_MERCHANT_ID || "").trim(),
+    legacySaltKey: String(settings.phonepe_legacy_salt_key || process.env.PHONEPE_SALT_KEY || PHONEPE_SALT_KEY || "").trim(),
+    legacySaltIndex: String(settings.phonepe_legacy_salt_index || process.env.PHONEPE_SALT_INDEX || PHONEPE_SALT_INDEX || "1").trim(),
+    legacyBaseUrl: normalizeBaseUrl(settings.phonepe_legacy_base_url, process.env.PHONEPE_BASE_URL || PHONEPE_BASE_URL || DEFAULT_PHONEPE_LEGACY_BASE_URL),
+  };
+};
+
+export const assertPhonePeEnabled = (config) => {
+  if (!config.enabled) {
+    throw new Error("PhonePe payment gateway is disabled");
+  }
+};
+
+export const assertLegacyPhonePeConfig = (config) => {
+  if (!config.legacyMerchantId || !config.legacySaltKey || !config.legacySaltIndex || !config.legacyBaseUrl) {
+    throw new Error("PhonePe legacy merchant id, salt key, salt index, and base URL are required");
+  }
+};
+
+export const assertStandardPhonePeConfig = (config) => {
+  if (!config.clientId || !config.clientSecret || !config.clientVersion) {
+    throw new Error("PhonePe Client ID, Client Secret, and Client Version are required");
+  }
+};
+
+export const getPhonePeStandardAuthToken = async (config, forceRefresh = false) => {
+  assertStandardPhonePeConfig(config);
+
+  const cacheKey = `${config.environment}:${config.clientId}:${config.clientVersion}`;
+  const now = Date.now();
+  if (
+    !forceRefresh
+    && tokenCache.cacheKey === cacheKey
+    && tokenCache.accessToken
+    && tokenCache.expiresAtMs - now > 60_000
+  ) {
+    return {
+      accessToken: tokenCache.accessToken,
+      tokenType: tokenCache.tokenType,
+      expiresAtMs: tokenCache.expiresAtMs,
+    };
+  }
+
+  const body = new URLSearchParams({
+    client_id: config.clientId,
+    client_version: config.clientVersion,
+    client_secret: config.clientSecret,
+    grant_type: "client_credentials",
+  });
+
+  const response = await axios.post(
+    `${config.oauthBaseUrl}/v1/oauth/token`,
+    body.toString(),
+    {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      timeout: 15000,
+    },
+  );
+
+  const accessToken = response.data?.access_token;
+  if (!accessToken) {
+    throw new Error("PhonePe auth response did not include an access token");
+  }
+
+  const expiresAtMs = Number(response.data?.expires_at || 0) * 1000 || now + 45 * 60 * 1000;
+  const tokenType = response.data?.token_type || "O-Bearer";
+
+  tokenCache.cacheKey = cacheKey;
+  tokenCache.accessToken = accessToken;
+  tokenCache.tokenType = tokenType;
+  tokenCache.expiresAtMs = expiresAtMs;
+
+  return { accessToken, tokenType, expiresAtMs };
+};
+
+export const checkPhonePeStandardCheckoutAuth = async () => {
+  const config = await getPhonePeGatewayConfig();
+  assertPhonePeEnabled(config);
+  assertStandardPhonePeConfig(config);
+
+  const token = await getPhonePeStandardAuthToken(config, true);
+  return {
+    environment: config.environment,
+    tokenType: token.tokenType,
+    expiresAt: new Date(token.expiresAtMs).toISOString(),
+  };
+};
+
+const createLegacyPhonePePayment = async (amount, userId, businessId = null, config) => {
   try {
+    assertLegacyPhonePeConfig(config);
     const baseAmount = normalizePremiumMembershipAmount(amount);
 
     console.log(`💳 [PhonePe Payment] Creating payment - Amount: ₹${amount}, UserId: ${userId}, BusinessId: ${businessId}`);
@@ -84,11 +218,11 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
     console.log(`💰 [PhonePe Payment] Amount Breakdown - Base: ₹${baseAmount}, GST(18%): ₹${gstAmount}, Total: ₹${totalAmount}`);
 
     const payload = {
-      merchantId: PHONEPE_MERCHANT_ID,
+      merchantId: config.legacyMerchantId,
       merchantTransactionId: transactionId,
       merchantUserId: userId || "guest_user",
-      amount: totalAmount * 100,
-      redirectUrl: `${FRONTEND_URL}/payment-status/${transactionId}`,
+      amount: Math.round(totalAmount * 100),
+      redirectUrl: `${config.redirectBaseUrl}/payment-status/${transactionId}`,
       redirectMode: "REDIRECT",
       paymentInstrument: { type: "PAY_PAGE" },
     };
@@ -98,13 +232,13 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
     const checksum =
       crypto
         .createHash("sha256")
-        .update(data + "/pg/v1/pay" + PHONEPE_SALT_KEY)
+        .update(data + "/pg/v1/pay" + config.legacySaltKey)
         .digest("hex") +
       "###" +
-      PHONEPE_SALT_INDEX;
+      config.legacySaltIndex;
 
     const response = await axios.post(
-      `${PHONEPE_BASE_URL}/pg/v1/pay`,
+      `${config.legacyBaseUrl}/pg/v1/pay`,
       { request: data },
       {
         headers: {
@@ -112,6 +246,7 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
           "X-VERIFY": checksum,
           accept: "application/json",
         },
+        timeout: 30000,
       }
     );
 
@@ -134,6 +269,11 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
       qrString,
       paymentStatus: "PENDING",
       paymentGateway: "phonepe",
+      responseData: {
+        phonePeMode: "legacy_v1",
+        phonePeEnvironment: config.environment,
+        phonePeResponse: response.data,
+      },
     });
 
     console.log(`✅ [PhonePe Payment] Payment record created - ID: ${paymentDoc._id}, Status: PENDING`);
@@ -159,7 +299,11 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
             paymentGateway: "phonepe",
             paymentStatus: "PENDING",
             paymentDate: null,
-            responseData: {},
+            responseData: {
+              phonePeMode: "legacy_v1",
+              phonePeEnvironment: config.environment,
+              phonePeResponse: response.data,
+            },
           },
         },
       }
@@ -183,7 +327,11 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
               paymentGateway: "phonepe",
               paymentStatus: "PENDING",
               paymentDate: null,
-              responseData: {},
+              responseData: {
+                phonePeMode: "legacy_v1",
+                phonePeEnvironment: config.environment,
+                phonePeResponse: response.data,
+              },
             },
           ],
         },
@@ -254,31 +402,240 @@ export const createPhonePePayment = async (amount, userId, businessId = null) =>
   }
 };
 
+const createStandardCheckoutPhonePePayment = async (amount, userId, businessId = null, config) => {
+  try {
+    assertStandardPhonePeConfig(config);
+    const baseAmount = normalizePremiumMembershipAmount(amount);
+
+    console.log(`💳 [PhonePe Payment] Creating Standard Checkout payment - Amount: ₹${amount}, UserId: ${userId}, BusinessId: ${businessId}`);
+    if (!baseAmount || isNaN(baseAmount)) {
+      console.error(`❌ [PhonePe Payment] Invalid amount: ${amount}`);
+      throw new Error("Invalid amount value");
+    }
+
+    const transactionId = `txn_${Date.now()}`;
+    console.log(`🆔 [PhonePe Payment] Generated TransactionId: ${transactionId}`);
+
+    const { gstAmount, totalAmount } = getPremiumMembershipAmounts();
+    console.log(`💰 [PhonePe Payment] Amount Breakdown - Base: ₹${baseAmount}, GST(18%): ₹${gstAmount}, Total: ₹${totalAmount}`);
+
+    const token = await getPhonePeStandardAuthToken(config);
+    const payload = {
+      merchantOrderId: transactionId,
+      amount: Math.round(totalAmount * 100),
+      paymentFlow: {
+        type: "PG_CHECKOUT",
+        message: "Massclick premium membership",
+        merchantUrls: {
+          redirectUrl: `${config.redirectBaseUrl}/payment-status/${transactionId}`,
+        },
+      },
+    };
+
+    console.log(`📤 [PhonePe Payment] Sending Standard Checkout request to PhonePe API`);
+    const response = await axios.post(
+      `${config.checkoutBaseUrl}/checkout/v2/pay`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `${token.tokenType} ${token.accessToken}`,
+        },
+        timeout: 30000,
+      },
+    );
+
+    console.log(`📥 [PhonePe Payment] Received response from PhonePe API`);
+
+    const paymentUrl = response.data?.redirectUrl || "";
+    const orderId = response.data?.orderId || null;
+    const responseData = {
+      phonePeMode: "standard_checkout_v2",
+      phonePeEnvironment: config.environment,
+      phonePeResponse: response.data,
+    };
+
+    console.log(`🎫 [PhonePe Payment] Creating payment record in database`);
+    const paymentDoc = await paymentModel.create({
+      userId,
+      businessId,
+      transactionId,
+      orderId,
+      amount: baseAmount,
+      gstAmount,
+      totalAmount,
+      paymentUrl,
+      qrString: "",
+      paymentStatus: "PENDING",
+      paymentGateway: "phonepe",
+      responseData,
+    });
+
+    console.log(`✅ [PhonePe Payment] Payment record created - ID: ${paymentDoc._id}, Status: PENDING`);
+
+    if (businessId) {
+      console.log(`🏢 [PhonePe Payment] Updating business record with payment details - BusinessId: ${businessId}`);
+      const existingBusiness = await businessListModel.findById(businessId).lean();
+      const paymentEntry = {
+        userId,
+        businessId,
+        transactionId,
+        orderId,
+        amount: baseAmount,
+        gstAmount,
+        totalAmount,
+        paymentGateway: "phonepe",
+        paymentStatus: "PENDING",
+        paymentDate: null,
+        responseData,
+      };
+
+      if (existingBusiness?.payment && existingBusiness.payment.length > 0) {
+        console.log(`📝 [PhonePe Payment] Business has existing payment records, updating first entry`);
+        await businessListModel.updateOne(
+          { _id: businessId },
+          { $set: { "payment.0": paymentEntry } },
+        );
+        console.log(`✅ [PhonePe Payment] Updated existing payment record`);
+      } else {
+        console.log(`📝 [PhonePe Payment] Business has no payment records, creating new array`);
+        await businessListModel.findByIdAndUpdate(
+          businessId,
+          { $set: { payment: [paymentEntry] } },
+          { new: true, useFindAndModify: false },
+        );
+        console.log(`✅ [PhonePe Payment] Created new payment array`);
+      }
+    }
+
+    const paymentState = response.data?.state;
+    console.log(`📊 [PhonePe Payment] Payment state from API: ${paymentState}`);
+
+    if (paymentState === "COMPLETED" && businessId) {
+      try {
+        console.log(`✅ [PhonePe Payment] Payment already COMPLETED, sending invoice email immediately`);
+        const businessData = await businessListModel.findById(businessId).lean();
+        if (businessData) {
+          const emailResult = await sendInvoiceEmail(businessData, paymentDoc);
+          console.log(`📧 [PhonePe Payment] Invoice email result: ${emailResult.success ? 'SUCCESS' : 'FAILED'}`);
+          if (emailResult.success) {
+            const invoiceEmailSentAt = new Date();
+            await paymentModel.updateOne(
+              { _id: paymentDoc._id },
+              { $set: { invoiceEmailSent: true, invoiceEmailSentAt } }
+            );
+            await businessListModel.updateOne(
+              { _id: businessId, "payment.transactionId": transactionId },
+              {
+                $set: {
+                  "payment.$.invoiceEmailSent": true,
+                  "payment.$.invoiceEmailSentAt": invoiceEmailSentAt,
+                },
+              }
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error(`⚠️ [PhonePe Payment] Failed to send email on payment creation:`, emailError.message);
+      }
+    }
+
+    console.log(`🔗 [PhonePe Payment] Payment URL generated, ready for redirect`);
+    return {
+      success: true,
+      message: "Payment created successfully",
+      transactionId,
+      orderId,
+      totalAmount,
+      paymentUrl,
+      qrString: "",
+    };
+  } catch (error) {
+    console.error(`❌ [PhonePe Payment] Error creating Standard Checkout payment:`, {
+      errorMessage: error.message,
+      errorCode: error.code,
+      statusCode: error.response?.status,
+      responseData: error.response?.data,
+      amount,
+      userId,
+      businessId,
+      errorStack: error.stack,
+    });
+    throw new Error("PhonePe payment creation failed");
+  }
+};
+
+export const createPhonePePayment = async (amount, userId, businessId = null) => {
+  const config = await getPhonePeGatewayConfig();
+  assertPhonePeEnabled(config);
+
+  if (config.mode === "standard_checkout_v2") {
+    return createStandardCheckoutPhonePePayment(amount, userId, businessId, config);
+  }
+
+  return createLegacyPhonePePayment(amount, userId, businessId, config);
+};
+
 
 export const checkPhonePeStatus = async (transactionId) => {
   try {
     console.log(`🔍 [PhonePe Status] Checking payment status for transaction: ${transactionId}`);
-    const checksum =
-      crypto
-        .createHash("sha256")
-        .update(`/pg/v1/status/${PHONEPE_MERCHANT_ID}/${transactionId}` + PHONEPE_SALT_KEY)
-        .digest("hex") +
-      "###" +
-      PHONEPE_SALT_INDEX;
+    const config = await getPhonePeGatewayConfig();
+    assertPhonePeEnabled(config);
+    const existingPayment = await paymentModel.findOne({ transactionId }).lean();
+    const paymentMode = existingPayment?.responseData?.phonePeMode || config.mode;
 
-    const response = await axios.get(
-      `${PHONEPE_BASE_URL}/pg/v1/status/${PHONEPE_MERCHANT_ID}/${transactionId}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-VERIFY": checksum,
-          "X-MERCHANT-ID": PHONEPE_MERCHANT_ID,
+    let response;
+    let status;
+    let orderId = null;
+
+    if (paymentMode === "standard_checkout_v2") {
+      assertStandardPhonePeConfig(config);
+      const token = await getPhonePeStandardAuthToken(config);
+      response = await axios.get(
+        `${config.checkoutBaseUrl}/checkout/v2/order/${transactionId}/status`,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `${token.tokenType} ${token.accessToken}`,
+          },
+          timeout: 30000,
         },
-      }
-    );
+      );
+      status = response.data?.state || "FAILED";
+      orderId = response.data?.orderId || null;
+    } else {
+      assertLegacyPhonePeConfig(config);
+      const checksum =
+        crypto
+          .createHash("sha256")
+          .update(`/pg/v1/status/${config.legacyMerchantId}/${transactionId}` + config.legacySaltKey)
+          .digest("hex") +
+        "###" +
+        config.legacySaltIndex;
 
-    const status = response.data?.data?.state || "FAILED";
-    const normalizedPaymentStatus = status === "COMPLETED" ? "SUCCESS" : status;
+      response = await axios.get(
+        `${config.legacyBaseUrl}/pg/v1/status/${config.legacyMerchantId}/${transactionId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-VERIFY": checksum,
+            "X-MERCHANT-ID": config.legacyMerchantId,
+          },
+          timeout: 30000,
+        }
+      );
+      status = response.data?.data?.state || "FAILED";
+    }
+
+    const normalizedPaymentStatus =
+      status === "COMPLETED" ? "SUCCESS" : status === "FAILED" ? "FAILED" : "PENDING";
+    const responseData = {
+      phonePeMode: paymentMode,
+      phonePeEnvironment: config.environment,
+      phonePeResponse: response.data,
+    };
     const paymentDate = new Date();
 
     console.log(`📊 [PhonePe Status] Transaction ${transactionId} - Status: ${normalizedPaymentStatus}`);
@@ -287,7 +644,8 @@ export const checkPhonePeStatus = async (transactionId) => {
       { transactionId },
       {
         paymentStatus: normalizedPaymentStatus,
-        responseData: response.data,
+        responseData,
+        ...(orderId ? { orderId } : {}),
         paymentDate,
       },
       { new: true }
@@ -300,8 +658,9 @@ export const checkPhonePeStatus = async (transactionId) => {
       const paymentEntryPatch = {
         "payment.$.paymentStatus": normalizedPaymentStatus,
         "payment.$.paymentDate": paymentDate,
-        "payment.$.responseData": response.data,
+        "payment.$.responseData": responseData,
       };
+      if (orderId) paymentEntryPatch["payment.$.orderId"] = orderId;
 
       if (normalizedPaymentStatus === "SUCCESS") {
         paymentEntryPatch["payment.$.paid"] = true;

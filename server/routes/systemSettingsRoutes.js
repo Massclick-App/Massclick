@@ -1,9 +1,13 @@
 import express from "express";
 import {
   getSystemSettingsAction,
+  getPay2AllBalanceAction,
+  getPay2AllBbpsCategoriesAction,
+  getPay2AllBbpsBillersAction,
+  getPay2AllBbpsBillerFieldsAction,
+  getPhonePeAuthCheckAction,
   updateSystemSettingsAction,
 } from "../controller/systemSettings/systemSettingsController.js";
-import { oauthAuthentication } from "../helper/oauthHelper.js";
 import { requireAdminAuth } from "../auth/authMiddleware.js";
 import {
   startS3CacheHeaderMigrationAction,
@@ -40,13 +44,38 @@ const router = express.Router();
 
 router.get(
   "/api/admin/system-settings",
-  oauthAuthentication,
+  requireAdminAuth(),
   getSystemSettingsAction,
 );
 router.put(
   "/api/admin/system-settings",
-  oauthAuthentication,
+  requireAdminAuth(),
   updateSystemSettingsAction,
+);
+router.get(
+  "/api/admin/system-settings/recharge-api/pay2all/balance",
+  requireAdminAuth(),
+  getPay2AllBalanceAction,
+);
+router.get(
+  "/api/admin/system-settings/payment-gateway/phonepe/auth-check",
+  requireAdminAuth(),
+  getPhonePeAuthCheckAction,
+);
+router.get(
+  "/api/admin/system-settings/recharge-api/pay2all/bbps/categories",
+  requireAdminAuth(),
+  getPay2AllBbpsCategoriesAction,
+);
+router.get(
+  "/api/admin/system-settings/recharge-api/pay2all/bbps/category/:slug",
+  requireAdminAuth(),
+  getPay2AllBbpsBillersAction,
+);
+router.get(
+  "/api/admin/system-settings/recharge-api/pay2all/bbps/biller/:billerId",
+  requireAdminAuth(),
+  getPay2AllBbpsBillerFieldsAction,
 );
 
 // S3 Cache Header Migration routes
