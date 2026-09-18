@@ -455,9 +455,9 @@ const LandingPage = React.memo(() => {
                   <FeaturedServices />
                 </DeferredHomeSection>
 
-                <DeferredHomeSection minHeight={620} rootMargin="150px 0px">
+                {/*<DeferredHomeSection minHeight={620} rootMargin="150px 0px">
                   <RechargeServices />
-                </DeferredHomeSection>
+                </DeferredHomeSection>*/}
 
                 <DeferredHomeSection
                   minHeight="var(--public-counter-reserved-height)"
