@@ -10,13 +10,18 @@ import {
 import { getSeoBlogMetaBySlug } from "../helper/seo/seoOnpageBlogHelper.js";
 import { getSeoPageContentMetaService } from "../helper/seo/seoPageContentHelper.js";
 import { findBusinessesByCategory } from "../helper/businessList/businessListHelper.js";
-import { buildBusinessSeoMeta, findBusinessForSeo } from "../helper/businessList/businessSeoMeta.js";
+import {
+  buildBusinessSeoMeta,
+  businessExistsById,
+  findBusinessForSeo,
+} from "../helper/businessList/businessSeoMeta.js";
+import { matchGroupBySlug } from "../helper/category/categoryHierarchyHelper.js";
 import {
   getBusinessUrlSlug,
   buildBusinessPath as buildCanonicalBusinessPath,
 } from "../helper/businessList/businessUrl.js";
 import { appendDiscoveryLinkHeaders } from "../config/apiCatalog.js";
-import { STATIC_PAGES, SKIP_SEO_ROUTES } from "../config/ssrConfig.js";
+import { MIN_LISTINGS_TO_INDEX, STATIC_PAGES, SKIP_SEO_ROUTES } from "../config/ssrConfig.js";
 import { isServableUrlSegment } from "../utils/urlSegment.js";
 import { getCache, setCache } from "../utils/redisClient.js";
 import { slugify } from "../slugify.js";
@@ -35,6 +40,7 @@ import {
   buildCanonicalLocationCategoryPath,
   buildLocationCategoryPath,
   buildLocationPath,
+  isKnownCategorySlug,
 } from "../helper/location/locationUrl.js";
 import {
   escapeHtml,
@@ -69,6 +75,17 @@ const CACHE_TTL = {
   BUSINESSES: 1800,        // 30 minutes
   STATIC_PAGE: 3600,       // 1 hour
 };
+
+const INDEX_FOLLOW = "index, follow";
+const NOINDEX_FOLLOW = "noindex, follow";
+
+// A category URL segment names a real page only if it is an active category
+// (or subcategory) or a category group. Anything else in that position is free
+// text typed into the search bar — the client navigates searches to
+// /:district/:term — which is a search-results page, not one to index.
+const isKnownCategoryRouteSlug = async (slug = "") =>
+  Boolean(slug) &&
+  ((await isKnownCategorySlug(slug)) || Boolean(await matchGroupBySlug(slug)));
 
 const isSafeFaqUrl = (url = "") =>
   /^(https?:\/\/|\/(?!\/)|mailto:|tel:)/i.test(String(url).trim());
@@ -283,6 +300,9 @@ export const resolveCategoryRouteContext = async (parts = []) => {
       businessLocationContext: {
         districtSlug,
         ...(locationSlug ? { locationSlug } : {}),
+        // The slug alone is ambiguous when a ward and its own locality share a
+        // name; the path pins the node this URL was classified to.
+        ...(locationPath ? { locationPath } : {}),
       },
     };
   }
@@ -470,6 +490,12 @@ export async function ssrMiddleware(req, res) {
     let categoryRoute = null;
     let businessDoc = null;
     let businessShell = null;
+    // Soft-404 guard: a page that names nothing real is served 404 (SPA shell
+    // still sent as the body, so a human still gets the app's own UI), and a
+    // real page too thin to rank is served noindex. Both used to be a 200 with
+    // "index, follow" for any URL at all.
+    let robots = INDEX_FOLLOW;
+    let isNotFound = false;
 
     let fallbackTitle = "Massclick - Local Business Search Platform";
     let fallbackDescription = "Find trusted local businesses, services, and professionals near you on Massclick.";
@@ -521,7 +547,16 @@ export async function ssrMiddleware(req, res) {
       // Business detail page (/business/:district/:slug-:publicId). "business"
       // stays in SKIP_SEO_ROUTES so the category router never sees it; its
       // meta is resolved here instead of falling through to the site default.
-      businessDoc = await findBusinessForSeo(parts[2]).catch(() => null);
+      // A lookup that throws is not "no such business" — only a clean miss 404s.
+      let businessLookupFailed = false;
+      businessDoc = await findBusinessForSeo(parts[2]).catch(() => {
+        businessLookupFailed = true;
+        return null;
+      });
+      if (!businessDoc && !businessLookupFailed) {
+        // No business carries this publicId: deleted, or a malformed segment.
+        isNotFound = true;
+      }
       if (businessDoc) {
         const businessPath = buildCanonicalBusinessPath({ districtSlug: secondSegment, business: businessDoc });
         seo = {
@@ -549,6 +584,12 @@ export async function ssrMiddleware(req, res) {
         };
       }
 
+    } else if (firstSegment === "business" && (parts.length === 4 || parts.length === 5)) {
+      // Superseded /business/[:district/]:location/:slug/:id shapes. Any that
+      // resolve to a business with a publicId were already 301'd upstream.
+      const exists = await businessExistsById(parts[parts.length - 1]).catch(() => true);
+      if (!exists) isNotFound = true;
+
     } else if (!SKIP_SEO_ROUTES.has(firstSegment) && secondSegment) {
       categoryRoute = await resolveCategoryRouteContext(parts);
       const location = categoryRoute?.locationName || "";
@@ -559,7 +600,8 @@ export async function ssrMiddleware(req, res) {
         : categoryRoute?.locationSlug || location;
       const cacheKeyPrefix = categoryRoute ? `category:${categoryRoute.cacheKey}` : "";
       const contentCacheKey = cacheKeyPrefix ? `${cacheKeyPrefix}:content:v2` : "";
-      const businessesCacheKey = `${cacheKeyPrefix}:businesses:v2`;
+      // v3: listings now resolve by location path, not the ambiguous slug.
+      const businessesCacheKey = `${cacheKeyPrefix}:businesses:v3`;
 
       // Parallel cache lookups for better performance
       const [cachedSeo, cachedContent, cachedBusinesses] = await Promise.all([
@@ -606,7 +648,37 @@ export async function ssrMiddleware(req, res) {
         await setCache(businessesCacheKey, categoryBusinesses, CACHE_TTL.BUSINESSES);
       }
       isCategoryPage = Boolean(categoryRoute);
+
+      if (categoryRoute && !isLocationLandingPage) {
+        const listingCount = Array.isArray(categoryBusinesses) ? categoryBusinesses.length : 0;
+        // A failed lookup counts as known: never 404 a real page on a DB blip.
+        const isKnownCategory = await isKnownCategoryRouteSlug(categoryRoute.searchCategorySlug)
+          .catch(() => true);
+
+        if (!isKnownCategory) {
+          // Free-text search results: useful to the visitor, never an index
+          // target. With nothing found it names nothing real at all.
+          robots = NOINDEX_FOLLOW;
+          if (listingCount === 0) isNotFound = true;
+        } else {
+          // Legacy no-district routes (/mannargudi/...) are location pages too.
+          const isLocationPage = Boolean(categoryRoute.locationDoc || !categoryRoute.districtDoc);
+          const minListings = isLocationPage
+            ? MIN_LISTINGS_TO_INDEX.location
+            : MIN_LISTINGS_TO_INDEX.district;
+          if (listingCount < minListings) robots = NOINDEX_FOLLOW;
+        }
+      }
     }
+
+    // An explicit noindex stored on the page's SEO record wins; the client
+    // already honours it, so the server-rendered HTML must not contradict it.
+    // Admin-entered, and it lands in a response header: keep directive
+    // characters only, or a stray newline would throw inside setHeader.
+    if (/noindex/i.test(String(seo?.robots || ""))) {
+      robots = String(seo.robots).replace(/[^\w\s,:-]/g, "").trim() || NOINDEX_FOLLOW;
+    }
+    if (isNotFound) robots = NOINDEX_FOLLOW;
 
     const locationName = isCategoryPage ? categoryRoute.locationName : "";
     const categoryName = isCategoryPage ? categoryRoute.categoryName : "";
@@ -903,6 +975,7 @@ export async function ssrMiddleware(req, res) {
         const setContent = (val) => tag.replace(/(\bcontent\s*=\s*["'])([^"']*)/, `$1${val}`);
         if (nameVal === "description") return setContent(description);
         if (nameVal === "keywords") return setContent(keywords);
+        if (nameVal === "robots") return setContent(escapeHtml(robots));
         if (nameVal === "twitter:card") return setContent("summary_large_image");
         if (nameVal === "twitter:title") return setContent(title);
         if (nameVal === "twitter:description") return setContent(description);
@@ -918,7 +991,7 @@ export async function ssrMiddleware(req, res) {
         return tag;
       });
 
-    const ssrSeoJson = JSON.stringify({ title, description, keywords, canonical, robots: "index, follow" })
+    const ssrSeoJson = JSON.stringify({ title, description, keywords, canonical, robots })
       .replace(/<\//g, "<\\/");
     const schemaScripts = schemaObjects
       .map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`)
@@ -1042,13 +1115,13 @@ export async function ssrMiddleware(req, res) {
       const md = mdLines.join("\n");
       res.setHeader("Content-Type", "text/markdown; charset=utf-8");
       res.setHeader("x-markdown-tokens", String(Math.ceil(md.length / 4)));
-      res.setHeader("X-Robots-Tag", "index, follow");
-      return res.status(200).send(md);
+      res.setHeader("X-Robots-Tag", robots);
+      return res.status(isNotFound ? 404 : 200).send(md);
     }
 
-    res.setHeader("X-Robots-Tag", "index, follow");
+    res.setHeader("X-Robots-Tag", robots);
     res.append("Link", `<${canonical}>; rel="alternate"; type="text/markdown"`);
-    return res.status(200).send(html);
+    return res.status(isNotFound ? 404 : 200).send(html);
   } catch (error) {
     console.error("SSR Error:", error);
     return res.status(500).send("Server Error");

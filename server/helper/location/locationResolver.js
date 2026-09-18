@@ -372,8 +372,13 @@ export const resolveDistrictBySlug = async (districtSlug) => {
 export const resolveLocationWithinDistrict = async (districtDoc, locationSlug) => {
   if (!districtDoc?.district || !locationSlug) return null;
 
+  // The path index in locationUrl.js holds a slim projection, but search scope
+  // expansion (resolveLocationSearchScope) reads searchGroupSlug,
+  // searchGroupNames and pincodes, which only the full document carries. The
+  // slug fallback below has always returned a full doc, so without this an
+  // exact-path resolve would silently drop locality grouping.
   const byPath = await resolveLocationPathWithinDistrict(districtDoc, locationSlug);
-  if (byPath) return byPath;
+  if (byPath) return (await masterLocationModel.findById(byPath._id).lean()) || byPath;
 
   return resolveLegacyLocationSlugWithinDistrict(districtDoc, publicSlugify(locationSlug));
 };

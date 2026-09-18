@@ -620,11 +620,16 @@ const isPlausibleLocationText = (value = "") => {
 //     resolveRouteLocation instead of fuzzy free-text matching. This is the
 //     actual collision fix for this function, same pattern as
 //     mainSearchController in businessListController.js.
+//   - { locationPath } — optional, and preferred over locationSlug when given.
+//     A publicLocationSlug is NOT unique within a district: a ward and its own
+//     same-named locality both carry "allithurai", and slug resolution picks
+//     the deeper (locality) node, so the ward's page listed nothing. The path
+//     ("manikandam/allithurai") names exactly one node.
 // Both call sites (ssrMiddleware.js, businessListController.js's
 // viewBusinessByCategory) updated to this shape; see each for which path
 // they currently exercise.
 export const findBusinessesByCategory = async (category, locationContext = {}) => {
-  const { locationText, districtSlug, locationSlug } = locationContext;
+  const { locationText, districtSlug, locationSlug, locationPath } = locationContext;
   const escapeRegex = (value = "") =>
     String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -645,7 +650,10 @@ export const findBusinessesByCategory = async (category, locationContext = {}) =
   let districtScopeDoc = null;
 
   if (districtSlug) {
-    const routeResolution = await resolveRouteLocation({ districtSlug, locationSlug })
+    const routeResolution = await resolveRouteLocation({
+      districtSlug,
+      locationSlug: locationPath || locationSlug,
+    })
       .catch(() => ({ districtDoc: null, locationDoc: null }));
     districtScopeDoc = routeResolution.districtDoc;
     if (routeResolution.locationDoc) {
